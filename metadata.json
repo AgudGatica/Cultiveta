@@ -1,0 +1,6 @@
+{
+  "name": "Cultiveta",
+  "description": "Cultiveta — Diario Inteligente de Cultivo. Seguimiento agronómico, métricas ambientales con recharts, comparativa de cosechas y curvas climáticas superpuestas, galería fotográfica y asistente IA.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

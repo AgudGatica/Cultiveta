@@ -1,0 +1,321 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    background-color: #050505;
+    color: #f4f4f5;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    overflow-x: hidden;
+  }
+}
+
+/* Custom sleek dark scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #09090b;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* Entry animation for dashboard summary cards */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 20px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Skeleton Shimmer Loading Animation */
+@keyframes skeletonPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@keyframes shimmerWave {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+  background-color: #161618;
+}
+
+.skeleton-shimmer::after {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0,
+    rgba(255, 255, 255, 0.03) 25%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 75%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  animation: shimmerWave 1.8s infinite ease-in-out;
+  content: '';
+  pointer-events: none;
+}
+
+.animate-skeleton {
+  animation: skeletonPulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Skeleton Loading targeting #root .dashboard-overview cards */
+#root .dashboard-overview .skeleton-card {
+  position: relative;
+  overflow: hidden;
+  background-color: #0F0F0F;
+  border: 1px solid rgba(63, 63, 70, 0.7);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#root .dashboard-overview .skeleton-card:hover {
+  border-color: rgba(113, 113, 122, 0.8);
+}
+
+/* High-Contrast Border Logic for Summary Cards in Dashboard Overview */
+#root .dashboard-overview .summary-card-critical-border {
+  border: 2px solid rgba(245, 158, 11, 0.9) !important;
+  box-shadow: 0 0 24px -2px rgba(245, 158, 11, 0.28) !important;
+  background-image: linear-gradient(to bottom, rgba(245, 158, 11, 0.05), transparent) !important;
+}
+
+#root .dashboard-overview .summary-card-critical-border:hover {
+  border-color: rgba(251, 191, 36, 1) !important;
+}
+
+#root .dashboard-overview .summary-card-overdue-border {
+  border: 2px solid rgba(244, 63, 94, 0.9) !important;
+  box-shadow: 0 0 24px -2px rgba(244, 63, 94, 0.32) !important;
+  background-image: linear-gradient(to bottom, rgba(244, 63, 94, 0.06), transparent) !important;
+}
+
+#root .dashboard-overview .summary-card-overdue-border:hover {
+  border-color: rgba(251, 113, 133, 1) !important;
+}
+
+#root .dashboard-overview .summary-card-elevated-contrast {
+  border-color: rgba(113, 113, 122, 0.65) !important;
+  box-shadow: 0 4px 14px -2px rgba(0, 0, 0, 0.5) !important;
+}
+
+#root .dashboard-overview .summary-card-elevated-contrast:hover {
+  border-color: rgba(161, 161, 170, 0.85) !important;
+}
+
+/* Selected Element: Subtle text-glow and light gradient on dashboard h1 when scrolling */
+div#root > div > div > main > div#dashboard-overview > div:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(1) > h1:nth-of-type(1),
+#root #dashboard-overview h1.dashboard-hero-h1 {
+  transition: all 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+div#root > div > div > main > div#dashboard-overview > div:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(1) > h1:nth-of-type(1).dashboard-h1-scrolled,
+#root #dashboard-overview h1.dashboard-hero-h1.dashboard-h1-scrolled {
+  background: linear-gradient(120deg, #ffffff 0%, #d1fae5 35%, #6ee7b7 70%, #34d399 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  filter: drop-shadow(0 0 16px rgba(52, 211, 153, 0.45)) !important;
+  text-shadow: 0 0 24px rgba(16, 185, 129, 0.35) !important;
+}
+
+/* CultivationCard Dynamic Critical Metric Circular Indicator (Droplet / Thermometer) */
+#root .cultivation-card .critical-metric-indicator {
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease !important;
+  z-index: 20;
+}
+
+#root .cultivation-card:hover .critical-metric-indicator {
+  transform: scale(1.08) !important;
+}
+
+#root .cultivation-card .critical-metric-indicator .dot-red {
+  background-color: #f43f5e !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 12px rgba(244, 63, 94, 0.85) !important;
+}
+
+#root .cultivation-card .critical-metric-indicator .dot-orange {
+  background-color: #f59e0b !important;
+  color: #09090b !important;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.8) !important;
+}
+
+#root .cultivation-card .critical-metric-indicator .dot-green {
+  background-color: #10b981 !important;
+  color: #052e16 !important;
+  box-shadow: 0 0 9px rgba(16, 185, 129, 0.75) !important;
+}
+
+/* CultivationCard Watering Urgency Circular Indicator */
+.watering-urgency-indicator-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 9999px;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.watering-urgency-indicator-dot.dot-green {
+  background-color: #10b981 !important;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.7) !important;
+}
+
+.watering-urgency-indicator-dot.dot-orange {
+  background-color: #f59e0b !important;
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.7) !important;
+}
+
+.watering-urgency-indicator-dot.dot-red {
+  background-color: #f43f5e !important;
+  box-shadow: 0 0 10px rgba(244, 63, 94, 0.8) !important;
+}
+
+/* Tactile interaction: Smooth scale transition (1.02) and subtle shadow elevation on hover */
+#root .cultivation-card {
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease !important;
+  will-change: transform, box-shadow;
+}
+
+#root .cultivation-card:hover {
+  transform: scale(1.02) !important;
+  box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.65), 0 6px 18px -3px rgba(0, 0, 0, 0.45) !important;
+}
+
+#root .cultivation-card:active {
+  transform: scale(0.99) !important;
+  transition-duration: 0.15s !important;
+}
+
+/* Plant Icon Gentle Rotation (Vibration / Sway) on Dashboard Title Hover */
+@keyframes plant-sway-vibration {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  15% {
+    transform: rotate(-14deg) scale(1.1);
+  }
+  30% {
+    transform: rotate(12deg) scale(1.14);
+  }
+  45% {
+    transform: rotate(-9deg) scale(1.12);
+  }
+  60% {
+    transform: rotate(7deg) scale(1.08);
+  }
+  75% {
+    transform: rotate(-4deg) scale(1.04);
+  }
+  90% {
+    transform: rotate(2deg) scale(1.02);
+  }
+  100% {
+    transform: rotate(0deg) scale(1.05);
+  }
+}
+
+div#root > div > div > main > div#dashboard-overview > div:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(1) > h1#dashboard-hero-title:nth-of-type(1) .dashboard-plant-icon,
+#root #dashboard-hero-title .dashboard-plant-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: 50% 90%;
+  color: #10b981 !important; /* emerald-500 */
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              background-color 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              color 0.6s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  will-change: transform, color;
+}
+
+#root #dashboard-hero-title .dashboard-plant-icon svg {
+  color: #10b981 !important; /* emerald-500 default */
+  stroke: currentColor !important;
+  transition: color 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              stroke 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 0.6s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+div#root > div > div > main > div#dashboard-overview > div:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(1) > h1#dashboard-hero-title:nth-of-type(1):hover .dashboard-plant-icon,
+#root #dashboard-hero-title:hover .dashboard-plant-icon,
+#root #dashboard-overview:hover #dashboard-hero-title .dashboard-plant-icon {
+  animation: plant-sway-vibration 0.85s cubic-bezier(0.36, 0.07, 0.19, 0.97) infinite;
+  background-color: rgba(16, 185, 129, 0.18) !important;
+  border-color: rgba(110, 231, 183, 0.5) !important; /* emerald-300 border glow */
+  box-shadow: 0 0 18px rgba(110, 231, 183, 0.4) !important;
+  color: #6ee7b7 !important; /* emerald-300 */
+}
+
+div#root > div > div > main > div#dashboard-overview > div:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(1) > h1#dashboard-hero-title:nth-of-type(1):hover .dashboard-plant-icon svg,
+#root #dashboard-hero-title:hover .dashboard-plant-icon svg,
+#root #dashboard-overview:hover #dashboard-hero-title .dashboard-plant-icon svg {
+  filter: drop-shadow(0 0 10px rgba(110, 231, 183, 0.85)) !important;
+  color: #6ee7b7 !important; /* emerald-300 subtle color transition */
+  stroke: #6ee7b7 !important;
+}
+
+/* Subtle Lifecycle Progress Bar at Top of Dashboard Overview */
+#root .dashboard-lifecycle-progress,
+#root .dashboard-overview .dashboard-lifecycle-progress,
+#root #dashboard-overview #dashboard-lifecycle-progress {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease !important;
+  background: radial-gradient(circle at 10% 20%, rgba(16, 185, 129, 0.04) 0%, #0F0F0F 65%) !important;
+}
+
+#root .dashboard-lifecycle-progress:hover,
+#root .dashboard-overview .dashboard-lifecycle-progress:hover,
+#root #dashboard-overview #dashboard-lifecycle-progress:hover {
+  border-color: rgba(52, 211, 153, 0.3) !important;
+  box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.6), 0 0 20px -4px rgba(16, 185, 129, 0.1) !important;
+}
+
+#root .dashboard-lifecycle-progress #lifecycle-progress-fill,
+#root .dashboard-overview #lifecycle-progress-fill {
+  box-shadow: 0 0 14px rgba(52, 211, 153, 0.45);
+  will-change: width;
+  transform: translateZ(0);
+}
+
+#root .dashboard-lifecycle-progress [class*="group/milestone"] {
+  will-change: transform;
+}
+
+#root .dashboard-lifecycle-progress [class*="group/milestone"] .group-hover\/milestone\:opacity-100 {
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.6));
+}
+
