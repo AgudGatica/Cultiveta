@@ -158,13 +158,14 @@ export default function App() {
   }, []);
 
   // 1.1 Iniciar sincronización automática de fotos encoladas en IndexedDB exclusivamente para el UID autenticado
+  const currentAuthUid = currentUser?.uid;
   useEffect(() => {
-    if (!currentUser) {
+    if (!currentAuthUid) {
       photoOfflineQueue.stopAutoSync();
       return;
     }
 
-    const cleanupAutoSync = photoOfflineQueue.initAutoSync(currentUser.uid);
+    const cleanupAutoSync = photoOfflineQueue.initAutoSync(currentAuthUid);
 
     const handleSyncedEvent = (e: Event) => {
       const ce = e as CustomEvent<{ syncedCount?: number }>;
@@ -187,7 +188,7 @@ export default function App() {
       window.removeEventListener('cultiveta_photos_synced', handleSyncedEvent);
       window.removeEventListener('cultiveta_cultivation_deleted', handleCropDeleted);
     };
-  }, [currentUser]);
+  }, [currentAuthUid]);
 
   // 1.2 Monitoreo y Notificación Automática de Alertas de Riego Overdue
   const notifiedOverdueRef = React.useRef<Set<string>>(new Set());

@@ -81,6 +81,8 @@ let dbPromise: Promise<IDBDatabase> | null = null;
 // Tareas activas de Storage y latidos de expiración (heartbeats) para renovación de bloqueos
 const activeUploadTasks = new Map<string, UploadTask>();
 const activeHeartbeats = new Map<string, ReturnType<typeof setInterval>>();
+const cancellationReasons = new Map<string, 'user_deleted' | 'logout' | 'offline' | 'stalled'>();
+let ongoingSyncPromise: Promise<{ synced: number; failed: number; total: number }> | null = null;
 
 /**
  * Normaliza y migra idempotentemente registros leídos de IndexedDB.
@@ -445,6 +447,11 @@ export const photoOfflineQueue = {
           return;
         }
 
+        // Si ya está activa en esta misma pestaña, no reclamar concurrentemente
+        if (activeUploadTasks.has(photoId)) {
+          return;
+        }
+
         const now = Date.now();
         const isLockedByOther =
           item.lockOwner &&
@@ -538,6 +545,7 @@ export const photoOfflineQueue = {
   async deletePendingPhoto(id: string, userId: string): Promise<boolean> {
     const task = activeUploadTasks.get(id);
     if (task) {
+      cancellationReasons.set(id, 'user_deleted');
       try {
         task.cancel();
       } catch {}
@@ -703,8 +711,21 @@ export const photoOfflineQueue = {
    * 4. No bloquea la UI: no usa Promise.race para cancelar setDoc de forma ficticia.
    * 5. No borra el Blob de IndexedDB hasta confirmar AMBOS (Storage y Firestore).
    * 6. Continúa con los demás elementos de la cola si una fotografía falla o es lenta.
+   * 7. Re-entrancia protegida: llamadas concurrentes en la misma pestaña comparten la misma promesa.
    */
-  async syncPendingPhotos(userId?: string): Promise<{ synced: number; failed: number; total: number }> {
+  syncPendingPhotos(userId?: string): Promise<{ synced: number; failed: number; total: number }> {
+    if (ongoingSyncPromise) {
+      return ongoingSyncPromise;
+    }
+
+    ongoingSyncPromise = this._executeSync(userId).finally(() => {
+      ongoingSyncPromise = null;
+    });
+
+    return ongoingSyncPromise;
+  },
+
+  async _executeSync(userId?: string): Promise<{ synced: number; failed: number; total: number }> {
     const currentAuthUser = auth.currentUser;
     const targetUserId = userId || (currentAuthUser ? currentAuthUser.uid : autoSyncUserId);
 
@@ -783,12 +804,14 @@ export const photoOfflineQueue = {
           const stallCheckTimer = setInterval(() => {
             const now = Date.now();
             if (typeof navigator !== 'undefined' && !navigator.onLine) {
+              cancellationReasons.set(item.id, 'offline');
               uploadTask.cancel();
               return;
             }
-            // Si pasan 28 segundos sin transferir ningún byte adicional
-            if (now - lastProgressTimestamp > 28000) {
+            // Si pasan 35 segundos sin transferir ningún byte adicional
+            if (now - lastProgressTimestamp > 35000) {
               console.warn(`[OfflineSync] Subida estancada detectada en foto ${item.id}. Cancelando tarea para reintento.`);
+              cancellationReasons.set(item.id, 'stalled');
               uploadTask.cancel();
             }
           }, 5000);
@@ -796,6 +819,8 @@ export const photoOfflineQueue = {
           uploadTask.on('state_changed', (snapshot) => {
             if (snapshot.bytesTransferred > lastBytes) {
               lastBytes = snapshot.bytesTransferred;
+              lastProgressTimestamp = Date.now();
+            } else if (snapshot.state === 'running' && lastBytes === 0) {
               lastProgressTimestamp = Date.now();
             }
 
@@ -887,8 +912,65 @@ export const photoOfflineQueue = {
         this.stopHeartbeat(item.id);
         activeUploadTasks.delete(item.id);
 
-        console.error(`[OfflineSync] Fallo en sincronización de foto ${item.id}:`, stepErr);
         const errObj = stepErr as { message?: string; code?: string; name?: string } | undefined;
+        const isCanceled = errObj?.code === 'storage/canceled';
+        const cancelReason = cancellationReasons.get(item.id);
+        cancellationReasons.delete(item.id);
+
+        if (isCanceled) {
+          if (cancelReason === 'user_deleted') {
+            console.log(`[OfflineSync] Subida de foto ${item.id} detenida por eliminación voluntaria.`);
+            return;
+          }
+          if (cancelReason === 'logout') {
+            console.log(`[OfflineSync] Subida de foto ${item.id} pausada por cierre de sesión.`);
+            item.lockUntil = undefined;
+            item.lockOwner = undefined;
+            item.status = 'queued';
+            await this.updateItem(item);
+            return;
+          }
+          if (cancelReason === 'offline' || (typeof navigator !== 'undefined' && !navigator.onLine)) {
+            console.info(`[OfflineSync] Subida de foto ${item.id} pausada por desconexión de red.`);
+            item.status = 'waiting_network';
+            item.lastError = 'Conexión de red interrumpida durante la subida.';
+            item.lastErrorCode = 'network-offline';
+            item.lockUntil = undefined;
+            item.lockOwner = undefined;
+            await this.updateItem(item);
+            localStore.saveItem<Partial<PhotoRecord> & { id: string; userId: string }>('photos', {
+              id: item.id,
+              userId: item.userId,
+              syncStatus: 'waiting_network',
+              syncError: item.lastError,
+              isPendingSync: true,
+            });
+            return;
+          }
+          if (cancelReason === 'stalled') {
+            console.warn(`[OfflineSync] Subida de foto ${item.id} estancada en red; reprogramada para el próximo ciclo.`);
+            item.status = 'queued';
+            item.lastError = 'La subida se estancó sin avance de bytes; reprogramada.';
+            item.lastErrorCode = 'upload-stalled';
+            item.lockUntil = undefined;
+            item.lockOwner = undefined;
+            await this.updateItem(item);
+            return;
+          }
+
+          // Cancelación general o manual no catalogada
+          console.warn(`[OfflineSync] Subida de foto ${item.id} cancelada. Reprogramando.`);
+          item.status = (typeof navigator !== 'undefined' && !navigator.onLine) ? 'waiting_network' : 'queued';
+          item.lastError = 'Subida cancelada o reprogramada.';
+          item.lastErrorCode = 'storage/canceled';
+          item.lockUntil = undefined;
+          item.lockOwner = undefined;
+          await this.updateItem(item);
+          return;
+        }
+
+        // Fallo real no atribuible a cancelación controlada
+        console.error(`[OfflineSync] Fallo en sincronización de foto ${item.id}:`, stepErr);
 
         item.status = (typeof navigator !== 'undefined' && !navigator.onLine) ? 'waiting_network' : 'failed';
         item.retryCount = (item.retryCount || 0) + 1;
@@ -965,7 +1047,21 @@ export const photoOfflineQueue = {
   initAutoSync(userId: string): () => void {
     if (typeof window === 'undefined' || !userId) return () => {};
 
-    this.stopAutoSync();
+    // Si ya está activo exactamente para este mismo usuario, mantener la sincronización activa
+    if (autoSyncUserId === userId && (autoSyncInterval || autoSyncOnlineHandler)) {
+      return () => {
+        // Solo detener si la sesión del usuario realmente cerró o cambió de UID
+        if (auth.currentUser?.uid !== userId) {
+          this.stopAutoSync();
+        }
+      };
+    }
+
+    // Si había otro usuario previo autenticado, detenerlo primero
+    if (autoSyncUserId && autoSyncUserId !== userId) {
+      this.stopAutoSync();
+    }
+
     autoSyncUserId = userId;
 
     console.log(`[OfflineSync] 🟢 AutoSync activado para usuario ${userId}.`);
@@ -998,7 +1094,10 @@ export const photoOfflineQueue = {
     }, 45000);
 
     return () => {
-      this.stopAutoSync();
+      // Al desmontar, solo detener si la sesión realmente finalizó o cambió de UID
+      if (auth.currentUser?.uid !== userId) {
+        this.stopAutoSync();
+      }
     };
   },
 
@@ -1016,8 +1115,9 @@ export const photoOfflineQueue = {
       autoSyncInterval = null;
     }
 
-    // Cancelar tareas activas de subida
-    activeUploadTasks.forEach((task) => {
+    // Cancelar tareas activas de subida marcando explícitamente razón de cierre de sesión
+    activeUploadTasks.forEach((task, photoId) => {
+      cancellationReasons.set(photoId, 'logout');
       try {
         task.cancel();
       } catch {}
