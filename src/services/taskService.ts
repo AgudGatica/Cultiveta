@@ -1,6 +1,7 @@
 import { Cultivation, Watering, EnvironmentRecord, CultivationTask, TaskUrgency, TaskPriority } from '../types';
 import { wateringService } from './wateringService';
 import { localStore } from './localStore';
+import { analyzeWateringUrgency, getRecommendedWateringIntervalDays } from '../utils/wateringAlertUtils';
 
 const COMPLETED_TASKS_KEY_PREFIX = 'cultiveta_completed_tasks_';
 
@@ -47,6 +48,20 @@ export const taskService = {
   },
 
   /**
+   * Fetch server-generated tasks (e.g. Sincronización Inversa / Alertas Climáticas de Gemini)
+   */
+  async fetchServerTasks(userId?: string): Promise<CultivationTask[]> {
+    try {
+      const url = userId ? `/api/outdoor/tasks?userId=${encodeURIComponent(userId)}` : '/api/outdoor/tasks';
+      const response = await fetch(url);
+      if (!response.ok) return [];
+      return await response.json();
+    } catch {
+      return [];
+    }
+  },
+
+  /**
    * Generates dynamic actionable tasks based on current date, cultivation stage,
    * last watering timestamps, and environment conditions.
    */
@@ -54,7 +69,8 @@ export const taskService = {
     cultivations: Cultivation[],
     waterings: Watering[],
     envRecords: EnvironmentRecord[],
-    userId: string
+    userId: string,
+    serverTasks: CultivationTask[] = []
   ): CultivationTask[] {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -83,22 +99,15 @@ export const taskService = {
       const isWateringManuallyCompleted = !!completedMap[wateringTaskId];
       const isWateringDone = wateredToday || isWateringManuallyCompleted;
 
-      let daysSinceLast = 999;
-      let nextWateringDate = new Date(today);
+      const wateringAnalysis = analyzeWateringUrgency(crop, latestWatering || null, today);
+      const intervalDays = wateringAnalysis.recommendedIntervalDays;
 
+      let nextWateringDate = new Date(today);
       if (latestWatering?.date) {
         const lastDate = new Date(latestWatering.date);
         lastDate.setHours(0, 0, 0, 0);
-        const diffMs = today.getTime() - lastDate.getTime();
-        daysSinceLast = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-        
-        // Interval: 2 days in flower/preflower, 3 days in vegetative
-        const intervalDays = crop.currentStage === 'Floración' || crop.currentStage === 'Prefloración' ? 2 : 3;
         nextWateringDate = new Date(lastDate);
         nextWateringDate.setDate(nextWateringDate.getDate() + intervalDays);
-      } else {
-        // No watering recorded: due today immediately
-        nextWateringDate = new Date(today);
       }
 
       const nextWateringStr = nextWateringDate.toISOString().split('T')[0];
@@ -118,19 +127,17 @@ export const taskService = {
         wateringUrgency = 'today';
         wateringPriority = 'high';
         wateringTitle = `Riego completado hoy`;
-        wateringDesc = `Plantas hidratadas correctamente. Próximo riego estimado en 2-3 días.`;
-      } else if (!latestWatering || nextWateringDate <= today) {
-        if (daysSinceLast >= 4 && latestWatering) {
-          wateringUrgency = 'overdue';
-          wateringPriority = 'critical';
-          wateringTitle = `¡Riego Urgente Atrasado!`;
-          wateringDesc = `Hace ${daysSinceLast} días del último riego. El sustrato puede estar deshidratado. Regar con pH ${targetPh} (~${estimatedLiters}L/planta).`;
-        } else {
-          wateringUrgency = 'today';
-          wateringPriority = 'critical';
-          wateringTitle = `Riego Programado para Hoy`;
-          wateringDesc = `Toca hidratación para ${crop.name}. Preparar solución nutritiva (pH ${targetPh}, ~${estimatedLiters}L/planta).`;
-        }
+        wateringDesc = `Plantas hidratadas correctamente. Próximo riego estimado en ${intervalDays} días.`;
+      } else if (wateringAnalysis.isOverdue) {
+        wateringUrgency = 'overdue';
+        wateringPriority = 'critical';
+        wateringTitle = `¡Riego Overdue Atrasado!`;
+        wateringDesc = `${wateringAnalysis.alertMessage} Regar con pH ${targetPh} (~${estimatedLiters}L/planta).`;
+      } else if (!latestWatering || nextWateringDate <= today || wateringAnalysis.isDueToday) {
+        wateringUrgency = 'today';
+        wateringPriority = 'critical';
+        wateringTitle = `Riego Programado para Hoy`;
+        wateringDesc = `Toca hidratación para ${crop.name}. Preparar solución nutritiva (pH ${targetPh}, ~${estimatedLiters}L/planta). Ciclo: cada ${intervalDays} días.`;
       } else {
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
@@ -327,6 +334,20 @@ export const taskService = {
             actionHint: 'Ventilación Ajustada',
           });
         }
+      }
+    }
+
+    // 4. Incorporar alertas y tareas generadas en servidor por Sincronización Inversa
+    if (serverTasks && serverTasks.length > 0) {
+      for (const st of serverTasks) {
+        // Evitar duplicados si ya existe en tasks
+        if (tasks.some((t) => t.id === st.id)) continue;
+        const isStCompleted = !!completedMap[st.id] || st.isCompleted;
+        tasks.push({
+          ...st,
+          isCompleted: isStCompleted,
+          completedAt: completedMap[st.id]?.completedAt || st.completedAt,
+        });
       }
     }
 

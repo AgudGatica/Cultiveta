@@ -23,6 +23,21 @@ export const cultivationService = {
     // 1. Immediately subscribe to local persistence for zero latency and offline support
     const unsubLocal = localStore.subscribe<Cultivation>('cultivations', userId, (localList) => {
       callback(localList.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()));
+
+      // Registrar cultivos de exterior en el backend para el cron
+      localList.forEach((c) => {
+        if (
+          !c.isFinished &&
+          c.locationCoordinates &&
+          (c.type === 'Outdoor' || c.type === 'Invernadero')
+        ) {
+          fetch('/api/outdoor/cultivations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(c),
+          }).catch(() => {});
+        }
+      });
     });
 
     // 2. Also try Cloud Firestore snapshot listener safely
@@ -119,6 +134,18 @@ export const cultivationService = {
     // 1. Immediately store in localStore (instant UI update & offline reliability)
     localStore.saveItem('cultivations', newCultivation);
 
+    // Si es un cultivo exterior/invernadero con coordenadas, registrarlo en el backend para el cron
+    if (
+      newCultivation.locationCoordinates &&
+      (newCultivation.type === 'Outdoor' || newCultivation.type === 'Invernadero')
+    ) {
+      fetch('/api/outdoor/cultivations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newCultivation),
+      }).catch(() => {});
+    }
+
     // 2. Attempt Cloud Firestore write in the background without throwing if API is pending/offline
     try {
       const cleaned = cleanFirestoreData(newCultivation);
@@ -137,11 +164,23 @@ export const cultivationService = {
     const existingList = localStore.getItems<Cultivation>('cultivations', targetUserId);
     const existing = existingList.find((c) => c.id === id);
     if (existing) {
-      localStore.saveItem('cultivations', {
+      const updatedItem = {
         ...existing,
         ...updates,
         updatedAt: new Date().toISOString()
-      });
+      };
+      localStore.saveItem('cultivations', updatedItem);
+
+      if (
+        updatedItem.locationCoordinates &&
+        (updatedItem.type === 'Outdoor' || updatedItem.type === 'Invernadero')
+      ) {
+        fetch('/api/outdoor/cultivations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatedItem),
+        }).catch(() => {});
+      }
     }
 
     try {
@@ -150,11 +189,9 @@ export const cultivationService = {
         ...updates,
         updatedAt: new Date().toISOString(),
       });
-      updateDoc(docRef, cleanedUpdates).catch((err) => {
-        console.warn('Cloud Firestore update pending or unavailable:', err?.message || err);
-      });
+      await setDoc(docRef, cleanedUpdates, { merge: true });
     } catch (err) {
-      console.warn('Cloud Firestore updateDoc failed:', err);
+      console.warn('Cloud Firestore update failed (saved locally):', err);
     }
   },
 

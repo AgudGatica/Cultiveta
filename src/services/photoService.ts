@@ -12,9 +12,10 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../firebase/config';
-import { PhotoRecord } from '../types';
+import { PhotoRecord, CultivationStageName, PhotoCategory } from '../types';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
 import { localStore } from './localStore';
+import { photoOfflineQueue } from './photoOfflineQueue';
 
 export const photoService = {
   subscribePhotos(userId: string, callback: (photos: PhotoRecord[]) => void): Unsubscribe {
@@ -164,7 +165,127 @@ export const photoService = {
     return newPhoto;
   },
 
+  /**
+   * Guarda una foto soportando modo sin conexión / mala conectividad mediante IndexedDB.
+   * Si no hay conexión o falla la subida a Firebase, encola la foto en IndexedDB y retorna
+   * un registro optimista con `isPendingSync: true`.
+   */
+  async savePhotoWithOfflineFallback(params: {
+    userId: string;
+    cultivationId: string;
+    file: File;
+    date: string;
+    dayOfCultivation: number;
+    stage: CultivationStageName;
+    category: PhotoCategory;
+    caption?: string;
+    isDemo?: boolean;
+  }): Promise<{ photo: PhotoRecord; enqueuedOffline: boolean }> {
+    const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+    const previewDataUrl = await this.compressAndReadFileAsDataUrl(params.file);
+    const photoId = doc(collection(db, 'photos')).id;
+
+    // Si el usuario está explícitamente offline, encolar en IndexedDB directamente
+    if (!isOnline) {
+      console.log('[photoService] Navegador sin conexión. Encolando fotografía en IndexedDB...');
+      await photoOfflineQueue.enqueuePhoto({
+        id: photoId,
+        userId: params.userId,
+        cultivationId: params.cultivationId,
+        file: params.file,
+        previewDataUrl,
+        date: params.date,
+        dayOfCultivation: params.dayOfCultivation,
+        stage: params.stage,
+        category: params.category,
+        caption: params.caption,
+        isDemo: params.isDemo,
+      });
+
+      const optimisticPhoto: PhotoRecord = {
+        id: photoId,
+        userId: params.userId,
+        cultivationId: params.cultivationId,
+        url: previewDataUrl,
+        date: params.date,
+        dayOfCultivation: params.dayOfCultivation,
+        stage: params.stage,
+        category: params.category,
+        caption: params.caption,
+        isDemo: params.isDemo,
+        isPendingSync: true,
+        createdAt: new Date().toISOString(),
+      };
+
+      return { photo: optimisticPhoto, enqueuedOffline: true };
+    }
+
+    // Si está online, intentar subir a Firebase Storage
+    try {
+      const finalUrl = await this.uploadPhotoFile(params.userId, params.cultivationId, params.file);
+      const newPhoto: PhotoRecord = {
+        id: photoId,
+        userId: params.userId,
+        cultivationId: params.cultivationId,
+        url: finalUrl,
+        date: params.date,
+        dayOfCultivation: params.dayOfCultivation,
+        stage: params.stage,
+        category: params.category,
+        caption: params.caption,
+        isDemo: params.isDemo,
+        isPendingSync: false,
+        createdAt: new Date().toISOString(),
+      };
+
+      localStore.saveItem('photos', newPhoto);
+
+      try {
+        const docRef = doc(db, 'photos', photoId);
+        const cleaned = cleanFirestoreData(newPhoto);
+        await setDoc(docRef, cleaned);
+      } catch (firestoreErr) {
+        console.warn('Firestore setDoc failed, kept in localStore:', firestoreErr);
+      }
+
+      return { photo: newPhoto, enqueuedOffline: false };
+    } catch (uploadErr) {
+      console.warn('[photoService] Falló la subida online. Encolando en IndexedDB como resguardo:', uploadErr);
+      await photoOfflineQueue.enqueuePhoto({
+        id: photoId,
+        userId: params.userId,
+        cultivationId: params.cultivationId,
+        file: params.file,
+        previewDataUrl,
+        date: params.date,
+        dayOfCultivation: params.dayOfCultivation,
+        stage: params.stage,
+        category: params.category,
+        caption: params.caption,
+        isDemo: params.isDemo,
+      });
+
+      const optimisticPhoto: PhotoRecord = {
+        id: photoId,
+        userId: params.userId,
+        cultivationId: params.cultivationId,
+        url: previewDataUrl,
+        date: params.date,
+        dayOfCultivation: params.dayOfCultivation,
+        stage: params.stage,
+        category: params.category,
+        caption: params.caption,
+        isDemo: params.isDemo,
+        isPendingSync: true,
+        createdAt: new Date().toISOString(),
+      };
+
+      return { photo: optimisticPhoto, enqueuedOffline: true };
+    }
+  },
+
   async deletePhotoRecord(id: string, userId?: string): Promise<void> {
+    photoOfflineQueue.removeQueuedPhoto(id).catch(() => {});
     if (userId) {
       localStore.deleteItem('photos', id, userId);
     } else if (typeof window !== 'undefined') {

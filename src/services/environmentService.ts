@@ -22,6 +22,21 @@ export const environmentService = {
       callback(localList.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()));
     });
 
+    // Sincronizar registros meteorológicos automáticos generados por el backend
+    fetch(`/api/outdoor/environment-records?userId=${encodeURIComponent(userId)}`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((serverRecords: EnvironmentRecord[]) => {
+        if (Array.isArray(serverRecords) && serverRecords.length > 0) {
+          const currentLocal = localStore.getItems<EnvironmentRecord>('environmentRecords', userId);
+          const currentIds = new Set(currentLocal.map((r) => r.id));
+          const toAdd = serverRecords.filter((r) => !currentIds.has(r.id));
+          if (toAdd.length > 0) {
+            localStore.saveAll('environmentRecords', userId, [...currentLocal, ...toAdd]);
+          }
+        }
+      })
+      .catch(() => {});
+
     let unsubFirestore: Unsubscribe = () => {};
     try {
       const q = query(

@@ -1,5 +1,21 @@
-import React from 'react';
-import { Sprout, Search, Sparkles, User as UserIcon, Trash2, SlidersHorizontal, LogOut, Database } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  Sprout,
+  Search,
+  Sparkles,
+  User as UserIcon,
+  Trash2,
+  SlidersHorizontal,
+  LogOut,
+  Database,
+  Bell,
+  Settings,
+  ChevronDown,
+  ShieldCheck,
+  Droplets,
+  Thermometer,
+  CalendarCheck,
+} from 'lucide-react';
 import { Cultivation, UserProfile } from '../../types';
 import { User } from 'firebase/auth';
 
@@ -14,6 +30,9 @@ interface HeaderProps {
   isAdvancedMode?: boolean;
   onToggleAdvancedMode?: () => void;
   onOpenQuickAction?: () => void;
+  onOpenPreferences?: () => void;
+  onOpenNotifications?: () => void;
+  notificationCount?: number;
   onNavigate?: (view: string) => void;
   onSearchOpen?: () => void;
   onLogout?: () => void;
@@ -32,14 +51,35 @@ export const Header: React.FC<HeaderProps> = ({
   isAdvancedMode,
   onToggleAdvancedMode,
   onOpenQuickAction,
+  onOpenPreferences,
+  onOpenNotifications,
+  notificationCount = 0,
   onNavigate,
   onSearchOpen,
   onLogout,
   onSeedDemoData,
   onClearDemoData,
 }) => {
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
   const activeCultivations = cultivations.filter((c) => !c.isFinished);
   const displayName = userProfile?.displayName || currentUser?.displayName || currentUser?.email?.split('@')[0] || 'Cultivador';
+
+  // Cerrar menú de usuario al hacer clic fuera
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+    };
+    if (isUserMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isUserMenuOpen]);
 
   return (
     <header className="sticky top-0 z-30 bg-[#050505]/80 backdrop-blur-xl border-b border-zinc-800/80 px-4 lg:px-8 py-3.5">
@@ -151,6 +191,24 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           )}
 
+          {/* Notification Bell Button */}
+          {onOpenNotifications && (
+            <button
+              type="button"
+              id="header-notification-btn"
+              onClick={onOpenNotifications}
+              className="relative p-2 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:border-zinc-700 transition-colors cursor-pointer flex items-center justify-center"
+              title="Notificaciones de Alertas Climáticas (env_alert)"
+            >
+              <Bell className="w-4 h-4 text-zinc-300" />
+              {notificationCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-rose-500 text-white text-[9px] font-mono font-bold flex items-center justify-center animate-pulse">
+                  {notificationCount > 9 ? '9+' : notificationCount}
+                </span>
+              )}
+            </button>
+          )}
+
           {/* Cultiveta IA Direct Button */}
           <button
             type="button"
@@ -162,13 +220,19 @@ export const Header: React.FC<HeaderProps> = ({
             <span className="hidden sm:inline">Cultiveta IA</span>
           </button>
 
-          {/* User profile avatar / button */}
-          <div className="flex items-center gap-2">
+          {/* User profile avatar / interactive user menu */}
+          <div className="relative" ref={userMenuRef}>
             <button
               type="button"
-              id="header-profile-btn"
-              onClick={() => onNavigate && onNavigate('profile')}
-              className="p-1.5 sm:px-3 sm:py-1.5 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-300 hover:border-zinc-700 flex items-center gap-2 transition-colors cursor-pointer"
+              id="header-user-menu-btn"
+              onClick={() => setIsUserMenuOpen((prev) => !prev)}
+              aria-expanded={isUserMenuOpen}
+              className={`p-1.5 sm:px-3 sm:py-1.5 rounded-2xl bg-zinc-900 border transition-all flex items-center gap-2 cursor-pointer ${
+                isUserMenuOpen
+                  ? 'border-emerald-500/50 text-white shadow-sm shadow-emerald-500/10'
+                  : 'border-zinc-800 text-zinc-300 hover:border-zinc-700'
+              }`}
+              title="Menú de usuario y preferencias"
             >
               {userProfile?.photoURL || currentUser?.photoURL ? (
                 <img
@@ -185,18 +249,174 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="hidden md:inline text-xs font-semibold max-w-[100px] truncate text-zinc-200">
                 {displayName}
               </span>
+              <ChevronDown
+                className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 ${
+                  isUserMenuOpen ? 'rotate-180 text-emerald-400' : ''
+                }`}
+              />
             </button>
 
-            {onLogout && (
-              <button
-                type="button"
-                id="header-logout-btn"
-                onClick={onLogout}
-                className="p-2 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-rose-400 hover:border-rose-500/30 transition-colors cursor-pointer"
-                title="Cerrar sesión"
+            {/* Menú Desplegable de Usuario */}
+            {isUserMenuOpen && (
+              <div
+                id="header-user-dropdown-menu"
+                className="absolute right-0 mt-2 w-72 sm:w-80 rounded-3xl bg-[#0F0F0F] border border-zinc-800 shadow-2xl p-3 z-50 animate-fade-in space-y-1.5"
               >
-                <LogOut className="w-4 h-4" />
-              </button>
+                {/* Cabecera del usuario en el menú */}
+                <div className="p-3 rounded-2xl bg-zinc-900/80 border border-zinc-800 flex items-center gap-3">
+                  {userProfile?.photoURL || currentUser?.photoURL ? (
+                    <img
+                      src={userProfile?.photoURL || currentUser?.photoURL || ''}
+                      alt="Avatar"
+                      className="w-10 h-10 rounded-2xl object-cover border border-zinc-700"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center font-bold text-sm">
+                      {displayName[0]?.toUpperCase() || <UserIcon className="w-4 h-4" />}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <span className="text-xs font-bold text-white block truncate">
+                      {displayName}
+                    </span>
+                    <span className="text-[11px] text-zinc-400 block truncate font-mono">
+                      {currentUser?.email || 'Cultivador registrado'}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[9px] text-emerald-400 font-mono font-bold mt-0.5">
+                      <ShieldCheck className="w-3 h-3" />
+                      Cuenta Activa
+                    </span>
+                  </div>
+                </div>
+
+                {/* Opción 1: Preferencias y Configuración de Alertas */}
+                <button
+                  type="button"
+                  id="menu-open-preferences-btn"
+                  onClick={() => {
+                    setIsUserMenuOpen(false);
+                    onOpenPreferences?.();
+                  }}
+                  className="w-full p-2.5 rounded-2xl hover:bg-zinc-900 text-left transition-colors flex items-center gap-3 text-xs text-zinc-200 hover:text-white cursor-pointer group"
+                >
+                  <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors">
+                    <Settings className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold">Preferencias & Alertas</span>
+                      <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                        Nuevo
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-zinc-400 block truncate">
+                      Elige alertas climáticas, riego y calendario
+                    </span>
+                  </div>
+                </button>
+
+                {/* Opción 2: Centro de Notificaciones */}
+                {onOpenNotifications && (
+                  <button
+                    type="button"
+                    id="menu-open-notifications-btn"
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      onOpenNotifications();
+                    }}
+                    className="w-full p-2.5 rounded-2xl hover:bg-zinc-900 text-left transition-colors flex items-center gap-3 text-xs text-zinc-200 hover:text-white cursor-pointer group"
+                  >
+                    <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20 group-hover:bg-amber-500/20 transition-colors">
+                      <Bell className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold">Centro de Notificaciones</span>
+                        {notificationCount > 0 && (
+                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-rose-500 text-white font-bold">
+                            {notificationCount}
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-zinc-400 block truncate">
+                        Historial de avisos y alertas del cron
+                      </span>
+                    </div>
+                  </button>
+                )}
+
+                {/* Opción 3: Cultiveta IA */}
+                {onNavigate && (
+                  <button
+                    type="button"
+                    id="menu-open-ai-btn"
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      onNavigate('ai_assistant');
+                    }}
+                    className="w-full p-2.5 rounded-2xl hover:bg-zinc-900 text-left transition-colors flex items-center gap-3 text-xs text-zinc-200 hover:text-white cursor-pointer group"
+                  >
+                    <div className="p-2 rounded-xl bg-violet-500/10 text-violet-400 border border-violet-500/20 group-hover:bg-violet-500/20 transition-colors">
+                      <Sparkles className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="font-bold block">Cultiveta IA Assistant</span>
+                      <span className="text-[10px] text-zinc-400 block truncate">
+                        Diagnósticos con fotos y asesoría técnica
+                      </span>
+                    </div>
+                  </button>
+                )}
+
+                {/* Opción 4: Modo Avanzado */}
+                {onToggleAdvancedMode && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onToggleAdvancedMode();
+                    }}
+                    className="w-full p-2.5 rounded-2xl hover:bg-zinc-900 text-left transition-colors flex items-center justify-between text-xs text-zinc-300 hover:text-white cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-xl bg-zinc-800 text-zinc-400">
+                        <SlidersHorizontal className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="font-semibold block">Modo Avanzado (VPD/EC)</span>
+                        <span className="text-[10px] text-zinc-500">Métricas avanzadas de cultivo</span>
+                      </div>
+                    </div>
+                    <span
+                      className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full ${
+                        isAdvancedMode
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                          : 'bg-zinc-800 text-zinc-400'
+                      }`}
+                    >
+                      {isAdvancedMode ? 'ON' : 'OFF'}
+                    </span>
+                  </button>
+                )}
+
+                <div className="pt-1.5 border-t border-zinc-800/80">
+                  {onLogout && (
+                    <button
+                      type="button"
+                      id="menu-logout-btn"
+                      onClick={() => {
+                        setIsUserMenuOpen(false);
+                        onLogout();
+                      }}
+                      className="w-full p-2.5 rounded-2xl hover:bg-rose-500/10 text-left transition-colors flex items-center gap-3 text-xs text-rose-400 hover:text-rose-300 cursor-pointer"
+                    >
+                      <div className="p-2 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                        <LogOut className="w-4 h-4" />
+                      </div>
+                      <span className="font-bold">Cerrar Sesión</span>
+                    </button>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         </div>

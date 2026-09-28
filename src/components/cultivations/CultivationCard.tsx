@@ -12,10 +12,14 @@ import {
   Clock,
   Camera,
   AlertCircle,
+  AlertTriangle,
+  Trash2,
 } from 'lucide-react';
 import { Cultivation, Watering, EnvironmentRecord } from '../../types';
 import { cultivationService } from '../../services/cultivationService';
 import { StatusPill } from '../common/StatusPill';
+import { analyzeWateringUrgency } from '../../utils/wateringAlertUtils';
+import { ConfirmModal } from '../common/ConfirmModal';
 
 interface CultivationCardProps {
   cultivation: Cultivation;
@@ -27,6 +31,9 @@ interface CultivationCardProps {
   onQuickPhoto?: (cultivation: Cultivation) => void;
   onQuickAI?: (cultivation: Cultivation) => void;
   onQuickCalendar?: (cultivation: Cultivation) => void;
+  onDeleteCultivation?: (id: string) => void;
+  onDelete?: (id: string) => void;
+  userId?: string;
 }
 
 export const CultivationCard: React.FC<CultivationCardProps> = ({
@@ -39,7 +46,39 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
   onQuickPhoto,
   onQuickAI,
   onQuickCalendar,
+  onDeleteCultivation,
+  onDelete,
+  userId,
 }) => {
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
+  const [isDeleting, setIsDeleting] = React.useState(false);
+
+  const handleDeleteCultivation = async () => {
+    try {
+      setIsDeleting(true);
+      await cultivationService.deleteCultivation(cultivation.id, userId || cultivation.userId);
+      setIsDeleteModalOpen(false);
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('cultiveta_cultivation_deleted', {
+            detail: { id: cultivation.id, name: cultivation.name },
+          })
+        );
+      }
+
+      if (onDeleteCultivation) {
+        onDeleteCultivation(cultivation.id);
+      }
+      if (onDelete) {
+        onDelete(cultivation.id);
+      }
+    } catch (err) {
+      console.error('Error al eliminar el cultivo:', err);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
   const totalDays = cultivationService.calculateDays(cultivation.startDate);
   const stageDays = cultivationService.calculateStageDays(cultivation.stageStartDate);
   const floweringDays = cultivationService.calculateFloweringDays(cultivation.floweringStartDate);
@@ -66,92 +105,64 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
     return Math.max(0, Math.floor((now.getTime() - d.getTime()) / (1000 * 60 * 60 * 24)));
   }, [latestWatering?.date]);
 
-  // Watering Urgency Indicator (Verde / Naranja / Rojo) based on stage & recent history
+  // Watering Urgency Analysis based on stage and last watering history
+  const wateringAnalysis = React.useMemo(() => {
+    return analyzeWateringUrgency(cultivation, latestWatering || null);
+  }, [cultivation, latestWatering]);
+
+  // Watering Urgency Indicator (Verde / Naranja / Rojo - Overdue) based on stage & recent history
   const wateringUrgency = React.useMemo(() => {
-    if (cultivation.isFinished) {
+    if (wateringAnalysis.isFinished) {
       return {
         level: 'finished' as const,
-        dotClass: 'bg-zinc-600',
+        dotClass: 'bg-purple-600',
         glowClass: '',
-        badgeBg: 'bg-zinc-800 text-zinc-400 border-zinc-700',
-        textClass: 'text-zinc-500',
-        urgencyText: 'Finalizado',
-        label: 'Cultivo completado / finalizado',
+        badgeBg: 'bg-purple-950/40 text-purple-300 border-purple-800/60',
+        textClass: 'text-purple-400',
+        urgencyText: 'Cosechado',
+        label: 'Cultivo cosechado / finalizado',
         pulse: false,
       };
     }
 
-    const stageLower = (cultivation.currentStage || '').toLowerCase();
-    const isFlower = stageLower.includes('flor') || stageLower.includes('madur');
-    // Flowering/ripening: 2 days cycle; Vegetative/seedling: 3 days cycle
-    const standardInterval = isFlower ? 2 : 3;
-
-    // Without watering history
-    if (daysSinceWatering === null) {
-      if (totalDays >= 3) {
-        return {
-          level: 'red' as const,
-          dotClass: 'bg-rose-500 dot-red',
-          glowClass: 'shadow-[0_0_10px_rgba(244,63,94,0.7)]',
-          badgeBg: 'bg-rose-500/15 text-rose-300 border-rose-500/40',
-          textClass: 'text-rose-400',
-          urgencyText: 'Urgente',
-          label: 'Riego urgente: sin registros recientes (>3 días)',
-          pulse: true,
-        };
-      }
-      return {
-        level: 'orange' as const,
-        dotClass: 'bg-amber-500 dot-orange',
-        glowClass: 'shadow-[0_0_8px_rgba(245,158,11,0.6)]',
-        badgeBg: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-        textClass: 'text-amber-400',
-        urgencyText: 'Atención',
-        label: 'Primer riego pendiente de registrar',
-        pulse: false,
-      };
-    }
-
-    // Rojo (Urgente / Atrasado): > standard interval (e.g. >2 days in flora, >3 days in veg)
-    if (daysSinceWatering > standardInterval) {
+    if (wateringAnalysis.isOverdue) {
       return {
         level: 'red' as const,
-        dotClass: 'bg-rose-500 dot-red',
-        glowClass: 'shadow-[0_0_10px_rgba(244,63,94,0.7)]',
-        badgeBg: 'bg-rose-500/15 text-rose-300 border-rose-500/40',
-        textClass: 'text-rose-400',
-        urgencyText: 'Urgente',
-        label: `Riego urgente atrasado: último riego hace ${daysSinceWatering} días`,
+        dotClass: wateringAnalysis.dotClass,
+        glowClass: wateringAnalysis.glowClass,
+        badgeBg: wateringAnalysis.badgeBg,
+        textClass: wateringAnalysis.textClass,
+        urgencyText: 'Overdue',
+        label: wateringAnalysis.label,
         pulse: true,
       };
     }
 
-    // Naranja (Próximo / Atención): at standard interval boundary (e.g. 2 days in flora, 3 days in veg)
-    if (daysSinceWatering === standardInterval) {
+    if (wateringAnalysis.isDueToday) {
       return {
         level: 'orange' as const,
-        dotClass: 'bg-amber-500 dot-orange',
-        glowClass: 'shadow-[0_0_8px_rgba(245,158,11,0.6)]',
-        badgeBg: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-        textClass: 'text-amber-400',
-        urgencyText: 'Próximo',
-        label: `Riego próximo sugerido hoy o mañana (hace ${daysSinceWatering} días)`,
+        dotClass: wateringAnalysis.dotClass,
+        glowClass: wateringAnalysis.glowClass,
+        badgeBg: wateringAnalysis.badgeBg,
+        textClass: wateringAnalysis.textClass,
+        urgencyText: 'Toca Hoy',
+        label: wateringAnalysis.label,
         pulse: false,
       };
     }
 
-    // Verde (Al día / Óptimo): 0 days (today) or 1 day ago
+    // Verde (Al día / Óptimo)
     return {
       level: 'green' as const,
-      dotClass: 'bg-emerald-500 dot-green',
-      glowClass: 'shadow-[0_0_8px_rgba(16,185,129,0.6)]',
-      badgeBg: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30',
-      textClass: 'text-emerald-400',
+      dotClass: wateringAnalysis.dotClass,
+      glowClass: wateringAnalysis.glowClass,
+      badgeBg: wateringAnalysis.badgeBg,
+      textClass: wateringAnalysis.textClass,
       urgencyText: 'Al día',
-      label: daysSinceWatering === 0 ? 'Riego al día (hidratado hoy)' : `Hidratación óptima (hace ${daysSinceWatering} día)`,
+      label: wateringAnalysis.label,
       pulse: false,
     };
-  }, [cultivation.isFinished, cultivation.currentStage, daysSinceWatering, totalDays]);
+  }, [wateringAnalysis]);
 
   // Environment Urgency Evaluation (from latestEnv)
   const envUrgency = React.useMemo(() => {
@@ -305,7 +316,9 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
       id={`cultivation-card-${cultivation.id}`}
       onClick={handleClick}
       className={`cultivation-card group bg-[#0F0F0F] rounded-[32px] p-6 border transition-all duration-300 cursor-pointer flex flex-col justify-between relative overflow-hidden transform hover:scale-[1.02] will-change-transform ${
-        criticalMetric.level === 'red'
+        wateringAnalysis.isOverdue
+          ? 'border-rose-500/80 hover:border-rose-400 hover:shadow-2xl hover:shadow-rose-950/40 ring-1 ring-rose-500/40'
+          : criticalMetric.level === 'red'
           ? 'border-rose-500/50 hover:border-rose-400 hover:shadow-2xl hover:shadow-rose-950/20'
           : criticalMetric.level === 'orange'
           ? 'border-amber-500/40 hover:border-amber-400 hover:shadow-2xl hover:shadow-amber-950/20'
@@ -375,11 +388,21 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
             </div>
           </div>
 
-          {/* Badges: DEMO & Urgencia de Riego */}
+          {/* Badges: DEMO & Urgencia de Riego & Overdue */}
           <div className="flex flex-col items-end gap-1.5 shrink-0">
             {cultivation.isDemo && (
               <span className="px-2.5 py-0.5 rounded-md bg-amber-500 text-black font-mono font-bold text-[10px] tracking-wider">
                 DEMO
+              </span>
+            )}
+            {wateringAnalysis.isOverdue && (
+              <span
+                id={`watering-overdue-pill-${cultivation.id}`}
+                title={wateringAnalysis.label}
+                className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-rose-500/25 text-rose-300 border border-rose-500/60 font-mono font-bold text-[10px] tracking-wider animate-pulse shadow-sm shadow-rose-950/60"
+              >
+                <AlertTriangle className="w-3 h-3 text-rose-400 stroke-[2.5]" />
+                <span>OVERDUE</span>
               </span>
             )}
             {!cultivation.isFinished && (
@@ -400,6 +423,40 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
             )}
           </div>
         </div>
+
+        {/* Overdue alert strip if irrigation threshold has been exceeded */}
+        {wateringAnalysis.isOverdue && (
+          <div
+            id={`watering-overdue-strip-${cultivation.id}`}
+            className="mb-3.5 px-3.5 py-2 rounded-2xl bg-rose-950/40 border border-rose-500/40 flex items-center justify-between gap-2 text-xs text-rose-200 shadow-sm"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0 animate-bounce" />
+              <div className="min-w-0">
+                <span className="font-bold text-rose-300 block text-[11px] font-mono uppercase tracking-wide">
+                  Riego Overdue (+{wateringAnalysis.daysOverdue}d)
+                </span>
+                <span className="text-[10px] text-rose-200/90 truncate block">
+                  Recomendado cada {wateringAnalysis.recommendedIntervalDays}d en {cultivation.currentStage}
+                </span>
+              </div>
+            </div>
+            {onQuickWater && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onQuickWater(cultivation);
+                }}
+                className="px-2.5 py-1 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-mono font-bold text-[10px] uppercase tracking-wider shrink-0 transition-colors shadow-xs cursor-pointer flex items-center gap-1"
+                title="Registrar riego inmediato"
+              >
+                <Droplets className="w-3 h-3" />
+                <span>Regar</span>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Stage & Days Badge row */}
         <div className="flex flex-wrap items-center gap-2 mb-4">
@@ -423,7 +480,7 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
         <div className="p-4 rounded-2xl bg-zinc-900/80 border border-zinc-800/80 mb-5 space-y-2.5 text-xs">
           <div className="flex items-center justify-between">
             <span className="text-zinc-400 font-medium">Estado Carpa:</span>
-            <StatusPill status={health.status} />
+            <StatusPill status={cultivation.status?.toLowerCase() === 'cosechado' ? 'cosechado' : health.status} />
           </div>
 
           <div className="flex items-center justify-between text-zinc-300">
@@ -445,12 +502,17 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
                 </span>
               )}
             </span>
-            <span className={`font-mono ${wateringUrgency.textClass} font-bold`}>
+            <span className={`font-mono ${wateringUrgency.textClass} font-bold text-right`}>
               {daysSinceWatering === null
                 ? 'Sin registrar'
                 : daysSinceWatering === 0
                 ? 'Hoy 💧'
                 : `Hace ${daysSinceWatering} d`}
+              {wateringAnalysis.isOverdue && (
+                <span className="text-[10px] text-rose-400 font-normal ml-1 block">
+                  (máx {wateringAnalysis.recommendedIntervalDays}d)
+                </span>
+              )}
             </span>
           </div>
 
@@ -466,14 +528,17 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
       </div>
 
       {/* Bottom Quick actions bar */}
-      <div className="pt-3 border-t border-zinc-800/80 flex items-center justify-between gap-1">
-        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+      <div className="pt-3 border-t border-zinc-800/80 flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
           {onQuickWater && (
             <button
               type="button"
+              id={`quick-water-btn-${cultivation.id}`}
               onClick={() => onQuickWater(cultivation)}
               className={`p-2 rounded-xl border transition-all relative cursor-pointer ${
-                wateringUrgency.level === 'red'
+                wateringAnalysis.isOverdue
+                  ? 'text-white bg-rose-500 hover:bg-rose-400 border-rose-400 shadow-md shadow-rose-500/30 animate-pulse'
+                  : wateringUrgency.level === 'red'
                   ? 'text-rose-300 bg-rose-500/15 hover:bg-rose-500/25 border-rose-500/40 shadow-sm shadow-rose-500/20'
                   : wateringUrgency.level === 'orange'
                   ? 'text-amber-300 bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/40 shadow-sm shadow-amber-500/20'
@@ -521,11 +586,46 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
           )}
         </div>
 
-        <span className="text-xs font-semibold text-emerald-400 flex items-center group-hover:translate-x-1 transition-transform">
-          Ver detalles
-          <ChevronRight className="w-4 h-4 ml-0.5" />
-        </span>
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+          {/* Prominent Delete Cultivation Button */}
+          <button
+            type="button"
+            id={`delete-cultivation-btn-${cultivation.id}`}
+            data-testid="delete-cultivation-btn"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsDeleteModalOpen(true);
+            }}
+            className="px-2.5 py-1.5 rounded-xl text-xs font-bold text-rose-400 bg-rose-500/10 hover:bg-rose-600 hover:text-white border border-rose-500/25 hover:border-rose-600 transition-all cursor-pointer flex items-center gap-1.5 shadow-xs shadow-rose-950/20 active:scale-95 group/del"
+            title={`Eliminar cultivo "${cultivation.name}"`}
+          >
+            <Trash2 className="w-3.5 h-3.5 text-rose-400 group-hover/del:text-white transition-colors" />
+            <span>Eliminar Cultivo</span>
+          </button>
+
+          <span
+            onClick={handleClick}
+            className="text-xs font-semibold text-emerald-400 flex items-center group-hover:translate-x-1 transition-transform cursor-pointer ml-1"
+          >
+            Ver detalles
+            <ChevronRight className="w-4 h-4 ml-0.5" />
+          </span>
+        </div>
       </div>
+
+      {/* Confirmation Modal for Delete Cultivation */}
+      <ConfirmModal
+        isOpen={isDeleteModalOpen}
+        title={`¿Eliminar cultivo "${cultivation.name}"?`}
+        message={`Esta acción es irreversible y eliminará de forma permanente el cultivo "${cultivation.name}" (${cultivation.geneticsName || cultivation.type}), incluyendo sus riegos registrados, fotografías, bitácoras y registros ambientales asociados.`}
+        confirmLabel={isDeleting ? 'Eliminando...' : 'Eliminar Cultivo'}
+        cancelLabel="Cancelar"
+        isDestructive={true}
+        onConfirm={handleDeleteCultivation}
+        onCancel={() => {
+          if (!isDeleting) setIsDeleteModalOpen(false);
+        }}
+      />
     </div>
   );
 };

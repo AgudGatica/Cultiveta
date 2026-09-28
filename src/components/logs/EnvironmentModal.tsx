@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Thermometer, Save, Wind, SunMedium } from 'lucide-react';
+import { X, Thermometer, Save, SunMedium, Loader2, AlertCircle } from 'lucide-react';
 import { Cultivation, EnvironmentRecord } from '../../types';
 import { environmentService } from '../../services/environmentService';
 
@@ -34,6 +34,90 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Estados para clima local en cultivos de exterior
+  const [isFetchingWeather, setIsFetchingWeather] = useState(false);
+  const [weatherError, setWeatherError] = useState<string | null>(null);
+
+  const selectedCultivation = cultivations.find((c) => c.id === cultivationId);
+
+  const fetchLocalWeather = async () => {
+    setWeatherError(null);
+    setIsFetchingWeather(true);
+
+    const fetchFromCoords = async (lat: number, lon: number) => {
+      try {
+        const response = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m`
+        );
+
+        if (!response.ok) {
+          throw new Error('No se pudo obtener la información meteorológica de Open-Meteo.');
+        }
+
+        const data = await response.json();
+        if (data && data.current) {
+          if (typeof data.current.temperature_2m === 'number') {
+            setTemperatureC(Math.round(data.current.temperature_2m * 10) / 10);
+          }
+          if (typeof data.current.relative_humidity_2m === 'number') {
+            setHumidityPct(Math.round(data.current.relative_humidity_2m));
+          }
+        } else {
+          throw new Error('Datos incompletos de la estación meteorológica.');
+        }
+      } catch (err: any) {
+        console.error('Error fetching weather data:', err);
+        setWeatherError(err?.message || 'Error al obtener los datos climáticos.');
+      } finally {
+        setIsFetchingWeather(false);
+      }
+    };
+
+    // Si el cultivo ya cuenta con coordenadas registradas, utilizarlas directamente
+    if (
+      selectedCultivation?.locationCoordinates &&
+      typeof selectedCultivation.locationCoordinates.lat === 'number' &&
+      typeof selectedCultivation.locationCoordinates.lon === 'number'
+    ) {
+      await fetchFromCoords(
+        selectedCultivation.locationCoordinates.lat,
+        selectedCultivation.locationCoordinates.lon
+      );
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      setIsFetchingWeather(false);
+      setWeatherError('La geolocalización no está soportada por tu navegador.');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        await fetchFromCoords(lat, lon);
+      },
+      (geoError) => {
+        setIsFetchingWeather(false);
+        switch (geoError.code) {
+          case geoError.PERMISSION_DENIED:
+            setWeatherError('Permiso de ubicación denegado en el navegador.');
+            break;
+          case geoError.POSITION_UNAVAILABLE:
+            setWeatherError('Ubicación no disponible en este momento.');
+            break;
+          case geoError.TIMEOUT:
+            setWeatherError('Tiempo de espera agotado al consultar la ubicación.');
+            break;
+          default:
+            setWeatherError('No se pudo determinar tu ubicación para el clima.');
+        }
+      },
+      { timeout: 8000, enableHighAccuracy: true }
+    );
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!cultivationId) {
@@ -49,7 +133,7 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
       setLoading(true);
       setError(null);
 
-      const targetCrop = cultivations.find((c) => c.id === cultivationId);
+      const targetCrop = selectedCultivation;
 
       const newRecord = await environmentService.addEnvironmentRecord({
         userId,
@@ -151,6 +235,38 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
               />
             </div>
           </div>
+
+          {/* Botón condicional para cultivos Outdoor */}
+          {selectedCultivation?.type === 'Outdoor' && (
+            <div className="space-y-2">
+              <button
+                type="button"
+                id="env-fetch-local-weather-btn"
+                disabled={isFetchingWeather}
+                onClick={fetchLocalWeather}
+                className="w-full py-2.5 px-4 rounded-2xl bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-700 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 shadow-2xs"
+              >
+                {isFetchingWeather ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin text-sky-600" />
+                    <span>Obteniendo clima local...</span>
+                  </>
+                ) : (
+                  <span>🌤️ Obtener clima local</span>
+                )}
+              </button>
+
+              {weatherError && (
+                <div
+                  id="env-weather-error-box"
+                  className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-start gap-2 animate-in fade-in"
+                >
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-500 mt-0.5" />
+                  <span>{weatherError}</span>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Temp and Humidity */}
           <div className="grid grid-cols-2 gap-4">

@@ -115,21 +115,23 @@ export const harvestService = {
 
     localStore.saveItem('harvests', newHarvest);
 
-    // Update cultivation status to finished
+    // Update cultivation status to cosechado / finished
     await cultivationService.updateCultivation(data.cultivationId, {
       isFinished: true,
-      currentStage: 'Finalizado',
+      currentStage: 'Cosechado',
+      status: 'cosechado',
       harvestId: docRef.id,
-      status: 'ESTABLE',
+      harvestDate: data.harvestDate,
+      endDate: data.harvestDate,
+      estimatedWeight: data.finalDryWeightGrams,
+      finalWeight: data.finalDryWeightGrams,
     }, data.userId);
 
     try {
       const cleaned = cleanFirestoreData(newHarvest);
-      setDoc(docRef, cleaned).catch((err) => {
-        console.warn('Firestore setDoc harvests pending or unavailable:', err?.message || err);
-      });
+      await setDoc(docRef, cleaned);
     } catch (err) {
-      console.warn('Serialization error on harvest:', err);
+      console.warn('Serialization error on harvest in Firestore:', err);
     }
 
     return newHarvest;

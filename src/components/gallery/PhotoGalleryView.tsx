@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Camera, Plus, Scale, Sparkles, Filter, Calendar, Tag, Trash2, Maximize2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Camera, Plus, Scale, Sparkles, Filter, Calendar, Tag, Trash2, Maximize2, WifiOff, RefreshCw, Loader2, Database, ShieldCheck } from 'lucide-react';
 import { PhotoRecord, Cultivation, PhotoCategory } from '../../types';
 import { PhotoCompareModal } from './PhotoCompareModal';
 import { PhotoLightboxModal } from './PhotoLightboxModal';
+import { photoOfflineQueue, QueuedOfflinePhoto } from '../../services/photoOfflineQueue';
 
 interface PhotoGalleryViewProps {
   cultivation: Cultivation;
@@ -23,6 +24,54 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
   const [isCompareOpen, setIsCompareOpen] = useState(false);
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [lightboxInitialPhotoId, setLightboxInitialPhotoId] = useState<string | undefined>(undefined);
+  const [queuedPhotos, setQueuedPhotos] = useState<QueuedOfflinePhoto[]>([]);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+  const [cleanSuccessMsg, setCleanSuccessMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    const unsub = photoOfflineQueue.subscribeQueue((items) => {
+      // Filtrar por este cultivo si aplica
+      const forThisCrop = items.filter((item) => item.cultivationId === cultivation.id);
+      setQueuedPhotos(forThisCrop);
+    });
+
+    const handleStatus = () => {
+      setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : true);
+    };
+    window.addEventListener('online', handleStatus);
+    window.addEventListener('offline', handleStatus);
+
+    return () => {
+      unsub();
+      window.removeEventListener('online', handleStatus);
+      window.removeEventListener('offline', handleStatus);
+    };
+  }, [cultivation.id]);
+
+  const handleManualSync = async () => {
+    if (isSyncing) return;
+    try {
+      setIsSyncing(true);
+      await photoOfflineQueue.syncPendingPhotos();
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handlePurgeStorage = async () => {
+    try {
+      const res = await photoOfflineQueue.purgeSyncedAndStaleQueue(cultivation.userId);
+      setCleanSuccessMsg(
+        res.deletedCount > 0
+          ? `Almacenamiento optimizado: ${res.deletedCount} foto(s) purgada(s) (~${res.freedEstimatedKB} KB liberados).`
+          : 'Almacenamiento IndexedDB limpio y sin residuos huérfanos.'
+      );
+      setTimeout(() => setCleanSuccessMsg(null), 3500);
+    } catch {
+      // ignore
+    }
+  };
 
   const openLightbox = (photoId: string) => {
     setLightboxInitialPhotoId(photoId);
@@ -81,6 +130,86 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Offline Queue Sync Banner */}
+      {queuedPhotos.length > 0 && (
+        <div
+          id="gallery-offline-queue-banner"
+          className="bg-amber-50 border border-amber-200 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-amber-950 shadow-xs"
+        >
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-amber-100 text-amber-800 shrink-0">
+              <Database className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-xs sm:text-sm font-bold">
+                  {queuedPhotos.length} foto{queuedPhotos.length === 1 ? '' : 's'} en caché local (IndexedDB)
+                </p>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-200 text-amber-900">
+                  Cola sin conexión
+                </span>
+              </div>
+              <p className="text-[11px] text-amber-800/90 mt-0.5">
+                {isOnline
+                  ? 'Conexión restablecida. Sincronizando con Firebase en segundo plano...'
+                  : 'Guardadas en tu dispositivo. Se subirán automáticamente a Firebase al recuperar la conexión.'}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              id="gallery-purge-cache-btn"
+              onClick={handlePurgeStorage}
+              title="Comprueba y purga fotos sincronizadas de la memoria IndexedDB"
+              className="px-3 py-2 rounded-2xl bg-amber-100/90 hover:bg-amber-200 text-amber-900 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Trash2 className="w-3.5 h-3.5 text-amber-700" />
+              <span className="hidden sm:inline">Limpiar caché</span>
+            </button>
+
+            {isOnline ? (
+              <button
+                type="button"
+                id="gallery-manual-sync-btn"
+                disabled={isSyncing}
+                onClick={handleManualSync}
+                className="px-4 py-2 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                {isSyncing ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Sincronizando...</span>
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5" />
+                    <span>Sincronizar ahora</span>
+                  </>
+                )}
+              </button>
+            ) : (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-amber-100 text-amber-800 text-xs font-semibold">
+                <WifiOff className="w-3.5 h-3.5" />
+                <span>Esperando red...</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Feedback message for storage cleanup */}
+      {cleanSuccessMsg && (
+        <div
+          id="gallery-cleanup-feedback"
+          className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold flex items-center gap-2.5 shadow-xs transition-all"
+        >
+          <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>{cleanSuccessMsg}</span>
+        </div>
+      )}
 
       {/* Category Pills */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
@@ -151,6 +280,17 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                 <div className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-xs text-white text-[11px] font-bold shadow-xs">
                   Día {photo.dayOfCultivation}
                 </div>
+
+                {/* Pending Sync Badge (IndexedDB Cache) */}
+                {photo.isPendingSync && (
+                  <div
+                    title="Fotografía encolada en caché local (IndexedDB) pendiente de sincronización con Firebase"
+                    className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-amber-600/90 backdrop-blur-xs text-white text-[10px] font-bold flex items-center gap-1 shadow-md"
+                  >
+                    <WifiOff className="w-2.5 h-2.5" />
+                    <span>En caché local</span>
+                  </div>
+                )}
 
                 {/* Category Badge */}
                 <div className="absolute bottom-2 left-2 px-2.5 py-0.5 rounded-full bg-white/95 backdrop-blur-xs text-stone-800 text-[10px] font-bold uppercase tracking-wider shadow-xs">

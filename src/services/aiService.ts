@@ -13,23 +13,42 @@ import { cleanFirestoreData } from '../utils/firestoreUtils';
 
 /**
  * Obtiene los encabezados requeridos para invocar los endpoints protegidos /api/ai/*.
- * Verifica que exista un usuario autenticado en Firebase Auth antes de realizar la petición;
- * si no hay sesión activa (auth.currentUser es null), lanza un error preventivo en el frontend.
+ * Soporta tokens de Firebase Auth así como tokens para usuarios locales/demo.
  */
 async function getAuthHeaders(): Promise<{ Authorization: string; 'Content-Type': string }> {
   const currentUser = auth.currentUser;
 
-  if (!currentUser) {
-    throw new Error('Usuario no autenticado: Debes iniciar sesión para acceder a las funciones de Cultiveta IA.');
+  if (currentUser) {
+    try {
+      const token = await currentUser.getIdToken();
+      if (token && token.length > 0) {
+        return {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        };
+      }
+    } catch (tokenErr) {
+      console.warn('No se pudo obtener token de Firebase Auth, usando token local:', tokenErr);
+    }
   }
 
-  const token = await currentUser.getIdToken();
-  if (!token) {
-    throw new Error('No se pudo obtener el token de autenticación del usuario actual.');
+  // Soporte para usuarios locales o modo demo
+  let localUid = 'demo_user';
+  if (typeof window !== 'undefined') {
+    try {
+      const rawLocal = localStorage.getItem('cultiveta_local_user');
+      if (rawLocal) {
+        const parsed = JSON.parse(rawLocal);
+        if (parsed?.uid) localUid = parsed.uid;
+      } else {
+        const lastUid = localStorage.getItem('cultiveta_last_user_id');
+        if (lastUid) localUid = lastUid;
+      }
+    } catch {}
   }
 
   return {
-    'Authorization': `Bearer ${token}`,
+    'Authorization': `Bearer demo-token-${localUid}`,
     'Content-Type': 'application/json',
   };
 }

@@ -30,6 +30,7 @@ export const MeasurementsTableView: React.FC<MeasurementsTableViewProps> = ({
     humidityPct?: number;
     vpdKPa?: number;
     notes?: string;
+    isAutoLogged?: boolean;
   }[] = [];
 
   waterings.forEach((w) => {
@@ -62,6 +63,7 @@ export const MeasurementsTableView: React.FC<MeasurementsTableViewProps> = ({
       humidityPct: e.humidityPct,
       vpdKPa: e.vpdKPa,
       notes: e.notes,
+      isAutoLogged: e.isAutoLogged,
     });
   });
 
@@ -194,10 +196,21 @@ export const MeasurementsTableView: React.FC<MeasurementsTableViewProps> = ({
                         Riego
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                        <Thermometer className="w-3 h-3 text-amber-600" />
-                        Ambiente
-                      </span>
+                      <div className="flex flex-col gap-1 items-start">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                          <Thermometer className="w-3 h-3 text-amber-600" />
+                          Ambiente
+                        </span>
+                        {r.isAutoLogged ? (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                            🌤️ Auto (API)
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-stone-100 text-stone-600 border border-stone-200">
+                            ✍️ Manual
+                          </span>
+                        )}
+                      </div>
                     )}
                   </td>
                   <td className="py-2.5 px-3 font-bold text-stone-700">{r.phIn ?? '—'}</td>
@@ -244,9 +257,20 @@ export const MeasurementsTableView: React.FC<MeasurementsTableViewProps> = ({
                     💧 Riego
                   </span>
                 ) : (
-                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800">
-                    🌡️ Ambiente
-                  </span>
+                  <div className="flex items-center gap-1">
+                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800">
+                      🌡️ Ambiente
+                    </span>
+                    {r.isAutoLogged ? (
+                      <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-blue-100 text-blue-700">
+                        🌤️ Auto (API)
+                      </span>
+                    ) : (
+                      <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-stone-200/80 text-stone-600">
+                        ✍️ Manual
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
 

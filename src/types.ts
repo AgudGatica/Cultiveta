@@ -10,12 +10,29 @@ export type CultivationStageName =
   | 'Floración'
   | 'Maduración'
   | 'Cosecha'
+  | 'Cosechado'
+  | 'cosechado'
   | 'Secado'
   | 'Curado'
   | 'Finalizado'
   | string;
 
-export type HealthStatus = 'ESTABLE' | 'REVISAR' | 'ATENCION';
+export type HealthStatus = 'ESTABLE' | 'REVISAR' | 'ATENCION' | 'cosechado' | 'Cosechado' | string;
+
+export interface UserAlertPreferences {
+  climateAlerts: boolean; // Alertas climáticas críticas (temperatura y humedad)
+  wateringAlerts: boolean; // Alertas de riego pendiente / overdue
+  calendarReminders: boolean; // Recordatorios de calendario y agenda
+  soundEnabled?: boolean; // Sonido acústico para alertas urgentes
+}
+
+export interface UserPreferences {
+  advancedMode?: boolean;
+  tempUnit?: 'C' | 'F';
+  volumeUnit?: 'L' | 'gal';
+  notificationsEnabled?: boolean;
+  alertTypes?: UserAlertPreferences;
+}
 
 export interface UserProfile {
   uid: string;
@@ -23,12 +40,7 @@ export interface UserProfile {
   displayName: string | null;
   photoURL?: string | null;
   createdAt: string;
-  preferences?: {
-    advancedMode?: boolean;
-    tempUnit?: 'C' | 'F';
-    volumeUnit?: 'L' | 'gal';
-    notificationsEnabled?: boolean;
-  };
+  preferences?: UserPreferences;
 }
 
 export interface CultivationGeneticsItem {
@@ -56,6 +68,14 @@ export interface CultivationGrowthStage {
   targetHumidityMaxPct?: number;
   notes?: string;
   isCompleted?: boolean;
+}
+
+export interface EnvironmentalAlertThresholds {
+  enabled?: boolean;
+  tempMinC?: number;
+  tempMaxC?: number;
+  humidityMinPct?: number;
+  humidityMaxPct?: number;
 }
 
 export interface Cultivation {
@@ -91,12 +111,21 @@ export interface Cultivation {
     photoperiodHoursDark?: number;
     distanceCm?: number;
   };
+  locationCoordinates?: {
+    lat: number;
+    lon: number;
+  };
+  alertThresholds?: EnvironmentalAlertThresholds;
   coverPhotoUrl?: string;
   status: HealthStatus;
   statusNotes?: string;
   notes?: string;
   isFinished?: boolean;
   harvestId?: string;
+  harvestDate?: string;
+  endDate?: string;
+  estimatedWeight?: number;
+  finalWeight?: number;
   isDemo?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -235,6 +264,7 @@ export interface EnvironmentRecord {
   vpdKPa?: number;
   co2Ppm?: number;
   notes?: string;
+  isAutoLogged?: boolean;
   isDemo?: boolean;
   createdAt: string;
 }
@@ -263,6 +293,8 @@ export interface PhotoRecord {
   caption?: string;
   isDemo?: boolean;
   aiAnalysisId?: string;
+  isPendingSync?: boolean;
+  syncError?: string;
   createdAt: string;
 }
 
@@ -417,6 +449,7 @@ export interface CultivationTask {
   priority: TaskPriority;
   isCompleted: boolean;
   completedAt?: string;
+  createdAt?: string;
   categoryLabel: string;
   actionHint?: string;
 }

@@ -42,11 +42,25 @@ export const UpcomingTaskWidget: React.FC<UpcomingTaskWidgetProps> = ({
   onTaskCompletedFeedback,
 }) => {
   const [tasksVersion, setTasksVersion] = useState(0);
+  const [serverTasks, setServerTasks] = useState<CultivationTask[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [autoLogWatering, setAutoLogWatering] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showAllTasksModal, setShowAllTasksModal] = useState(false);
   const [justCompletedId, setJustCompletedId] = useState<string | null>(null);
+
+  // Fetch server-generated tasks (e.g. Alertas climáticas de Sincronización Inversa)
+  useEffect(() => {
+    let isMounted = true;
+    taskService.fetchServerTasks(userId).then((fetched) => {
+      if (isMounted && Array.isArray(fetched)) {
+        setServerTasks(fetched);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [userId, tasksVersion]);
 
   // Listen for local task update events
   useEffect(() => {
@@ -61,8 +75,8 @@ export const UpcomingTaskWidget: React.FC<UpcomingTaskWidgetProps> = ({
 
   // Compute tasks
   const allTasks = useMemo(() => {
-    return taskService.getTasksForDashboard(cultivations, waterings, envRecords, userId);
-  }, [cultivations, waterings, envRecords, userId, tasksVersion]);
+    return taskService.getTasksForDashboard(cultivations, waterings, envRecords, userId, serverTasks);
+  }, [cultivations, waterings, envRecords, userId, tasksVersion, serverTasks]);
 
   // Separate pending vs completed
   const pendingTasks = useMemo(() => allTasks.filter((t) => !t.isCompleted), [allTasks]);

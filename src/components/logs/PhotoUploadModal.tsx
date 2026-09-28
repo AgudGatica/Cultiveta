@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Camera, Upload, Sparkles, Save, Image as ImageIcon } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Camera, Upload, Sparkles, Save, Image as ImageIcon, WifiOff, Database } from 'lucide-react';
 import { Cultivation, PhotoCategory, PhotoRecord } from '../../types';
 import { photoService } from '../../services/photoService';
 import { cultivationService } from '../../services/cultivationService';
@@ -30,6 +30,19 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
   const [analyzeWithAI, setAnalyzeWithAI] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isOnline, setIsOnline] = useState(typeof navigator !== 'undefined' ? navigator.onLine : true);
+
+  useEffect(() => {
+    const handleStatus = () => {
+      setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : true);
+    };
+    window.addEventListener('online', handleStatus);
+    window.addEventListener('offline', handleStatus);
+    return () => {
+      window.removeEventListener('online', handleStatus);
+      window.removeEventListener('offline', handleStatus);
+    };
+  }, []);
 
   const selectedCrop = cultivations.find((c) => c.id === cultivationId);
 
@@ -61,27 +74,41 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
       setLoading(true);
       setError(null);
 
-      let finalUrl = previewUrl || '';
-      if (selectedFile) {
-        finalUrl = await photoService.uploadPhotoFile(userId, cultivationId, selectedFile);
-      }
-
       const totalDays = selectedCrop ? cultivationService.calculateDays(selectedCrop.startDate) : 1;
       const stage = selectedCrop?.currentStage || 'Vegetativo';
 
-      const newPhoto = await photoService.addPhotoRecord({
-        userId,
-        cultivationId,
-        url: finalUrl,
-        date,
-        dayOfCultivation: totalDays,
-        stage,
-        category,
-        caption: caption.trim() || undefined,
-        isDemo: selectedCrop?.isDemo,
-      });
+      if (selectedFile) {
+        // Usa el guardado resiliente con soporte de encolado en IndexedDB
+        const result = await photoService.savePhotoWithOfflineFallback({
+          userId,
+          cultivationId,
+          file: selectedFile,
+          date,
+          dayOfCultivation: totalDays,
+          stage,
+          category,
+          caption: caption.trim() || undefined,
+          isDemo: selectedCrop?.isDemo,
+        });
 
-      onPhotoUploaded(newPhoto, analyzeWithAI);
+        onPhotoUploaded(result.photo, analyzeWithAI && !result.enqueuedOffline);
+      } else {
+        // Fallback de dataUrl
+        const newPhoto = await photoService.addPhotoRecord({
+          userId,
+          cultivationId,
+          url: previewUrl || '',
+          date,
+          dayOfCultivation: totalDays,
+          stage,
+          category,
+          caption: caption.trim() || undefined,
+          isDemo: selectedCrop?.isDemo,
+        });
+
+        onPhotoUploaded(newPhoto, analyzeWithAI);
+      }
+
       onClose();
     } catch (err: any) {
       console.error('Error uploading photo', err);
@@ -252,6 +279,17 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
               className="w-4 h-4 text-violet-600 rounded-md focus:ring-violet-500 cursor-pointer"
             />
           </div>
+
+          {/* Offline indicator if disconnected */}
+          {!isOnline && (
+            <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-start gap-2.5">
+              <WifiOff className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-bold">Modo sin conexión: </span>
+                <span>La fotografía se guardará en caché local (IndexedDB) y se sincronizará automáticamente con Firebase al recuperar la conectividad.</span>
+              </div>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="pt-3 border-t border-stone-200 flex items-center justify-end gap-3">

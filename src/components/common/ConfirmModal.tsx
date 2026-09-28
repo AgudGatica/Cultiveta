@@ -25,9 +25,16 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in"
+      onClick={(e) => {
+        e.stopPropagation();
+        onCancel();
+      }}
+    >
       <div
         id="confirm-modal-box"
+        onClick={(e) => e.stopPropagation()}
         className="w-full max-w-md bg-[#0F0F0F] rounded-[32px] p-6 sm:p-7 shadow-2xl border border-zinc-800"
       >
         <div className="flex items-start justify-between gap-4 mb-4">
@@ -49,6 +56,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         <div className="flex items-center justify-end gap-3">
           <button
             type="button"
+            id="confirm-modal-cancel-btn"
             onClick={onCancel}
             className="px-5 py-2.5 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 rounded-2xl transition-colors cursor-pointer border border-zinc-800"
           >
@@ -56,6 +64,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
           </button>
           <button
             type="button"
+            id="confirm-modal-submit-btn"
             onClick={onConfirm}
             className={`px-5 py-2.5 text-xs font-bold rounded-2xl text-white shadow-lg transition-colors cursor-pointer ${
               isDestructive ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/20' : 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-emerald-500/20'

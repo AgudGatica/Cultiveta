@@ -9,6 +9,7 @@ import { geneticsService } from './services/geneticsService';
 import { harvestService } from './services/harvestService';
 import { diaryService } from './services/diaryService';
 import { demoDataService } from './services/demoDataService';
+import { photoOfflineQueue } from './services/photoOfflineQueue';
 
 import {
   Cultivation,
@@ -19,6 +20,7 @@ import {
   Harvest,
   DiaryEntry,
   WateringProductItem,
+  CultivationTask,
 } from './types';
 
 import { Header } from './components/common/Header';
@@ -43,10 +45,16 @@ import { CalculatorsView } from './components/tools/CalculatorsView';
 import { PhotoDiagnosisModal } from './components/ai/PhotoDiagnosisModal';
 import { GoogleCalendarModal } from './components/calendar/GoogleCalendarModal';
 import { CropComparisonView } from './components/harvests/CropComparisonView';
+import { getOverdueCultivations } from './utils/wateringAlertUtils';
+import { browserNotificationService } from './services/browserNotificationService';
+import { NotificationCenterModal } from './components/notifications/NotificationCenterModal';
+import { UserPreferencesModal } from './components/user/UserPreferencesModal';
+import { UserProfile } from './types';
 import { Sprout, Plus, SlidersHorizontal } from 'lucide-react';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
   // App Navigation State
@@ -86,6 +94,9 @@ export default function App() {
     photo: PhotoRecord;
     cultivation: Cultivation;
   } | null>(null);
+  const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
+  const [isPreferencesModalOpen, setIsPreferencesModalOpen] = useState(false);
+  const [envAlertsCount, setEnvAlertsCount] = useState(0);
 
   // Notification / Toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -138,12 +149,115 @@ export default function App() {
 
   // 1. Listen for Auth State
   useEffect(() => {
-    const unsubscribe = authService.onAuthStateChanged((user) => {
+    const unsubscribe = authService.onAuthStateChanged(async (user) => {
       setCurrentUser(user);
+      if (user) {
+        try {
+          const profile = await authService.getUserProfile(user.uid);
+          setUserProfile(profile);
+        } catch (e) {
+          console.warn('Could not load user profile:', e);
+        }
+      } else {
+        setUserProfile(null);
+      }
       setAuthLoading(false);
     });
     return () => unsubscribe();
   }, []);
+
+  // 1.1 Iniciar sincronización automática de fotos encoladas en IndexedDB
+  useEffect(() => {
+    const cleanupAutoSync = photoOfflineQueue.initAutoSync();
+
+    const handleSyncedEvent = (e: Event) => {
+      const ce = e as CustomEvent<{ syncedCount?: number }>;
+      const count = ce.detail?.syncedCount;
+      if (count && count > 0) {
+        showToast(`📸 ${count} fotografía(s) del caché local sincronizada(s) con Firebase.`);
+      }
+    };
+
+    const handleCropDeleted = (e: Event) => {
+      const ce = e as CustomEvent<{ name?: string }>;
+      showToast(`🗑️ Cultivo "${ce.detail?.name || ''}" eliminado correctamente.`);
+    };
+
+    window.addEventListener('cultiveta_photos_synced', handleSyncedEvent);
+    window.addEventListener('cultiveta_cultivation_deleted', handleCropDeleted);
+
+    return () => {
+      cleanupAutoSync();
+      window.removeEventListener('cultiveta_photos_synced', handleSyncedEvent);
+      window.removeEventListener('cultiveta_cultivation_deleted', handleCropDeleted);
+    };
+  }, []);
+
+  // 1.2 Monitoreo y Notificación Automática de Alertas de Riego Overdue
+  const notifiedOverdueRef = React.useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!currentUser || cultivations.length === 0) return;
+
+    // Respetar preferencia del usuario sobre si desea recibir alertas de riego
+    const alertPrefs = userProfile?.preferences?.alertTypes;
+    if (alertPrefs && alertPrefs.wateringAlerts === false) return;
+
+    const overdueList = getOverdueCultivations(cultivations, waterings);
+    if (overdueList.length === 0) return;
+
+    // Detectar si hay cultivos con riego Overdue que no hayan sido notificados en la sesión actual
+    const unnotified = overdueList.filter(
+      (item) => !notifiedOverdueRef.current.has(item.cultivation.id)
+    );
+
+    if (unnotified.length > 0) {
+      unnotified.forEach((item) => notifiedOverdueRef.current.add(item.cultivation.id));
+      const first = unnotified[0];
+      if (unnotified.length === 1) {
+        showToast(
+          `⚠️ Alerta Overdue: "${first.cultivation.name}" superó el ciclo de riego (${first.analysis.recommendedIntervalDays}d en ${first.cultivation.currentStage}).`
+        );
+      } else {
+        showToast(
+          `⚠️ Alerta Overdue: ${unnotified.length} cultivos superan el período de riego recomendado.`
+        );
+      }
+    }
+  }, [currentUser, cultivations, waterings, userProfile]);
+
+  // 1.3 Inicializar servicio de Notificaciones de Navegador / Push para alertas 'env_alert' del cron job
+  useEffect(() => {
+    browserNotificationService.init(currentUser?.uid);
+
+    const handleEnvAlert = (e: Event) => {
+      // Respetar preferencia del usuario sobre si desea recibir alertas climáticas
+      const alertPrefs = userProfile?.preferences?.alertTypes;
+      if (alertPrefs && alertPrefs.climateAlerts === false) return;
+
+      const ce = e as CustomEvent<{ task: CultivationTask }>;
+      if (ce.detail?.task) {
+        setEnvAlertsCount((prev) => prev + 1);
+        showToast(`🚨 Alerta Climática recibida: ${ce.detail.task.title}`);
+      }
+    };
+
+    const handleNotifClicked = (e: Event) => {
+      const ce = e as CustomEvent<{ cultivationId?: string }>;
+      if (ce.detail?.cultivationId) {
+        setSelectedCultivationId(ce.detail.cultivationId);
+        setCurrentView('cultivation_detail');
+      }
+    };
+
+    window.addEventListener('cultiveta_env_alert_received', handleEnvAlert);
+    window.addEventListener('cultiveta_notification_clicked', handleNotifClicked);
+
+    return () => {
+      window.removeEventListener('cultiveta_env_alert_received', handleEnvAlert);
+      window.removeEventListener('cultiveta_notification_clicked', handleNotifClicked);
+    };
+  }, [currentUser?.uid]);
 
   // 2. Real-time subscriptions to Firestore
   useEffect(() => {
@@ -265,10 +379,21 @@ export default function App() {
       {/* Top Header */}
       <Header
         currentUser={currentUser}
+        userProfile={userProfile}
         onOpenQuickAction={() => setIsQuickActionOpen(true)}
+        onOpenPreferences={() => setIsPreferencesModalOpen(true)}
+        onOpenNotifications={() => setIsNotificationCenterOpen(true)}
+        notificationCount={envAlertsCount}
         onLogout={handleLogout}
         onSeedDemoData={handleSeedDemoData}
         onClearDemoData={handleClearDemoData}
+        onNavigate={(view) => {
+          if (view === 'profile' || view === 'preferences') {
+            setIsPreferencesModalOpen(true);
+          } else {
+            setCurrentView(view as any);
+          }
+        }}
       />
 
       {/* Main Layout (Sidebar + Main Content) */}
@@ -297,6 +422,8 @@ export default function App() {
               waterings={waterings}
               envRecords={envRecords}
               photos={photos}
+              geneticsList={geneticsList}
+              userProfile={userProfile}
               userId={currentUser.uid}
               isLoading={isFirestoreLoading}
               onRefreshData={() => {
@@ -333,6 +460,7 @@ export default function App() {
               }}
               onWateringAdded={(w) => {
                 setWaterings((prev) => [w, ...prev.filter((x) => x.id !== w.id)]);
+                notifiedOverdueRef.current.delete(w.cultivationId);
               }}
               onTaskCompletedFeedback={(msg) => {
                 showToast(msg);
@@ -702,7 +830,8 @@ export default function App() {
           initialEc={wateringModalInitialRecipe?.ec}
           onWateringAdded={(w) => {
             setWaterings((prev) => [w, ...prev.filter((x) => x.id !== w.id)]);
-            showToast('Riego registrado con éxito.');
+            notifiedOverdueRef.current.delete(w.cultivationId);
+            showToast('💧 Riego registrado con éxito. ¡Alerta Overdue resuelta!');
             setWateringModalInitialRecipe(null);
           }}
         />
@@ -784,6 +913,49 @@ export default function App() {
           onEventSynced={() => {
             showToast('Evento sincronizado con Google Calendar');
           }}
+        />
+      )}
+
+      {/* Notification Center Modal for env_alert cron alerts */}
+      {isNotificationCenterOpen && (
+        <NotificationCenterModal
+          isOpen={isNotificationCenterOpen}
+          onClose={() => {
+            setIsNotificationCenterOpen(false);
+            setEnvAlertsCount(0);
+          }}
+          userId={currentUser.uid}
+          onSelectCultivation={(cropId) => {
+            setSelectedCultivationId(cropId);
+            setCurrentView('cultivation_detail');
+          }}
+          onOpenPreferences={() => {
+            setIsNotificationCenterOpen(false);
+            setIsPreferencesModalOpen(true);
+          }}
+        />
+      )}
+
+      {/* User Preferences & Alert Types Configuration Modal */}
+      {isPreferencesModalOpen && (
+        <UserPreferencesModal
+          isOpen={isPreferencesModalOpen}
+          onClose={() => setIsPreferencesModalOpen(false)}
+          userProfile={userProfile}
+          onPreferencesUpdated={(newPrefs) => {
+            setUserProfile((prev) =>
+              prev
+                ? { ...prev, preferences: newPrefs }
+                : {
+                    uid: currentUser?.uid || '',
+                    email: currentUser?.email || '',
+                    displayName: currentUser?.displayName || 'Cultivador',
+                    createdAt: new Date().toISOString(),
+                    preferences: newPrefs,
+                  }
+            );
+          }}
+          onShowToast={showToast}
         />
       )}
     </div>

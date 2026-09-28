@@ -16,6 +16,7 @@ import {
   FileText,
   AlertTriangle,
   Scale,
+  ShieldAlert,
 } from 'lucide-react';
 import {
   Cultivation,
@@ -51,6 +52,7 @@ import {
   getStageIcon,
   formatFriendlyDate,
 } from '../../utils/growthStageUtils';
+import { analyzeWateringUrgency } from '../../utils/wateringAlertUtils';
 
 interface CultivationDetailViewProps {
   cultivation: Cultivation;
@@ -109,6 +111,11 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
   const totalDays = cultivationService.calculateDays(cultivation.startDate);
   const floweringDays = cultivationService.calculateFloweringDays(cultivation.floweringStartDate);
   const isFlowering = cultivation.currentStage === 'Floración';
+  const isCosechado = Boolean(
+    cultivation.isFinished ||
+      cultivation.status?.toLowerCase() === 'cosechado' ||
+      cultivation.currentStage?.toLowerCase() === 'cosechado'
+  );
   const progressPct = cultivationService.calculateFloweringProgress(
     cultivation.floweringStartDate,
     cultivation.declaredFloweringWeeks
@@ -121,6 +128,10 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
 
   const lastWatering = cropWaterings[0];
   const lastEnv = cropEnv[0];
+
+  const wateringAnalysis = React.useMemo(() => {
+    return analyzeWateringUrgency(cultivation, lastWatering || null);
+  }, [cultivation, lastWatering]);
 
   return (
     <div className="space-y-6 animate-in fade-in">
@@ -146,32 +157,52 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
             <span>Google Calendar</span>
           </button>
 
-          {!cultivation.isFinished ? (
+          {!isCosechado ? (
             <button
               type="button"
               id="finalize-crop-btn"
+              data-testid="finalize-crop-btn"
               onClick={() => setIsHarvestModalOpen(true)}
-              className="px-4 py-2 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+              className="px-4 py-2 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-sm transition-all flex items-center gap-1.5 cursor-pointer active:scale-95"
+              title="Finalizar cultivo y marcar como cosechado en Firestore"
             >
               <Award className="w-4 h-4" />
-              <span>Finalizar Cultivo</span>
+              <span>Finalizar Cultivo (Cosechar)</span>
             </button>
           ) : (
-            <button
-              type="button"
-              id="edit-harvest-btn"
-              onClick={async () => {
-                const h = await harvestService.getHarvestByCultivationId(cultivation.id, userId);
-                if (h) {
-                  setHarvestToEdit(h);
-                }
-              }}
-              className="px-4 py-2 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
-              title="Editar cuánto se cosechó y ficha"
-            >
-              <Scale className="w-4 h-4 text-amber-700" />
-              <span>Editar Cosecha</span>
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                id="finalize-crop-btn"
+                onClick={() => setIsHarvestModalOpen(true)}
+                className="px-3.5 py-2 rounded-2xl bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-300 font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                title="Editar fecha final y peso estimado"
+              >
+                <CheckCircle2 className="w-4 h-4 text-purple-600" />
+                <span>Cosechado</span>
+                {(cultivation.estimatedWeight || cultivation.finalWeight) ? (
+                  <span className="ml-1 px-1.5 py-0.5 rounded bg-purple-200 text-purple-900 text-[10px] font-mono">
+                    {cultivation.estimatedWeight || cultivation.finalWeight}g
+                  </span>
+                ) : null}
+              </button>
+              <button
+                type="button"
+                id="edit-harvest-btn"
+                onClick={async () => {
+                  const h = await harvestService.getHarvestByCultivationId(cultivation.id, userId);
+                  if (h) {
+                    setHarvestToEdit(h);
+                  } else {
+                    setIsHarvestModalOpen(true);
+                  }
+                }}
+                className="p-2 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs shadow-2xs transition-all flex items-center gap-1.5 cursor-pointer"
+                title="Ficha completa de cosecha"
+              >
+                <Scale className="w-4 h-4 text-amber-700" />
+              </button>
+            </div>
           )}
 
           <button
@@ -285,6 +316,38 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
           </div>
         </div>
 
+        {/* Cosechado Banner */}
+        {isCosechado && (
+          <div className="p-4 rounded-2xl bg-purple-50 border border-purple-200 text-purple-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-xl bg-purple-100 text-purple-700">
+                <Award className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="font-extrabold text-purple-950 flex items-center gap-2">
+                  <span>Cultivo Finalizado y Cosechado 🏁</span>
+                  <span className="px-2 py-0.5 rounded-full bg-purple-200 text-purple-900 text-[10px] font-mono font-bold uppercase">
+                    {cultivation.status || 'COSECHADO'}
+                  </span>
+                </div>
+                <p className="text-purple-700 text-xs mt-0.5">
+                  {cultivation.harvestDate || cultivation.endDate ? `Fecha de cosecha: ${formatFriendlyDate(cultivation.harvestDate || cultivation.endDate || '')}` : 'Cosecha registrada con éxito.'}
+                  {(cultivation.estimatedWeight || cultivation.finalWeight) ? ` · Peso estimado: ${cultivation.estimatedWeight || cultivation.finalWeight} g` : ''}
+                  {(cultivation.estimatedWeight || cultivation.finalWeight) && cultivation.plantCount ? ` (~${((cultivation.estimatedWeight || cultivation.finalWeight)! / cultivation.plantCount).toFixed(1)} g / planta)` : ''}
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              id="edit-harvest-banner-btn"
+              onClick={() => setIsHarvestModalOpen(true)}
+              className="px-3.5 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-bold text-xs transition-colors shadow-2xs cursor-pointer shrink-0"
+            >
+              Modificar Cosecha
+            </button>
+          </div>
+        )}
+
         {/* Stage Progress & Mini Timeline Strip */}
         <div className="p-4 sm:p-5 rounded-2xl bg-stone-50/90 border border-stone-200/80 space-y-3">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
@@ -306,7 +369,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
-              {nextStage && !cultivation.isFinished && (
+              {nextStage && !isCosechado && (
                 <button
                   type="button"
                   id="advance-stage-quick-btn"
@@ -320,6 +383,19 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                   <PlayCircle className="w-3.5 h-3.5 text-emerald-200" />
                   <span>Avanzar a {nextStage.name}</span>
                   <ChevronRight className="w-3 h-3 text-emerald-200" />
+                </button>
+              )}
+
+              {!isCosechado && (
+                <button
+                  type="button"
+                  id="harvest-crop-quick-btn"
+                  onClick={() => setIsHarvestModalOpen(true)}
+                  className="px-2.5 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 border border-amber-500/30 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                  title="Finalizar cultivo y marcar como cosechado"
+                >
+                  <Award className="w-3.5 h-3.5 text-amber-600" />
+                  <span>Marcar Cosechado</span>
                 </button>
               )}
 
@@ -537,26 +613,97 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
       {/* TAB 1: OVERVIEW & CHARTS */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
+          {/* Alerta de Riego Overdue si supera el período recomendado */}
+          {wateringAnalysis.isOverdue && (
+            <div
+              id="detail-watering-overdue-alert"
+              className="p-4 sm:p-5 rounded-3xl bg-rose-950/20 border-2 border-rose-500/50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg shadow-rose-950/10"
+            >
+              <div className="flex items-start sm:items-center gap-3.5">
+                <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-500 border border-rose-500/30 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-5 h-5 animate-bounce" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded-full bg-rose-600 text-white font-mono font-bold text-[10px] tracking-wider uppercase">
+                      OVERDUE
+                    </span>
+                    <h4 className="font-bold text-sm text-stone-900">
+                      Alerta de Riego Atrasado (+{wateringAnalysis.daysOverdue}d)
+                    </h4>
+                  </div>
+                  <p className="text-xs text-stone-600 mt-1">
+                    {wateringAnalysis.alertMessage} Ciclo recomendado para {cultivation.currentStage}: cada {wateringAnalysis.recommendedIntervalDays} días.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={onOpenWateringModal}
+                className="px-5 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs transition-all shadow-md shadow-rose-600/20 flex items-center justify-center gap-2 cursor-pointer shrink-0"
+              >
+                <Droplets className="w-4 h-4" />
+                <span>Regar Ahora</span>
+              </button>
+            </div>
+          )}
+
           {/* Quick Metrics Bar */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="bg-white rounded-3xl p-5 border border-stone-200 shadow-2xs">
-              <span className="text-xs font-semibold text-stone-500 block">Último Riego</span>
-              <div className="text-lg font-extrabold text-stone-900 mt-1">
-                {lastWatering ? `${lastWatering.volumeLiters} L` : 'Sin registros'}
+            <div
+              className={`bg-white rounded-3xl p-5 border shadow-2xs relative ${
+                wateringAnalysis.isOverdue ? 'border-rose-400 ring-2 ring-rose-500/20' : 'border-stone-200'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-stone-500 block">Último Riego</span>
+                {wateringAnalysis.isOverdue && (
+                  <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-mono font-bold text-[10px] tracking-wider uppercase">
+                    OVERDUE
+                  </span>
+                )}
+              </div>
+              <div className="text-lg font-extrabold text-stone-900 mt-1 flex items-baseline gap-2">
+                <span>{lastWatering ? `${lastWatering.volumeLiters} L` : 'Sin registros'}</span>
+                {wateringAnalysis.isOverdue && (
+                  <span className="text-xs font-mono font-bold text-rose-600">
+                    Hace {wateringAnalysis.daysSinceWatering}d
+                  </span>
+                )}
               </div>
               <span className="text-[11px] text-stone-400 font-medium">
                 {lastWatering ? `pH ${lastWatering.phIn || '—'} · EC ${lastWatering.ecIn || '—'}` : 'Agrega un riego'}
               </span>
             </div>
 
-            <div className="bg-white rounded-3xl p-5 border border-stone-200 shadow-2xs">
-              <span className="text-xs font-semibold text-stone-500 block">Último Ambiente</span>
+            <div className="bg-white rounded-3xl p-5 border border-stone-200 shadow-2xs relative group">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold text-stone-500 block">Último Ambiente</span>
+                <button
+                  type="button"
+                  onClick={() => onEditCultivation(cultivation)}
+                  className="text-[10px] font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 px-2 py-0.5 rounded-lg border border-rose-200 transition-colors cursor-pointer flex items-center gap-1"
+                  title="Configurar umbrales críticos de temperatura y humedad para alertas IA"
+                >
+                  <ShieldAlert className="w-3 h-3 text-rose-500" />
+                  <span>Umbrales IA</span>
+                </button>
+              </div>
               <div className="text-lg font-extrabold text-stone-900 mt-1">
                 {lastEnv ? `${lastEnv.temperatureC}°C | ${lastEnv.humidityPct}%` : 'Sin registros'}
               </div>
-              <span className="text-[11px] text-stone-400 font-medium">
-                {lastEnv?.vpdKPa ? `VPD: ${lastEnv.vpdKPa} kPa` : 'Registra temp y humedad'}
-              </span>
+              <div className="flex items-center justify-between gap-1 text-[11px] text-stone-400 font-medium mt-0.5">
+                <span>{lastEnv?.vpdKPa ? `VPD: ${lastEnv.vpdKPa} kPa` : 'Temp y humedad'}</span>
+                <span
+                  className="text-[10px] font-mono text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/80"
+                  title="Rango térmico y de humedad seguro configurado para alertas automáticas"
+                >
+                  {cultivation.alertThresholds?.enabled
+                    ? `${cultivation.alertThresholds.tempMinC ?? 11}°-${cultivation.alertThresholds.tempMaxC ?? 35}°C | ${cultivation.alertThresholds.humidityMinPct ?? 25}%-${cultivation.alertThresholds.humidityMaxPct ?? 75}%`
+                    : '11°-35°C | 25-75%'}
+                </span>
+              </div>
             </div>
 
             <div className="bg-white rounded-3xl p-5 border border-stone-200 shadow-2xs">
@@ -778,6 +925,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
           cultivation={cultivation}
           userId={userId}
           onHarvestFinalized={onHarvestFinalized}
+          onCultivationUpdated={onCultivationUpdated}
         />
       )}
 

@@ -23,11 +23,14 @@ import {
   Leaf,
   Flower2,
   Scissors,
+  BellRing,
 } from 'lucide-react';
-import { Cultivation, Watering, EnvironmentRecord, PhotoRecord } from '../../types';
+import { Cultivation, Watering, EnvironmentRecord, PhotoRecord, Genetics, UserProfile } from '../../types';
 import { CultivationCard } from '../cultivations/CultivationCard';
 import { DashboardEnvironmentChart } from './DashboardEnvironmentChart';
 import { UpcomingTaskWidget } from './UpcomingTaskWidget';
+import { FloweringProgressSection } from './FloweringProgressSection';
+import { HarvestProjectionSection } from './HarvestProjectionSection';
 import {
   DashboardDateFilter,
   DateFilterState,
@@ -38,6 +41,8 @@ import {
 import { DashboardSkeleton } from './DashboardSkeleton';
 import { aiService } from '../../services/aiService';
 import { taskService } from '../../services/taskService';
+import { getOverdueCultivations, analyzeWateringUrgency } from '../../utils/wateringAlertUtils';
+import { browserNotificationService } from '../../services/browserNotificationService';
 import {
   getStagesForCultivation,
   calculateTimelineMetrics,
@@ -50,6 +55,8 @@ interface DashboardOverviewProps {
   waterings: Watering[];
   envRecords: EnvironmentRecord[];
   photos: PhotoRecord[];
+  geneticsList?: Genetics[];
+  userProfile?: UserProfile | null;
   userId?: string;
   isLoading?: boolean;
   onRefreshData?: () => void;
@@ -107,6 +114,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   waterings,
   envRecords,
   photos,
+  geneticsList = [],
+  userProfile,
   userId,
   isLoading = false,
   onRefreshData,
@@ -125,6 +134,13 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const [internalSimulateLoading, setInternalSimulateLoading] = useState(false);
   const [tasksVersion, setTasksVersion] = useState(0);
   const [isScrolled, setIsScrolled] = useState(false);
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
+
+  React.useEffect(() => {
+    if (browserNotificationService.isSupported()) {
+      setNotifPermission(browserNotificationService.getPermission());
+    }
+  }, []);
 
   // Detect scroll to trigger text-glow & light gradient on selected dashboard h1
   React.useEffect(() => {
@@ -488,52 +504,18 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
   const hasCriticalStage = cropsInCriticalStage.length > 0;
 
-  // 2. Overdue Watering Task Detection (> 24 hours pending):
-  // Evaluates both taskService tasks (urgency overdue / past due date) and cultivation watering histories
+  // 2. Overdue Watering Detection using Stage-Specific Periods:
+  const isWateringAlertsEnabled = userProfile?.preferences?.alertTypes?.wateringAlerts ?? true;
+
+  const overdueCultivationsList = useMemo(() => {
+    if (!isWateringAlertsEnabled) return [];
+    return getOverdueCultivations(cultivations, waterings);
+  }, [cultivations, waterings, isWateringAlertsEnabled]);
+
   const cropsWithOverdueWatering = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().split('T')[0];
-
-    const tasks = taskService.getTasksForDashboard(cultivations, waterings, envRecords, userId || '');
-    const overdueCropIds = new Set<string>();
-
-    tasks.forEach((t) => {
-      if (t.type === 'watering' && !t.isCompleted) {
-        if (t.urgency === 'overdue') {
-          overdueCropIds.add(t.cultivationId);
-        } else if (t.dueDate && t.dueDate < todayStr) {
-          overdueCropIds.add(t.cultivationId);
-        }
-      }
-    });
-
-    const nowTime = new Date().getTime();
-    activeCrops.forEach((crop) => {
-      const cropWaterings = waterings
-        .filter((w) => w.cultivationId === crop.id)
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-
-      const latest = cropWaterings[0];
-      const stageLower = (crop.currentStage || '').toLowerCase();
-      const intervalDays = stageLower.includes('flor') ? 2 : 3;
-      const thresholdHours = (intervalDays + 1) * 24; // scheduled interval + 24 hours overdue grace
-
-      if (!latest) {
-        const cropAgeHours = (nowTime - new Date(crop.startDate).getTime()) / (1000 * 60 * 60);
-        if (cropAgeHours >= 24) {
-          overdueCropIds.add(crop.id);
-        }
-      } else {
-        const hoursSinceLast = (nowTime - new Date(latest.date).getTime()) / (1000 * 60 * 60);
-        if (hoursSinceLast >= thresholdHours) {
-          overdueCropIds.add(crop.id);
-        }
-      }
-    });
-
-    return activeCrops.filter((c) => overdueCropIds.has(c.id));
-  }, [cultivations, activeCrops, waterings, envRecords, userId, tasksVersion]);
+    const ids = new Set(overdueCultivationsList.map((o) => o.cultivation.id));
+    return activeCrops.filter((c) => ids.has(c.id));
+  }, [activeCrops, overdueCultivationsList]);
 
   const hasOverdueWatering = cropsWithOverdueWatering.length > 0;
   const hasAlertCondition = hasCriticalStage || hasOverdueWatering;
@@ -876,6 +858,132 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         totalRecordsCount={totalFilteredEvents}
       />
 
+      {/* Browser Notification Activation Prompt Bar if permission is default */}
+      {notifPermission === 'default' && (
+        <div
+          id="browser-notification-permission-prompt"
+          className="p-3.5 sm:p-4 rounded-2xl bg-zinc-900/90 border border-emerald-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-md animate-fade-in-up"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">
+              <BellRing className="w-4 h-4 animate-bounce" />
+            </div>
+            <div>
+              <span className="font-bold text-white block">
+                Activa las Notificaciones de Navegador para Alertas Climáticas
+              </span>
+              <span className="text-zinc-400">
+                Recibe avisos inmediatos del cron job (&apos;env_alert&apos;) cuando se detecten temperaturas o humedades críticas, incluso con la aplicación en segundo plano.
+              </span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              const res = await browserNotificationService.requestPermission();
+              setNotifPermission(res);
+            }}
+            className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs shadow-sm shadow-emerald-500/20 cursor-pointer shrink-0 transition-colors"
+          >
+            Activar Avisos
+          </button>
+        </div>
+      )}
+
+      {/* Watering Overdue Notification Center / Banner */}
+      {overdueCultivationsList.length > 0 && (
+        <div
+          id="watering-overdue-global-alert"
+          className="bg-gradient-to-r from-rose-950/70 via-[#18080c] to-[#0F0F0F] rounded-[28px] p-5 sm:p-6 border border-rose-500/50 shadow-2xl shadow-rose-950/30 relative overflow-hidden animate-fade-in-up"
+        >
+          <div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/10 rounded-full blur-3xl pointer-events-none -mr-16 -mt-16"></div>
+          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-rose-900/40">
+            <div className="flex items-center gap-3.5">
+              <div className="w-11 h-11 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center shrink-0 shadow-sm shadow-rose-950/60">
+                <AlertTriangle className="w-6 h-6 stroke-[2.2] animate-bounce" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white font-mono font-bold text-[10px] tracking-wider uppercase">
+                    OVERDUE
+                  </span>
+                  <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-rose-400">
+                    Alerta de Riego Agronómico
+                  </span>
+                </div>
+                <h3 className="text-base sm:text-lg font-bold text-white mt-0.5">
+                  {overdueCultivationsList.length === 1
+                    ? `Riego atrasado en "${overdueCultivationsList[0].cultivation.name}"`
+                    : `${overdueCultivationsList.length} cultivos superan el período de riego recomendado`}
+                </h3>
+                <p className="text-xs text-rose-200/80 mt-0.5">
+                  El sistema analizó la fecha del último riego y detectó que supera el intervalo sugerido para la etapa fenológica actual.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs font-mono font-semibold text-rose-300 bg-rose-950/80 px-3 py-1.5 rounded-xl border border-rose-800/60">
+                ⚠️ Acción Inmediata Requerida
+              </span>
+            </div>
+          </div>
+
+          {/* Overdue crops list */}
+          <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-4">
+            {overdueCultivationsList.map(({ cultivation: crop, analysis }) => (
+              <div
+                key={crop.id}
+                className="p-3.5 rounded-2xl bg-zinc-950/80 border border-rose-500/30 hover:border-rose-500/60 transition-colors flex flex-col justify-between gap-3 shadow-xs"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <h4 className="font-bold text-sm text-white">{crop.name}</h4>
+                    <p className="text-[11px] text-zinc-400">
+                      {crop.currentStage} · {crop.geneticsName || 'Genética s/d'}
+                    </p>
+                  </div>
+                  <span className="px-2 py-0.5 rounded-md bg-rose-500/25 text-rose-300 border border-rose-500/50 font-mono font-bold text-[10px] tracking-wider">
+                    +{analysis.daysOverdue}d Atraso
+                  </span>
+                </div>
+
+                <div className="text-[11px] space-y-1 bg-rose-950/30 p-2.5 rounded-xl border border-rose-900/30 text-rose-200">
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">Último riego:</span>
+                    <span className="font-mono font-semibold text-rose-300">
+                      {analysis.daysSinceWatering === null ? 'Sin registros' : `Hace ${analysis.daysSinceWatering} días`}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">Ciclo recomendado:</span>
+                    <span className="font-mono font-semibold text-zinc-200">Cada {analysis.recommendedIntervalDays} días ({crop.currentStage})</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => onOpenWateringModal(crop)}
+                    className="flex-1 py-2 px-3 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-bold text-xs transition-colors shadow-sm shadow-rose-500/25 flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Droplets className="w-3.5 h-3.5" />
+                    <span>Regar Ahora</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onSelectCultivation(crop)}
+                    className="py-2 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 text-xs font-semibold transition-colors cursor-pointer"
+                  >
+                    Ver Carpa
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Dynamic Next Watering / Critical Task Widget */}
       <UpcomingTaskWidget
         cultivations={cultivations}
@@ -906,7 +1014,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 <span className="text-zinc-300">
                   {hasOverdueWatering && (
                     <span className="text-rose-400 font-medium">
-                      {cropsWithOverdueWatering.length} cultivo{cropsWithOverdueWatering.length > 1 ? 's' : ''} con riego pendiente desde hace más de 24h ({cropsWithOverdueWatering.map((c) => c.name).join(', ')})
+                      {cropsWithOverdueWatering.length} cultivo{cropsWithOverdueWatering.length > 1 ? 's' : ''} con riego Overdue ({cropsWithOverdueWatering.map((c) => c.name).join(', ')})
                     </span>
                   )}
                   {hasOverdueWatering && hasCriticalStage && <span className="text-zinc-500"> • </span>}
@@ -957,6 +1065,24 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         </div>
       </div>
 
+      {/* Flowering Stage Progress Hub: Estimated Flowering Progress vs Typical Genetics Duration */}
+      <FloweringProgressSection
+        cultivations={cultivations}
+        geneticsList={geneticsList}
+        onSelectCultivation={onSelectCultivation}
+        onOpenWateringModal={onOpenWateringModal}
+        onOpenPhotoModal={onOpenPhotoModal}
+        onOpenAIAssistant={onOpenAIAssistant}
+      />
+
+      {/* Harvest Projection Hub: Estimated Harvest Date Adjusted by Recorded Stage Changes */}
+      <HarvestProjectionSection
+        cultivations={cultivations}
+        geneticsList={geneticsList}
+        onSelectCultivation={onSelectCultivation}
+        onOpenCalendarModal={onOpenCalendarModal}
+      />
+
       {/* Filtered Environmental Micro-Averages Pill when records exist */}
       {isDateFilterActive && envAverages && (
         <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 flex flex-wrap items-center justify-between gap-3 text-xs">
@@ -977,7 +1103,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
       {/* Environmental Progress Historical Line Chart (recharts) */}
       <DashboardEnvironmentChart
         activeCultivations={activeCrops}
-        envRecords={filteredEnvRecords}
+        envRecords={envRecords}
         onOpenEnvModal={onOpenEnvModal}
       />
 
