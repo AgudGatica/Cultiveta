@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore, initializeFirestore, setLogLevel, Firestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, setLogLevel, Firestore, doc, getDocFromServer } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import firebaseConfigJson from '../../firebase-applet-config.json';
 
@@ -44,4 +44,12 @@ try {
 
 export const db = firestoreInstance;
 export const storage = getStorage(app);
+
+// Connection test on boot as recommended by Firebase guidelines
+getDocFromServer(doc(db, '_connection_test', 'status')).catch((error: unknown) => {
+  if (error instanceof Error && error.message.includes('the client is offline')) {
+    console.error('Please check your Firebase configuration.');
+  }
+});
+
 export default app;

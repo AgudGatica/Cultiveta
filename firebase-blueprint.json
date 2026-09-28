@@ -1,0 +1,176 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile document",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Unique user ID" },
+        "email": { "type": "string", "description": "User email address" },
+        "displayName": { "type": "string", "description": "User display name" },
+        "photoURL": { "type": "string", "description": "User avatar photo URL" },
+        "createdAt": { "type": "string", "description": "Creation timestamp" }
+      },
+      "required": ["uid"]
+    },
+    "Cultivation": {
+      "title": "Cultivation",
+      "description": "Crop cultivation cycle",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Cultivation ID" },
+        "userId": { "type": "string", "description": "Owner user ID" },
+        "name": { "type": "string", "description": "Cultivation name" },
+        "strain": { "type": "string", "description": "Strain or variety" },
+        "type": { "type": "string", "description": "Indoor, Outdoor, or Greenhouse" },
+        "medium": { "type": "string", "description": "Soil, Coco, Hydro, etc." },
+        "stage": { "type": "string", "description": "Germination, Seedling, Vegetative, Flowering, Drying, Curing, Done" },
+        "startDate": { "type": "string", "description": "Start date (YYYY-MM-DD)" },
+        "status": { "type": "string", "description": "active, completed, archived" },
+        "coverPhotoUrl": { "type": "string", "description": "Optional cover photo URL" }
+      },
+      "required": ["userId", "name"]
+    },
+    "Photo": {
+      "title": "Photo",
+      "description": "Plant observation photo record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Photo unique ID" },
+        "userId": { "type": "string", "description": "Owner user ID" },
+        "cultivationId": { "type": "string", "description": "Associated cultivation ID" },
+        "url": { "type": "string", "description": "Download URL in Cloud Storage" },
+        "date": { "type": "string", "description": "Capture date (YYYY-MM-DD)" },
+        "dayOfCultivation": { "type": "number", "description": "Calculated day since start" },
+        "stage": { "type": "string", "description": "Growth stage when captured" },
+        "notes": { "type": "string", "description": "Optional observational notes" }
+      },
+      "required": ["userId", "cultivationId", "url"]
+    },
+    "PhotoAnalysis": {
+      "title": "PhotoAnalysis",
+      "description": "AI plant health diagnosis for a photo",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Analysis ID" },
+        "userId": { "type": "string", "description": "Owner user ID" },
+        "photoId": { "type": "string", "description": "Target photo ID" },
+        "cultivationId": { "type": "string", "description": "Associated cultivation ID" },
+        "healthScore": { "type": "number", "description": "Estimated health score (0-100)" },
+        "summary": { "type": "string", "description": "Diagnostic summary" },
+        "createdAt": { "type": "string", "description": "Timestamp created" }
+      },
+      "required": ["userId", "photoId"]
+    },
+    "Watering": {
+      "title": "Watering",
+      "description": "Irrigation and feeding record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Watering record ID" },
+        "userId": { "type": "string", "description": "Owner user ID" },
+        "cultivationId": { "type": "string", "description": "Associated cultivation ID" },
+        "date": { "type": "string", "description": "Date of watering" },
+        "volumeLiters": { "type": "number", "description": "Liters applied" },
+        "ph": { "type": "number", "description": "Input pH" },
+        "ec": { "type": "number", "description": "Input EC / PPM" },
+        "notes": { "type": "string", "description": "Nutrient recipes or remarks" }
+      },
+      "required": ["userId", "cultivationId", "date"]
+    },
+    "EnvironmentRecord": {
+      "title": "EnvironmentRecord",
+      "description": "Climate and environmental measurement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Environment record ID" },
+        "userId": { "type": "string", "description": "Owner user ID" },
+        "cultivationId": { "type": "string", "description": "Associated cultivation ID" },
+        "timestamp": { "type": "string", "description": "Timestamp of measurement" },
+        "temperature": { "type": "number", "description": "Temperature in Celsius" },
+        "humidity": { "type": "number", "description": "Relative humidity percentage" },
+        "vpd": { "type": "number", "description": "Vapor pressure deficit in kPa" }
+      },
+      "required": ["userId", "cultivationId", "timestamp"]
+    },
+    "DiaryEntry": {
+      "title": "DiaryEntry",
+      "description": "Daily cultivation notes and log",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Diary entry ID" },
+        "userId": { "type": "string", "description": "Owner user ID" },
+        "cultivationId": { "type": "string", "description": "Associated cultivation ID" },
+        "date": { "type": "string", "description": "Date of diary entry" },
+        "title": { "type": "string", "description": "Entry title" },
+        "content": { "type": "string", "description": "Entry text" }
+      },
+      "required": ["userId", "cultivationId", "date"]
+    },
+    "Harvest": {
+      "title": "Harvest",
+      "description": "Harvest yield and curing records",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Harvest record ID" },
+        "userId": { "type": "string", "description": "Owner user ID" },
+        "cultivationId": { "type": "string", "description": "Associated cultivation ID" },
+        "harvestDate": { "type": "string", "description": "Date harvested" },
+        "wetWeightGrams": { "type": "number", "description": "Wet yield in grams" },
+        "dryWeightGrams": { "type": "number", "description": "Dry yield in grams" }
+      },
+      "required": ["userId", "cultivationId", "harvestDate"]
+    },
+    "Genetics": {
+      "title": "Genetics",
+      "description": "Genetic variety catalog entry",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Genetics ID" },
+        "userId": { "type": "string", "description": "Owner user ID" },
+        "name": { "type": "string", "description": "Strain name" },
+        "breeder": { "type": "string", "description": "Breeder or seedbank" },
+        "floweringWeeks": { "type": "number", "description": "Flowering period in weeks" }
+      },
+      "required": ["userId", "name"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile collection"
+    },
+    "/cultivations/{cultivationId}": {
+      "schema": "Cultivation",
+      "description": "Cultivations collection"
+    },
+    "/photos/{photoId}": {
+      "schema": "Photo",
+      "description": "Photos collection"
+    },
+    "/photoAnalyses/{analysisId}": {
+      "schema": "PhotoAnalysis",
+      "description": "Plant health photo analysis results"
+    },
+    "/waterings/{wateringId}": {
+      "schema": "Watering",
+      "description": "Watering and feeding logs"
+    },
+    "/environmentRecords/{recordId}": {
+      "schema": "EnvironmentRecord",
+      "description": "Environmental metric logs"
+    },
+    "/diary/{diaryId}": {
+      "schema": "DiaryEntry",
+      "description": "Cultivation diary logs"
+    },
+    "/harvests/{harvestId}": {
+      "schema": "Harvest",
+      "description": "Harvest yield logs"
+    },
+    "/genetics/{geneticsId}": {
+      "schema": "Genetics",
+      "description": "Genetics and strain database"
+    }
+  }
+}
