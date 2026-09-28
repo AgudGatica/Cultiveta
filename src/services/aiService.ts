@@ -2,53 +2,58 @@ import {
   collection,
   doc,
   getDocs,
-  getDoc,
   setDoc,
   query,
   where
 } from 'firebase/firestore';
 import { db, auth } from '../firebase/config';
-import { AIPhotoAnalysis, AIConversationMessage, Cultivation, AIPhotoAnalysisResult } from '../types';
+import {
+  AIPhotoAnalysis,
+  AIConversationMessage,
+  Cultivation,
+  AIPhotoAnalysisResult,
+  Watering,
+  EnvironmentRecord,
+  DiaryEntry,
+  PhotoRecord
+} from '../types';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
+
+export interface CultivationAnalysisContext {
+  id?: string;
+  name?: string;
+  cropName?: string;
+  stage?: string;
+  currentStage?: string;
+  day?: number;
+  dayOfCultivation?: number;
+  genetics?: string;
+  geneticsName?: string;
+  type?: string;
+  substrate?: string;
+  lighting?: string;
+  recentWaterings?: Watering[];
+  recentEnv?: EnvironmentRecord[];
+}
 
 /**
  * Obtiene los encabezados requeridos para invocar los endpoints protegidos /api/ai/*.
- * Soporta tokens de Firebase Auth así como tokens para usuarios locales/demo.
+ * Requiere estrictamente una identidad verificada de Firebase Auth (FASE 1).
  */
 async function getAuthHeaders(): Promise<{ Authorization: string; 'Content-Type': string }> {
   const currentUser = auth.currentUser;
 
-  if (currentUser) {
-    try {
-      const token = await currentUser.getIdToken();
-      if (token && token.length > 0) {
-        return {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        };
-      }
-    } catch (tokenErr) {
-      console.warn('No se pudo obtener token de Firebase Auth, usando token local:', tokenErr);
-    }
+  if (!currentUser) {
+    throw new Error('Debes iniciar sesión con una cuenta para utilizar las funciones de Cultiveta IA.');
   }
 
-  // Soporte para usuarios locales o modo demo
-  let localUid = 'demo_user';
-  if (typeof window !== 'undefined') {
-    try {
-      const rawLocal = localStorage.getItem('cultiveta_local_user');
-      if (rawLocal) {
-        const parsed = JSON.parse(rawLocal);
-        if (parsed?.uid) localUid = parsed.uid;
-      } else {
-        const lastUid = localStorage.getItem('cultiveta_last_user_id');
-        if (lastUid) localUid = lastUid;
-      }
-    } catch {}
+  const token = await currentUser.getIdToken();
+  if (!token || token.length === 0) {
+    throw new Error('No se pudo verificar el token de sesión. Por favor renueva tu inicio de sesión.');
   }
 
   return {
-    'Authorization': `Bearer demo-token-${localUid}`,
+    'Authorization': `Bearer ${token}`,
     'Content-Type': 'application/json',
   };
 }
@@ -77,98 +82,114 @@ export const aiService = {
     return newAnalysis;
   },
 
+  /**
+   * Analiza una fotografía con IA multimodal real.
+   * FASE 5: Ante cualquier error de red, modelo o permisos, propaga el error tipado.
+   * NUNCA inventa diagnósticos de planta sana de respaldo.
+   */
   async analyzePlantPhoto(params: {
+    photoId?: string;
+    cultivationId?: string;
+    storagePath?: string;
     photoUrl: string;
-    cultivationContext?: any;
+    cultivationContext?: CultivationAnalysisContext;
   }): Promise<AIPhotoAnalysisResult> {
-    try {
-      const res = await this.analyzePhotoWithGemini({
-        photoBase64OrUrl: params.photoUrl,
-        cultivationContext: params.cultivationContext,
-      });
+    const res = await this.analyzePhotoWithGemini({
+      photoId: params.photoId,
+      cultivationId: params.cultivationId,
+      storagePath: params.storagePath,
+      photoBase64OrUrl: params.photoUrl,
+      cultivationContext: params.cultivationContext
+        ? {
+            name: params.cultivationContext.name || params.cultivationContext.cropName || 'Cultivo',
+            stage: params.cultivationContext.stage || params.cultivationContext.currentStage || 'Vegetativo',
+            day: params.cultivationContext.day || params.cultivationContext.dayOfCultivation || 1,
+            genetics: params.cultivationContext.genetics || params.cultivationContext.geneticsName,
+            type: params.cultivationContext.type || 'Indoor',
+            substrate: params.cultivationContext.substrate,
+          }
+        : undefined,
+    });
 
-      return {
-        diagnosis: res.possibleCauses[0] || 'Desarrollo foliar y botánico observado',
-        severity: res.confidence === 'Baja' ? 'Baja' : 'Media',
-        affectedOrgan: 'Follaje / Hojas superiores',
-        visualFindings: res.observed,
-        actionPlan: res.relatedCultivationData.length > 0
-          ? res.relatedCultivationData
-          : ['Continuar con el régimen de nutrición actual.', 'Monitorear humedad y temperatura diariamente.'],
-        confidence: res.confidence,
-      };
-    } catch (err: any) {
-      if (err?.message?.includes('Usuario no autenticado') || err?.message?.includes('iniciar sesión')) {
-        throw err;
-      }
-      // Graceful agronomic fallback for general network/model errors
-      return {
-        diagnosis: 'Parámetros y estructura foliar saludable',
-        severity: 'Baja',
-        affectedOrgan: 'Estructura general de la planta',
-        visualFindings: 'Se aprecia buena turgencia celular, color verde homogéneo y formación de entrenudos consistente.',
-        actionPlan: [
-          'Mantener el rango de pH de riego entre 6.0 y 6.5.',
-          'Verificar que el drenaje sea de aproximadamente un 10-15% del volumen aplicado.',
-          'Monitorear la distancia del foco LED a las puntas (40-50 cm).'
-        ],
-        confidence: 'Alta',
-      };
+    // Derivar severidad botánica basada en hallazgos objetivos, no exclusivamente en la confianza
+    let derivedSeverity: 'Baja' | 'Media' | 'Alta' = 'Baja';
+    const textCorpus = `${res.observed} ${res.possibleCauses.join(' ')}`.toLowerCase();
+    if (
+      textCorpus.includes('botrytis') ||
+      textCorpus.includes('pudrición') ||
+      textCorpus.includes('plaga severa') ||
+      textCorpus.includes('muerte') ||
+      textCorpus.includes('marchitez bacteriana')
+    ) {
+      derivedSeverity = 'Alta';
+    } else if (
+      textCorpus.includes('carencia') ||
+      textCorpus.includes('exceso') ||
+      textCorpus.includes('quemadura') ||
+      textCorpus.includes('bloqueo') ||
+      textCorpus.includes('ph') ||
+      textCorpus.includes('stress')
+    ) {
+      derivedSeverity = 'Media';
     }
+
+    return {
+      diagnosis: res.possibleCauses[0] || 'Evolución vegetal observada',
+      severity: derivedSeverity,
+      affectedOrgan: 'Follaje / Estructura',
+      visualFindings: res.observed,
+      actionPlan:
+        res.relatedCultivationData.length > 0
+          ? res.relatedCultivationData
+          : ['Continuar con el régimen actual y registrar nuevas fotografías para seguir la evolución.'],
+      confidence: res.confidence,
+    };
   },
 
   async askAssistant(params: {
     question: string;
-    cultivationContext?: any;
+    cultivationContext?: CultivationAnalysisContext;
     chatHistory?: { role: string; content: string }[];
     condensedSummary?: string[];
   }): Promise<string> {
-    try {
-      const res = await this.chatWithCropContext({
-        message: params.question,
-        history: (params.chatHistory || []).map((h, i) => ({
-          id: `hist-${i}`,
-          sender: h.role === 'user' ? 'user' : 'assistant',
-          text: h.content,
-          timestamp: '',
-        })),
-        cultivation: params.cultivationContext?.cropName
-          ? ({
-              name: params.cultivationContext.cropName,
-              currentStage: params.cultivationContext.stage,
-              geneticsName: params.cultivationContext.genetics,
-              type: 'Indoor',
-            } as any)
-          : ({} as any),
-        recentWaterings: params.cultivationContext?.recentWaterings || [],
-        recentEnv: params.cultivationContext?.recentEnv || [],
-        recentPhotos: [],
-        recentNotes: [],
-        condensedSummary: params.condensedSummary,
-      });
+    const dummyCultivation: Cultivation = {
+      id: params.cultivationContext?.id || 'temp',
+      userId: 'user',
+      name: params.cultivationContext?.cropName || params.cultivationContext?.name || 'Cultivo',
+      startDate: new Date().toISOString(),
+      type: 'Indoor',
+      plantCount: 1,
+      currentStage: (params.cultivationContext?.stage as any) || 'Vegetativo',
+      stageStartDate: new Date().toISOString(),
+      substrate: { type: 'Tierra', potVolumeLiters: 10, potType: 'Geotextil' },
+      status: 'Óptimo',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
 
-      return res.reply;
-    } catch (err: any) {
-      if (err?.message?.includes('Usuario no autenticado') || err?.message?.includes('iniciar sesión')) {
-        throw err;
-      }
-      if (params.condensedSummary && params.condensedSummary.length > 0) {
-        return `Agronómicamente, revisando los puntos clave condensados del cultivo:\n\n${params.condensedSummary.map((p) => `• ${p}`).join('\n')}\n\nRecomendación: Mantén los rangos de pH (6.0 - 6.5) y VPD (0.9 - 1.3 kPa) acordes a la etapa actual de desarrollo para maximizar absorción.`;
-      }
-      return `Agronómicamente, para la etapa actual se recomienda mantener un control riguroso de pH (6.0 - 6.5 en tierra / 5.8 en hidro), VPD en torno a 1.0 - 1.3 kPa y asegurar buena aireación del sustrato.`;
-    }
-  },
+    const res = await this.chatWithCropContext({
+      message: params.question,
+      history: (params.chatHistory || []).map((h, i) => ({
+        id: `hist-${i}`,
+        sender: h.role === 'user' ? 'user' : 'assistant',
+        text: h.content,
+        timestamp: '',
+      })),
+      cultivation: dummyCultivation,
+      recentWaterings: params.cultivationContext?.recentWaterings || [],
+      recentEnv: params.cultivationContext?.recentEnv || [],
+      recentPhotos: [],
+      recentNotes: [],
+      condensedSummary: params.condensedSummary,
+    });
 
-  async getWeeklySummary(params: {
-    cultivations: { name: string; stage: string; genetics?: string }[];
-    wateringsCount: number;
-    recentEnvAvg?: { tempC: number; humidityPct: number };
-  }): Promise<string> {
-    const cropsText = params.cultivations.map((c) => `${c.name} (${c.stage})`).join(', ');
-    return `Tus carpas se encuentran con parámetros estables. Tienes activos los cultivos: ${cropsText || 'Carpa Principal'}. Se registraron ${params.wateringsCount} eventos de riego esta semana con un ambiente promedio de ${params.recentEnvAvg?.tempC || 24}°C y ${params.recentEnvAvg?.humidityPct || 55}% HR. Se sugiere mantener el monitoreo continuo de VPD.`;
+    return res.reply;
   },
 
   async analyzePhotoWithGemini(params: {
+    photoId?: string;
+    cultivationId?: string;
+    storagePath?: string;
     photoBase64OrUrl: string;
     category?: string;
     userComments?: string;
@@ -179,8 +200,8 @@ export const aiService = {
       genetics?: string;
       type: string;
       substrate?: string;
-      recentWatering?: any;
-      recentEnv?: any;
+      recentWatering?: Watering;
+      recentEnv?: EnvironmentRecord;
     };
   }): Promise<{
     observed: string;
@@ -189,15 +210,16 @@ export const aiService = {
     missingInformation: string[];
     confidence: 'Baja' | 'Media' | 'Alta';
   }> {
+    const headers = await getAuthHeaders();
     const response = await fetch('/api/ai/analyze-photo', {
       method: 'POST',
-      headers: await getAuthHeaders(),
+      headers,
       body: JSON.stringify(params),
     });
 
     if (!response.ok) {
-      const err = await response.json().catch(() => ({ error: 'Error analizando imagen' }));
-      throw new Error(err.error || 'Error en análisis con Cultiveta IA');
+      const err = await response.json().catch(() => ({ error: 'Error de comunicación con el servicio de IA' }));
+      throw new Error(err.error || `Error en análisis con Cultiveta IA (HTTP ${response.status})`);
     }
 
     return await response.json();
@@ -207,10 +229,10 @@ export const aiService = {
     message: string;
     history: AIConversationMessage[];
     cultivation: Cultivation;
-    recentWaterings: any[];
-    recentEnv: any[];
-    recentPhotos: any[];
-    recentNotes: any[];
+    recentWaterings: Watering[];
+    recentEnv: EnvironmentRecord[];
+    recentPhotos: PhotoRecord[];
+    recentNotes: DiaryEntry[];
     condensedSummary?: string[];
   }): Promise<{
     reply: string;
@@ -220,9 +242,10 @@ export const aiService = {
       datesReferenced: string[];
     };
   }> {
+    const headers = await getAuthHeaders();
     const response = await fetch('/api/ai/chat', {
       method: 'POST',
-      headers: await getAuthHeaders(),
+      headers,
       body: JSON.stringify(params),
     });
 
@@ -236,10 +259,10 @@ export const aiService = {
 
   async get7DaySummary(params: {
     cultivation: Cultivation;
-    waterings7d: any[];
-    env7d: any[];
-    photos7d: any[];
-    notes7d: any[];
+    waterings7d: Watering[];
+    env7d: EnvironmentRecord[];
+    photos7d: PhotoRecord[];
+    notes7d: DiaryEntry[];
   }): Promise<{
     summary: string;
     wateringsCount: number;
@@ -249,9 +272,10 @@ export const aiService = {
     notableObservations: string[];
     missingDataTips: string[];
   }> {
+    const headers = await getAuthHeaders();
     const response = await fetch('/api/ai/summary', {
       method: 'POST',
-      headers: await getAuthHeaders(),
+      headers,
       body: JSON.stringify(params),
     });
 
@@ -263,9 +287,54 @@ export const aiService = {
     return await response.json();
   },
 
+  async getWeeklySummary(params: {
+    cultivations: { name: string; stage: string; genetics?: string }[];
+    wateringsCount: number;
+    recentEnvAvg: { tempC: number; humidityPct: number };
+  }): Promise<string> {
+    const cropNames = params.cultivations.map((c) => c.name).join(', ') || 'Cultivos activos';
+    const dummyCultivation: Cultivation = {
+      id: 'all',
+      userId: 'user',
+      name: cropNames,
+      startDate: new Date().toISOString(),
+      type: 'Indoor',
+      plantCount: params.cultivations.length,
+      currentStage: (params.cultivations[0]?.stage as any) || 'Vegetativo',
+      stageStartDate: new Date().toISOString(),
+      substrate: { type: 'Tierra', potVolumeLiters: 10, potType: 'Geotextil' },
+      status: 'Óptimo',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    try {
+      const res = await this.get7DaySummary({
+        cultivation: dummyCultivation,
+        waterings7d: Array(params.wateringsCount).fill({} as any),
+        env7d: [
+          {
+            id: 'avg',
+            userId: 'user',
+            cultivationId: 'all',
+            date: new Date().toISOString(),
+            temperatureC: params.recentEnvAvg.tempC,
+            humidityPct: params.recentEnvAvg.humidityPct,
+            createdAt: new Date().toISOString(),
+          },
+        ],
+        photos7d: [],
+        notes7d: [],
+      });
+      return res.summary;
+    } catch {
+      return `Resumen semanal: ${params.cultivations.length} cultivo(s) en seguimiento (${cropNames}). Riegos registrados: ${params.wateringsCount}. Parámetros climáticos promedio: ${params.recentEnvAvg.tempC}°C y ${params.recentEnvAvg.humidityPct}% HR.`;
+    }
+  },
+
   async comparePhotos(params: {
-    photoA: { url: string; day: number; stage: string };
-    photoB: { url: string; day: number; stage: string };
+    photoA: { id?: string; cultivationId?: string; storagePath?: string; url: string; dayOfCultivation?: number; day?: number; stage: string };
+    photoB: { id?: string; cultivationId?: string; storagePath?: string; url: string; dayOfCultivation?: number; day?: number; stage: string };
     geneticsName?: string;
   }): Promise<{
     visualChanges: string;
@@ -273,9 +342,10 @@ export const aiService = {
     healthNotes: string;
     confidence: 'Baja' | 'Media' | 'Alta';
   }> {
+    const headers = await getAuthHeaders();
     const response = await fetch('/api/ai/compare-photos', {
       method: 'POST',
-      headers: await getAuthHeaders(),
+      headers,
       body: JSON.stringify(params),
     });
 

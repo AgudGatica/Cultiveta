@@ -6,53 +6,135 @@ import {
   deleteDoc,
   query,
   where,
-  orderBy,
   onSnapshot,
   Unsubscribe
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../firebase/config';
-import { PhotoRecord, CultivationStageName, PhotoCategory } from '../types';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { db, storage, auth } from '../firebase/config';
+import { PhotoRecord, CultivationStageName, PhotoCategory, PhotoSyncStatus } from '../types';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
 import { localStore } from './localStore';
 import { photoOfflineQueue } from './photoOfflineQueue';
+import { getPhotoStoragePath, FIRESTORE_COLLECTIONS } from '../firebase/paths';
 
 export const photoService = {
+  /**
+   * Suscribe en tiempo real a las fotos del usuario autenticado,
+   * unificando resultados remotos de Firestore con elementos pendientes en IndexedDB.
+   */
   subscribePhotos(userId: string, callback: (photos: PhotoRecord[]) => void): Unsubscribe {
-    const unsubLocal = localStore.subscribe<PhotoRecord>('photos', userId, (localList) => {
-      callback(localList.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()));
+    // 1. Suscripción a cambios reactivos del almacén local
+    const unsubLocal = localStore.subscribe<PhotoRecord>('photos', userId, async (localList) => {
+      // Unir con fotos pendientes de IndexedDB
+      const pendingItems = await photoOfflineQueue.getQueuedPhotos(userId);
+      const mergedMap = new Map<string, PhotoRecord>();
+
+      localList.forEach((p) => mergedMap.set(p.id, p));
+
+      pendingItems.forEach((item) => {
+        if (!mergedMap.has(item.id)) {
+          mergedMap.set(item.id, {
+            id: item.id,
+            userId: item.userId,
+            cultivationId: item.cultivationId,
+            url: item.cloudDownloadUrl || '',
+            storagePath: item.storagePath,
+            syncStatus: item.status as PhotoSyncStatus,
+            syncError: item.lastError,
+            fileSize: item.fileSize,
+            mimeType: item.fileType,
+            date: item.date,
+            dayOfCultivation: item.dayOfCultivation,
+            stage: item.stage,
+            category: item.category,
+            caption: item.caption,
+            isDemo: item.isDemo,
+            isPendingSync: true,
+            createdAt: item.createdAt,
+          });
+        }
+      });
+
+      const sorted = Array.from(mergedMap.values()).sort(
+        (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
+      );
+      callback(sorted);
     });
 
+    // 2. Suscripción remota a Cloud Firestore con restricción de propiedad (where userId == userId)
     let unsubFirestore: Unsubscribe = () => {};
     try {
       const q = query(
-        collection(db, 'photos'),
+        collection(db, FIRESTORE_COLLECTIONS.PHOTOS),
         where('userId', '==', userId)
       );
+
       unsubFirestore = onSnapshot(
         q,
-        (snap) => {
-          const cloudList = snap.docs
-            .map((d) => ({ id: d.id, ...d.data() } as PhotoRecord))
-            .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+        async (snap) => {
+          const cloudList = snap.docs.map((d) => {
+            const data = d.data();
+            return {
+              id: d.id,
+              ...data,
+              isPendingSync: false,
+              syncStatus: 'synced',
+            } as PhotoRecord;
+          });
 
-          if (cloudList.length > 0) {
-            const currentLocal = localStore.getItems<PhotoRecord>('photos', userId);
-            const mergedMap = new Map<string, PhotoRecord>();
-            currentLocal.forEach((p) => mergedMap.set(p.id, p));
-            cloudList.forEach((p) => mergedMap.set(p.id, p));
-            const merged = Array.from(mergedMap.values()).sort(
-              (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
-            );
-            localStore.saveAll('photos', userId, merged);
-          }
+          // Obtener pendientes de IndexedDB para no pisar fotos que aún se están subiendo
+          const pendingItems = await photoOfflineQueue.getQueuedPhotos(userId);
+          const currentLocal = localStore.getItems<PhotoRecord>('photos', userId);
+          const mergedMap = new Map<string, PhotoRecord>();
+
+          // Primero colocamos las remotas confirmadas
+          cloudList.forEach((p) => mergedMap.set(p.id, p));
+
+          // Si hay fotos locales que están pendientes de sincronizar, mantener su estado
+          currentLocal.forEach((p) => {
+            if (p.isPendingSync) {
+              mergedMap.set(p.id, p);
+            }
+          });
+
+          // Agregar elementos de IndexedDB pendientes
+          pendingItems.forEach((item) => {
+            const existing = mergedMap.get(item.id);
+            if (!existing || existing.isPendingSync) {
+              mergedMap.set(item.id, {
+                id: item.id,
+                userId: item.userId,
+                cultivationId: item.cultivationId,
+                url: item.cloudDownloadUrl || existing?.url || '',
+                storagePath: item.storagePath,
+                syncStatus: item.status as PhotoSyncStatus,
+                syncError: item.lastError,
+                fileSize: item.fileSize,
+                mimeType: item.fileType,
+                date: item.date,
+                dayOfCultivation: item.dayOfCultivation,
+                stage: item.stage,
+                category: item.category,
+                caption: item.caption,
+                isDemo: item.isDemo,
+                isPendingSync: true,
+                createdAt: item.createdAt,
+              });
+            }
+          });
+
+          const merged = Array.from(mergedMap.values()).sort(
+            (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
+          );
+
+          localStore.saveAll('photos', userId, merged);
         },
         (error) => {
-          console.warn('Firestore onSnapshot photos unavailable, using local:', error.message);
+          console.warn('[photoService] onSnapshot photos no disponible (modo offline o sin red):', error.message);
         }
       );
     } catch (err) {
-      console.warn('Could not establish Firestore photos subscription:', err);
+      console.warn('[photoService] No se pudo establecer listener en Firestore:', err);
     }
 
     return () => {
@@ -61,114 +143,118 @@ export const photoService = {
     };
   },
 
+  /**
+   * Obtiene las fotos de un cultivo determinado uniendo remotas y pendientes locales.
+   */
   async getPhotosByCultivation(cultivationId: string, userId?: string): Promise<PhotoRecord[]> {
-    const targetUserId = userId || (typeof window !== 'undefined' ? localStorage.getItem('cultiveta_last_user_id') || 'default_user' : 'default_user');
-    const local = localStore.getItems<PhotoRecord>('photos', targetUserId)
+    const targetUserId =
+      userId ||
+      (typeof window !== 'undefined'
+        ? localStorage.getItem('cultiveta_last_user_id') || 'default_user'
+        : 'default_user');
+
+    const local = localStore
+      .getItems<PhotoRecord>('photos', targetUserId)
       .filter((p) => p.cultivationId === cultivationId);
+
+    const mergedMap = new Map<string, PhotoRecord>();
+    local.forEach((p) => mergedMap.set(p.id, p));
+
+    // Agregar pendientes de IndexedDB
+    try {
+      const pending = await photoOfflineQueue.getQueuedPhotos(targetUserId);
+      pending
+        .filter((item) => item.cultivationId === cultivationId)
+        .forEach((item) => {
+          if (!mergedMap.has(item.id)) {
+            mergedMap.set(item.id, {
+              id: item.id,
+              userId: item.userId,
+              cultivationId: item.cultivationId,
+              url: item.cloudDownloadUrl || '',
+              storagePath: item.storagePath,
+              syncStatus: item.status as PhotoSyncStatus,
+              syncError: item.lastError,
+              fileSize: item.fileSize,
+              mimeType: item.fileType,
+              date: item.date,
+              dayOfCultivation: item.dayOfCultivation,
+              stage: item.stage,
+              category: item.category,
+              caption: item.caption,
+              isDemo: item.isDemo,
+              isPendingSync: true,
+              createdAt: item.createdAt,
+            });
+          }
+        });
+    } catch {}
 
     try {
       const q = query(
-        collection(db, 'photos'),
-        where('cultivationId', '==', cultivationId)
+        collection(db, FIRESTORE_COLLECTIONS.PHOTOS),
+        where('cultivationId', '==', cultivationId),
+        where('userId', '==', targetUserId)
       );
       const snap = await getDocs(q);
-      const cloud = snap.docs
-        .map((d) => ({ id: d.id, ...d.data() } as PhotoRecord));
-
-      if (cloud.length > 0) {
-        const mergedMap = new Map<string, PhotoRecord>();
-        local.forEach((p) => mergedMap.set(p.id, p));
-        cloud.forEach((p) => mergedMap.set(p.id, p));
-        return Array.from(mergedMap.values()).sort(
-          (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
-        );
-      }
-    } catch (e) {
-      // Fallback
-    }
-    return local.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
-  },
-
-  async uploadPhotoFile(userId: string, cultivationId: string, file: File): Promise<string> {
-    try {
-      const timestamp = Date.now();
-      const storageRef = ref(storage, `users/${userId}/cultivations/${cultivationId}/${timestamp}_${file.name}`);
-      const snapshot = await uploadBytes(storageRef, file);
-      const downloadUrl = await getDownloadURL(snapshot.ref);
-      return downloadUrl;
-    } catch (err) {
-      console.warn('Storage upload fallback to compressed base64', err);
-      return await this.compressAndReadFileAsDataUrl(file);
-    }
-  },
-
-  compressAndReadFileAsDataUrl(file: File, maxDimension = 1200, quality = 0.82): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > maxDimension) {
-              height = Math.round((height * maxDimension) / width);
-              width = maxDimension;
-            }
-          } else {
-            if (height > maxDimension) {
-              width = Math.round((width * maxDimension) / height);
-              height = maxDimension;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          if (!ctx) {
-            resolve(e.target?.result as string);
-            return;
-          }
-          ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL('image/jpeg', quality));
-        };
-        img.onerror = () => resolve(e.target?.result as string);
-        img.src = e.target?.result as string;
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  },
-
-  async addPhotoRecord(data: Omit<PhotoRecord, 'id' | 'createdAt'>): Promise<PhotoRecord> {
-    const docRef = doc(collection(db, 'photos'));
-    const now = new Date().toISOString();
-    const newPhoto: PhotoRecord = {
-      ...data,
-      id: docRef.id,
-      createdAt: now,
-    };
-
-    localStore.saveItem('photos', newPhoto);
-
-    try {
-      const cleaned = cleanFirestoreData(newPhoto);
-      setDoc(docRef, cleaned).catch((err) => {
-        console.warn('Firestore setDoc photos pending or unavailable:', err?.message || err);
+      snap.docs.forEach((d) => {
+        const cloudPhoto = { id: d.id, ...d.data(), isPendingSync: false, syncStatus: 'synced' } as PhotoRecord;
+        mergedMap.set(d.id, cloudPhoto);
       });
-    } catch (err) {
-      console.warn('Serialization error on photoRecord:', err);
+    } catch {
+      // Offline fallback
     }
 
-    return newPhoto;
+    return Array.from(mergedMap.values()).sort(
+      (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
+    );
   },
 
   /**
-   * Guarda una foto soportando modo sin conexión / mala conectividad mediante IndexedDB.
-   * Si no hay conexión o falla la subida a Firebase, encola la foto en IndexedDB y retorna
-   * un registro optimista con `isPendingSync: true`.
+   * Sube el archivo binario a Firebase Storage utilizando una ruta determinista
+   * vinculada a UID, cultivo y photoId (FASE 2).
+   * NUNCA captura errores para convertirlos en base64 de mentira.
+   */
+  async uploadPhotoFile(
+    userId: string,
+    cultivationId: string,
+    photoIdOrFile: string | File | Blob,
+    fileOrExt?: File | Blob | string,
+    extension = 'jpg'
+  ): Promise<{ downloadUrl: string; storagePath: string }> {
+    let photoId: string;
+    let file: File | Blob;
+    let ext = extension;
+
+    if (typeof photoIdOrFile === 'string') {
+      photoId = photoIdOrFile;
+      file = fileOrExt as File | Blob;
+    } else {
+      photoId = 'photo_' + Date.now();
+      file = photoIdOrFile;
+      ext = typeof fileOrExt === 'string' ? fileOrExt : ((file as File).name?.split('.').pop() || 'jpg');
+    }
+
+    const storagePath = getPhotoStoragePath(userId, cultivationId, photoId, ext);
+    const storageRef = ref(storage, storagePath);
+
+    const snapshot = await uploadBytes(storageRef, file, {
+      contentType: file.type || 'image/jpeg',
+    });
+
+    const downloadUrl = await getDownloadURL(snapshot.ref);
+    return { downloadUrl, storagePath };
+  },
+
+  /**
+   * Guarda una foto separando:
+   * 1. Binario en IndexedDB (respaldo local garantizado).
+   * 2. Subida a Firebase Storage con identificador estable.
+   * 3. Metadatos en Cloud Firestore.
+   * 4. Estado visible en la UI.
+   *
+   * Si la red se corta, NO bloquea el modal: la foto queda encolada de forma segura
+   * en IndexedDB con estado 'queued' para que autoSync la complete en background.
    */
   async savePhotoWithOfflineFallback(params: {
     userId: string;
@@ -180,125 +266,121 @@ export const photoService = {
     category: PhotoCategory;
     caption?: string;
     isDemo?: boolean;
+    previewUrl?: string;
   }): Promise<{ photo: PhotoRecord; enqueuedOffline: boolean }> {
-    const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
-    const previewDataUrl = await this.compressAndReadFileAsDataUrl(params.file);
-    const photoId = doc(collection(db, 'photos')).id;
+    // 1. Identificador determinista estable generado una única vez
+    const photoId = doc(collection(db, FIRESTORE_COLLECTIONS.PHOTOS)).id;
+    const ext = params.file.name.split('.').pop() || 'jpg';
+    const storagePath = getPhotoStoragePath(params.userId, params.cultivationId, photoId, ext);
 
-    // Si el usuario está explícitamente offline, encolar en IndexedDB directamente
-    if (!isOnline) {
-      console.log('[photoService] Navegador sin conexión. Encolando fotografía en IndexedDB...');
-      await photoOfflineQueue.enqueuePhoto({
-        id: photoId,
-        userId: params.userId,
-        cultivationId: params.cultivationId,
-        file: params.file,
-        previewDataUrl,
-        date: params.date,
-        dayOfCultivation: params.dayOfCultivation,
-        stage: params.stage,
-        category: params.category,
-        caption: params.caption,
-        isDemo: params.isDemo,
+    // 2. Encolar en IndexedDB inmediatamente para garantizar que el archivo esté a salvo en disco
+    await photoOfflineQueue.enqueuePhoto({
+      id: photoId,
+      userId: params.userId,
+      cultivationId: params.cultivationId,
+      file: params.file,
+      fileName: params.file.name,
+      fileType: params.file.type,
+      date: params.date,
+      dayOfCultivation: params.dayOfCultivation,
+      stage: params.stage,
+      category: params.category,
+      caption: params.caption,
+      isDemo: params.isDemo,
+      previewUrl: params.previewUrl,
+    });
+
+    const initialPhoto: PhotoRecord = {
+      id: photoId,
+      userId: params.userId,
+      cultivationId: params.cultivationId,
+      url: params.previewUrl || '',
+      storagePath,
+      syncStatus: 'queued',
+      fileSize: params.file.size,
+      mimeType: params.file.type,
+      date: params.date,
+      dayOfCultivation: params.dayOfCultivation,
+      stage: params.stage,
+      category: params.category,
+      caption: params.caption,
+      isDemo: params.isDemo,
+      isPendingSync: true,
+      createdAt: new Date().toISOString(),
+    };
+
+    // 3. Si hay conexión a internet activa, intentar sincronizar de inmediato
+    if (typeof navigator !== 'undefined' && navigator.onLine) {
+      // Disparar sincronización en segundo plano sin bloquear el cierre del modal
+      photoOfflineQueue.syncPendingPhotos(params.userId).catch((err) => {
+        console.warn('[photoService] Sincronización inmediata pospuesta:', err);
       });
-
-      const optimisticPhoto: PhotoRecord = {
-        id: photoId,
-        userId: params.userId,
-        cultivationId: params.cultivationId,
-        url: previewDataUrl,
-        date: params.date,
-        dayOfCultivation: params.dayOfCultivation,
-        stage: params.stage,
-        category: params.category,
-        caption: params.caption,
-        isDemo: params.isDemo,
-        isPendingSync: true,
-        createdAt: new Date().toISOString(),
-      };
-
-      return { photo: optimisticPhoto, enqueuedOffline: true };
     }
 
-    // Si está online, intentar subir a Firebase Storage
+    return { photo: initialPhoto, enqueuedOffline: true };
+  },
+
+  /**
+   * Elimina una fotografía tanto remotamente (Firestore + Storage) como localmente (IndexedDB + localStore).
+   */
+  async deletePhoto(photoId: string, userId: string, cultivationId?: string, storagePath?: string): Promise<void> {
+    // 1. Limpiar de IndexedDB si estuviese en cola
+    await photoOfflineQueue.cleanupConfirmedPhoto(photoId);
+
+    // 2. Limpiar de localStore
+    localStore.deleteItem('photos', photoId, userId);
+
+    // 3. Eliminar documento de Cloud Firestore
     try {
-      const finalUrl = await this.uploadPhotoFile(params.userId, params.cultivationId, params.file);
-      const newPhoto: PhotoRecord = {
-        id: photoId,
-        userId: params.userId,
-        cultivationId: params.cultivationId,
-        url: finalUrl,
-        date: params.date,
-        dayOfCultivation: params.dayOfCultivation,
-        stage: params.stage,
-        category: params.category,
-        caption: params.caption,
-        isDemo: params.isDemo,
-        isPendingSync: false,
-        createdAt: new Date().toISOString(),
-      };
+      const docRef = doc(db, FIRESTORE_COLLECTIONS.PHOTOS, photoId);
+      await deleteDoc(docRef);
+    } catch (e) {
+      console.warn('[photoService] Error al eliminar documento en Firestore:', e);
+    }
 
-      localStore.saveItem('photos', newPhoto);
+    // 4. Eliminar archivo de Firebase Storage
+    try {
+      const targetPath =
+        storagePath ||
+        (cultivationId ? getPhotoStoragePath(userId, cultivationId, photoId) : null);
 
-      try {
-        const docRef = doc(db, 'photos', photoId);
-        const cleaned = cleanFirestoreData(newPhoto);
-        await setDoc(docRef, cleaned);
-      } catch (firestoreErr) {
-        console.warn('Firestore setDoc failed, kept in localStore:', firestoreErr);
+      if (targetPath) {
+        const storageRef = ref(storage, targetPath);
+        await deleteObject(storageRef);
       }
-
-      return { photo: newPhoto, enqueuedOffline: false };
-    } catch (uploadErr) {
-      console.warn('[photoService] Falló la subida online. Encolando en IndexedDB como resguardo:', uploadErr);
-      await photoOfflineQueue.enqueuePhoto({
-        id: photoId,
-        userId: params.userId,
-        cultivationId: params.cultivationId,
-        file: params.file,
-        previewDataUrl,
-        date: params.date,
-        dayOfCultivation: params.dayOfCultivation,
-        stage: params.stage,
-        category: params.category,
-        caption: params.caption,
-        isDemo: params.isDemo,
-      });
-
-      const optimisticPhoto: PhotoRecord = {
-        id: photoId,
-        userId: params.userId,
-        cultivationId: params.cultivationId,
-        url: previewDataUrl,
-        date: params.date,
-        dayOfCultivation: params.dayOfCultivation,
-        stage: params.stage,
-        category: params.category,
-        caption: params.caption,
-        isDemo: params.isDemo,
-        isPendingSync: true,
-        createdAt: new Date().toISOString(),
-      };
-
-      return { photo: optimisticPhoto, enqueuedOffline: true };
+    } catch (e) {
+      // Puede que no estuviese aún en Storage o ya se hubiese borrado
     }
   },
 
-  async deletePhotoRecord(id: string, userId?: string): Promise<void> {
-    photoOfflineQueue.removeQueuedPhoto(id).catch(() => {});
-    if (userId) {
-      localStore.deleteItem('photos', id, userId);
-    } else if (typeof window !== 'undefined') {
-      const lastUid = localStorage.getItem('cultiveta_last_user_id') || 'default_user';
-      localStore.deleteItem('photos', id, lastUid);
-    }
+  async deletePhotoRecord(photoId: string, userId?: string, cultivationId?: string): Promise<void> {
+    const targetUid = userId || (auth.currentUser ? auth.currentUser.uid : 'default_user');
+    return this.deletePhoto(photoId, targetUid, cultivationId);
+  },
+
+  /**
+   * Agrega un registro directamente a Firestore y localStore
+   */
+  async addPhotoRecord(data: Omit<PhotoRecord, 'id' | 'createdAt'>): Promise<PhotoRecord> {
+    const docRef = doc(collection(db, FIRESTORE_COLLECTIONS.PHOTOS));
+    const now = new Date().toISOString();
+    const newPhoto: PhotoRecord = {
+      ...data,
+      id: docRef.id,
+      createdAt: now,
+      syncStatus: 'synced',
+      isPendingSync: false,
+    };
+
+    localStore.saveItem('photos', newPhoto);
+
     try {
-      const docRef = doc(db, 'photos', id);
-      deleteDoc(docRef).catch((err) => {
-        console.warn('Firestore deleteDoc photos failed:', err?.message || err);
-      });
+      const cleaned = cleanFirestoreData(newPhoto);
+      await setDoc(docRef, cleaned);
     } catch (err) {
-      console.warn('deleteDoc error on photos:', err);
+      console.warn('[photoService] Fallo guardando photoRecord en Firestore:', err);
     }
-  }
+
+    return newPhoto;
+  },
 };

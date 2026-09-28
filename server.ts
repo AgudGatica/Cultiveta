@@ -7,6 +7,7 @@ import { createServer as createViteServer } from 'vite';
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getAuth, DecodedIdToken } from 'firebase-admin/auth';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
 import { CultivationTask } from './src/types';
 
 dotenv.config();
@@ -91,41 +92,33 @@ export const verifyFirebaseAuth: express.RequestHandler = async (req, res, next)
     });
   }
 
-  // 3. Soporte para tokens de demostración y usuarios locales
-  if (
-    idToken === 'mock-token' ||
-    idToken.startsWith('mock-') ||
-    idToken.startsWith('demo-')
-  ) {
-    const userUid = idToken.replace('demo-token-', '') || 'demo_cultiveta_user';
-    req.user = { uid: userUid, email: 'demo@cultiveta.app' } as any;
-    req.userId = userUid;
-    return next();
+  // 3. Inicializar Firebase Admin SDK con manejo de errores de configuración
+  let adminApp: App;
+  let adminAuth: ReturnType<typeof getAuth>;
+  try {
+    adminApp = getFirebaseAdmin();
+    adminAuth = getAuth(adminApp);
+  } catch (initErr: any) {
+    console.error('[verifyFirebaseAuth] Error interno inicializando Firebase Admin SDK:', initErr);
+    return res.status(500).json({
+      error: 'Error interno en la configuración de autenticación del servidor.',
+      code: 'auth/server-config-error',
+    });
   }
 
+  // 4. Validar estrictamente el JWT emitido por Firebase Auth
   try {
-    const adminApp = getFirebaseAdmin();
-    const adminAuth = getAuth(adminApp);
-
-    // 4. Validar el JWT emitido por Firebase Auth
     const decodedToken = await adminAuth.verifyIdToken(idToken);
 
-    // 5. Inyectar la identidad del usuario a la petición Express
+    // Inyectar la identidad verificada del usuario en la petición Express
     req.user = decodedToken;
     req.userId = decodedToken.uid;
 
     return next();
   } catch (error: any) {
-    console.warn('[verifyFirebaseAuth] Error validando ID Token con Firebase Admin:', error?.message || error);
+    console.warn('[verifyFirebaseAuth] Verificación de token fallida:', error?.code || error?.message);
 
-    // Fallback permisivo si el token fue generado localmente en desarrollo
-    if (idToken.length > 0) {
-      req.user = { uid: 'authenticated_user', email: 'user@cultiveta.app' } as any;
-      req.userId = 'authenticated_user';
-      return next();
-    }
-
-    // Manejo granular de errores comunes de autenticación
+    // Manejo granular de errores de autenticación
     if (error?.code === 'auth/id-token-expired') {
       return res.status(401).json({
         error: 'Acceso no autorizado: El token de sesión ha expirado. Por favor renueva tu sesión.',
@@ -140,9 +133,16 @@ export const verifyFirebaseAuth: express.RequestHandler = async (req, res, next)
       });
     }
 
+    if (error?.code === 'auth/argument-error' || error?.code === 'auth/invalid-id-token') {
+      return res.status(401).json({
+        error: 'Acceso no autorizado: Token de autenticación inválido o malformado.',
+        code: 'auth/invalid-token',
+      });
+    }
+
     return res.status(401).json({
-      error: 'Acceso no autorizado: Token de autenticación inválido o alterado.',
-      code: 'auth/invalid-token',
+      error: 'Acceso no autorizado: Token de autenticación inválido, expirado o manipulado.',
+      code: error?.code || 'auth/invalid-token',
     });
   }
 };
@@ -168,43 +168,146 @@ app.get('/api/health', (req, res) => {
 // Proteger todas las rutas /api/ai/* con el middleware de Firebase Auth
 app.use('/api/ai', verifyFirebaseAuth);
 
-// 2. Photo Analysis (Gemini Multimodal) - Protegido por verifyFirebaseAuth
-app.post('/api/ai/analyze-photo', async (req, res) => {
-  try {
-    const { photoBase64OrUrl, category, userComments, cultivationContext } = req.body;
+// Helper para resolver de forma segura y tipada los bytes de una imagen para Gemini Multimodal
+// Previene vulnerabilidades SSRF (no descarga URLs externas no verificadas) y utiliza Firebase Admin Storage SDK
+async function resolveImagePart(
+  reqUserId: string,
+  body: {
+    photoId?: string;
+    cultivationId?: string;
+    storagePath?: string;
+    photoBase64OrUrl?: string;
+  }
+): Promise<{ inlineData: { mimeType: string; data: string } } | null> {
+  const { photoId, cultivationId, storagePath, photoBase64OrUrl } = body;
 
-    if (!photoBase64OrUrl) {
-      return res.status(400).json({ error: 'Se requiere una imagen para el análisis' });
+  // 1. Obtener desde Firebase Storage Bucket mediante SDK Admin
+  const targetPath =
+    storagePath ||
+    (photoId && cultivationId ? `users/${reqUserId}/cultivations/${cultivationId}/photos/${photoId}.jpg` : null);
+
+  if (targetPath) {
+    // Validar aislamiento de inquilino (tenant isolation): la ruta DEBE pertenecer al usuario autenticado
+    if (!targetPath.startsWith(`users/${reqUserId}/`)) {
+      throw new Error('Acceso denegado: No tienes permiso para acceder a esta fotografía.');
     }
 
-    const ai = getAIClient();
-
-    // Prepare image part
-    let imagePart: any;
-    if (photoBase64OrUrl.startsWith('data:')) {
-      const match = photoBase64OrUrl.match(/^data:(image\/\w+);base64,(.+)$/);
-      if (match) {
-        imagePart = {
+    try {
+      const adminApp = getFirebaseAdmin();
+      const bucketName =
+        process.env.FIREBASE_STORAGE_BUCKET ||
+        'gen-lang-client-0531791519.firebasestorage.app';
+      const bucket = getStorage(adminApp).bucket(bucketName);
+      const file = bucket.file(targetPath);
+      const [exists] = await file.exists();
+      if (exists) {
+        const [buffer] = await file.download();
+        const [metadata] = await file.getMetadata();
+        const mimeType = (metadata.contentType as string) || 'image/jpeg';
+        return {
           inlineData: {
-            mimeType: match[1],
-            data: match[2],
-          },
-        };
-      } else {
-        const parts = photoBase64OrUrl.split(',');
-        imagePart = {
-          inlineData: {
-            mimeType: 'image/jpeg',
-            data: parts[1] || parts[0],
+            mimeType,
+            data: buffer.toString('base64'),
           },
         };
       }
-    } else {
-      // Remote URL or fallback
-      imagePart = {
-        text: `URL de la fotografía del cultivo para análisis: ${photoBase64OrUrl}`,
-      };
+    } catch (storageErr) {
+      console.warn('[resolveImagePart] Error leyendo imagen desde Firebase Storage bucket:', storageErr);
     }
+  }
+
+  // 2. Imagen en base64 (Data URL) enviada por el cliente
+  if (photoBase64OrUrl && photoBase64OrUrl.startsWith('data:image/')) {
+    const match = photoBase64OrUrl.match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/i);
+    if (!match) {
+      throw new Error('Formato de imagen no soportado. Debe ser JPEG, PNG o WebP en base64.');
+    }
+    const mimeType = match[1].toLowerCase();
+    const data = match[2];
+
+    // Límite de tamaño máximo: 10 MB
+    const approximateBytes = (data.length * 3) / 4;
+    if (approximateBytes > 10 * 1024 * 1024) {
+      throw new Error('La imagen excede el límite máximo de tamaño permitido (10 MB).');
+    }
+
+    return {
+      inlineData: {
+        mimeType,
+        data,
+      },
+    };
+  }
+
+  // 3. URL de Firebase Storage del propio proyecto perteneciente al usuario autenticado
+  if (photoBase64OrUrl && typeof photoBase64OrUrl === 'string' && photoBase64OrUrl.startsWith('https://')) {
+    const isFirebaseStorage =
+      photoBase64OrUrl.includes('firebasestorage.googleapis.com') ||
+      photoBase64OrUrl.includes('firebasestorage.app');
+
+    const containsUserOwnership =
+      photoBase64OrUrl.includes(encodeURIComponent(`users/${reqUserId}/`)) ||
+      photoBase64OrUrl.includes(`users/${reqUserId}/`);
+
+    if (isFirebaseStorage && containsUserOwnership) {
+      try {
+        const resp = await fetch(photoBase64OrUrl, { signal: AbortSignal.timeout(9000) });
+        if (resp.ok) {
+          const contentType = resp.headers.get('content-type') || 'image/jpeg';
+          if (!contentType.startsWith('image/')) {
+            throw new Error('El archivo recuperado no corresponde a una imagen válida.');
+          }
+          const arrayBuf = await resp.arrayBuffer();
+          if (arrayBuf.byteLength > 10 * 1024 * 1024) {
+            throw new Error('La imagen excede el límite de 10 MB.');
+          }
+          return {
+            inlineData: {
+              mimeType: contentType,
+              data: Buffer.from(arrayBuf).toString('base64'),
+            },
+          };
+        }
+      } catch (fetchErr: any) {
+        console.warn('[resolveImagePart] Error descargando Storage URL verificada:', fetchErr?.message);
+      }
+    } else {
+      // Bloqueo explícito de URLs externas arbitrarias para prevenir SSRF
+      throw new Error(
+        'Por seguridad (protección SSRF), no se permite procesar URLs externas arbitrarias. Provee identificadores de registro o imagen en base64.'
+      );
+    }
+  }
+
+  return null;
+}
+
+// 2. Photo Analysis (Gemini Multimodal) - Protegido por verifyFirebaseAuth
+app.post('/api/ai/analyze-photo', async (req, res) => {
+  try {
+    const { photoId, cultivationId, storagePath, photoBase64OrUrl, category, userComments, cultivationContext } = req.body;
+    const userId = req.userId!;
+
+    // 1. Resolver y obtener los bytes reales de la imagen multimodal
+    let imagePart: { inlineData: { mimeType: string; data: string } } | null = null;
+    try {
+      imagePart = await resolveImagePart(userId, {
+        photoId,
+        cultivationId: cultivationId || cultivationContext?.id,
+        storagePath,
+        photoBase64OrUrl,
+      });
+    } catch (imageErr: any) {
+      return res.status(400).json({ error: imageErr?.message || 'Error validando la imagen suministrada.' });
+    }
+
+    if (!imagePart || !imagePart.inlineData?.data) {
+      return res.status(400).json({
+        error: 'No se pudo obtener el contenido visual de la imagen para su análisis. Asegúrate de que la foto exista y sea accesible.',
+      });
+    }
+
+    const ai = getAIClient();
 
     const contextPrompt = `
 Eres Cultiveta IA, el asistente inteligente y botánico de la aplicación Cultiveta.
@@ -232,12 +335,12 @@ Responde estrictamente en formato JSON válido con las siguientes claves:
 `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
+      model: 'gemini-3.8-flash',
       contents: [
         {
           role: 'user',
           parts: [
-            typeof imagePart === 'object' && imagePart.inlineData ? imagePart : { text: 'Fotografía adjunta' },
+            imagePart,
             { text: contextPrompt },
           ],
         },
@@ -248,21 +351,56 @@ Responde estrictamente en formato JSON válido con las siguientes claves:
       },
     });
 
-    const responseText = response.text || '{}';
-    let parsedResult;
+    const responseText = response.text || '';
+    if (!responseText.trim()) {
+      return res.status(502).json({
+        error: 'El modelo no devolvió una respuesta válida.',
+        code: 'ai/empty-response',
+      });
+    }
+
+    let parsedResult: any;
     try {
       parsedResult = JSON.parse(responseText);
     } catch {
-      parsedResult = {
-        observed: responseText,
-        possibleCauses: ['Se requiere mayor información para determinar causas.'],
-        relatedCultivationData: ['Contexto básico provisto.'],
-        missingInformation: ['Mediciones de pH y EC recientes.'],
-        confidence: 'Media',
-      };
+      return res.status(502).json({
+        error: 'Error al interpretar la respuesta generada por Cultiveta IA.',
+        code: 'ai/json-parse-error',
+      });
     }
 
-    res.json(parsedResult);
+    // Validación estricta en tiempo de ejecución (FASE 5)
+    if (
+      !parsedResult ||
+      typeof parsedResult.observed !== 'string' ||
+      !parsedResult.observed.trim() ||
+      !Array.isArray(parsedResult.possibleCauses) ||
+      parsedResult.possibleCauses.length === 0
+    ) {
+      return res.status(502).json({
+        error: 'El análisis de la imagen no arrojó resultados botánicos concluyentes. Por favor intenta con una foto más nítida.',
+        code: 'ai/invalid-structure',
+      });
+    }
+
+    // Asegurar estructura coherente
+    const validatedResult = {
+      observed: String(parsedResult.observed).trim(),
+      possibleCauses: Array.isArray(parsedResult.possibleCauses)
+        ? parsedResult.possibleCauses.map((c: any) => String(c).trim()).filter(Boolean)
+        : ['Observación botánica general'],
+      relatedCultivationData: Array.isArray(parsedResult.relatedCultivationData)
+        ? parsedResult.relatedCultivationData.map((d: any) => String(d).trim()).filter(Boolean)
+        : [],
+      missingInformation: Array.isArray(parsedResult.missingInformation)
+        ? parsedResult.missingInformation.map((m: any) => String(m).trim()).filter(Boolean)
+        : [],
+      confidence: ['Baja', 'Media', 'Alta'].includes(parsedResult.confidence)
+        ? parsedResult.confidence
+        : 'Media',
+    };
+
+    res.json(validatedResult);
   } catch (error: any) {
     console.error('Error in /api/ai/analyze-photo:', error);
     res.status(500).json({ error: error?.message || 'Error procesando análisis con Cultiveta IA' });
@@ -414,37 +552,91 @@ Responde en JSON con:
   }
 });
 
-// 5. Compare Photos Evolution
+// 5. Compare Photos Evolution (Multimodal Real)
 app.post('/api/ai/compare-photos', async (req, res) => {
   try {
     const { photoA, photoB, geneticsName } = req.body;
+    const userId = req.userId!;
+
+    if (!photoA || !photoB) {
+      return res.status(400).json({ error: 'Se requieren dos fotografías para la comparación.' });
+    }
+
+    // Resolver ambas imágenes multimodalmente
+    const [imagePartA, imagePartB] = await Promise.all([
+      resolveImagePart(userId, {
+        photoId: photoA.id,
+        cultivationId: photoA.cultivationId,
+        storagePath: photoA.storagePath,
+        photoBase64OrUrl: photoA.url,
+      }),
+      resolveImagePart(userId, {
+        photoId: photoB.id,
+        cultivationId: photoB.cultivationId,
+        storagePath: photoB.storagePath,
+        photoBase64OrUrl: photoB.url,
+      }),
+    ]);
+
+    if (!imagePartA || !imagePartB) {
+      return res.status(400).json({
+        error: 'No se pudieron recuperar los archivos de ambas fotografías para su comparación visual directa.',
+      });
+    }
 
     const ai = getAIClient();
 
     const prompt = `
-Eres Cultiveta IA. Compara la evolución visual entre dos etapas de un cultivo de genética "${geneticsName || 'desconocida'}":
-- Foto A: Día ${photoA?.day || 'X'} (Etapa: ${photoA?.stage || 'N/A'}) - URL/Ref: ${photoA?.url}
-- Foto B: Día ${photoB?.day || 'Y'} (Etapa: ${photoB?.stage || 'N/A'}) - URL/Ref: ${photoB?.url}
+Eres Cultiveta IA, botánico experto en cultivo y desarrollo vegetal.
+Compara la evolución visual real entre las dos fotografías adjuntas de un cultivo de genética "${geneticsName || 'desconocida'}":
+- Foto A (Primera): Día ${photoA?.dayOfCultivation || photoA?.day || 'X'} (Etapa: ${photoA?.stage || 'N/A'})
+- Foto B (Segunda / Posterior): Día ${photoB?.dayOfCultivation || photoB?.day || 'Y'} (Etapa: ${photoB?.stage || 'N/A'})
 
-Describe las diferencias visuales evolutivas con rigor botánico y honestidad.
-Responde en JSON con:
+Examina las imágenes proporcionadas y describe las diferencias visuales evolutivas con rigor botánico, precisión y honestidad.
+Responde estrictamente en formato JSON válido con la siguiente estructura:
 {
-  "visualChanges": "Descripción de cambios en tamaño, follaje, floración o coloración",
-  "structuralGrowth": "Análisis del desarrollo estructural y ramas/copas",
-  "healthNotes": "Observaciones sobre vigor y estado general visible",
-  "confidence": "Media"
+  "visualChanges": "Descripción concreta de cambios visuales en tamaño, follaje, coloración o maduración de flores entre ambas imágenes.",
+  "structuralGrowth": "Análisis del desarrollo estructural, grosor de tallos, internodos y vigor de ramas observado.",
+  "healthNotes": "Observaciones sobre salud foliar, turgencia y balance nutricional visible.",
+  "confidence": "Baja" | "Media" | "Alta"
 }
 `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.6-flash',
-      contents: prompt,
+      model: 'gemini-3.8-flash',
+      contents: [
+        {
+          role: 'user',
+          parts: [
+            imagePartA,
+            imagePartB,
+            { text: prompt },
+          ],
+        },
+      ],
       config: {
         responseMimeType: 'application/json',
+        temperature: 0.2,
       },
     });
 
-    res.json(JSON.parse(response.text || '{}'));
+    const responseText = response.text || '';
+    if (!responseText.trim()) {
+      return res.status(502).json({ error: 'Respuesta vacía del modelo de IA al comparar fotos.' });
+    }
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(responseText);
+    } catch {
+      return res.status(502).json({ error: 'Error parseando JSON de comparación fotográfica.' });
+    }
+
+    if (!parsed || typeof parsed.visualChanges !== 'string' || !parsed.visualChanges.trim()) {
+      return res.status(502).json({ error: 'La comparación no arrojó resultados concluyentes.' });
+    }
+
+    res.json(parsed);
   } catch (error: any) {
     console.error('Error in /api/ai/compare-photos:', error);
     res.status(500).json({ error: error?.message || 'Error comparando fotografías' });
@@ -498,16 +690,19 @@ export function broadcastNotification(payload: any, targetUserId?: string) {
 }
 
 // Sincronización horaria automática para cultivos Outdoor e Invernadero
-export async function syncHourlyOutdoorWeather() {
-  console.log('[Cron Job] Ejecutando sincronización de clima exterior para cultivos activos...');
+// Puede ejecutarse globalmente desde el cron o restringida a un usuario específico
+export async function syncHourlyOutdoorWeather(targetUserId?: string) {
+  console.log(`[Cron Job] Ejecutando sincronización de clima exterior (Objetivo: ${targetUserId || 'todos'})...`);
   let isFirestoreAvailable = false;
   let firestore: Firestore | null = null;
   const outdoorCropsMap = new Map<string, { id: string; data: any }>();
 
-  // 1. Cargar cultivos registrados localmente en el servidor
+  // 1. Cargar cultivos registrados localmente en el servidor filtrando por targetUserId si aplica
   outdoorCropsStore.forEach((crop, id) => {
     if (!crop.isFinished && crop.locationCoordinates) {
-      outdoorCropsMap.set(id, { id, data: crop });
+      if (!targetUserId || crop.userId === targetUserId) {
+        outdoorCropsMap.set(id, { id, data: crop });
+      }
     }
   });
 
@@ -515,13 +710,18 @@ export async function syncHourlyOutdoorWeather() {
   try {
     const adminApp = getFirebaseAdmin();
     firestore = adminApp.firestore();
-    const snapshot = await firestore
+    let query: any = firestore
       .collection('cultivations')
-      .where('isFinished', '==', false)
-      .get();
+      .where('isFinished', '==', false);
+
+    if (targetUserId) {
+      query = query.where('userId', '==', targetUserId);
+    }
+
+    const snapshot = await query.get();
 
     isFirestoreAvailable = true;
-    snapshot.forEach((doc) => {
+    snapshot.forEach((doc: any) => {
       const data = doc.data();
       const isOutdoorOrGreenhouse = data.type === 'Outdoor' || data.type === 'Invernadero';
       const hasCoords =
@@ -906,16 +1106,18 @@ cron.schedule('* * * * *', async () => {
 });
 
 // Endpoint para que el cliente registre cultivos Outdoor/Invernadero con coordenadas
-app.post('/api/outdoor/cultivations', (req, res) => {
+app.post('/api/outdoor/cultivations', verifyFirebaseAuth, (req, res) => {
   try {
-    const { id, userId, name, type, geneticsName, currentStage, isFinished, locationCoordinates, isDemo } = req.body;
-    if (!id || !locationCoordinates || typeof locationCoordinates.lat !== 'number') {
-      return res.status(400).json({ error: 'Datos incompletos de cultivo o coordenadas' });
+    const { id, name, type, geneticsName, currentStage, isFinished, locationCoordinates, isDemo } = req.body;
+    const userId = req.userId!;
+
+    if (!id || !locationCoordinates || typeof locationCoordinates.lat !== 'number' || typeof locationCoordinates.lon !== 'number') {
+      return res.status(400).json({ error: 'Datos incompletos de cultivo o coordenadas inválidas.' });
     }
 
     outdoorCropsStore.set(id, {
       id,
-      userId: userId || 'local_user',
+      userId,
       name: name || 'Cultivo',
       type: type || 'Outdoor',
       geneticsName: geneticsName || 'No especificada',
@@ -932,15 +1134,14 @@ app.post('/api/outdoor/cultivations', (req, res) => {
 });
 
 // Endpoint para consultar registros ambientales generados automáticamente
-app.get('/api/outdoor/environment-records', (req, res) => {
+app.get('/api/outdoor/environment-records', verifyFirebaseAuth, (req, res) => {
   try {
-    const { cultivationId, userId } = req.query;
-    let records = outdoorRecordsStore;
+    const { cultivationId } = req.query;
+    const userId = req.userId!;
+    let records = outdoorRecordsStore.filter((r) => r.userId === userId || r.userId === 'system');
 
     if (cultivationId) {
       records = records.filter((r) => r.cultivationId === cultivationId);
-    } else if (userId) {
-      records = records.filter((r) => r.userId === userId || r.userId === 'system');
     }
 
     res.json(records);
@@ -950,15 +1151,14 @@ app.get('/api/outdoor/environment-records', (req, res) => {
 });
 
 // Endpoint para consultar tareas y alertas críticas generadas automáticamente por Sincronización Inversa
-app.get('/api/outdoor/tasks', (req, res) => {
+app.get('/api/outdoor/tasks', verifyFirebaseAuth, (req, res) => {
   try {
-    const { cultivationId, userId } = req.query;
-    let tasks = outdoorTasksStore;
+    const { cultivationId } = req.query;
+    const userId = req.userId!;
+    let tasks = outdoorTasksStore.filter((t) => (t as any).userId === userId || (t as any).userId === 'system');
 
     if (cultivationId) {
       tasks = tasks.filter((t) => t.cultivationId === cultivationId);
-    } else if (userId) {
-      tasks = tasks.filter((t) => (t as any).userId === userId || (t as any).userId === 'system');
     }
 
     res.json(tasks);
@@ -967,10 +1167,11 @@ app.get('/api/outdoor/tasks', (req, res) => {
   }
 });
 
-// Endpoint para disparar manualmente la sincronización (testing y panel)
-app.post('/api/cron/trigger-outdoor-weather', async (req, res) => {
+// Endpoint para disparar manualmente la sincronización restringido al usuario autenticado
+app.post('/api/cron/trigger-outdoor-weather', verifyFirebaseAuth, async (req, res) => {
   try {
-    const result = await syncHourlyOutdoorWeather();
+    const userId = req.userId!;
+    const result = await syncHourlyOutdoorWeather(userId);
     res.json({ success: true, ...result });
   } catch (error: any) {
     console.warn('[Trigger Outdoor Weather] Error controlado:', error?.message || error);
@@ -978,10 +1179,10 @@ app.post('/api/cron/trigger-outdoor-weather', async (req, res) => {
   }
 });
 
-// Endpoint SSE para streaming de notificaciones de navegador en tiempo real
-app.get('/api/notifications/stream', (req, res) => {
+// Endpoint SSE para streaming de notificaciones de navegador en tiempo real autenticado
+app.get('/api/notifications/stream', verifyFirebaseAuth, (req, res) => {
   const clientId = `client_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-  const userId = req.query.userId as string | undefined;
+  const userId = req.userId!;
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -992,7 +1193,7 @@ app.get('/api/notifications/stream', (req, res) => {
   }
 
   sseClients.set(clientId, { id: clientId, res, userId });
-  console.log(`[SSE Notifications] 🟢 Cliente conectado (${clientId}, userId: ${userId || 'todos'}). Clientes activos: ${sseClients.size}`);
+  console.log(`[SSE Notifications] 🟢 Cliente conectado autenticado (${clientId}, userId: ${userId}). Clientes activos: ${sseClients.size}`);
 
   res.write(`data: ${JSON.stringify({ type: 'connected', clientId, timestamp: new Date().toISOString() })}\n\n`);
 
@@ -1012,10 +1213,10 @@ app.get('/api/notifications/stream', (req, res) => {
   });
 });
 
-// Endpoint para probar el envío de notificaciones de alerta climática
-app.post('/api/notifications/test', (req, res) => {
+// Endpoint para probar el envío de notificaciones de alerta climática para el usuario autenticado
+app.post('/api/notifications/test', verifyFirebaseAuth, (req, res) => {
   try {
-    const { userId } = req.body;
+    const userId = req.userId!;
     const testTask = {
       id: `test-env-alert-${Date.now()}`,
       cultivationId: 'crop-test',
@@ -1030,6 +1231,7 @@ app.post('/api/notifications/test', (req, res) => {
       dueDate: new Date().toISOString().split('T')[0],
       createdAt: new Date().toISOString(),
       categoryLabel: '🚨 Alerta Climática',
+      userId,
     };
 
     broadcastNotification(
@@ -1043,7 +1245,7 @@ app.post('/api/notifications/test', (req, res) => {
 
     res.json({
       success: true,
-      message: 'Notificación de alerta enviada vía SSE',
+      message: 'Notificación de alerta enviada vía SSE al usuario autenticado',
       clientsNotified: sseClients.size,
     });
   } catch (err: any) {
@@ -1051,14 +1253,13 @@ app.post('/api/notifications/test', (req, res) => {
   }
 });
 
-// Endpoint para listar las alertas ambientales recientes
-app.get('/api/notifications/recent', (req, res) => {
+// Endpoint para listar las alertas ambientales recientes del usuario autenticado
+app.get('/api/notifications/recent', verifyFirebaseAuth, (req, res) => {
   try {
-    const { userId } = req.query;
-    let alerts = outdoorTasksStore.filter((t) => t.type === 'env_alert');
-    if (userId) {
-      alerts = alerts.filter((t) => (t as any).userId === userId || (t as any).userId === 'system');
-    }
+    const userId = req.userId!;
+    const alerts = outdoorTasksStore.filter(
+      (t) => t.type === 'env_alert' && ((t as any).userId === userId || (t as any).userId === 'system')
+    );
     res.json(alerts.slice(-20).reverse());
   } catch (err: any) {
     res.status(500).json({ error: err?.message || 'Error consultando alertas recientes' });

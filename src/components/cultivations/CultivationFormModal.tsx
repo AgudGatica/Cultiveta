@@ -373,9 +373,11 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
     if (!file) return;
     try {
       setLoading(true);
-      const url = await photoService.uploadPhotoFile(userId, 'temp_cover', file);
-      setCoverPhotoUrl(url);
-    } catch (err: any) {
+      const photoId = 'cover_' + Date.now();
+      const ext = file.name.split('.').pop() || 'jpg';
+      const result = await photoService.uploadPhotoFile(userId, 'covers', photoId, file, ext);
+      setCoverPhotoUrl(result.downloadUrl);
+    } catch {
       setError('Error al procesar la fotografía.');
     } finally {
       setLoading(false);

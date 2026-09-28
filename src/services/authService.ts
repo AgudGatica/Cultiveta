@@ -19,38 +19,12 @@ import { cleanFirestoreData } from '../utils/firestoreUtils';
 let cachedAccessToken: string | null = null;
 const authListeners: ((user: User | null) => void)[] = [];
 
-function createLocalUser(uid: string, email: string, displayName: string): User {
-  return {
-    uid,
-    email,
-    displayName,
-    photoURL: null,
-    emailVerified: true,
-    isAnonymous: uid.includes('demo'),
-    metadata: {},
-    providerData: [],
-    refreshToken: '',
-    tenantId: null,
-    delete: async () => {},
-    getIdToken: async () => 'mock-token',
-    getIdTokenResult: async () => ({} as any),
-    reload: async () => {},
-    toJSON: () => ({ uid, email, displayName }),
-    phoneNumber: null,
-    providerId: 'firebase',
-  } as unknown as User;
-}
-
-function getStoredLocalUser(): User | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem('cultiveta_local_user');
-    if (!raw) return null;
-    const data = JSON.parse(raw);
-    return createLocalUser(data.uid, data.email, data.displayName);
-  } catch (e) {
-    return null;
-  }
+export interface LegacyLocalUserData {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  profile?: UserProfile | null;
+  timestamp: string;
 }
 
 export const authService = {
@@ -66,26 +40,24 @@ export const authService = {
     return !!cachedAccessToken;
   },
 
-  notifyLocalListeners(user: User | null) {
+  notifyListeners(user: User | null) {
     authListeners.forEach((cb) => cb(user));
   },
 
-  onStateChanged(callback: (user: User | null) => void) {
+  /**
+   * Suscribe a los cambios reales de Firebase Auth sin generar usuarios ficticios
+   */
+  onAuthStateChanged(callback: (user: User | null) => void) {
     authListeners.push(callback);
-
-    // If there's already a local user stored, emit immediately
-    const localUser = getStoredLocalUser();
-    if (localUser && !auth.currentUser) {
-      callback(localUser);
-    }
 
     const unsubFirebase = onAuthStateChanged(auth, (user) => {
       if (!user) {
         cachedAccessToken = null;
-        const currentLocal = getStoredLocalUser();
-        callback(currentLocal);
+        callback(null);
       } else {
-        localStorage.setItem('cultiveta_last_user_id', user.uid);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('cultiveta_last_user_id', user.uid);
+        }
         callback(user);
       }
     });
@@ -97,8 +69,8 @@ export const authService = {
     };
   },
 
-  onAuthStateChanged(callback: (user: User | null) => void) {
-    return this.onStateChanged(callback);
+  onStateChanged(callback: (user: User | null) => void) {
+    return this.onAuthStateChanged(callback);
   },
 
   async loginWithGoogle(): Promise<{ user: User; accessToken: string | null }> {
@@ -107,11 +79,12 @@ export const authService = {
       const credential = GoogleAuthProvider.credentialFromResult(result);
       cachedAccessToken = credential?.accessToken || null;
       const user = result.user;
-      localStorage.removeItem('cultiveta_local_user');
-      localStorage.setItem('cultiveta_last_user_id', user.uid);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('cultiveta_last_user_id', user.uid);
+      }
       await this.syncUserProfile(user);
       return { user, accessToken: cachedAccessToken };
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn('Google signInWithPopup error:', err);
       throw err;
     }
@@ -128,109 +101,44 @@ export const authService = {
   },
 
   async registerWithEmail(email: string, pass: string, name: string): Promise<User> {
-    try {
-      const cred = await createUserWithEmailAndPassword(auth, email, pass);
-      const user = cred.user;
-      localStorage.removeItem('cultiveta_local_user');
+    const cred = await createUserWithEmailAndPassword(auth, email, pass);
+    const user = cred.user;
+    if (typeof window !== 'undefined') {
       localStorage.setItem('cultiveta_last_user_id', user.uid);
-      if (name) {
-        await updateProfile(user, { displayName: name });
-      }
-      await this.syncUserProfile(user, name);
-      return user;
-    } catch (err: any) {
-      if (
-        err?.code === 'auth/operation-not-allowed' ||
-        err?.code === 'auth/network-request-failed' ||
-        err?.code === 'auth/admin-restricted-operation'
-      ) {
-        console.warn('Firebase Auth email registration not enabled in console, using local session fallback');
-        const localUid = 'usr_' + btoa(email).replace(/[^a-zA-Z0-9]/g, '').slice(0, 16);
-        const displayName = name || email.split('@')[0];
-        const localUser = createLocalUser(localUid, email, displayName);
-        localStorage.setItem('cultiveta_local_user', JSON.stringify({ uid: localUid, email, displayName }));
-        localStorage.setItem('cultiveta_last_user_id', localUid);
-        await this.syncUserProfile(localUser, displayName);
-        this.notifyLocalListeners(localUser);
-        return localUser;
-      }
-      throw err;
     }
+    if (name) {
+      await updateProfile(user, { displayName: name });
+    }
+    await this.syncUserProfile(user, name);
+    return user;
   },
 
   async loginWithEmail(email: string, pass: string): Promise<User> {
-    try {
-      const cred = await signInWithEmailAndPassword(auth, email, pass);
-      localStorage.removeItem('cultiveta_local_user');
+    const cred = await signInWithEmailAndPassword(auth, email, pass);
+    if (typeof window !== 'undefined') {
       localStorage.setItem('cultiveta_last_user_id', cred.user.uid);
-      await this.syncUserProfile(cred.user);
-      return cred.user;
-    } catch (err: any) {
-      if (
-        err?.code === 'auth/operation-not-allowed' ||
-        err?.code === 'auth/network-request-failed' ||
-        err?.code === 'auth/admin-restricted-operation'
-      ) {
-        console.warn('Firebase Auth email login not enabled in console, using local session fallback');
-        const localUid = 'usr_' + btoa(email).replace(/[^a-zA-Z0-9]/g, '').slice(0, 16);
-        const displayName = email.split('@')[0];
-        const localUser = createLocalUser(localUid, email, displayName);
-        localStorage.setItem('cultiveta_local_user', JSON.stringify({ uid: localUid, email, displayName }));
-        localStorage.setItem('cultiveta_last_user_id', localUid);
-        await this.syncUserProfile(localUser, displayName);
-        this.notifyLocalListeners(localUser);
-        return localUser;
-      }
-      throw err;
     }
+    await this.syncUserProfile(cred.user);
+    return cred.user;
   },
 
+  /**
+   * Ingreso como invitado explícito utilizando autenticación anónima nativa de Firebase.
+   * No utiliza credenciales compartidas ni inventa usuarios locales fingidos.
+   */
   async loginAsDemoGuest(): Promise<User> {
-    try {
-      const cred = await signInAnonymously(auth);
-      localStorage.removeItem('cultiveta_local_user');
+    const cred = await signInAnonymously(auth);
+    if (typeof window !== 'undefined') {
       localStorage.setItem('cultiveta_last_user_id', cred.user.uid);
-      await this.syncUserProfile(cred.user, 'Cultivador Demo');
-      return cred.user;
-    } catch (err: any) {
-      console.warn('signInAnonymously failed, falling back to demo email account', err);
-      const demoEmail = 'demo@cultiveta.app';
-      const demoPass = 'CultivetaDemo2026!';
-      try {
-        const cred = await signInWithEmailAndPassword(auth, demoEmail, demoPass);
-        localStorage.removeItem('cultiveta_local_user');
-        localStorage.setItem('cultiveta_last_user_id', cred.user.uid);
-        await this.syncUserProfile(cred.user, 'Cultivador Demo');
-        return cred.user;
-      } catch (loginErr: any) {
-        try {
-          const uniqueEmail = `demo_${Date.now()}_${Math.floor(Math.random() * 10000)}@cultiveta.app`;
-          const cred = await createUserWithEmailAndPassword(auth, uniqueEmail, demoPass);
-          if (cred.user) {
-            await updateProfile(cred.user, { displayName: 'Cultivador Demo' });
-          }
-          localStorage.removeItem('cultiveta_local_user');
-          localStorage.setItem('cultiveta_last_user_id', cred.user.uid);
-          await this.syncUserProfile(cred.user, 'Cultivador Demo');
-          return cred.user;
-        } catch (createErr) {
-          const localGuest = createLocalUser('demo_cultiveta_guest', 'demo@cultiveta.app', 'Cultivador Demo');
-          localStorage.setItem('cultiveta_local_user', JSON.stringify({ uid: localGuest.uid, email: localGuest.email, displayName: localGuest.displayName }));
-          localStorage.setItem('cultiveta_last_user_id', localGuest.uid);
-          await this.syncUserProfile(localGuest, 'Cultivador Demo');
-          this.notifyLocalListeners(localGuest);
-          return localGuest;
-        }
-      }
     }
+    await this.syncUserProfile(cred.user, 'Cultivador Invitado');
+    return cred.user;
   },
 
   async logout(): Promise<void> {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('cultiveta_local_user');
-    }
-    this.notifyLocalListeners(null);
-    await signOut(auth).catch(() => {});
+    cachedAccessToken = null;
+    this.notifyListeners(null);
+    await signOut(auth);
   },
 
   async signOutUser(): Promise<void> {
@@ -239,6 +147,38 @@ export const authService = {
 
   async resetPassword(email: string): Promise<void> {
     await sendPasswordResetEmail(auth, email);
+  },
+
+  /**
+   * Verifica si existen datos de usuarios locales anteriores en el dispositivo
+   * para permitir su recuperación o exportación sin borrarlos (FASE 1).
+   */
+  hasLegacyLocalData(): boolean {
+    if (typeof window === 'undefined') return false;
+    return !!localStorage.getItem('cultiveta_local_user');
+  },
+
+  /**
+   * Exporta datos de usuario local legado a un objeto seguro para su descarga o migración.
+   */
+  exportLegacyLocalData(): LegacyLocalUserData | null {
+    if (typeof window === 'undefined') return null;
+    try {
+      const raw = localStorage.getItem('cultiveta_local_user');
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      const profileRaw = localStorage.getItem(`cultiveta_profile_${data.uid}`);
+      const profile = profileRaw ? JSON.parse(profileRaw) : null;
+      return {
+        uid: data.uid,
+        email: data.email || null,
+        displayName: data.displayName || null,
+        profile,
+        timestamp: new Date().toISOString(),
+      };
+    } catch {
+      return null;
+    }
   },
 
   async syncUserProfile(user: User, customName?: string): Promise<UserProfile> {
@@ -252,6 +192,12 @@ export const authService = {
         advancedMode: false,
         tempUnit: 'C',
         volumeUnit: 'L',
+        alertTypes: {
+          climateAlerts: true,
+          wateringAlerts: true,
+          calendarReminders: true,
+          soundEnabled: true,
+        },
       },
     };
 
@@ -286,7 +232,11 @@ export const authService = {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem(`cultiveta_profile_${uid}`);
       if (stored) {
-        try { return JSON.parse(stored); } catch (e) {}
+        try {
+          return JSON.parse(stored) as UserProfile;
+        } catch {
+          // invalid json
+        }
       }
     }
     try {
@@ -304,10 +254,12 @@ export const authService = {
       const stored = localStorage.getItem(`cultiveta_profile_${uid}`);
       if (stored) {
         try {
-          const current = JSON.parse(stored);
+          const current = JSON.parse(stored) as UserProfile;
           current.preferences = { ...current.preferences, ...preferences };
           localStorage.setItem(`cultiveta_profile_${uid}`, JSON.stringify(current));
-        } catch (e) {}
+        } catch {
+          // ignore
+        }
       }
     }
     try {
@@ -319,21 +271,18 @@ export const authService = {
   },
 
   async deleteAccount(): Promise<void> {
-    const user = auth.currentUser || getStoredLocalUser();
+    const user = auth.currentUser;
     if (!user) throw new Error('No hay usuario autenticado');
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('cultiveta_local_user');
       localStorage.removeItem(`cultiveta_profile_${user.uid}`);
     }
-    this.notifyLocalListeners(null);
+    this.notifyListeners(null);
     try {
       const userRef = doc(db, 'users', user.uid);
       await deleteDoc(userRef).catch(() => {});
-      if (auth.currentUser) {
-        await deleteUser(auth.currentUser);
-      }
+      await deleteUser(user);
     } catch (e) {
       console.warn('deleteUser error:', e);
     }
-  }
+  },
 };

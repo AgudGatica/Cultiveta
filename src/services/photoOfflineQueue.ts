@@ -1,32 +1,39 @@
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { doc, setDoc } from 'firebase/firestore';
 import { db, storage } from '../firebase/config';
-import { PhotoRecord, CultivationStageName, PhotoCategory } from '../types';
+import { PhotoRecord, CultivationStageName, PhotoCategory, PhotoSyncStatus } from '../types';
 import { localStore } from './localStore';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
+import { getPhotoStoragePath } from '../firebase/paths';
 
 export interface QueuedOfflinePhoto {
-  id: string;
-  userId: string;
+  id: string; // Identificador determinista único
+  userId: string; // UID del usuario autenticado
   cultivationId: string;
-  fileBlob: Blob;
+  fileBlob: Blob; // Binario real de la imagen
   fileName: string;
   fileType: string;
-  previewDataUrl: string;
-  date: string;
-  dayOfCultivation: number;
+  fileSize: number;
+  storagePath: string; // Ruta determinista: users/{userId}/cultivations/{cultivationId}/photos/{photoId}.{ext}
+  cloudDownloadUrl?: string; // Se almacena una vez subido a Storage para no re-subir en reintentos
+  stagePending: 'storage' | 'firestore'; // 'storage': pendiente de subir binario; 'firestore': binario ya en Storage, falta metadatos
+  date: string; // Fecha de la evidencia (YYYY-MM-DD)
+  dayOfCultivation: number; // Calculado respecto a startDate del cultivo
   stage: CultivationStageName;
   category: PhotoCategory;
   caption?: string;
   isDemo?: boolean;
-  status: 'pending' | 'syncing' | 'failed';
+  status: 'queued' | 'uploading' | 'saving_metadata' | 'synced' | 'failed';
   retryCount: number;
   lastError?: string;
+  lastErrorCode?: string;
+  lastErrorAt?: string;
+  lockUntil?: number; // Bloqueo con expiración para evitar ejecuciones concurrentes entre pestañas
   createdAt: string;
 }
 
 const DB_NAME = 'cultiveta_offline_db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'pending_photos';
 
 let dbPromise: Promise<IDBDatabase> | null = null;
@@ -43,10 +50,20 @@ function getIndexedDB(): Promise<IDBDatabase> {
 
     request.onupgradeneeded = (event) => {
       const idb = (event.target as IDBOpenDBRequest).result;
+      let store: IDBObjectStore;
       if (!idb.objectStoreNames.contains(STORE_NAME)) {
-        const store = idb.createObjectStore(STORE_NAME, { keyPath: 'id' });
+        store = idb.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      } else {
+        store = (event.target as IDBOpenDBRequest).transaction!.objectStore(STORE_NAME);
+      }
+
+      if (!store.indexNames.contains('userId')) {
         store.createIndex('userId', 'userId', { unique: false });
+      }
+      if (!store.indexNames.contains('status')) {
         store.createIndex('status', 'status', { unique: false });
+      }
+      if (!store.indexNames.contains('createdAt')) {
         store.createIndex('createdAt', 'createdAt', { unique: false });
       }
     };
@@ -64,62 +81,111 @@ function getIndexedDB(): Promise<IDBDatabase> {
   return dbPromise;
 }
 
+/**
+ * Ejecuta una operación en IndexedDB esperando la confirmación (commit) completa
+ * de la transacción vía oncomplete, manejando oncomplete, onerror y onabort (FASE 3).
+ */
+function runIDBTransaction<T>(
+  mode: IDBTransactionMode,
+  runner: (store: IDBObjectStore) => IDBRequest<T> | void
+): Promise<T> {
+  return getIndexedDB().then(
+    (idb) =>
+      new Promise<T>((resolve, reject) => {
+        let reqResult: T;
+        const tx = idb.transaction(STORE_NAME, mode);
+        const store = tx.objectStore(STORE_NAME);
+
+        tx.oncomplete = () => {
+          resolve(reqResult);
+        };
+
+        tx.onerror = () => {
+          reject(tx.error || new Error('Transacción de IndexedDB fallida.'));
+        };
+
+        tx.onabort = () => {
+          reject(tx.error || new Error('Transacción de IndexedDB abortada.'));
+        };
+
+        try {
+          const req = runner(store);
+          if (req) {
+            req.onsuccess = () => {
+              reqResult = req.result;
+            };
+          }
+        } catch (err) {
+          reject(err);
+        }
+      })
+  );
+}
+
 function notifyQueueUpdated(): void {
   if (typeof window === 'undefined') return;
   window.dispatchEvent(new CustomEvent('cultiveta_offline_queue_changed'));
 }
 
+let autoSyncUserId: string | null = null;
+let autoSyncInterval: ReturnType<typeof setInterval> | null = null;
+let autoSyncOnlineHandler: (() => void) | null = null;
+
 export const photoOfflineQueue = {
   /**
-   * Encola una fotografía en IndexedDB cuando no hay conexión o falla la subida inicial.
+   * Encola una fotografía en IndexedDB de forma persistente y determinista.
    */
   async enqueuePhoto(params: {
     id: string;
     userId: string;
     cultivationId: string;
-    file: File;
-    previewDataUrl: string;
+    file: File | Blob;
+    fileName: string;
+    fileType?: string;
     date: string;
     dayOfCultivation: number;
     stage: CultivationStageName;
     category: PhotoCategory;
     caption?: string;
     isDemo?: boolean;
+    previewUrl?: string;
   }): Promise<QueuedOfflinePhoto> {
-    const idb = await getIndexedDB();
+    const ext = params.fileName.split('.').pop() || 'jpg';
+    const storagePath = getPhotoStoragePath(params.userId, params.cultivationId, params.id, ext);
+
     const queuedItem: QueuedOfflinePhoto = {
       id: params.id,
       userId: params.userId,
       cultivationId: params.cultivationId,
       fileBlob: params.file,
-      fileName: params.file.name,
-      fileType: params.file.type || 'image/jpeg',
-      previewDataUrl: params.previewDataUrl,
+      fileName: params.fileName,
+      fileType: params.fileType || params.file.type || 'image/jpeg',
+      fileSize: params.file.size,
+      storagePath,
+      stagePending: 'storage',
       date: params.date,
       dayOfCultivation: params.dayOfCultivation,
       stage: params.stage,
       category: params.category,
       caption: params.caption,
       isDemo: params.isDemo,
-      status: 'pending',
+      status: 'queued',
       retryCount: 0,
       createdAt: new Date().toISOString(),
     };
 
-    await new Promise<void>((resolve, reject) => {
-      const transaction = idb.transaction(STORE_NAME, 'readwrite');
-      const store = transaction.objectStore(STORE_NAME);
-      const req = store.put(queuedItem);
-      req.onsuccess = () => resolve();
-      req.onerror = () => reject(req.error);
-    });
+    await runIDBTransaction('readwrite', (store) => store.put(queuedItem));
 
-    // Guardar en el almacenamiento local para que el usuario la vea de inmediato con estado pendiente
+    // Reflejar de inmediato en localStore como registro pendiente para la UI
     const optimisticRecord: PhotoRecord = {
       id: queuedItem.id,
       userId: queuedItem.userId,
       cultivationId: queuedItem.cultivationId,
-      url: queuedItem.previewDataUrl,
+      url: params.previewUrl || '',
+      storagePath: queuedItem.storagePath,
+      syncStatus: 'queued',
+      fileSize: queuedItem.fileSize,
+      mimeType: queuedItem.fileType,
       date: queuedItem.date,
       dayOfCultivation: queuedItem.dayOfCultivation,
       stage: queuedItem.stage,
@@ -136,25 +202,17 @@ export const photoOfflineQueue = {
   },
 
   /**
-   * Obtiene la lista de fotografías pendientes encoladas en IndexedDB.
+   * Obtiene la lista de fotografías pendientes encoladas en IndexedDB,
+   * filtrando exclusivamente por el UID provisto (FASE 3).
    */
   async getQueuedPhotos(userId?: string): Promise<QueuedOfflinePhoto[]> {
     try {
-      const idb = await getIndexedDB();
-      return await new Promise<QueuedOfflinePhoto[]>((resolve, reject) => {
-        const transaction = idb.transaction(STORE_NAME, 'readonly');
-        const store = transaction.objectStore(STORE_NAME);
-        const req = store.getAll();
-
-        req.onsuccess = () => {
-          let items = (req.result as QueuedOfflinePhoto[]) || [];
-          if (userId) {
-            items = items.filter((item) => item.userId === userId);
-          }
-          resolve(items);
-        };
-        req.onerror = () => reject(req.error);
-      });
+      const items = await runIDBTransaction<QueuedOfflinePhoto[]>('readonly', (store) => store.getAll());
+      if (!items || !Array.isArray(items)) return [];
+      if (userId) {
+        return items.filter((item) => item.userId === userId);
+      }
+      return items;
     } catch (err) {
       console.warn('[IndexedDB] No se pudieron recuperar las fotos encoladas:', err);
       return [];
@@ -162,21 +220,25 @@ export const photoOfflineQueue = {
   },
 
   /**
-   * Elimina y limpia de forma permanente una fotografía de la cola IndexedDB una vez
-   * confirmada su subida y persistencia en Firebase.
-   * Esto previene el crecimiento acumulativo e indefinido del almacenamiento del cliente.
+   * Obtiene un registro individual de la cola por su ID
+   */
+  async getQueuedPhotoById(id: string): Promise<QueuedOfflinePhoto | null> {
+    try {
+      const item = await runIDBTransaction<QueuedOfflinePhoto | undefined>('readonly', (store) => store.get(id));
+      return item || null;
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Elimina y limpia de forma permanente una fotografía de la cola IndexedDB
+   * ÚNICAMENTE cuando se ha confirmado el guardado remoto en Storage y Firestore (FASE 3).
    */
   async cleanupConfirmedPhoto(id: string): Promise<boolean> {
     try {
-      const idb = await getIndexedDB();
-      await new Promise<void>((resolve, reject) => {
-        const transaction = idb.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-        const req = store.delete(id);
-        req.onsuccess = () => resolve();
-        req.onerror = () => reject(req.error);
-      });
-      console.log(`[IndexedDB Cleanup] ✅ Fotografía ${id} liberada y purgada de IndexedDB tras confirmación de Firebase.`);
+      await runIDBTransaction('readwrite', (store) => store.delete(id));
+      console.log(`[IndexedDB Cleanup] ✅ Fotografía ${id} liberada y purgada de IndexedDB tras confirmación completa.`);
       notifyQueueUpdated();
       return true;
     } catch (err) {
@@ -186,206 +248,180 @@ export const photoOfflineQueue = {
   },
 
   /**
-   * Elimina un registro de la cola IndexedDB (alias retrocompatible).
+   * Elimina manualmente una foto pendiente a solicitud explícita del usuario
    */
-  async removeQueuedPhoto(id: string): Promise<void> {
-    await this.cleanupConfirmedPhoto(id);
+  async deletePendingPhoto(id: string, userId: string): Promise<boolean> {
+    const success = await this.cleanupConfirmedPhoto(id);
+    if (success) {
+      localStore.deleteItem('photos', id, userId);
+    }
+    return success;
   },
 
   /**
-   * Rutina periódica y bajo demanda para purgar fotos que ya están confirmadas o sincronizadas
-   * en Firebase/localStore, eliminando cualquier residuo o binario huérfano.
+   * Permite al usuario exportar el archivo binario original de una foto pendiente
+   * para que nunca pierda su evidencia fotográfica (FASE 3).
    */
-  async purgeSyncedAndStaleQueue(userId?: string): Promise<{
-    deletedCount: number;
-    remainingCount: number;
-    freedEstimatedKB: number;
-  }> {
-    try {
-      const items = await this.getQueuedPhotos(userId);
-      if (items.length === 0) {
-        return { deletedCount: 0, remainingCount: 0, freedEstimatedKB: 0 };
-      }
-
-      let deletedCount = 0;
-      let freedBytes = 0;
-
-      for (const item of items) {
-        // Verificar si la foto ya figura como sincronizada en el almacén de datos (isPendingSync !== true)
-        const localPhotos = localStore.getItems<PhotoRecord>('photos', item.userId);
-        const match = localPhotos.find((p) => p.id === item.id);
-
-        const isAlreadySynced = match && match.isPendingSync === false;
-        const isStaleCorrupted = (item.retryCount || 0) > 15;
-
-        if (isAlreadySynced || isStaleCorrupted) {
-          const approxSize = (item.fileBlob?.size || 0) + (item.previewDataUrl?.length || 0);
-          await this.cleanupConfirmedPhoto(item.id);
-          deletedCount++;
-          freedBytes += approxSize;
-        }
-      }
-
-      const remaining = await this.getQueuedPhotos(userId);
-      const freedEstimatedKB = Math.round(freedBytes / 1024);
-
-      if (deletedCount > 0) {
-        console.log(`[IndexedDB Maintenance] Purgadas ${deletedCount} foto(s) ya sincronizadas. Espacio liberado estimado: ~${freedEstimatedKB} KB.`);
-      }
-
-      return {
-        deletedCount,
-        remainingCount: remaining.length,
-        freedEstimatedKB,
-      };
-    } catch (err) {
-      console.warn('[IndexedDB Maintenance] Error durante la rutina de limpieza:', err);
-      return { deletedCount: 0, remainingCount: 0, freedEstimatedKB: 0 };
-    }
-  },
-
-  /**
-   * Vacia por completo la cola de IndexedDB (útil para restablecimiento manual o limpieza profunda).
-   */
-  async clearEntireQueue(): Promise<void> {
-    try {
-      const idb = await getIndexedDB();
-      await new Promise<void>((resolve, reject) => {
-        const transaction = idb.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-        const req = store.clear();
-        req.onsuccess = () => resolve();
-        req.onerror = () => reject(req.error);
-      });
-      notifyQueueUpdated();
-      console.log('[IndexedDB Cleanup] Toda la cola local ha sido vaciada.');
-    } catch (err) {
-      console.error('[IndexedDB Cleanup] Error al vaciar cola:', err);
-    }
-  },
-
-  /**
-   * Obtiene la estimación de uso y cuota de almacenamiento del navegador para visibilidad del usuario.
-   */
-  async getStorageQuotaInfo(): Promise<{
-    usageMB: number;
-    quotaMB: number;
-    percentUsed: number;
-    queuedCount: number;
-    estimatedQueueMB: number;
-  }> {
-    const queued = await this.getQueuedPhotos();
-    let totalBytes = 0;
-    for (const q of queued) {
-      totalBytes += (q.fileBlob?.size || 0) + (q.previewDataUrl?.length || 0);
-    }
-
-    const estimatedQueueMB = Math.round((totalBytes / (1024 * 1024)) * 100) / 100;
-
-    if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.estimate) {
-      try {
-        const est = await navigator.storage.estimate();
-        const usageMB = Math.round(((est.usage || 0) / (1024 * 1024)) * 100) / 100;
-        const quotaMB = Math.round(((est.quota || 0) / (1024 * 1024)) * 100) / 100;
-        const percentUsed = quotaMB > 0 ? Math.round((usageMB / quotaMB) * 10000) / 100 : 0;
-        return {
-          usageMB,
-          quotaMB,
-          percentUsed,
-          queuedCount: queued.length,
-          estimatedQueueMB,
-        };
-      } catch {
-        // Fallback
-      }
-    }
-
+  async exportPendingPhotoBlob(id: string): Promise<{ blob: Blob; fileName: string } | null> {
+    const item = await this.getQueuedPhotoById(id);
+    if (!item || !item.fileBlob) return null;
     return {
-      usageMB: estimatedQueueMB,
-      quotaMB: 500,
-      percentUsed: 0,
-      queuedCount: queued.length,
-      estimatedQueueMB,
+      blob: item.fileBlob,
+      fileName: item.fileName || `evidencia_${item.date}_${item.id}.jpg`,
     };
   },
 
   /**
-   * Actualiza el estado de sincronización y reintentos de una foto encolada.
+   * Dispara una descarga directa en el navegador de una foto fallida o pendiente
    */
-  async updateStatus(id: string, status: 'pending' | 'syncing' | 'failed', lastError?: string): Promise<void> {
-    try {
-      const idb = await getIndexedDB();
-      await new Promise<void>((resolve, reject) => {
-        const transaction = idb.transaction(STORE_NAME, 'readwrite');
-        const store = transaction.objectStore(STORE_NAME);
-        const getReq = store.get(id);
+  async triggerPhotoDownload(id: string): Promise<boolean> {
+    const data = await this.exportPendingPhotoBlob(id);
+    if (!data) return false;
+    if (typeof window === 'undefined') return false;
 
-        getReq.onsuccess = () => {
-          const item = getReq.result as QueuedOfflinePhoto;
-          if (item) {
-            item.status = status;
-            if (lastError) item.lastError = lastError;
-            if (status === 'failed') item.retryCount = (item.retryCount || 0) + 1;
-            store.put(item);
-          }
-          resolve();
-        };
-        getReq.onerror = () => reject(getReq.error);
-      });
-      notifyQueueUpdated();
-    } catch (err) {
-      console.warn('[IndexedDB] Error actualizando estado de foto:', err);
-    }
+    const url = URL.createObjectURL(data.blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = data.fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    return true;
   },
 
   /**
-   * Ejecuta la sincronización automática de fotos encoladas hacia Firebase Storage y Firestore.
+   * Actualiza el estado de un registro de foto encolado
    */
-  async syncPendingPhotos(): Promise<{ synced: number; failed: number; total: number }> {
+  async updateItem(item: QueuedOfflinePhoto): Promise<void> {
+    await runIDBTransaction('readwrite', (store) => store.put(item));
+    notifyQueueUpdated();
+  },
+
+  /**
+   * Forzar reintento explícito por parte del usuario para un elemento fallido
+   */
+  async retryPendingPhoto(id: string, userId: string): Promise<boolean> {
+    const item = await this.getQueuedPhotoById(id);
+    if (!item) return false;
+    item.status = 'queued';
+    item.lockUntil = undefined;
+    item.lastError = undefined;
+    item.lastErrorCode = undefined;
+    await this.updateItem(item);
+    this.syncPendingPhotos(userId);
+    return true;
+  },
+
+  /**
+   * Sincroniza la cola de fotos pendientes hacia Firebase.
+   * Reglas críticas (FASE 2 y 3):
+   * 1. Solo procesa el UID autenticado.
+   * 2. Reutiliza el identificador id y ruta storagePath determinista.
+   * 3. Si Storage funciona pero Firestore falla, preserva cloudDownloadUrl para no re-subir el archivo binario.
+   * 4. Solo marca synced y llama cleanupConfirmedPhoto si AMBOS (Storage y Firestore) concluyeron con éxito.
+   * 5. No borra fotos por superar 15 reintentos; las conserva en 'failed' con detalle de error.
+   * 6. Usa bloqueo lockUntil con vencimiento para prevenir ejecuciones concurrentes.
+   */
+  async syncPendingPhotos(userId?: string): Promise<{ synced: number; failed: number; total: number }> {
+    const targetUserId = userId || autoSyncUserId;
+    if (!targetUserId) {
+      console.log('[OfflineSync] Sin usuario autenticado. Sincronización pospuesta.');
+      return { synced: 0, failed: 0, total: 0 };
+    }
+
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       console.log('[OfflineSync] Sin conexión a internet activa. Sincronización pospuesta.');
       return { synced: 0, failed: 0, total: 0 };
     }
 
-    const pending = await this.getQueuedPhotos();
+    const pending = await this.getQueuedPhotos(targetUserId);
     if (pending.length === 0) {
       return { synced: 0, failed: 0, total: 0 };
     }
 
-    console.log(`[OfflineSync] Iniciando sincronización de ${pending.length} fotografía(s) desde IndexedDB...`);
+    console.log(`[OfflineSync] Procesando ${pending.length} fotografía(s) de usuario "${targetUserId}"...`);
     let synced = 0;
     let failed = 0;
+    const nowMs = Date.now();
 
     for (const item of pending) {
-      if (item.status === 'syncing') continue;
+      // 1. Control de concurrencia y bloqueo con vencimiento (FASE 3)
+      if (item.status === 'uploading' || item.status === 'saving_metadata') {
+        if (item.lockUntil && item.lockUntil > nowMs) {
+          // Operación en curso activa en otra pestaña o temporizador; omitir
+          continue;
+        }
+        // Bloqueo expirado (>60s), recuperar el registro para reintento
+        console.warn(`[OfflineSync] Bloqueo expirado detectado en foto ${item.id}. Recuperando estado.`);
+      }
+
+      // 2. Espera progresiva (exponential backoff) para reintentos fallidos
+      if (item.status === 'failed' && item.lastErrorAt) {
+        const lastErrTime = new Date(item.lastErrorAt).getTime();
+        const backoffMs = Math.min(1000 * Math.pow(2, item.retryCount || 1), 60000);
+        if (nowMs - lastErrTime < backoffMs) {
+          // Aún dentro del periodo de enfriamiento
+          continue;
+        }
+      }
+
+      const lockDurationMs = 60000;
+      let downloadUrl = item.cloudDownloadUrl;
 
       try {
-        await this.updateStatus(item.id, 'syncing');
+        // ==============================================================
+        // PASO 1: Subida del binario a Firebase Storage (si aún no se completó)
+        // ==============================================================
+        if (!downloadUrl) {
+          item.status = 'uploading';
+          item.lockUntil = Date.now() + lockDurationMs;
+          await this.updateItem(item);
 
-        // 1. Convertir el Blob en File para Firebase Storage
-        const file = new File([item.fileBlob], item.fileName, { type: item.fileType });
-        let cloudDownloadUrl = item.previewDataUrl;
+          // Actualizar estado visual en localStore
+          localStore.saveItem<Partial<PhotoRecord> & { id: string; userId: string }>('photos', {
+            id: item.id,
+            userId: item.userId,
+            syncStatus: 'uploading' as PhotoSyncStatus,
+            isPendingSync: true,
+          });
 
-        // 2. Intentar subir a Firebase Storage
-        try {
-          const timestamp = Date.now();
-          const storageRef = ref(
-            storage,
-            `users/${item.userId}/cultivations/${item.cultivationId}/${timestamp}_${item.fileName}`
-          );
-          const snapshot = await uploadBytes(storageRef, file);
-          cloudDownloadUrl = await getDownloadURL(snapshot.ref);
-        } catch (storageErr: any) {
-          console.warn('[OfflineSync] Firebase Storage no disponible o con fallos. Se preserva base64:', storageErr?.message);
+          const storageRef = ref(storage, item.storagePath);
+          const uploadSnapshot = await uploadBytes(storageRef, item.fileBlob, {
+            contentType: item.fileType,
+          });
+          downloadUrl = await getDownloadURL(uploadSnapshot.ref);
+
+          // Persistir la URL remota obtenida para que un fallo posterior en Firestore no fuerce re-subir
+          item.cloudDownloadUrl = downloadUrl;
+          item.stagePending = 'firestore';
+          item.lockUntil = Date.now() + lockDurationMs;
+          await this.updateItem(item);
         }
 
-        // 3. Crear / actualizar documento en Firestore
-        const now = new Date().toISOString();
+        // ==============================================================
+        // PASO 2: Persistencia de metadatos en Cloud Firestore
+        // ==============================================================
+        item.status = 'saving_metadata';
+        item.lockUntil = Date.now() + lockDurationMs;
+        await this.updateItem(item);
+
+        localStore.saveItem<Partial<PhotoRecord> & { id: string; userId: string }>('photos', {
+          id: item.id,
+          userId: item.userId,
+          syncStatus: 'saving_metadata' as PhotoSyncStatus,
+          isPendingSync: true,
+        });
+
         const photoRecord: PhotoRecord = {
           id: item.id,
           userId: item.userId,
           cultivationId: item.cultivationId,
-          url: cloudDownloadUrl,
+          url: downloadUrl,
+          storagePath: item.storagePath,
+          syncStatus: 'synced',
+          fileSize: item.fileSize,
+          mimeType: item.fileType,
           date: item.date,
           dayOfCultivation: item.dayOfCultivation,
           stage: item.stage,
@@ -393,41 +429,54 @@ export const photoOfflineQueue = {
           caption: item.caption,
           isDemo: item.isDemo,
           isPendingSync: false,
-          createdAt: item.createdAt || now,
+          createdAt: item.createdAt,
         };
 
-        try {
-          const docRef = doc(db, 'photos', item.id);
-          const cleaned = cleanFirestoreData(photoRecord);
-          await setDoc(docRef, cleaned);
-        } catch (firestoreErr: any) {
-          console.warn('[OfflineSync] Firestore pendiente o en fallback:', firestoreErr?.message);
-        }
+        const docRef = doc(db, 'photos', item.id);
+        const cleaned = cleanFirestoreData(photoRecord);
 
-        // 4. Actualizar store local sin la marca isPendingSync
+        // Sin catch silencioso: debe confirmar la escritura remota
+        await setDoc(docRef, cleaned);
+
+        // ==============================================================
+        // PASO 3: Confirmación exitosa en Storage + Firestore -> Limpieza
+        // ==============================================================
+        // Actualizar almacén local marcando como completamente sincronizada
         localStore.saveItem('photos', photoRecord);
 
-        // 5. Confirmación exitosa en Firebase -> Limpieza inmediata en IndexedDB
-        // Se destruye el Blob y su registro en la cola para no acumular almacenamiento local
+        // Ahora y solo ahora limpiar de la cola IndexedDB
         await this.cleanupConfirmedPhoto(item.id);
         synced++;
-        console.log(`[OfflineSync] Foto ${item.id} sincronizada y limpiada exitosamente de IndexedDB.`);
-      } catch (err: any) {
-        console.error(`[OfflineSync] Error sincronizando foto ${item.id}:`, err);
-        await this.updateStatus(item.id, 'failed', err?.message || 'Error desconocido');
+        console.log(`[OfflineSync] ✅ Foto ${item.id} sincronizada y confirmada en la nube.`);
+      } catch (stepErr: unknown) {
+        // En caso de fallo en cualquier etapa:
+        // 1. NO borrar la fotografía
+        // 2. Registrar código y mensaje real
+        // 3. Incrementar retryCount
+        console.error(`[OfflineSync] Fallo en sincronización de foto ${item.id}:`, stepErr);
+        const errObj = stepErr as { message?: string; code?: string; name?: string } | undefined;
+        item.status = 'failed';
+        item.retryCount = (item.retryCount || 0) + 1;
+        item.lastError = errObj?.message || 'Error desconocido durante la sincronización.';
+        item.lastErrorCode = errObj?.code || (errObj?.name === 'FirebaseError' ? 'firebase-error' : 'network-error');
+        item.lastErrorAt = new Date().toISOString();
+        item.lockUntil = undefined;
+
+        await this.updateItem(item);
+
+        localStore.saveItem<Partial<PhotoRecord> & { id: string; userId: string }>('photos', {
+          id: item.id,
+          userId: item.userId,
+          syncStatus: 'error' as PhotoSyncStatus,
+          syncError: item.lastError,
+          isPendingSync: true,
+        });
+
         failed++;
       }
     }
 
-    // 6. Ejecutar rutina de purga general para asegurar cero fugas de memoria o residuos
-    if (synced > 0) {
-      try {
-        await this.purgeSyncedAndStaleQueue();
-      } catch (cleanErr) {
-        console.warn('[OfflineSync] Purga post-sincronización finalizada con advertencias:', cleanErr);
-      }
-    }
-
+    // Emitir evento solo si realmente se sincronizó al menos una fotografía
     if (synced > 0 && typeof window !== 'undefined') {
       window.dispatchEvent(
         new CustomEvent('cultiveta_photos_synced', {
@@ -440,13 +489,13 @@ export const photoOfflineQueue = {
   },
 
   /**
-   * Suscripción reactiva para componentes que necesitan saber cuántas fotos están pendientes encoladas.
+   * Suscripción reactiva para observar cambios en la cola
    */
-  subscribeQueue(callback: (pending: QueuedOfflinePhoto[]) => void): () => void {
+  subscribeQueue(callback: (pending: QueuedOfflinePhoto[]) => void, userId?: string): () => void {
     if (typeof window === 'undefined') return () => {};
 
     const emit = async () => {
-      const items = await photoOfflineQueue.getQueuedPhotos();
+      const items = await photoOfflineQueue.getQueuedPhotos(userId || autoSyncUserId || undefined);
       callback(items);
     };
 
@@ -465,40 +514,58 @@ export const photoOfflineQueue = {
   },
 
   /**
-   * Inicializa los listeners automáticos de reconexión de red (`online`) para disparar la sincronización.
+   * Inicia el procesamiento automático de la cola offline exclusivamente
+   * para el UID autenticado resuelto (FASE 3).
    */
-  initAutoSync(): () => void {
-    if (typeof window === 'undefined') return () => {};
+  initAutoSync(userId: string): () => void {
+    if (typeof window === 'undefined' || !userId) return () => {};
 
-    // Al arrancar la app, purgar cualquier residuo sincronizado de sesiones previas
-    this.purgeSyncedAndStaleQueue().catch(() => {});
+    this.stopAutoSync();
+    autoSyncUserId = userId;
 
-    const handleOnline = () => {
-      console.log('[OfflineSync] Conexión de red restablecida (online). Verificando cola de fotos en IndexedDB...');
+    console.log(`[OfflineSync] 🟢 AutoSync activado para usuario ${userId}.`);
+
+    autoSyncOnlineHandler = () => {
+      console.log('[OfflineSync] Red reestablecida. Verificando cola pendiente...');
       setTimeout(() => {
-        photoOfflineQueue.syncPendingPhotos();
+        photoOfflineQueue.syncPendingPhotos(autoSyncUserId || undefined);
       }, 1500);
     };
 
-    // Al iniciar, si ya hay conexión, intentar procesar cola pendiente
+    window.addEventListener('online', autoSyncOnlineHandler);
+
+    // Ejecución inicial si ya hay conexión
     if (navigator.onLine) {
       setTimeout(() => {
-        photoOfflineQueue.syncPendingPhotos();
-      }, 2500);
+        photoOfflineQueue.syncPendingPhotos(autoSyncUserId || undefined);
+      }, 2000);
     }
 
-    window.addEventListener('online', handleOnline);
-
-    // Revisión periódica en segundo plano cada 60 segundos si hay conexión
-    const interval = setInterval(() => {
-      if (navigator.onLine) {
-        photoOfflineQueue.syncPendingPhotos();
+    // Revisión periódica en segundo plano cada 45 segundos
+    autoSyncInterval = setInterval(() => {
+      if (navigator.onLine && autoSyncUserId) {
+        photoOfflineQueue.syncPendingPhotos(autoSyncUserId);
       }
-    }, 60000);
+    }, 45000);
 
     return () => {
-      window.removeEventListener('online', handleOnline);
-      clearInterval(interval);
+      this.stopAutoSync();
     };
+  },
+
+  /**
+   * Detiene el procesamiento de la cola al cerrar sesión o cambiar de usuario (FASE 3).
+   */
+  stopAutoSync(): void {
+    if (autoSyncOnlineHandler && typeof window !== 'undefined') {
+      window.removeEventListener('online', autoSyncOnlineHandler);
+      autoSyncOnlineHandler = null;
+    }
+    if (autoSyncInterval) {
+      clearInterval(autoSyncInterval);
+      autoSyncInterval = null;
+    }
+    autoSyncUserId = null;
+    console.log('[OfflineSync] 🔴 AutoSync detenido.');
   },
 };

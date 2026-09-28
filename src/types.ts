@@ -280,12 +280,18 @@ export type PhotoCategory =
   | 'tricomas'
   | 'otra';
 
+export type PhotoSyncStatus = 'queued' | 'uploading' | 'saving_metadata' | 'synced' | 'error';
+
 export interface PhotoRecord {
   id: string;
   userId: string;
   cultivationId: string;
   url: string;
   thumbnailUrl?: string;
+  storagePath?: string;
+  syncStatus?: PhotoSyncStatus;
+  fileSize?: number;
+  mimeType?: string;
   date: string;
   dayOfCultivation: number;
   stage: CultivationStageName;
@@ -296,6 +302,11 @@ export interface PhotoRecord {
   isPendingSync?: boolean;
   syncError?: string;
   createdAt: string;
+}
+
+export interface AIAnalysisError {
+  code: 'UNAUTHENTICATED' | 'QUOTA_EXCEEDED' | 'NETWORK_ERROR' | 'INVALID_IMAGE' | 'MODEL_ERROR' | 'UNAVAILABLE';
+  message: string;
 }
 
 export interface DiaryEntry {

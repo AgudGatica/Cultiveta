@@ -1,12 +1,13 @@
 import { CultivationTask } from '../types';
-import { db } from '../firebase/config';
+import { db, auth } from '../firebase/config';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 
 const NOTIFIED_TASKS_KEY = 'cultiveta_notified_env_alerts';
 
 class BrowserNotificationService {
   private swRegistration: ServiceWorkerRegistration | null = null;
-  private sseSource: EventSource | null = null;
+  private sseAbortController: AbortController | null = null;
+  private sseReconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private notifiedTaskIds: Set<string> = new Set();
   private isInitialized = false;
   private firestoreUnsub: (() => void) | null = null;
@@ -238,44 +239,98 @@ class BrowserNotificationService {
   }
 
   /**
-   * Conecta al canal SSE del servidor (/api/notifications/stream) para recibir
-   * en tiempo real las alertas generadas por el cron job
+   * Conecta al canal SSE del servidor (/api/notifications/stream) mediante fetch streaming
+   * autenticado con encabezado Bearer JWT (FASE 1: transporte seguro sin JWT en URL).
    */
-  public initSSEStream(userId?: string) {
-    if (typeof window === 'undefined' || this.sseSource) return;
+  public async initSSEStream(userId?: string) {
+    if (typeof window === 'undefined') return;
+    this.stopSSEStream();
+
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      // Sin usuario autenticado en Firebase no se consumen canales privados
+      return;
+    }
 
     try {
-      const url = userId
-        ? `/api/notifications/stream?userId=${encodeURIComponent(userId)}`
-        : '/api/notifications/stream';
+      const idToken = await currentUser.getIdToken();
+      if (!idToken) return;
 
-      this.sseSource = new EventSource(url);
+      this.sseAbortController = new AbortController();
+      const signal = this.sseAbortController.signal;
 
-      this.sseSource.onopen = () => {
-        console.log('[NotificationService] 🟢 Conexión SSE de alertas cron establecida');
-      };
+      const response = await fetch('/api/notifications/stream', {
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+        signal,
+      });
 
-      this.sseSource.onmessage = (event) => {
-        try {
-          if (!event.data) return;
-          const payload = JSON.parse(event.data);
+      if (!response.ok || !response.body) {
+        console.warn('[NotificationService] Conexión a stream SSE falló:', response.status);
+        return;
+      }
 
-          if (payload.type === 'env_alert' && payload.task) {
-            console.log('[NotificationService] 🚨 Alerta de cron job recibida por SSE:', payload.task.title);
-            this.showEnvAlertNotification(payload.task);
-          } else if (payload.type === 'test_alert') {
-            this.sendTestNotification();
+      console.log('[NotificationService] 🟢 Conexión SSE autenticada de alertas cron establecida');
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+
+      while (!signal.aborted) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split('\n\n');
+        buffer = parts.pop() || '';
+
+        for (const part of parts) {
+          const lines = part.split('\n');
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              const rawData = line.slice(6).trim();
+              if (rawData) {
+                try {
+                  const payload = JSON.parse(rawData);
+                  if (payload.type === 'env_alert' && payload.task) {
+                    console.log('[NotificationService] 🚨 Alerta de cron job recibida por SSE:', payload.task.title);
+                    this.showEnvAlertNotification(payload.task);
+                  } else if (payload.type === 'test_alert') {
+                    this.sendTestNotification();
+                  }
+                } catch {
+                  // Ping o formato no-JSON
+                }
+              }
+            }
           }
-        } catch (parseErr) {
-          // Ignorar pings de mantenimiento
         }
-      };
+      }
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        console.warn('[NotificationService] Stream SSE desconectado, programando reconexión:', err?.message);
+        if (!this.sseReconnectTimeout) {
+          this.sseReconnectTimeout = setTimeout(() => {
+            this.sseReconnectTimeout = null;
+            this.initSSEStream(userId);
+          }, 8000);
+        }
+      }
+    }
+  }
 
-      this.sseSource.onerror = () => {
-        // La reconexión es manejada automáticamente por EventSource
-      };
-    } catch (err) {
-      console.warn('[NotificationService] Error inicializando SSE stream:', err);
+  /**
+   * Cierra el canal SSE activo y cancela reintentos
+   */
+  public stopSSEStream() {
+    if (this.sseAbortController) {
+      this.sseAbortController.abort();
+      this.sseAbortController = null;
+    }
+    if (this.sseReconnectTimeout) {
+      clearTimeout(this.sseReconnectTimeout);
+      this.sseReconnectTimeout = null;
     }
   }
 
@@ -444,10 +499,7 @@ class BrowserNotificationService {
    * Limpia conexiones al desmontar
    */
   public destroy() {
-    if (this.sseSource) {
-      this.sseSource.close();
-      this.sseSource = null;
-    }
+    this.stopSSEStream();
     if (this.firestoreUnsub) {
       this.firestoreUnsub();
       this.firestoreUnsub = null;
