@@ -142,11 +142,33 @@ function subscribe<T>(collectionName: string, userId: string, callback: (items: 
   };
 }
 
+function clearUserData(userId: string): void {
+  if (typeof window === 'undefined') return;
+  const collections = [
+    'cultivations',
+    'waterings',
+    'environmentRecords',
+    'photos',
+    'genetics',
+    'harvests',
+    'diaryEntries',
+    'favoriteGenetics',
+  ];
+  collections.forEach((col) => {
+    try {
+      localStorage.removeItem(getStorageKey(col, userId));
+    } catch {
+      // Ignore
+    }
+  });
+}
+
 export const localStore = {
   getStorageKey,
   getItems,
   saveItem,
   saveAll,
   deleteItem,
+  clearUserData,
   subscribe,
 };

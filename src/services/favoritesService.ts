@@ -6,13 +6,13 @@ import {
   deleteDoc,
   query,
   where,
-  onSnapshot,
   Unsubscribe
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { FavoriteGenetic } from '../types';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
 import { localStore } from './localStore';
+import { subscribeCollection } from './dataSyncHelper';
 
 /**
  * Generates a normalized unique key representing a genetics strain based on bank and name.
@@ -38,47 +38,12 @@ export const favoritesService = {
    * Leverages localStore for immediate offline-first responsiveness and merges with Firestore.
    */
   subscribeFavorites(userId: string, callback: (favorites: FavoriteGenetic[]) => void): Unsubscribe {
-    const unsubLocal = localStore.subscribe<FavoriteGenetic>('favoriteGenetics', userId, (localList) => {
-      callback(localList.sort((a, b) => (a.name || '').localeCompare(b.name || '')));
+    return subscribeCollection<FavoriteGenetic>({
+      collectionName: 'favoriteGenetics',
+      userId,
+      sortFn: (a, b) => (a.name || '').localeCompare(b.name || ''),
+      callback,
     });
-
-    let unsubFirestore: Unsubscribe = () => {};
-    try {
-      const q = query(
-        collection(db, 'favoriteGenetics'),
-        where('userId', '==', userId)
-      );
-
-      unsubFirestore = onSnapshot(
-        q,
-        (snap) => {
-          const cloudList = snap.docs
-            .map((d) => ({ id: d.id, ...d.data() } as FavoriteGenetic))
-            .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-
-          // Update localStore with cloud data
-          const currentLocal = localStore.getItems<FavoriteGenetic>('favoriteGenetics', userId);
-          const mergedMap = new Map<string, FavoriteGenetic>();
-          currentLocal.forEach((f) => mergedMap.set(f.geneticsKey || f.id, f));
-          cloudList.forEach((f) => mergedMap.set(f.geneticsKey || f.id, f));
-
-          const merged = Array.from(mergedMap.values()).sort(
-            (a, b) => (a.name || '').localeCompare(b.name || '')
-          );
-          localStore.saveAll('favoriteGenetics', userId, merged);
-        },
-        (error) => {
-          console.warn('Firestore favoriteGenetics listener unavailable, fallback to localStore:', error.message);
-        }
-      );
-    } catch (err) {
-      console.warn('Could not initialize Firestore favoriteGenetics subscription:', err);
-    }
-
-    return () => {
-      unsubLocal();
-      unsubFirestore();
-    };
   },
 
   /**

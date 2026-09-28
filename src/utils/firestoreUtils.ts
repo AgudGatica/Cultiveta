@@ -17,6 +17,10 @@ export function cleanFirestoreData<T>(obj: T): T {
   }
   const clean: Record<string, any> = {};
   for (const [key, value] of Object.entries(obj)) {
+    // Strip temporary local metadata keys from Firestore payload
+    if (key.startsWith('_') || key === 'isHeavyPayloadSanitized') {
+      continue;
+    }
     if (value !== undefined) {
       const cleanedValue = cleanFirestoreData(value);
       if (cleanedValue !== undefined) {

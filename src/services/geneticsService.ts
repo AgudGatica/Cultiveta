@@ -9,56 +9,22 @@ import {
   query,
   where,
   orderBy,
-  onSnapshot,
   Unsubscribe
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { Genetics } from '../types';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
 import { localStore } from './localStore';
+import { subscribeCollection } from './dataSyncHelper';
 
 export const geneticsService = {
   subscribeGenetics(userId: string, callback: (genetics: Genetics[]) => void): Unsubscribe {
-    const unsubLocal = localStore.subscribe<Genetics>('genetics', userId, (localList) => {
-      callback(localList.sort((a, b) => (a.name || '').localeCompare(b.name || '')));
+    return subscribeCollection<Genetics>({
+      collectionName: 'genetics',
+      userId,
+      sortFn: (a, b) => (a.name || '').localeCompare(b.name || ''),
+      callback,
     });
-
-    let unsubFirestore: Unsubscribe = () => {};
-    try {
-      const q = query(
-        collection(db, 'genetics'),
-        where('userId', '==', userId)
-      );
-      unsubFirestore = onSnapshot(
-        q,
-        (snap) => {
-          const cloudList = snap.docs
-            .map((d) => ({ id: d.id, ...d.data() } as Genetics))
-            .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
-
-          if (cloudList.length > 0) {
-            const currentLocal = localStore.getItems<Genetics>('genetics', userId);
-            const mergedMap = new Map<string, Genetics>();
-            currentLocal.forEach((g) => mergedMap.set(g.id, g));
-            cloudList.forEach((g) => mergedMap.set(g.id, g));
-            const merged = Array.from(mergedMap.values()).sort(
-              (a, b) => (a.name || '').localeCompare(b.name || '')
-            );
-            localStore.saveAll('genetics', userId, merged);
-          }
-        },
-        (error) => {
-          console.warn('Firestore onSnapshot genetics unavailable, using local:', error.message);
-        }
-      );
-    } catch (err) {
-      console.warn('Could not establish Firestore genetics subscription:', err);
-    }
-
-    return () => {
-      unsubLocal();
-      unsubFirestore();
-    };
   },
 
   async getGeneticsByUser(userId: string): Promise<Genetics[]> {
@@ -104,22 +70,22 @@ export const geneticsService = {
   async createGenetics(data: Omit<Genetics, 'id' | 'createdAt' | 'updatedAt'>): Promise<Genetics> {
     const docRef = doc(collection(db, 'genetics'));
     const now = new Date().toISOString();
-    const newGenetics: Genetics = {
+    const newGenetics: Genetics & { _isPendingLocal?: boolean } = {
       ...data,
       id: docRef.id,
       createdAt: now,
       updatedAt: now,
+      _isPendingLocal: true,
     };
 
-    localStore.saveItem('genetics', newGenetics);
+    localStore.saveItem('genetics', newGenetics as Genetics);
 
     try {
       const cleaned = cleanFirestoreData(newGenetics);
-      setDoc(docRef, cleaned).catch((err) => {
-        console.warn('Firestore setDoc genetics pending or unavailable:', err?.message || err);
-      });
-    } catch (err) {
-      console.warn('Serialization error on genetics:', err);
+      await setDoc(docRef, cleaned);
+      localStore.saveItem('genetics', { ...newGenetics, _isPendingLocal: false } as Genetics);
+    } catch (err: any) {
+      console.warn('Firestore setDoc genetics pending or unavailable:', err?.message || err);
     }
 
     return newGenetics;
@@ -139,29 +105,22 @@ export const geneticsService = {
 
     try {
       const docRef = doc(db, 'genetics', id);
-      updateDoc(docRef, cleanFirestoreData({
+      await setDoc(docRef, cleanFirestoreData({
         ...updates,
         updatedAt: new Date().toISOString(),
-      })).catch((err) => {
-        console.warn('Firestore updateDoc genetics failed:', err?.message || err);
-      });
+      }), { merge: true });
     } catch (err) {
       console.warn('updateDoc error on genetics:', err);
     }
   },
 
   async deleteGenetics(id: string, userId?: string): Promise<void> {
-    if (userId) {
-      localStore.deleteItem('genetics', id, userId);
-    } else if (typeof window !== 'undefined') {
-      const lastUid = localStorage.getItem('cultiveta_last_user_id') || 'default_user';
-      localStore.deleteItem('genetics', id, lastUid);
-    }
+    const targetUid = userId || (typeof window !== 'undefined' ? localStorage.getItem('cultiveta_last_user_id') || 'default_user' : 'default_user');
+    localStore.deleteItem('genetics', id, targetUid);
+
     try {
       const docRef = doc(db, 'genetics', id);
-      deleteDoc(docRef).catch((err) => {
-        console.warn('Firestore deleteDoc genetics failed:', err?.message || err);
-      });
+      await deleteDoc(docRef);
     } catch (err) {
       console.warn('deleteDoc error on genetics:', err);
     }

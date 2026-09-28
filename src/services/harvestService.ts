@@ -9,7 +9,6 @@ import {
   query,
   where,
   orderBy,
-  onSnapshot,
   Unsubscribe
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
@@ -17,49 +16,16 @@ import { Harvest } from '../types';
 import { cultivationService } from './cultivationService';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
 import { localStore } from './localStore';
+import { subscribeCollection } from './dataSyncHelper';
 
 export const harvestService = {
   subscribeHarvests(userId: string, callback: (harvests: Harvest[]) => void): Unsubscribe {
-    const unsubLocal = localStore.subscribe<Harvest>('harvests', userId, (localList) => {
-      callback(localList.sort((a, b) => new Date(b.harvestDate || 0).getTime() - new Date(a.harvestDate || 0).getTime()));
+    return subscribeCollection<Harvest>({
+      collectionName: 'harvests',
+      userId,
+      sortFn: (a, b) => new Date(b.harvestDate || 0).getTime() - new Date(a.harvestDate || 0).getTime(),
+      callback,
     });
-
-    let unsubFirestore: Unsubscribe = () => {};
-    try {
-      const q = query(
-        collection(db, 'harvests'),
-        where('userId', '==', userId)
-      );
-      unsubFirestore = onSnapshot(
-        q,
-        (snap) => {
-          const cloudList = snap.docs
-            .map((d) => ({ id: d.id, ...d.data() } as Harvest))
-            .sort((a, b) => new Date(b.harvestDate || 0).getTime() - new Date(a.harvestDate || 0).getTime());
-
-          if (cloudList.length > 0) {
-            const currentLocal = localStore.getItems<Harvest>('harvests', userId);
-            const mergedMap = new Map<string, Harvest>();
-            currentLocal.forEach((h) => mergedMap.set(h.id, h));
-            cloudList.forEach((h) => mergedMap.set(h.id, h));
-            const merged = Array.from(mergedMap.values()).sort(
-              (a, b) => new Date(b.harvestDate || 0).getTime() - new Date(a.harvestDate || 0).getTime()
-            );
-            localStore.saveAll('harvests', userId, merged);
-          }
-        },
-        (error) => {
-          console.warn('Firestore onSnapshot harvests unavailable, using local:', error.message);
-        }
-      );
-    } catch (err) {
-      console.warn('Could not establish Firestore harvests subscription:', err);
-    }
-
-    return () => {
-      unsubLocal();
-      unsubFirestore();
-    };
   },
 
   async getHarvestsByUser(userId: string): Promise<Harvest[]> {
@@ -107,13 +73,14 @@ export const harvestService = {
   async recordHarvest(data: Omit<Harvest, 'id' | 'createdAt'>): Promise<Harvest> {
     const docRef = doc(collection(db, 'harvests'));
     const now = new Date().toISOString();
-    const newHarvest: Harvest = {
+    const newHarvest: Harvest & { _isPendingLocal?: boolean } = {
       ...data,
       id: docRef.id,
       createdAt: now,
+      _isPendingLocal: true,
     };
 
-    localStore.saveItem('harvests', newHarvest);
+    localStore.saveItem('harvests', newHarvest as Harvest);
 
     // Update cultivation status to cosechado / finished
     await cultivationService.updateCultivation(data.cultivationId, {
@@ -130,6 +97,7 @@ export const harvestService = {
     try {
       const cleaned = cleanFirestoreData(newHarvest);
       await setDoc(docRef, cleaned);
+      localStore.saveItem('harvests', { ...newHarvest, _isPendingLocal: false } as Harvest);
     } catch (err) {
       console.warn('Serialization error on harvest in Firestore:', err);
     }
@@ -160,9 +128,7 @@ export const harvestService = {
     try {
       const docRef = doc(db, 'harvests', id);
       const cleaned = cleanFirestoreData(updates);
-      updateDoc(docRef, cleaned).catch((err) => {
-        console.warn('Firestore updateDoc harvests failed:', err?.message || err);
-      });
+      await setDoc(docRef, cleaned, { merge: true });
     } catch (err) {
       console.warn('updateDoc error on harvests:', err);
     }
@@ -171,12 +137,8 @@ export const harvestService = {
   },
 
   async deleteHarvest(id: string, cultivationId: string, userId?: string): Promise<void> {
-    if (userId) {
-      localStore.deleteItem('harvests', id, userId);
-    } else if (typeof window !== 'undefined') {
-      const lastUid = localStorage.getItem('cultiveta_last_user_id') || 'default_user';
-      localStore.deleteItem('harvests', id, lastUid);
-    }
+    const targetUid = userId || (typeof window !== 'undefined' ? localStorage.getItem('cultiveta_last_user_id') || 'default_user' : 'default_user');
+    localStore.deleteItem('harvests', id, targetUid);
 
     await cultivationService.updateCultivation(cultivationId, {
       isFinished: false,
@@ -186,9 +148,7 @@ export const harvestService = {
 
     try {
       const docRef = doc(db, 'harvests', id);
-      deleteDoc(docRef).catch((err) => {
-        console.warn('Firestore deleteDoc harvests failed:', err?.message || err);
-      });
+      await deleteDoc(docRef);
     } catch (err) {
       console.warn('deleteDoc error on harvests:', err);
     }

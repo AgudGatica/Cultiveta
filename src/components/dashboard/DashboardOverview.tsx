@@ -59,6 +59,8 @@ interface DashboardOverviewProps {
   userProfile?: UserProfile | null;
   userId?: string;
   isLoading?: boolean;
+  isSyncing?: boolean;
+  syncError?: string | null;
   onRefreshData?: () => void;
   onSelectCultivation: (cultivation: Cultivation) => void;
   onCreateCultivationClick: () => void;
@@ -118,6 +120,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   userProfile,
   userId,
   isLoading = false,
+  isSyncing = false,
+  syncError = null,
   onRefreshData,
   onSelectCultivation,
   onCreateCultivationClick,
@@ -131,7 +135,6 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 }) => {
   const [weeklySummary, setWeeklySummary] = useState<string | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
-  const [internalSimulateLoading, setInternalSimulateLoading] = useState(false);
   const [tasksVersion, setTasksVersion] = useState(0);
   const [isScrolled, setIsScrolled] = useState(false);
   const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
@@ -167,14 +170,17 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     };
   }, []);
 
-  const showSkeleton = Boolean(isLoading || internalSimulateLoading);
+  // Only show skeleton on true initial load when NO data is available yet
+  const isInitialLoading = Boolean(
+    isLoading &&
+    cultivations.length === 0 &&
+    waterings.length === 0 &&
+    envRecords.length === 0
+  );
 
   const handleManualRefresh = () => {
-    if (onRefreshData) {
+    if (onRefreshData && !isSyncing) {
       onRefreshData();
-    } else {
-      setInternalSimulateLoading(true);
-      setTimeout(() => setInternalSimulateLoading(false), 1500);
     }
   };
 
@@ -637,12 +643,12 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               type="button"
               id="refresh-dashboard-btn"
               onClick={handleManualRefresh}
-              disabled={showSkeleton}
+              disabled={isSyncing}
               className="px-4 py-3 rounded-2xl bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
-              title="Recargar datos de Firestore (Skeleton Loading)"
+              title="Sincronizar datos y verificar cola offline"
             >
-              <RefreshCw className={`w-4 h-4 ${showSkeleton ? 'animate-spin text-emerald-400' : 'text-zinc-400'}`} />
-              <span className="hidden sm:inline">{showSkeleton ? 'Cargando...' : 'Sincronizar'}</span>
+              <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin text-emerald-400' : 'text-zinc-400'}`} />
+              <span className="hidden sm:inline">{isSyncing ? 'Sincronizando...' : 'Sincronizar'}</span>
             </button>
 
             <button
@@ -844,7 +850,27 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         )}
       </div>
 
-      {showSkeleton ? (
+      {/* Sync Error Banner if any */}
+      {syncError && (
+        <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between gap-3 shadow-md">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+            <span>{syncError}</span>
+          </div>
+          {onRefreshData && (
+            <button
+              type="button"
+              onClick={onRefreshData}
+              disabled={isSyncing}
+              className="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 font-semibold cursor-pointer text-xs transition-colors shrink-0 disabled:opacity-50"
+            >
+              Reintentar
+            </button>
+          )}
+        </div>
+      )}
+
+      {isInitialLoading ? (
         <DashboardSkeleton />
       ) : (
         <>

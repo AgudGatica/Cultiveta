@@ -23,8 +23,21 @@ export const photoService = {
    * unificando resultados remotos de Firestore con elementos pendientes en IndexedDB.
    */
   subscribePhotos(userId: string, callback: (photos: PhotoRecord[]) => void): Unsubscribe {
+    let isCancelled = false;
+
+    // 0. Emisión inmediata del almacenamiento local si existen datos
+    try {
+      const initialLocal = localStore.getItems<PhotoRecord>('photos', userId);
+      if (initialLocal.length > 0) {
+        callback(initialLocal.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()));
+      }
+    } catch {
+      // Benign
+    }
+
     // 1. Suscripción a cambios reactivos del almacén local
     const unsubLocal = localStore.subscribe<PhotoRecord>('photos', userId, async (localList) => {
+      if (isCancelled) return;
       // Unir con fotos pendientes de IndexedDB
       const pendingItems = await photoOfflineQueue.getQueuedPhotos(userId);
       const mergedMap = new Map<string, PhotoRecord>();
@@ -71,14 +84,16 @@ export const photoService = {
 
       unsubFirestore = onSnapshot(
         q,
+        { includeMetadataChanges: true },
         async (snap) => {
+          if (isCancelled) return;
           const cloudList = snap.docs.map((d) => {
             const data = d.data();
             return {
               id: d.id,
               ...data,
-              isPendingSync: false,
-              syncStatus: 'synced',
+              isPendingSync: d.metadata.hasPendingWrites,
+              syncStatus: d.metadata.hasPendingWrites ? ('uploading' as PhotoSyncStatus) : ('synced' as PhotoSyncStatus),
             } as PhotoRecord;
           });
 
@@ -87,12 +102,12 @@ export const photoService = {
           const currentLocal = localStore.getItems<PhotoRecord>('photos', userId);
           const mergedMap = new Map<string, PhotoRecord>();
 
-          // Primero colocamos las remotas confirmadas
+          // Primero colocamos las remotas confirmadas (autoritativas de Firestore)
           cloudList.forEach((p) => mergedMap.set(p.id, p));
 
           // Si hay fotos locales que están pendientes de sincronizar, mantener su estado
           currentLocal.forEach((p) => {
-            if (p.isPendingSync) {
+            if (p.isPendingSync && !mergedMap.has(p.id)) {
               mergedMap.set(p.id, p);
             }
           });
@@ -127,10 +142,33 @@ export const photoService = {
             (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
           );
 
-          localStore.saveAll('photos', userId, merged);
+          // Direct UI emission
+          callback(merged);
+
+          // Local storage backup
+          try {
+            localStore.saveAll('photos', userId, merged);
+          } catch {
+            // Quota or storage handled
+          }
         },
         (error) => {
+          if (isCancelled) return;
           console.warn('[photoService] onSnapshot photos no disponible (modo offline o sin red):', error.message);
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('cultiveta_listener_error', {
+                detail: {
+                  collection: 'photos',
+                  code: (error as any)?.code,
+                  message:
+                    (error as any)?.code === 'permission-denied'
+                      ? 'Error de permisos al leer fotografías.'
+                      : 'Modo sin conexión en galería fotográfica.',
+                },
+              })
+            );
+          }
         }
       );
     } catch (err) {
@@ -138,6 +176,7 @@ export const photoService = {
     }
 
     return () => {
+      isCancelled = true;
       unsubLocal();
       unsubFirestore();
     };

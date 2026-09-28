@@ -10,73 +10,39 @@ import {
   where,
   orderBy,
   limit,
-  onSnapshot,
   Unsubscribe
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { Cultivation, HealthStatus, Watering, EnvironmentRecord } from '../types';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
 import { localStore } from './localStore';
+import { subscribeCollection } from './dataSyncHelper';
 
 export const cultivationService = {
   subscribeCultivations(userId: string, callback: (cultivations: Cultivation[]) => void): Unsubscribe {
-    // 1. Immediately subscribe to local persistence for zero latency and offline support
-    const unsubLocal = localStore.subscribe<Cultivation>('cultivations', userId, (localList) => {
-      callback(localList.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()));
+    return subscribeCollection<Cultivation>({
+      collectionName: 'cultivations',
+      userId,
+      sortFn: (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
+      callback: (list) => {
+        callback(list);
 
-      // Registrar cultivos de exterior en el backend para el cron
-      localList.forEach((c) => {
-        if (
-          !c.isFinished &&
-          c.locationCoordinates &&
-          (c.type === 'Outdoor' || c.type === 'Invernadero')
-        ) {
-          fetch('/api/outdoor/cultivations', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(c),
-          }).catch(() => {});
-        }
-      });
-    });
-
-    // 2. Also try Cloud Firestore snapshot listener safely
-    let unsubFirestore: Unsubscribe = () => {};
-    try {
-      const q = query(
-        collection(db, 'cultivations'),
-        where('userId', '==', userId)
-      );
-      unsubFirestore = onSnapshot(
-        q,
-        (snap) => {
-          const cloudList = snap.docs
-            .map((d) => ({ id: d.id, ...d.data() } as Cultivation))
-            .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-
-          if (cloudList.length > 0) {
-            const currentLocal = localStore.getItems<Cultivation>('cultivations', userId);
-            const mergedMap = new Map<string, Cultivation>();
-            currentLocal.forEach((c) => mergedMap.set(c.id, c));
-            cloudList.forEach((c) => mergedMap.set(c.id, c));
-            const merged = Array.from(mergedMap.values()).sort(
-              (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-            );
-            localStore.saveAll('cultivations', userId, merged);
+        // Registrar cultivos de exterior en el backend para el cron
+        list.forEach((c) => {
+          if (
+            !c.isFinished &&
+            c.locationCoordinates &&
+            (c.type === 'Outdoor' || c.type === 'Invernadero')
+          ) {
+            fetch('/api/outdoor/cultivations', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(c),
+            }).catch(() => {});
           }
-        },
-        (error) => {
-          console.warn('Firestore onSnapshot unavailable, operating with local persistence:', error.message);
-        }
-      );
-    } catch (err) {
-      console.warn('Could not establish Firestore subscription:', err);
-    }
-
-    return () => {
-      unsubLocal();
-      unsubFirestore();
-    };
+        });
+      },
+    });
   },
 
   async getCultivationsByUser(userId: string): Promise<Cultivation[]> {
@@ -124,15 +90,16 @@ export const cultivationService = {
   async createCultivation(data: Omit<Cultivation, 'id' | 'createdAt' | 'updatedAt'>): Promise<Cultivation> {
     const docRef = doc(collection(db, 'cultivations'));
     const now = new Date().toISOString();
-    const newCultivation: Cultivation = {
+    const newCultivation: Cultivation & { _isPendingLocal?: boolean } = {
       ...data,
       id: docRef.id,
       createdAt: now,
       updatedAt: now,
+      _isPendingLocal: true,
     };
 
     // 1. Immediately store in localStore (instant UI update & offline reliability)
-    localStore.saveItem('cultivations', newCultivation);
+    localStore.saveItem('cultivations', newCultivation as Cultivation);
 
     // Si es un cultivo exterior/invernadero con coordenadas, registrarlo en el backend para el cron
     if (
@@ -146,14 +113,13 @@ export const cultivationService = {
       }).catch(() => {});
     }
 
-    // 2. Attempt Cloud Firestore write in the background without throwing if API is pending/offline
+    // 2. Cloud Firestore write with pending status update upon confirmation
     try {
       const cleaned = cleanFirestoreData(newCultivation);
-      setDoc(docRef, cleaned).catch((err) => {
-        console.warn('Cloud Firestore sync pending or unavailable (persisted locally):', err?.message || err);
-      });
-    } catch (err) {
-      console.warn('Cloud Firestore serialization failed (persisted locally):', err);
+      await setDoc(docRef, cleaned);
+      localStore.saveItem('cultivations', { ...newCultivation, _isPendingLocal: false } as Cultivation);
+    } catch (err: any) {
+      console.warn('Cloud Firestore sync pending or unavailable (persisted locally):', err?.message || err);
     }
 
     return newCultivation;
@@ -196,20 +162,14 @@ export const cultivationService = {
   },
 
   async deleteCultivation(id: string, userId?: string): Promise<void> {
-    if (userId) {
-      localStore.deleteItem('cultivations', id, userId);
-    } else if (typeof window !== 'undefined') {
-      const lastUid = localStorage.getItem('cultiveta_last_user_id') || 'default_user';
-      localStore.deleteItem('cultivations', id, lastUid);
-    }
+    const targetUid = userId || (typeof window !== 'undefined' ? localStorage.getItem('cultiveta_last_user_id') || 'default_user' : 'default_user');
+    localStore.deleteItem('cultivations', id, targetUid);
 
     try {
       const docRef = doc(db, 'cultivations', id);
-      deleteDoc(docRef).catch((err) => {
-        console.warn('Cloud Firestore deleteDoc pending or unavailable:', err?.message || err);
-      });
+      await deleteDoc(docRef);
     } catch (err) {
-      console.warn('Cloud Firestore deleteDoc failed:', err);
+      console.warn('Cloud Firestore deleteDoc failed (deleted locally):', err);
     }
   },
 

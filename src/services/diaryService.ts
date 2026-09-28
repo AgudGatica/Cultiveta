@@ -9,56 +9,22 @@ import {
   query,
   where,
   orderBy,
-  onSnapshot,
   Unsubscribe
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { DiaryEntry } from '../types';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
 import { localStore } from './localStore';
+import { subscribeCollection } from './dataSyncHelper';
 
 export const diaryService = {
   subscribeDiary(userId: string, callback: (entries: DiaryEntry[]) => void): Unsubscribe {
-    const unsubLocal = localStore.subscribe<DiaryEntry>('diaryEntries', userId, (localList) => {
-      callback(localList.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()));
+    return subscribeCollection<DiaryEntry>({
+      collectionName: 'diaryEntries',
+      userId,
+      sortFn: (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
+      callback,
     });
-
-    let unsubFirestore: Unsubscribe = () => {};
-    try {
-      const q = query(
-        collection(db, 'diaryEntries'),
-        where('userId', '==', userId)
-      );
-      unsubFirestore = onSnapshot(
-        q,
-        (snap) => {
-          const cloudList = snap.docs
-            .map((d) => ({ id: d.id, ...d.data() } as DiaryEntry))
-            .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
-
-          if (cloudList.length > 0) {
-            const currentLocal = localStore.getItems<DiaryEntry>('diaryEntries', userId);
-            const mergedMap = new Map<string, DiaryEntry>();
-            currentLocal.forEach((d) => mergedMap.set(d.id, d));
-            cloudList.forEach((d) => mergedMap.set(d.id, d));
-            const merged = Array.from(mergedMap.values()).sort(
-              (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
-            );
-            localStore.saveAll('diaryEntries', userId, merged);
-          }
-        },
-        (error) => {
-          console.warn('Firestore onSnapshot diaryEntries unavailable, using local:', error.message);
-        }
-      );
-    } catch (err) {
-      console.warn('Could not establish Firestore diaryEntries subscription:', err);
-    }
-
-    return () => {
-      unsubLocal();
-      unsubFirestore();
-    };
   },
 
   async getDiaryEntriesByCultivation(cultivationId: string, userId?: string): Promise<DiaryEntry[]> {
@@ -92,20 +58,20 @@ export const diaryService = {
   async addDiaryEntry(data: Omit<DiaryEntry, 'id' | 'createdAt' | 'updatedAt'>): Promise<DiaryEntry> {
     const docRef = doc(collection(db, 'diaryEntries'));
     const now = new Date().toISOString();
-    const newEntry: DiaryEntry = {
+    const newEntry: DiaryEntry & { _isPendingLocal?: boolean } = {
       ...data,
       id: docRef.id,
       createdAt: now,
       updatedAt: now,
+      _isPendingLocal: true,
     };
 
-    localStore.saveItem('diaryEntries', newEntry);
+    localStore.saveItem('diaryEntries', newEntry as DiaryEntry);
 
     try {
       const cleaned = cleanFirestoreData(newEntry);
-      setDoc(docRef, cleaned).catch((err) => {
-        console.warn('Firestore setDoc diaryEntries pending or unavailable:', err?.message || err);
-      });
+      await setDoc(docRef, cleaned);
+      localStore.saveItem('diaryEntries', { ...newEntry, _isPendingLocal: false } as DiaryEntry);
     } catch (err) {
       console.warn('Serialization error on diaryEntry:', err);
     }
@@ -127,29 +93,22 @@ export const diaryService = {
 
     try {
       const docRef = doc(db, 'diaryEntries', id);
-      updateDoc(docRef, cleanFirestoreData({
+      await setDoc(docRef, cleanFirestoreData({
         ...updates,
         updatedAt: new Date().toISOString(),
-      })).catch((err) => {
-        console.warn('Firestore updateDoc diaryEntries failed:', err?.message || err);
-      });
+      }), { merge: true });
     } catch (err) {
       console.warn('updateDoc error on diaryEntries:', err);
     }
   },
 
   async deleteDiaryEntry(id: string, userId?: string): Promise<void> {
-    if (userId) {
-      localStore.deleteItem('diaryEntries', id, userId);
-    } else if (typeof window !== 'undefined') {
-      const lastUid = localStorage.getItem('cultiveta_last_user_id') || 'default_user';
-      localStore.deleteItem('diaryEntries', id, lastUid);
-    }
+    const targetUid = userId || (typeof window !== 'undefined' ? localStorage.getItem('cultiveta_last_user_id') || 'default_user' : 'default_user');
+    localStore.deleteItem('diaryEntries', id, targetUid);
+
     try {
       const docRef = doc(db, 'diaryEntries', id);
-      deleteDoc(docRef).catch((err) => {
-        console.warn('Firestore deleteDoc diaryEntries failed:', err?.message || err);
-      });
+      await deleteDoc(docRef);
     } catch (err) {
       console.warn('deleteDoc error on diaryEntries:', err);
     }

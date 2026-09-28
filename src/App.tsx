@@ -10,6 +10,7 @@ import { harvestService } from './services/harvestService';
 import { diaryService } from './services/diaryService';
 import { demoDataService } from './services/demoDataService';
 import { photoOfflineQueue } from './services/photoOfflineQueue';
+import { localStore } from './services/localStore';
 
 import {
   Cultivation,
@@ -101,20 +102,10 @@ export default function App() {
   // Notification / Toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Firestore Sync / Skeleton Loading State for initial fetch and refresh
-  const [isFirestoreLoading, setIsFirestoreLoading] = useState(true);
-
-  useEffect(() => {
-    if (!currentUser) {
-      setIsFirestoreLoading(false);
-      return;
-    }
-    setIsFirestoreLoading(true);
-    const timer = setTimeout(() => {
-      setIsFirestoreLoading(false);
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [currentUser?.uid]);
+  // Loading and Sync states linked to actual Firestore/cache results
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   // Cultivations List Stage Filter & Search State
   const [stageFilter, setStageFilter] = useState<StageFilterCategory>('all');
@@ -264,7 +255,7 @@ export default function App() {
     };
   }, [currentUser?.uid]);
 
-  // 2. Real-time subscriptions to Firestore
+  // 2. Real-time subscriptions to Firestore and error listener
   useEffect(() => {
     if (!currentUser) {
       setCultivations([]);
@@ -274,21 +265,89 @@ export default function App() {
       setGeneticsList([]);
       setHarvests([]);
       setDiaryEntries([]);
+      setIsInitialLoading(false);
+      setSyncError(null);
       return;
     }
 
+    setIsInitialLoading(true);
+    setSyncError(null);
+
+    let isSubActive = true;
+
+    // Conclude initial loading as soon as core data or confirmed empty state arrives
+    const markInitialLoaded = () => {
+      if (isSubActive) {
+        setIsInitialLoading(false);
+      }
+    };
+
+    // Safety timeout: prevent infinite skeleton if network socket hangs completely with no cache
+    const safetyTimer = setTimeout(() => {
+      markInitialLoaded();
+    }, 2500);
+
+    const handleListenerError = (e: Event) => {
+      const ce = e as CustomEvent<{ collection?: string; code?: string; message?: string }>;
+      if (ce.detail?.message && isSubActive) {
+        setSyncError(ce.detail.message);
+        showToast(`⚠️ ${ce.detail.message}`);
+        markInitialLoaded();
+      }
+    };
+
+    window.addEventListener('cultiveta_listener_error', handleListenerError);
+
     const unsubCultivations = cultivationService.subscribeCultivations(
       currentUser.uid,
-      setCultivations
+      (list) => {
+        setCultivations(list);
+        markInitialLoaded();
+      }
     );
-    const unsubWaterings = wateringService.subscribeWaterings(currentUser.uid, setWaterings);
-    const unsubEnv = environmentService.subscribeEnvironment(currentUser.uid, setEnvRecords);
-    const unsubPhotos = photoService.subscribePhotos(currentUser.uid, setPhotos);
-    const unsubGenetics = geneticsService.subscribeGenetics(currentUser.uid, setGeneticsList);
-    const unsubHarvests = harvestService.subscribeHarvests(currentUser.uid, setHarvests);
-    const unsubDiary = diaryService.subscribeDiary(currentUser.uid, setDiaryEntries);
+    const unsubWaterings = wateringService.subscribeWaterings(
+      currentUser.uid,
+      (list) => {
+        setWaterings(list);
+        markInitialLoaded();
+      }
+    );
+    const unsubEnv = environmentService.subscribeEnvironment(
+      currentUser.uid,
+      (list) => {
+        setEnvRecords(list);
+        markInitialLoaded();
+      }
+    );
+    const unsubPhotos = photoService.subscribePhotos(
+      currentUser.uid,
+      (list) => {
+        setPhotos(list);
+      }
+    );
+    const unsubGenetics = geneticsService.subscribeGenetics(
+      currentUser.uid,
+      (list) => {
+        setGeneticsList(list);
+      }
+    );
+    const unsubHarvests = harvestService.subscribeHarvests(
+      currentUser.uid,
+      (list) => {
+        setHarvests(list);
+      }
+    );
+    const unsubDiary = diaryService.subscribeDiary(
+      currentUser.uid,
+      (list) => {
+        setDiaryEntries(list);
+      }
+    );
 
     return () => {
+      isSubActive = false;
+      clearTimeout(safetyTimer);
+      window.removeEventListener('cultiveta_listener_error', handleListenerError);
       unsubCultivations();
       unsubWaterings();
       unsubEnv();
@@ -297,7 +356,31 @@ export default function App() {
       unsubHarvests();
       unsubDiary();
     };
-  }, [currentUser]);
+  }, [currentUser?.uid]);
+
+  // Handle Real Refresh / Resync Action without fake timers or hiding the screen
+  const handleRefreshData = async () => {
+    if (isSyncing || !currentUser) return;
+    setIsSyncing(true);
+    setSyncError(null);
+    try {
+      // 1. Sync pending offline photos
+      const syncResult = await photoOfflineQueue.syncPendingPhotos(currentUser.uid);
+      // 2. Fetch server meteorological records
+      await environmentService.fetchServerRecords(currentUser.uid);
+      showToast(
+        syncResult.synced > 0
+          ? `✓ Sincronización exitosa: ${syncResult.synced} foto(s) subidas a la nube.`
+          : '✓ Datos sincronizados con la nube.'
+      );
+    } catch (err: any) {
+      console.warn('Sync error:', err);
+      setSyncError('Error al sincronizar con el servidor.');
+      showToast('Modo sin conexión: mostrando datos locales.');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   // Handle Demo Data Seed
   const handleSeedDemoData = async () => {
@@ -327,6 +410,16 @@ export default function App() {
   };
 
   const handleLogout = async () => {
+    if (currentUser?.uid) {
+      localStore.clearUserData(currentUser.uid);
+    }
+    setCultivations([]);
+    setWaterings([]);
+    setEnvRecords([]);
+    setPhotos([]);
+    setGeneticsList([]);
+    setHarvests([]);
+    setDiaryEntries([]);
     await authService.signOutUser();
     setCurrentView('dashboard');
     setSelectedCultivationId(null);
@@ -430,11 +523,10 @@ export default function App() {
               geneticsList={geneticsList}
               userProfile={userProfile}
               userId={currentUser.uid}
-              isLoading={isFirestoreLoading}
-              onRefreshData={() => {
-                setIsFirestoreLoading(true);
-                setTimeout(() => setIsFirestoreLoading(false), 1200);
-              }}
+              isLoading={isInitialLoading}
+              isSyncing={isSyncing}
+              syncError={syncError}
+              onRefreshData={handleRefreshData}
               onSelectCultivation={(crop) => {
                 setSelectedCultivationId(crop.id);
                 setCurrentView('cultivation_detail');
@@ -865,7 +957,11 @@ export default function App() {
           cultivations={cultivations.filter((c) => !c.isFinished)}
           defaultCultivationId={selectedCultivationId || undefined}
           onPhotoUploaded={(photo, triggerAI) => {
-            showToast('Fotografía guardada en la galería.');
+            if (photo.syncStatus === 'queued' || photo.isPendingSync) {
+              showToast('📸 Fotografía guardada localmente (se sincronizará al conectar).');
+            } else {
+              showToast('📸 Fotografía guardada y sincronizada en la nube.');
+            }
             if (triggerAI) {
               const targetCrop = cultivations.find((c) => c.id === photo.cultivationId);
               if (targetCrop) {

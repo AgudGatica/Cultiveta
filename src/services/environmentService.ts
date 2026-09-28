@@ -8,71 +8,43 @@ import {
   query,
   where,
   orderBy,
-  onSnapshot,
   Unsubscribe
 } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { EnvironmentRecord } from '../types';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
 import { localStore } from './localStore';
+import { subscribeCollection } from './dataSyncHelper';
 
 export const environmentService = {
   subscribeEnvironment(userId: string, callback: (records: EnvironmentRecord[]) => void): Unsubscribe {
-    const unsubLocal = localStore.subscribe<EnvironmentRecord>('environmentRecords', userId, (localList) => {
-      callback(localList.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()));
-    });
-
     // Sincronizar registros meteorológicos automáticos generados por el backend
-    fetch(`/api/outdoor/environment-records?userId=${encodeURIComponent(userId)}`)
-      .then((res) => (res.ok ? res.json() : []))
-      .then((serverRecords: EnvironmentRecord[]) => {
-        if (Array.isArray(serverRecords) && serverRecords.length > 0) {
-          const currentLocal = localStore.getItems<EnvironmentRecord>('environmentRecords', userId);
-          const currentIds = new Set(currentLocal.map((r) => r.id));
-          const toAdd = serverRecords.filter((r) => !currentIds.has(r.id));
-          if (toAdd.length > 0) {
-            localStore.saveAll('environmentRecords', userId, [...currentLocal, ...toAdd]);
-          }
-        }
-      })
-      .catch(() => {});
+    this.fetchServerRecords(userId).catch(() => {});
 
-    let unsubFirestore: Unsubscribe = () => {};
+    return subscribeCollection<EnvironmentRecord>({
+      collectionName: 'environmentRecords',
+      userId,
+      sortFn: (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime(),
+      callback,
+    });
+  },
+
+  async fetchServerRecords(userId: string): Promise<void> {
     try {
-      const q = query(
-        collection(db, 'environmentRecords'),
-        where('userId', '==', userId)
-      );
-      unsubFirestore = onSnapshot(
-        q,
-        (snap) => {
-          const cloudList = snap.docs
-            .map((d) => ({ id: d.id, ...d.data() } as EnvironmentRecord))
-            .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
-
-          if (cloudList.length > 0) {
-            const currentLocal = localStore.getItems<EnvironmentRecord>('environmentRecords', userId);
-            const mergedMap = new Map<string, EnvironmentRecord>();
-            currentLocal.forEach((e) => mergedMap.set(e.id, e));
-            cloudList.forEach((e) => mergedMap.set(e.id, e));
-            const merged = Array.from(mergedMap.values()).sort(
-              (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
-            );
-            localStore.saveAll('environmentRecords', userId, merged);
-          }
-        },
-        (error) => {
-          console.warn('Firestore onSnapshot environmentRecords unavailable, using local:', error.message);
+      const res = await fetch(`/api/outdoor/environment-records?userId=${encodeURIComponent(userId)}`);
+      if (!res.ok) return;
+      const serverRecords: EnvironmentRecord[] = await res.json();
+      if (Array.isArray(serverRecords) && serverRecords.length > 0) {
+        const currentLocal = localStore.getItems<EnvironmentRecord>('environmentRecords', userId);
+        const currentIds = new Set(currentLocal.map((r) => r.id));
+        const toAdd = serverRecords.filter((r) => !currentIds.has(r.id));
+        if (toAdd.length > 0) {
+          localStore.saveAll('environmentRecords', userId, [...currentLocal, ...toAdd]);
         }
-      );
-    } catch (err) {
-      console.warn('Could not establish Firestore environmentRecords subscription:', err);
+      }
+    } catch {
+      // Benign offline fetch failure
     }
-
-    return () => {
-      unsubLocal();
-      unsubFirestore();
-    };
   },
 
   calculateVPD(airTempC: number, humidityPct: number, leafTempC?: number): number {
@@ -124,40 +96,35 @@ export const environmentService = {
       vpdKPa = this.calculateVPD(data.temperatureC, data.humidityPct, data.leafTempC);
     }
 
-    const newRecord: EnvironmentRecord = {
+    const newRecord: EnvironmentRecord & { _isPendingLocal?: boolean } = {
       ...data,
       vpdKPa,
       id: docRef.id,
       createdAt: now,
+      _isPendingLocal: true,
     };
 
-    localStore.saveItem('environmentRecords', newRecord);
+    localStore.saveItem('environmentRecords', newRecord as EnvironmentRecord);
 
     try {
       const cleaned = cleanFirestoreData(newRecord);
-      setDoc(docRef, cleaned).catch((err) => {
-        console.warn('Firestore setDoc environmentRecords pending or unavailable:', err?.message || err);
-      });
-    } catch (err) {
-      console.warn('Serialization error on environmentRecord:', err);
+      await setDoc(docRef, cleaned);
+      localStore.saveItem('environmentRecords', { ...newRecord, _isPendingLocal: false } as EnvironmentRecord);
+    } catch (err: any) {
+      console.warn('Firestore setDoc environmentRecords pending or unavailable:', err?.message || err);
     }
 
     return newRecord;
   },
 
   async deleteEnvironmentRecord(id: string, userId?: string): Promise<void> {
-    if (userId) {
-      localStore.deleteItem('environmentRecords', id, userId);
-    } else if (typeof window !== 'undefined') {
-      const lastUid = localStorage.getItem('cultiveta_last_user_id') || 'default_user';
-      localStore.deleteItem('environmentRecords', id, lastUid);
-    }
+    const targetUid = userId || (typeof window !== 'undefined' ? localStorage.getItem('cultiveta_last_user_id') || 'default_user' : 'default_user');
+    localStore.deleteItem('environmentRecords', id, targetUid);
+
     try {
       const docRef = doc(db, 'environmentRecords', id);
-      deleteDoc(docRef).catch((err) => {
-        console.warn('Firestore deleteDoc environmentRecords failed:', err?.message || err);
-      });
-    } catch (err) {
+      await deleteDoc(docRef);
+    } catch (err: any) {
       console.warn('deleteDoc error on environmentRecords:', err);
     }
   }
