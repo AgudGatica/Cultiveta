@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Scale, Sparkles, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { PhotoRecord, Cultivation } from '../../types';
 import { aiService } from '../../services/aiService';
+import { PhotoImageView } from '../common/PhotoImageView';
 
 interface PhotoCompareModalProps {
   isOpen: boolean;
@@ -123,8 +124,9 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
           {photoA && (
             <div className="bg-stone-50 rounded-3xl p-4 border border-stone-200 flex flex-col justify-between">
               <div className="relative rounded-2xl overflow-hidden mb-3 aspect-4/3 bg-stone-200">
-                <img
-                  src={photoA.url}
+                <PhotoImageView
+                  photo={photoA}
+                  userId={cultivation.userId}
                   alt="Foto A"
                   className="w-full h-full object-cover"
                 />
@@ -146,8 +148,9 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
           {photoB && (
             <div className="bg-stone-50 rounded-3xl p-4 border border-stone-200 flex flex-col justify-between">
               <div className="relative rounded-2xl overflow-hidden mb-3 aspect-4/3 bg-stone-200">
-                <img
-                  src={photoB.url}
+                <PhotoImageView
+                  photo={photoB}
+                  userId={cultivation.userId}
                   alt="Foto B"
                   className="w-full h-full object-cover"
                 />

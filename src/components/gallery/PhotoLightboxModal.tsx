@@ -15,6 +15,8 @@ import {
   Info,
 } from 'lucide-react';
 import { PhotoRecord, Cultivation } from '../../types';
+import { PhotoImageView } from '../common/PhotoImageView';
+import { usePhotoPreview } from '../../hooks/usePhotoPreview';
 
 interface PhotoLightboxModalProps {
   isOpen: boolean;
@@ -56,6 +58,7 @@ export const PhotoLightboxModal: React.FC<PhotoLightboxModalProps> = ({
   }, [isOpen, initialPhotoId, photos]);
 
   const currentPhoto: PhotoRecord | undefined = photos[currentIndex];
+  const { imageUrl: currentImageUrl } = usePhotoPreview(currentPhoto, cultivation.userId);
 
   const handlePrev = useCallback(() => {
     if (photos.length <= 1) return;
@@ -212,15 +215,17 @@ export const PhotoLightboxModal: React.FC<PhotoLightboxModalProps> = ({
           </button>
 
           {/* Open full resolution image */}
-          <a
-            href={currentPhoto.url}
-            target="_blank"
-            rel="noreferrer noopener"
-            className="p-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 transition-colors cursor-pointer border border-stone-700/60 hidden sm:flex items-center justify-center"
-            title="Abrir imagen original"
-          >
-            <ExternalLink className="w-4 h-4" />
-          </a>
+          {currentImageUrl && (
+            <a
+              href={currentImageUrl}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="p-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 transition-colors cursor-pointer border border-stone-700/60 hidden sm:flex items-center justify-center"
+              title="Abrir imagen original"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </a>
+          )}
 
           {/* Delete Photo Button */}
           {onDeletePhoto && (
@@ -280,8 +285,9 @@ export const PhotoLightboxModal: React.FC<PhotoLightboxModalProps> = ({
           className="relative max-w-full max-h-full flex items-center justify-center transition-transform duration-200 cursor-zoom-in overflow-auto"
           onClick={handleZoomToggle}
         >
-          <img
-            src={currentPhoto.url}
+          <PhotoImageView
+            photo={currentPhoto}
+            userId={cultivation.userId}
             alt={currentPhoto.caption || `Fotografía día ${currentPhoto.dayOfCultivation}`}
             style={{
               transform: `scale(${zoomLevel})`,
@@ -341,8 +347,9 @@ export const PhotoLightboxModal: React.FC<PhotoLightboxModalProps> = ({
                   }`}
                   title={`Día ${photo.dayOfCultivation} - ${photo.date}`}
                 >
-                  <img
-                    src={photo.url}
+                  <PhotoImageView
+                    photo={photo}
+                    userId={cultivation.userId}
                     alt={`Miniatura ${index + 1}`}
                     className="w-full h-full object-cover"
                   />

@@ -45,6 +45,12 @@ try {
 export const db = firestoreInstance;
 export const storage = getStorage(app);
 
+export const FIREBASE_CONFIG_METADATA = {
+  projectId: firebaseConfigJson.projectId,
+  firestoreDatabaseId: firestoreDatabaseId || '(default)',
+  storageBucket: firebaseConfigJson.storageBucket,
+};
+
 // Connection test on boot as recommended by Firebase guidelines
 getDocFromServer(doc(db, '_connection_test', 'status')).catch((error: unknown) => {
   if (error instanceof Error && error.message.includes('the client is offline')) {

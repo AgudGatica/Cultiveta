@@ -259,7 +259,8 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
 
       const dayOfCultivation = calculateEvidenceDay();
 
-      // Guardar de forma resiliente separando Storage, Firestore, IndexedDB y UI
+      // Guardar de forma resiliente separando Storage, Firestore, IndexedDB y UI.
+      // NO se envía el Object URL efímero del modal para no persistir URLs blob: que se revocarán al cerrar.
       const result = await photoService.savePhotoWithOfflineFallback({
         userId,
         cultivationId,
@@ -270,7 +271,6 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
         category,
         caption: caption.trim() || undefined,
         isDemo: selectedCrop?.isDemo,
-        previewUrl: previewUrl || undefined,
       });
 
       onPhotoUploaded(result.photo, analyzeWithAI);

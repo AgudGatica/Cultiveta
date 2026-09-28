@@ -44,6 +44,7 @@ export function subscribeCollection<T extends { id: string; userId?: string; _is
 
   let isCancelled = false;
   let initialEmitted = false;
+  let hasReceivedServerResponse = false;
 
   // 1. Immediate local cache emission for instant UI rendering
   try {
@@ -89,6 +90,10 @@ export function subscribeCollection<T extends { id: string; userId?: string; _is
         const fromCache = snap.metadata.fromCache;
         const hasPendingWrites = snap.metadata.hasPendingWrites;
 
+        if (!fromCache) {
+          hasReceivedServerResponse = true;
+        }
+
         const cloudList: T[] = snap.docs.map((d) => {
           const docData = d.data();
           return {
@@ -101,6 +106,21 @@ export function subscribeCollection<T extends { id: string; userId?: string; _is
 
         // Identify local items that were created offline or pending and haven't hit Firestore snapshot yet
         const currentLocal = localStore.getItems<T>(collectionName, userId);
+
+        // CONDICIÓN CRÍTICA: No interpretar un snapshot de caché vacío como una eliminación remota confirmada
+        // Si el snapshot proviene de caché, está vacío y el servidor aún no ha respondido,
+        // pero tenemos datos locales existentes, conservamos los datos locales para no dejar la vista vacía.
+        if (fromCache && snap.empty && !hasReceivedServerResponse && currentLocal.length > 0) {
+          const preservedList = sortFn ? [...currentLocal].sort(sortFn) : currentLocal;
+          callback(preservedList, {
+            fromCache: true,
+            hasPendingWrites: false,
+            isInitial: false,
+            empty: preservedList.length === 0,
+          });
+          return;
+        }
+
         const cloudIds = new Set(cloudList.map((c) => c.id));
 
         const pendingLocalItems = currentLocal.filter(
@@ -126,10 +146,13 @@ export function subscribeCollection<T extends { id: string; userId?: string; _is
         });
 
         // ASYNC BACKUP TO LOCAL STORE: Keeps local store in sync with deletions and empty lists
-        try {
-          localStore.saveAll(collectionName, userId, finalList);
-        } catch (saveErr) {
-          console.warn(`[dataSyncHelper] Could not persist backup for ${collectionName}:`, saveErr);
+        // Solo sobrescribir almacén local si proviene del servidor o hay documentos
+        if (!fromCache || cloudList.length > 0 || hasReceivedServerResponse) {
+          try {
+            localStore.saveAll(collectionName, userId, finalList);
+          } catch (saveErr) {
+            console.warn(`[dataSyncHelper] Could not persist backup for ${collectionName}:`, saveErr);
+          }
         }
       },
       (error) => {

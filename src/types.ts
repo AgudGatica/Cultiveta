@@ -280,7 +280,7 @@ export type PhotoCategory =
   | 'tricomas'
   | 'otra';
 
-export type PhotoSyncStatus = 'queued' | 'uploading' | 'saving_metadata' | 'synced' | 'error';
+export type PhotoSyncStatus = 'queued' | 'uploading' | 'saving_metadata' | 'waiting_network' | 'synced' | 'error';
 
 export interface PhotoRecord {
   id: string;

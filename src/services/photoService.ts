@@ -7,74 +7,134 @@ import {
   query,
   where,
   onSnapshot,
-  Unsubscribe
+  Unsubscribe,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage, auth } from '../firebase/config';
 import { PhotoRecord, CultivationStageName, PhotoCategory, PhotoSyncStatus } from '../types';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
 import { localStore } from './localStore';
-import { photoOfflineQueue } from './photoOfflineQueue';
+import {
+  photoOfflineQueue,
+  QueuedOfflinePhoto,
+  mapQueueStatusToSyncStatus,
+} from './photoOfflineQueue';
 import { getPhotoStoragePath, FIRESTORE_COLLECTIONS } from '../firebase/paths';
 
 export const photoService = {
   /**
    * Suscribe en tiempo real a las fotos del usuario autenticado,
-   * unificando resultados remotos de Firestore con elementos pendientes en IndexedDB.
+   * combinando reactivamente Firestore e IndexedDB (cola offline).
+   *
+   * Garantías:
+   * 1. Reactividad directa: escucha cambios de Firestore Y de la cola IndexedDB sin intermediación obligatoria de localStorage.
+   * 2. No confía en URLs blob: caducadas de sesiones anteriores.
+   * 3. No interpreta un snapshot de caché vacío como una eliminación remota confirmada.
+   * 4. Deduplica por ID y preserva estados pendientes de la cola con prioridad en UI.
+   * 5. Conversión explícita de status (failed -> error).
+   * 6. Evita callbacks obsoletos ante cambio de UID o desmontaje.
    */
   subscribePhotos(userId: string, callback: (photos: PhotoRecord[]) => void): Unsubscribe {
     let isCancelled = false;
+    let hasServerResponded = false;
 
-    // 0. Emisión inmediata del almacenamiento local si existen datos
+    // Mapas en memoria para reconciliación en tiempo real
+    const firestoreMap = new Map<string, PhotoRecord>();
+    const queueMap = new Map<string, QueuedOfflinePhoto>();
+    const localCacheMap = new Map<string, PhotoRecord>();
+
+    // 0. Cargar caché previo de localStore para emisión instantánea (0ms)
     try {
       const initialLocal = localStore.getItems<PhotoRecord>('photos', userId);
-      if (initialLocal.length > 0) {
-        callback(initialLocal.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()));
-      }
-    } catch {
-      // Benign
-    }
-
-    // 1. Suscripción a cambios reactivos del almacén local
-    const unsubLocal = localStore.subscribe<PhotoRecord>('photos', userId, async (localList) => {
-      if (isCancelled) return;
-      // Unir con fotos pendientes de IndexedDB
-      const pendingItems = await photoOfflineQueue.getQueuedPhotos(userId);
-      const mergedMap = new Map<string, PhotoRecord>();
-
-      localList.forEach((p) => mergedMap.set(p.id, p));
-
-      pendingItems.forEach((item) => {
-        if (!mergedMap.has(item.id)) {
-          mergedMap.set(item.id, {
-            id: item.id,
-            userId: item.userId,
-            cultivationId: item.cultivationId,
-            url: item.cloudDownloadUrl || '',
-            storagePath: item.storagePath,
-            syncStatus: item.status as PhotoSyncStatus,
-            syncError: item.lastError,
-            fileSize: item.fileSize,
-            mimeType: item.fileType,
-            date: item.date,
-            dayOfCultivation: item.dayOfCultivation,
-            stage: item.stage,
-            category: item.category,
-            caption: item.caption,
-            isDemo: item.isDemo,
-            isPendingSync: true,
-            createdAt: item.createdAt,
-          });
-        }
+      initialLocal.forEach((p) => {
+        // Sanitizar URLs blob: caducadas que pudieran estar en localStorage de versiones anteriores
+        const cleanUrl = p.url && p.url.startsWith('blob:') ? '' : p.url;
+        localCacheMap.set(p.id, { ...p, url: cleanUrl });
       });
 
-      const sorted = Array.from(mergedMap.values()).sort(
+      if (localCacheMap.size > 0) {
+        const initialSorted = Array.from(localCacheMap.values()).sort(
+          (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
+        );
+        callback(initialSorted);
+      }
+    } catch {
+      // Ignorar error de lectura inicial
+    }
+
+    // Función unificada de recombinación y emisión
+    const emitCombined = () => {
+      if (isCancelled) return;
+
+      const merged = new Map<string, PhotoRecord>();
+
+      // 1. Fotos confirmadas de Firestore o del caché local
+      if (hasServerResponded) {
+        firestoreMap.forEach((doc) => merged.set(doc.id, doc));
+      } else {
+        // Aún no responde el servidor: combinar lo que tenga Firestore con el caché local preexistente
+        localCacheMap.forEach((doc) => merged.set(doc.id, doc));
+        firestoreMap.forEach((doc) => merged.set(doc.id, doc));
+      }
+
+      // 2. Elementos pendientes de IndexedDB (tienen prioridad para estados de sincronización)
+      queueMap.forEach((item) => {
+        const existing = merged.get(item.id);
+        const effectiveUrl =
+          item.cloudDownloadUrl ||
+          (existing?.url && !existing.url.startsWith('blob:') ? existing.url : '');
+
+        merged.set(item.id, {
+          id: item.id,
+          userId: item.userId,
+          cultivationId: item.cultivationId,
+          url: effectiveUrl,
+          storagePath: item.storagePath,
+          syncStatus: mapQueueStatusToSyncStatus(item.status),
+          syncError: item.lastError,
+          fileSize: item.fileSize,
+          mimeType: item.fileType,
+          date: item.date,
+          dayOfCultivation: item.dayOfCultivation,
+          stage: item.stage,
+          category: item.category,
+          caption: item.caption,
+          isDemo: item.isDemo,
+          isPendingSync: true,
+          createdAt: item.createdAt,
+        });
+      });
+
+      const sorted = Array.from(merged.values()).sort(
         (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
       );
-      callback(sorted);
-    });
 
-    // 2. Suscripción remota a Cloud Firestore con restricción de propiedad (where userId == userId)
+      // Emisión directa a React independiente de localStorage
+      callback(sorted);
+
+      // Respaldo secundario en localStore solo si hay datos válidos y autoritativos
+      if (hasServerResponded || sorted.length > 0) {
+        try {
+          localStore.saveAll('photos', userId, sorted);
+        } catch {
+          // Quota safe
+        }
+      }
+    };
+
+    // 1. Suscripción directa y reactiva a la cola de IndexedDB
+    const unsubQueue = photoOfflineQueue.subscribeQueue((queuedItems) => {
+      if (isCancelled) return;
+      queueMap.clear();
+      queuedItems.forEach((item) => {
+        if (item.userId === userId) {
+          queueMap.set(item.id, item);
+        }
+      });
+      emitCombined();
+    }, userId);
+
+    // 2. Suscripción reactiva a Cloud Firestore con includeMetadataChanges
     let unsubFirestore: Unsubscribe = () => {};
     try {
       const q = query(
@@ -85,72 +145,38 @@ export const photoService = {
       unsubFirestore = onSnapshot(
         q,
         { includeMetadataChanges: true },
-        async (snap) => {
+        (snap) => {
           if (isCancelled) return;
-          const cloudList = snap.docs.map((d) => {
+
+          const fromCache = snap.metadata.fromCache;
+          const hasPendingWrites = snap.metadata.hasPendingWrites;
+
+          if (!fromCache) {
+            hasServerResponded = true;
+          }
+
+          // CONDICIÓN CRÍTICA: No interpretar un snapshot de caché vacío como una eliminación remota confirmada
+          if (fromCache && snap.empty && !hasServerResponded && localCacheMap.size > 0) {
+            // El servidor no ha respondido y la caché de Firestore está fría; conservar localCacheMap
+            emitCombined();
+            return;
+          }
+
+          firestoreMap.clear();
+          snap.docs.forEach((d) => {
             const data = d.data();
-            return {
+            const cleanUrl = data.url && data.url.startsWith('blob:') ? '' : (data.url || '');
+
+            firestoreMap.set(d.id, {
               id: d.id,
               ...data,
-              isPendingSync: d.metadata.hasPendingWrites,
-              syncStatus: d.metadata.hasPendingWrites ? ('uploading' as PhotoSyncStatus) : ('synced' as PhotoSyncStatus),
-            } as PhotoRecord;
+              url: cleanUrl,
+              isPendingSync: hasPendingWrites || d.metadata.hasPendingWrites,
+              syncStatus: (hasPendingWrites || d.metadata.hasPendingWrites) ? 'saving_metadata' : 'synced',
+            } as PhotoRecord);
           });
 
-          // Obtener pendientes de IndexedDB para no pisar fotos que aún se están subiendo
-          const pendingItems = await photoOfflineQueue.getQueuedPhotos(userId);
-          const currentLocal = localStore.getItems<PhotoRecord>('photos', userId);
-          const mergedMap = new Map<string, PhotoRecord>();
-
-          // Primero colocamos las remotas confirmadas (autoritativas de Firestore)
-          cloudList.forEach((p) => mergedMap.set(p.id, p));
-
-          // Si hay fotos locales que están pendientes de sincronizar, mantener su estado
-          currentLocal.forEach((p) => {
-            if (p.isPendingSync && !mergedMap.has(p.id)) {
-              mergedMap.set(p.id, p);
-            }
-          });
-
-          // Agregar elementos de IndexedDB pendientes
-          pendingItems.forEach((item) => {
-            const existing = mergedMap.get(item.id);
-            if (!existing || existing.isPendingSync) {
-              mergedMap.set(item.id, {
-                id: item.id,
-                userId: item.userId,
-                cultivationId: item.cultivationId,
-                url: item.cloudDownloadUrl || existing?.url || '',
-                storagePath: item.storagePath,
-                syncStatus: item.status as PhotoSyncStatus,
-                syncError: item.lastError,
-                fileSize: item.fileSize,
-                mimeType: item.fileType,
-                date: item.date,
-                dayOfCultivation: item.dayOfCultivation,
-                stage: item.stage,
-                category: item.category,
-                caption: item.caption,
-                isDemo: item.isDemo,
-                isPendingSync: true,
-                createdAt: item.createdAt,
-              });
-            }
-          });
-
-          const merged = Array.from(mergedMap.values()).sort(
-            (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
-          );
-
-          // Direct UI emission
-          callback(merged);
-
-          // Local storage backup
-          try {
-            localStore.saveAll('photos', userId, merged);
-          } catch {
-            // Quota or storage handled
-          }
+          emitCombined();
         },
         (error) => {
           if (isCancelled) return;
@@ -177,7 +203,7 @@ export const photoService = {
 
     return () => {
       isCancelled = true;
-      unsubLocal();
+      unsubQueue();
       unsubFirestore();
     };
   },
@@ -188,47 +214,51 @@ export const photoService = {
   async getPhotosByCultivation(cultivationId: string, userId?: string): Promise<PhotoRecord[]> {
     const targetUserId =
       userId ||
-      (typeof window !== 'undefined'
-        ? localStorage.getItem('cultiveta_last_user_id') || 'default_user'
-        : 'default_user');
-
-    const local = localStore
-      .getItems<PhotoRecord>('photos', targetUserId)
-      .filter((p) => p.cultivationId === cultivationId);
+      (auth.currentUser ? auth.currentUser.uid : 'default_user');
 
     const mergedMap = new Map<string, PhotoRecord>();
-    local.forEach((p) => mergedMap.set(p.id, p));
 
-    // Agregar pendientes de IndexedDB
+    // 1. LocalStore
+    try {
+      const local = localStore
+        .getItems<PhotoRecord>('photos', targetUserId)
+        .filter((p) => p.cultivationId === cultivationId);
+      local.forEach((p) => {
+        const cleanUrl = p.url && p.url.startsWith('blob:') ? '' : p.url;
+        mergedMap.set(p.id, { ...p, url: cleanUrl });
+      });
+    } catch {}
+
+    // 2. Agregar pendientes de IndexedDB
     try {
       const pending = await photoOfflineQueue.getQueuedPhotos(targetUserId);
       pending
         .filter((item) => item.cultivationId === cultivationId)
         .forEach((item) => {
-          if (!mergedMap.has(item.id)) {
-            mergedMap.set(item.id, {
-              id: item.id,
-              userId: item.userId,
-              cultivationId: item.cultivationId,
-              url: item.cloudDownloadUrl || '',
-              storagePath: item.storagePath,
-              syncStatus: item.status as PhotoSyncStatus,
-              syncError: item.lastError,
-              fileSize: item.fileSize,
-              mimeType: item.fileType,
-              date: item.date,
-              dayOfCultivation: item.dayOfCultivation,
-              stage: item.stage,
-              category: item.category,
-              caption: item.caption,
-              isDemo: item.isDemo,
-              isPendingSync: true,
-              createdAt: item.createdAt,
-            });
-          }
+          const existing = mergedMap.get(item.id);
+          mergedMap.set(item.id, {
+            id: item.id,
+            userId: item.userId,
+            cultivationId: item.cultivationId,
+            url: item.cloudDownloadUrl || existing?.url || '',
+            storagePath: item.storagePath,
+            syncStatus: mapQueueStatusToSyncStatus(item.status),
+            syncError: item.lastError,
+            fileSize: item.fileSize,
+            mimeType: item.fileType,
+            date: item.date,
+            dayOfCultivation: item.dayOfCultivation,
+            stage: item.stage,
+            category: item.category,
+            caption: item.caption,
+            isDemo: item.isDemo,
+            isPendingSync: true,
+            createdAt: item.createdAt,
+          });
         });
     } catch {}
 
+    // 3. Firestore query
     try {
       const q = query(
         collection(db, FIRESTORE_COLLECTIONS.PHOTOS),
@@ -237,7 +267,12 @@ export const photoService = {
       );
       const snap = await getDocs(q);
       snap.docs.forEach((d) => {
-        const cloudPhoto = { id: d.id, ...d.data(), isPendingSync: false, syncStatus: 'synced' } as PhotoRecord;
+        const cloudPhoto = {
+          id: d.id,
+          ...d.data(),
+          isPendingSync: false,
+          syncStatus: 'synced' as PhotoSyncStatus,
+        } as PhotoRecord;
         mergedMap.set(d.id, cloudPhoto);
       });
     } catch {
@@ -250,9 +285,7 @@ export const photoService = {
   },
 
   /**
-   * Sube el archivo binario a Firebase Storage utilizando una ruta determinista
-   * vinculada a UID, cultivo y photoId (FASE 2).
-   * NUNCA captura errores para convertirlos en base64 de mentira.
+   * Sube el archivo binario a Firebase Storage utilizando una ruta determinista.
    */
   async uploadPhotoFile(
     userId: string,
@@ -288,12 +321,8 @@ export const photoService = {
   /**
    * Guarda una foto separando:
    * 1. Binario en IndexedDB (respaldo local garantizado).
-   * 2. Subida a Firebase Storage con identificador estable.
-   * 3. Metadatos en Cloud Firestore.
-   * 4. Estado visible en la UI.
-   *
-   * Si la red se corta, NO bloquea el modal: la foto queda encolada de forma segura
-   * en IndexedDB con estado 'queued' para que autoSync la complete en background.
+   * 2. NO almacena URLs blob: efímeras en localStorage ni Firestore.
+   * 3. Dispara sincronización en segundo plano sin bloquear el cierre del modal ni la UI.
    */
   async savePhotoWithOfflineFallback(params: {
     userId: string;
@@ -305,14 +334,14 @@ export const photoService = {
     category: PhotoCategory;
     caption?: string;
     isDemo?: boolean;
-    previewUrl?: string;
+    previewUrl?: string; // Mantenido para retrocompatibilidad de firma, pero ignorado para persistencia
   }): Promise<{ photo: PhotoRecord; enqueuedOffline: boolean }> {
-    // 1. Identificador determinista estable generado una única vez
+    // 1. Identificador determinista único
     const photoId = doc(collection(db, FIRESTORE_COLLECTIONS.PHOTOS)).id;
     const ext = params.file.name.split('.').pop() || 'jpg';
     const storagePath = getPhotoStoragePath(params.userId, params.cultivationId, photoId, ext);
 
-    // 2. Encolar en IndexedDB inmediatamente para garantizar que el archivo esté a salvo en disco
+    // 2. Encolar en IndexedDB inmediatamente para garantizar que el archivo binario esté seguro
     await photoOfflineQueue.enqueuePhoto({
       id: photoId,
       userId: params.userId,
@@ -326,14 +355,13 @@ export const photoService = {
       category: params.category,
       caption: params.caption,
       isDemo: params.isDemo,
-      previewUrl: params.previewUrl,
     });
 
     const initialPhoto: PhotoRecord = {
       id: photoId,
       userId: params.userId,
       cultivationId: params.cultivationId,
-      url: params.previewUrl || '',
+      url: '', // usePhotoPreview resolverá dinámicamente desde IndexedDB sin URLs revocadas
       storagePath,
       syncStatus: 'queued',
       fileSize: params.file.size,
@@ -348,11 +376,10 @@ export const photoService = {
       createdAt: new Date().toISOString(),
     };
 
-    // 3. Si hay conexión a internet activa, intentar sincronizar de inmediato
+    // 3. Si hay conexión a internet activa, disparar sincronización en segundo plano de forma no bloqueante
     if (typeof navigator !== 'undefined' && navigator.onLine) {
-      // Disparar sincronización en segundo plano sin bloquear el cierre del modal
       photoOfflineQueue.syncPendingPhotos(params.userId).catch((err) => {
-        console.warn('[photoService] Sincronización inmediata pospuesta:', err);
+        console.warn('[photoService] Sincronización en segundo plano pospuesta:', err);
       });
     }
 
@@ -388,7 +415,7 @@ export const photoService = {
         await deleteObject(storageRef);
       }
     } catch (e) {
-      // Puede que no estuviese aún en Storage o ya se hubiese borrado
+      // Ignorar si no existía en Storage
     }
   },
 
@@ -398,7 +425,7 @@ export const photoService = {
   },
 
   /**
-   * Agrega un registro directamente a Firestore y localStore
+   * Agrega un registro directamente a Firestore y localStore.
    */
   async addPhotoRecord(data: Omit<PhotoRecord, 'id' | 'createdAt'>): Promise<PhotoRecord> {
     const docRef = doc(collection(db, FIRESTORE_COLLECTIONS.PHOTOS));

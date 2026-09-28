@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import dotenv from 'dotenv';
 import cron from 'node-cron';
 import { GoogleGenAI } from '@google/genai';
@@ -32,6 +33,27 @@ export type FirebaseAdminAppWithFirestore = App & {
   firestore: () => Firestore;
 };
 
+// Cargar configuración explícita de Firebase desde firebase-applet-config.json
+let appletFirebaseConfig: {
+  projectId?: string;
+  firestoreDatabaseId?: string;
+  storageBucket?: string;
+} = {};
+
+try {
+  const cfgPath = path.resolve(process.cwd(), 'firebase-applet-config.json');
+  if (fs.existsSync(cfgPath)) {
+    appletFirebaseConfig = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
+    console.log('[server.ts] Configuración Firebase sincronizada:', {
+      projectId: appletFirebaseConfig.projectId,
+      firestoreDatabaseId: appletFirebaseConfig.firestoreDatabaseId || '(default)',
+      storageBucket: appletFirebaseConfig.storageBucket,
+    });
+  }
+} catch (cfgErr) {
+  console.warn('[server.ts] No se pudo leer firebase-applet-config.json:', cfgErr);
+}
+
 // 1. Inicialización segura y perezosa de Firebase Admin SDK
 let firebaseAdminApp: App | null = null;
 export function getFirebaseAdmin(): FirebaseAdminAppWithFirestore {
@@ -41,6 +63,7 @@ export function getFirebaseAdmin(): FirebaseAdminAppWithFirestore {
     } else {
       const projectId =
         process.env.FIREBASE_PROJECT_ID ||
+        appletFirebaseConfig.projectId ||
         process.env.GCLOUD_PROJECT ||
         'gen-lang-client-0531791519';
 
@@ -64,8 +87,15 @@ export function getFirebaseAdmin(): FirebaseAdminAppWithFirestore {
     }
   }
 
-  // Vincular método .firestore() para compatibilidad directa
-  (firebaseAdminApp as any).firestore = () => getFirestore(firebaseAdminApp!);
+  // Vincular método .firestore() con soporte para base de datos nombrada (firestoreDatabaseId)
+  (firebaseAdminApp as any).firestore = () => {
+    const databaseId =
+      process.env.FIRESTORE_DATABASE_ID ||
+      appletFirebaseConfig.firestoreDatabaseId;
+    return databaseId
+      ? getFirestore(firebaseAdminApp!, databaseId)
+      : getFirestore(firebaseAdminApp!);
+  };
 
   return firebaseAdminApp as FirebaseAdminAppWithFirestore;
 }
@@ -196,6 +226,7 @@ async function resolveImagePart(
       const adminApp = getFirebaseAdmin();
       const bucketName =
         process.env.FIREBASE_STORAGE_BUCKET ||
+        appletFirebaseConfig.storageBucket ||
         'gen-lang-client-0531791519.firebasestorage.app';
       const bucket = getStorage(adminApp).bucket(bucketName);
       const file = bucket.file(targetPath);

@@ -368,11 +368,13 @@ export default function App() {
       const syncResult = await photoOfflineQueue.syncPendingPhotos(currentUser.uid);
       // 2. Fetch server meteorological records
       await environmentService.fetchServerRecords(currentUser.uid);
-      showToast(
-        syncResult.synced > 0
-          ? `✓ Sincronización exitosa: ${syncResult.synced} foto(s) subidas a la nube.`
-          : '✓ Datos sincronizados con la nube.'
-      );
+      if (syncResult.failed > 0) {
+        showToast(`Sincronizadas: ${syncResult.synced}. ${syncResult.failed} foto(s) pendientes de atención.`);
+      } else if (syncResult.synced > 0) {
+        showToast(`✓ Sincronización exitosa: ${syncResult.synced} foto(s) subidas a la nube.`);
+      } else {
+        showToast('✓ Datos sincronizados con la nube.');
+      }
     } catch (err: any) {
       console.warn('Sync error:', err);
       setSyncError('Error al sincronizar con el servidor.');
