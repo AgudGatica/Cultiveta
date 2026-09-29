@@ -285,6 +285,8 @@ export type PhotoSyncStatus = 'queued' | 'uploading' | 'saving_metadata' | 'wait
 export interface PhotoSyncResult {
   synced: number;
   failed: number;
+  deleted?: number;
+  cancelled?: number;
   pending: number;
   total: number;
   stopped?: boolean;
