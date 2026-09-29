@@ -282,6 +282,15 @@ export type PhotoCategory =
 
 export type PhotoSyncStatus = 'queued' | 'uploading' | 'saving_metadata' | 'waiting_network' | 'synced' | 'error';
 
+export interface PhotoSyncResult {
+  synced: number;
+  failed: number;
+  pending: number;
+  total: number;
+  stopped?: boolean;
+  reason?: 'completed' | 'session_closed' | 'network_offline' | 'aborted';
+}
+
 export interface PhotoRecord {
   id: string;
   userId: string;

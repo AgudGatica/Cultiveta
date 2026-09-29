@@ -390,8 +390,8 @@ export const photoService = {
    * Elimina una fotografía tanto remotamente (Firestore + Storage) como localmente (IndexedDB + localStore).
    */
   async deletePhoto(photoId: string, userId: string, cultivationId?: string, storagePath?: string): Promise<void> {
-    // 1. Limpiar de IndexedDB si estuviese en cola
-    await photoOfflineQueue.cleanupConfirmedPhoto(photoId);
+    // 1. Limpiar de IndexedDB si estuviese en cola y cancelar tareas activas
+    await photoOfflineQueue.deletePendingPhoto(photoId, userId);
 
     // 2. Limpiar de localStore
     localStore.deleteItem('photos', photoId, userId);

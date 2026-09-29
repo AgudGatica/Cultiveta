@@ -371,6 +371,8 @@ export default function App() {
       await environmentService.fetchServerRecords(currentUser.uid);
       if (syncResult.failed > 0) {
         showToast(`Sincronizadas: ${syncResult.synced}. ${syncResult.failed} foto(s) pendientes de atención.`);
+      } else if (syncResult.pending > 0) {
+        showToast(`Sincronizadas: ${syncResult.synced}. ${syncResult.pending} foto(s) aún en cola.`);
       } else if (syncResult.synced > 0) {
         showToast(`✓ Sincronización exitosa: ${syncResult.synced} foto(s) subidas a la nube.`);
       } else {

@@ -1,7 +1,7 @@
-import { ref, uploadBytesResumable, getDownloadURL, UploadTask } from 'firebase/storage';
-import { doc, setDoc } from 'firebase/firestore';
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject, UploadTask } from 'firebase/storage';
+import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { db, storage, auth, FIREBASE_CONFIG_METADATA } from '../firebase/config';
-import { PhotoRecord, CultivationStageName, PhotoCategory, PhotoSyncStatus } from '../types';
+import { PhotoRecord, CultivationStageName, PhotoCategory, PhotoSyncStatus, PhotoSyncResult } from '../types';
 import { localStore } from './localStore';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
 import { getPhotoStoragePath } from '../firebase/paths';
@@ -39,6 +39,7 @@ export interface QueuedOfflinePhoto {
   lastProgressAt?: string;
   startedAt?: string;
   unrecoverable?: boolean; // Elementos corruptos que deben ser exportables pero no bloquear
+  isDeleted?: boolean; // Marca interna para invalidación atómica
   createdAt: string;
   updatedAt?: string;
 }
@@ -64,6 +65,11 @@ export interface PhotoDiagnosticInfo {
   lockActive: boolean;
   opVersion?: number;
   unrecoverable?: boolean;
+  isNetworkOffline: boolean;
+  isStalled: boolean;
+  isPermissionError: boolean;
+  diagnosticCategory: 'normal' | 'network_offline' | 'stalled' | 'permission_denied' | 'unrecoverable';
+  currentActivePercent?: number;
 }
 
 const DB_NAME = 'cultiveta_offline_db';
@@ -74,7 +80,7 @@ const STORE_NAME = 'pending_photos';
 const TAB_ID =
   typeof window !== 'undefined'
     ? 'tab_' + Math.random().toString(36).substring(2, 9) + '_' + Date.now().toString(36)
-    : 'server_env';
+    : 'tab_server_' + Math.random().toString(36).substring(2, 9);
 
 let dbPromise: Promise<IDBDatabase> | null = null;
 
@@ -82,7 +88,71 @@ let dbPromise: Promise<IDBDatabase> | null = null;
 const activeUploadTasks = new Map<string, UploadTask>();
 const activeHeartbeats = new Map<string, ReturnType<typeof setInterval>>();
 const cancellationReasons = new Map<string, 'user_deleted' | 'logout' | 'offline' | 'stalled'>();
-let ongoingSyncPromise: Promise<{ synced: number; failed: number; total: number }> | null = null;
+
+// Seguimiento de confirmaciones remotas activas en Firestore (separación de etapas)
+const activeFirestoreSaves = new Map<
+  string,
+  {
+    promise: Promise<void>;
+    opVersion: number;
+    userId: string;
+    cancelled?: boolean;
+  }
+>();
+
+// Aislamiento de sincronización y promesas por sesión de usuario
+const sessionSyncPromises = new Map<string, Promise<PhotoSyncResult>>();
+const cancelledSessions = new Set<string>();
+
+// Fotografías marcadas para eliminación para evitar resurrección y asegurar limpieza tardía
+const deletedPhotoIds = new Set<string>();
+
+// Fuente reactiva viva en memoria para progreso instantáneo sin desfasaje con IDB
+const liveQueueItems = new Map<string, QueuedOfflinePhoto>();
+
+// Suscriptores directos a cambios en la cola
+const queueSubscribers = new Set<{
+  callback: (items: QueuedOfflinePhoto[]) => void;
+  userId?: string;
+}>();
+
+export interface PhotoQueueAdapters {
+  uploadBytesResumable?: (storageRef: any, data: Blob | Uint8Array | ArrayBuffer, metadata?: any) => UploadTask;
+  getDownloadURL?: (ref: any) => Promise<string>;
+  deleteObject?: (ref: any) => Promise<void>;
+  setDoc?: (docRef: any, data: any, options?: any) => Promise<void>;
+  deleteDoc?: (docRef: any) => Promise<void>;
+}
+
+let activeAdapters: PhotoQueueAdapters = {};
+
+export function setPhotoQueueAdapters(adapters: PhotoQueueAdapters): void {
+  activeAdapters = { ...activeAdapters, ...adapters };
+}
+
+export function resetPhotoQueueAdapters(): void {
+  activeAdapters = {};
+}
+
+export function resetQueueStateForTesting(): void {
+  activeUploadTasks.clear();
+  activeHeartbeats.forEach((int) => clearInterval(int));
+  activeHeartbeats.clear();
+  cancellationReasons.clear();
+  activeFirestoreSaves.clear();
+  sessionSyncPromises.clear();
+  cancelledSessions.clear();
+  deletedPhotoIds.clear();
+  liveQueueItems.clear();
+  queueSubscribers.clear();
+  autoSyncUserId = null;
+  if (autoSyncInterval) {
+    clearInterval(autoSyncInterval);
+    autoSyncInterval = null;
+  }
+  autoSyncOnlineHandler = null;
+  activeAdapters = {};
+}
 
 /**
  * Normaliza y migra idempotentemente registros leídos de IndexedDB.
@@ -123,8 +193,17 @@ function normalizeRecord(raw: any): QueuedOfflinePhoto {
   const stagePending: 'storage' | 'firestore' =
     raw.stagePending || (raw.cloudDownloadUrl ? 'firestore' : 'storage');
 
+  const isBlobLike =
+    Boolean(
+      raw.fileBlob &&
+        (typeof Blob !== 'undefined' && raw.fileBlob instanceof Blob
+          ? true
+          : typeof raw.fileBlob === 'object' && typeof raw.fileBlob.size === 'number')
+    );
+
   const unrecoverable =
-    !raw.fileBlob || !(raw.fileBlob instanceof Blob) || (raw.fileBlob.size === 0 && !raw.cloudDownloadUrl);
+    (!isBlobLike && !raw.cloudDownloadUrl) ||
+    (isBlobLike && raw.fileBlob.size === 0 && !raw.cloudDownloadUrl);
 
   return {
     id,
@@ -157,6 +236,7 @@ function normalizeRecord(raw: any): QueuedOfflinePhoto {
     lastProgressAt: raw.lastProgressAt,
     startedAt: raw.startedAt,
     unrecoverable,
+    isDeleted: raw.isDeleted,
     createdAt: raw.createdAt || new Date().toISOString(),
     updatedAt: raw.updatedAt,
   };
@@ -164,9 +244,15 @@ function normalizeRecord(raw: any): QueuedOfflinePhoto {
 
 /**
  * Obtiene la conexión a IndexedDB manejando bloqueos, cambios de versión y cierres inesperados.
+ * Es compatible tanto en navegador como en suites de prueba con polyfills/mocks.
  */
 function getIndexedDB(): Promise<IDBDatabase> {
-  if (typeof window === 'undefined' || !window.indexedDB) {
+  const idbFactory: IDBFactory | undefined =
+    (typeof indexedDB !== 'undefined' && indexedDB) ||
+    (typeof window !== 'undefined' && window.indexedDB) ||
+    (typeof globalThis !== 'undefined' && (globalThis as any).indexedDB);
+
+  if (!idbFactory) {
     return Promise.reject(new Error('IndexedDB no está disponible en este entorno.'));
   }
 
@@ -175,7 +261,7 @@ function getIndexedDB(): Promise<IDBDatabase> {
   dbPromise = new Promise((resolve, reject) => {
     let request: IDBOpenDBRequest;
     try {
-      request = window.indexedDB.open(DB_NAME, DB_VERSION);
+      request = idbFactory.open(DB_NAME, DB_VERSION);
     } catch (err) {
       dbPromise = null;
       return reject(err);
@@ -290,8 +376,21 @@ function runIDBTransaction<T>(
 }
 
 function notifyQueueUpdated(): void {
-  if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent('cultiveta_offline_queue_changed'));
+  // Notificar directamente a los observadores reactivos registrados en memoria
+  queueSubscribers.forEach(({ callback, userId }) => {
+    try {
+      const items = Array.from(liveQueueItems.values())
+        .filter((item) => !deletedPhotoIds.has(item.id))
+        .filter((item) => (userId ? item.userId === userId : true));
+      callback(items);
+    } catch (err) {
+      console.warn('[QueueSubscribers] Error en callback de suscriptor:', err);
+    }
+  });
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('cultiveta_offline_queue_changed'));
+  }
 }
 
 /**
@@ -351,6 +450,10 @@ export const photoOfflineQueue = {
 
     await runIDBTransaction('readwrite', (store) => store.put(queuedItem));
 
+    // Registrar en fuente reactiva viva y remover de eliminadas
+    deletedPhotoIds.delete(params.id);
+    liveQueueItems.set(queuedItem.id, queuedItem);
+
     // Reflejar de inmediato en localStore SIN almacenar URLs blob: efímeras
     const optimisticRecord: PhotoRecord = {
       id: queuedItem.id,
@@ -378,22 +481,55 @@ export const photoOfflineQueue = {
 
   /**
    * Obtiene la lista de fotografías pendientes encoladas en IndexedDB,
-   * filtrando exclusivamente por el UID provisto y normalizando registros antiguos.
+   * filtrando exclusivamente por el UID provisto y sincronizando la fuente reactiva viva.
    */
   async getQueuedPhotos(userId?: string): Promise<QueuedOfflinePhoto[]> {
     try {
       const items = await runIDBTransaction<any[]>('readonly', (store) => store.getAll());
       if (!items || !Array.isArray(items)) return [];
 
-      const normalized = items.map(normalizeRecord);
+      const normalized = items
+        .map(normalizeRecord)
+        .filter((item) => !deletedPhotoIds.has(item.id) && !item.isDeleted);
+
+      // Sincronizar fuente viva
+      normalized.forEach((item) => {
+        const live = liveQueueItems.get(item.id);
+        if (!live || (item.opVersion || 1) >= (live.opVersion || 1)) {
+          liveQueueItems.set(item.id, {
+            ...item,
+            // Conservar métricas activas si está subiendo
+            bytesTransferred: live?.bytesTransferred ?? item.bytesTransferred,
+            totalBytes: live?.totalBytes ?? item.totalBytes,
+            progressPercent: live?.progressPercent ?? item.progressPercent,
+            lastProgressAt: live?.lastProgressAt ?? item.lastProgressAt,
+          });
+        }
+      });
+
+      const merged = normalized.map((item) => {
+        const live = liveQueueItems.get(item.id);
+        if (live && (live.opVersion || 1) >= (item.opVersion || 1)) {
+          return {
+            ...item,
+            status: live.status,
+            bytesTransferred: live.bytesTransferred ?? item.bytesTransferred,
+            totalBytes: live.totalBytes ?? item.totalBytes,
+            progressPercent: live.progressPercent ?? item.progressPercent,
+            lastProgressAt: live.lastProgressAt ?? item.lastProgressAt,
+            lastError: live.lastError ?? item.lastError,
+            lastErrorCode: live.lastErrorCode ?? item.lastErrorCode,
+          };
+        }
+        return item;
+      });
 
       if (userId) {
-        return normalized.filter((item) => item.userId === userId);
+        return merged.filter((item) => item.userId === userId);
       }
-      return normalized;
+      return merged;
     } catch (err) {
       console.warn('[IndexedDB] Error al recuperar fotos encoladas:', err);
-      // No silenciar transformando en lista vacía si hay un error real de IDB
       if (typeof window !== 'undefined') {
         window.dispatchEvent(
           new CustomEvent('cultiveta_idb_error', {
@@ -406,13 +542,28 @@ export const photoOfflineQueue = {
   },
 
   /**
-   * Obtiene un registro individual de la cola por su ID.
+   * Obtiene un registro individual de la cola por su ID, enriquecido con estado en tiempo real.
    */
   async getQueuedPhotoById(id: string): Promise<QueuedOfflinePhoto | null> {
+    if (deletedPhotoIds.has(id)) return null;
     try {
       const item = await runIDBTransaction<any | undefined>('readonly', (store) => store.get(id));
-      if (!item) return null;
-      return normalizeRecord(item);
+      if (!item || item.isDeleted) return null;
+      const normalized = normalizeRecord(item);
+      const live = liveQueueItems.get(id);
+      if (live && (live.opVersion || 1) >= (normalized.opVersion || 1)) {
+        return {
+          ...normalized,
+          status: live.status,
+          bytesTransferred: live.bytesTransferred ?? normalized.bytesTransferred,
+          totalBytes: live.totalBytes ?? normalized.totalBytes,
+          progressPercent: live.progressPercent ?? normalized.progressPercent,
+          lastProgressAt: live.lastProgressAt ?? normalized.lastProgressAt,
+          lastError: live.lastError ?? normalized.lastError,
+          lastErrorCode: live.lastErrorCode ?? normalized.lastErrorCode,
+        };
+      }
+      return normalized;
     } catch (err) {
       console.warn(`[IndexedDB] Error al recuperar foto ${id}:`, err);
       return null;
@@ -422,67 +573,98 @@ export const photoOfflineQueue = {
   /**
    * Reclama atómicamente una tarea en una sola transacción readwrite de IndexedDB.
    * La transacción se CIERRA Y CONFIRMA antes de realizar cualquier llamada de red.
+   * Devuelve el resultado real directamente desde la misma transacción; NUNCA
+   * asume adquisición por encontrar registros preexistentes con lockOwner === TAB_ID.
    */
   async claimTask(
     photoId: string,
     currentAuthUid: string
   ): Promise<{ claimed: boolean; item?: QueuedOfflinePhoto }> {
-    return runIDBTransaction<{ claimed: boolean; item?: QueuedOfflinePhoto }>('readwrite', (store) => {
-      const getReq = store.get(photoId);
+    if (
+      activeUploadTasks.has(photoId) ||
+      activeFirestoreSaves.has(photoId) ||
+      deletedPhotoIds.has(photoId)
+    ) {
+      return { claimed: false };
+    }
 
-      getReq.onsuccess = () => {
-        const raw = getReq.result;
-        if (!raw) return;
-
-        const item = normalizeRecord(raw);
-
-        // Validar UID real de auth
-        if (item.userId !== currentAuthUid) {
-          console.warn(`[claimTask] Rechazado: UID del registro (${item.userId}) no coincide con el autenticado (${currentAuthUid}).`);
-          return;
+    try {
+      const idb = await getIndexedDB();
+      return await new Promise<{ claimed: boolean; item?: QueuedOfflinePhoto }>((resolve) => {
+        let outcome: { claimed: boolean; item?: QueuedOfflinePhoto } = { claimed: false };
+        let tx: IDBTransaction;
+        try {
+          tx = idb.transaction(STORE_NAME, 'readwrite');
+        } catch {
+          return resolve({ claimed: false });
         }
 
-        // Si es irrecuperable (sin blob y sin url remota), no reclamar para red
-        if (item.unrecoverable) {
-          return;
-        }
+        const store = tx.objectStore(STORE_NAME);
 
-        // Si ya está activa en esta misma pestaña, no reclamar concurrentemente
-        if (activeUploadTasks.has(photoId)) {
-          return;
-        }
+        tx.oncomplete = () => {
+          if (outcome.claimed && outcome.item) {
+            liveQueueItems.set(outcome.item.id, outcome.item);
+          }
+          resolve(outcome);
+        };
+        tx.onerror = () => {
+          resolve({ claimed: false });
+        };
+        tx.onabort = () => {
+          resolve({ claimed: false });
+        };
 
-        const now = Date.now();
-        const isLockedByOther =
-          item.lockOwner &&
-          item.lockOwner !== TAB_ID &&
-          item.lockUntil &&
-          item.lockUntil > now;
+        const getReq = store.get(photoId);
+        getReq.onsuccess = () => {
+          const raw = getReq.result;
+          if (!raw || raw.isDeleted || deletedPhotoIds.has(photoId)) {
+            outcome = { claimed: false };
+            return;
+          }
 
-        if (isLockedByOther) {
-          // Bloqueo activo en otra pestaña o proceso
-          return;
-        }
+          const item = normalizeRecord(raw);
 
-        // Asignar reclamo atómico
-        item.lockOwner = TAB_ID;
-        item.lockUntil = now + 35000; // 35 segundos de concesión inicial
-        item.opVersion = (item.opVersion || 0) + 1;
-        item.startedAt = item.startedAt || new Date().toISOString();
+          // Validar UID real de auth
+          if (item.userId !== currentAuthUid) {
+            console.warn(
+              `[claimTask] Rechazado: UID del registro (${item.userId}) no coincide con el autenticado (${currentAuthUid}).`
+            );
+            outcome = { claimed: false };
+            return;
+          }
 
-        store.put(item);
-      };
-    }).then((result) => {
-      if (result && result.item && result.item.lockOwner === TAB_ID) {
-        return result;
-      }
-      return this.getQueuedPhotoById(photoId).then((fresh) => {
-        if (fresh && fresh.lockOwner === TAB_ID) {
-          return { claimed: true, item: fresh };
-        }
-        return { claimed: false };
+          // Si es irrecuperable
+          if (item.unrecoverable) {
+            outcome = { claimed: false };
+            return;
+          }
+
+          // Si ya está activa en esta misma pestaña (upload o firestore save)
+          if (activeUploadTasks.has(photoId) || activeFirestoreSaves.has(photoId)) {
+            outcome = { claimed: false };
+            return;
+          }
+
+          const now = Date.now();
+          // Si el bloqueo está activo y vigente (sea de otra pestaña o de esta), NO volver a reclamar
+          if (item.lockUntil && item.lockUntil > now) {
+            outcome = { claimed: false };
+            return;
+          }
+
+          // Asignar reclamo atómico en la transacción
+          item.lockOwner = TAB_ID;
+          item.lockUntil = now + 35000; // 35 segundos de concesión inicial
+          item.opVersion = (item.opVersion || 0) + 1;
+          item.startedAt = item.startedAt || new Date().toISOString();
+
+          store.put(item);
+          outcome = { claimed: true, item };
+        };
       });
-    }).catch(() => ({ claimed: false }));
+    } catch {
+      return { claimed: false };
+    }
   },
 
   /**
@@ -493,12 +675,22 @@ export const photoOfflineQueue = {
     this.stopHeartbeat(photoId);
 
     const interval = setInterval(async () => {
+      if (deletedPhotoIds.has(photoId)) {
+        this.stopHeartbeat(photoId);
+        return;
+      }
       try {
         await runIDBTransaction('readwrite', (store) => {
           const req = store.get(photoId);
           req.onsuccess = () => {
             const raw = req.result;
-            if (raw && raw.lockOwner === TAB_ID && (raw.opVersion || 1) === opVersion) {
+            if (
+              raw &&
+              !deletedPhotoIds.has(photoId) &&
+              !raw.isDeleted &&
+              raw.lockOwner === TAB_ID &&
+              (raw.opVersion || 1) === opVersion
+            ) {
               raw.lockUntil = Date.now() + 35000;
               store.put(raw);
             }
@@ -527,6 +719,8 @@ export const photoOfflineQueue = {
   async cleanupConfirmedPhoto(id: string): Promise<boolean> {
     this.stopHeartbeat(id);
     activeUploadTasks.delete(id);
+    activeFirestoreSaves.delete(id);
+    liveQueueItems.delete(id);
 
     try {
       await runIDBTransaction('readwrite', (store) => store.delete(id));
@@ -541,8 +735,13 @@ export const photoOfflineQueue = {
 
   /**
    * Elimina manualmente una foto pendiente a solicitud explícita del usuario.
+   * Cubre uploading, getDownloadURL y saving_metadata, además de posibles respuestas tardías.
    */
   async deletePendingPhoto(id: string, userId: string): Promise<boolean> {
+    deletedPhotoIds.add(id);
+    liveQueueItems.delete(id);
+
+    // Cancelar subida en Storage si está activa
     const task = activeUploadTasks.get(id);
     if (task) {
       cancellationReasons.set(id, 'user_deleted');
@@ -551,13 +750,37 @@ export const photoOfflineQueue = {
       } catch {}
       activeUploadTasks.delete(id);
     }
+
+    // Cancelar confirmación en Firestore si está activa
+    const activeSave = activeFirestoreSaves.get(id);
+    if (activeSave) {
+      activeSave.cancelled = true;
+    }
+
     this.stopHeartbeat(id);
 
-    const success = await this.cleanupConfirmedPhoto(id);
-    if (success) {
-      localStore.deleteItem('photos', id, userId);
+    // Limpiar de localStore inmediatamente
+    localStore.deleteItem('photos', id, userId);
+
+    // Marcar como borrado atómicamente y purgar de IndexedDB
+    try {
+      await runIDBTransaction('readwrite', (store) => {
+        const req = store.get(id);
+        req.onsuccess = () => {
+          const raw = req.result;
+          if (raw) {
+            raw.isDeleted = true;
+            store.put(raw);
+          }
+          store.delete(id);
+        };
+      });
+    } catch (err) {
+      console.warn(`[deletePendingPhoto] Error eliminando ${id} de IDB:`, err);
     }
-    return success;
+
+    notifyQueueUpdated();
+    return true;
   },
 
   /**
@@ -593,12 +816,69 @@ export const photoOfflineQueue = {
   },
 
   /**
-   * Actualiza el estado de un registro de foto encolado.
+   * Actualiza el estado de un registro de foto encolado de forma atómica.
+   * Valida existencia y versiones para no resucitar registros eliminados.
    */
-  async updateItem(item: QueuedOfflinePhoto): Promise<void> {
+  async updateItem(item: QueuedOfflinePhoto): Promise<boolean> {
+    if (deletedPhotoIds.has(item.id)) {
+      return false;
+    }
+
     item.updatedAt = new Date().toISOString();
-    await runIDBTransaction('readwrite', (store) => store.put(item));
-    notifyQueueUpdated();
+    liveQueueItems.set(item.id, { ...item });
+
+    try {
+      await runIDBTransaction('readwrite', (store) => {
+        const req = store.get(item.id);
+        req.onsuccess = () => {
+          const current = req.result;
+          if (!current || deletedPhotoIds.has(item.id) || current.isDeleted) {
+            // Ya no existe o fue marcado para borrado; NUNCA reinsertar
+            return;
+          }
+          if (current.userId !== item.userId) {
+            return;
+          }
+          if (current.lockOwner && current.lockOwner !== TAB_ID) {
+            return;
+          }
+          if (
+            typeof current.opVersion === 'number' &&
+            typeof item.opVersion === 'number' &&
+            current.opVersion > item.opVersion
+          ) {
+            return;
+          }
+          store.put(item);
+        };
+      });
+      notifyQueueUpdated();
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * Persiste un punto de recuperación durable en IndexedDB durante la transferencia de bytes.
+   */
+  async persistProgressCheckpoint(item: QueuedOfflinePhoto): Promise<void> {
+    if (deletedPhotoIds.has(item.id)) return;
+    try {
+      await runIDBTransaction('readwrite', (store) => {
+        const req = store.get(item.id);
+        req.onsuccess = () => {
+          const current = req.result;
+          if (current && !deletedPhotoIds.has(item.id) && !current.isDeleted) {
+            current.bytesTransferred = item.bytesTransferred;
+            current.totalBytes = item.totalBytes;
+            current.progressPercent = item.progressPercent;
+            current.lastProgressAt = item.lastProgressAt;
+            store.put(current);
+          }
+        };
+      });
+    } catch {}
   },
 
   /**
@@ -606,10 +886,10 @@ export const photoOfflineQueue = {
    * Respeta tareas que ya se encuentren activas.
    */
   async retryPendingPhoto(id: string, userId: string): Promise<boolean> {
+    deletedPhotoIds.delete(id);
     const item = await this.getQueuedPhotoById(id);
     if (!item) return false;
 
-    // Si tiene un bloqueo vigente de otra pestaña, advertir
     const now = Date.now();
     if (item.lockOwner && item.lockOwner !== TAB_ID && item.lockUntil && item.lockUntil > now) {
       console.warn(`[retryPendingPhoto] La fotografía ${id} ya está siendo procesada en otra pestaña.`);
@@ -633,7 +913,9 @@ export const photoOfflineQueue = {
 
   /**
    * Obtiene la información de diagnóstico seguro para una foto encolada.
-   * NUNCA incluye tokens, credenciales, URLs privadas completas ni base64.
+   * Utiliza la fuente reactiva en memoria para presentar porcentajes y bytes en tiempo real.
+   * Distingue falta de conexión, estancamiento y errores de permisos.
+   * NUNCA presenta un porcentaje antiguo como diagnóstico actual de subida activa.
    */
   async getDiagnostic(photoId: string): Promise<PhotoDiagnosticInfo | null> {
     const item = await this.getQueuedPhotoById(photoId);
@@ -650,6 +932,27 @@ export const photoOfflineQueue = {
     const elapsedSeconds = item.startedAt
       ? Math.max(0, Math.floor((now - new Date(item.startedAt).getTime()) / 1000))
       : undefined;
+
+    const isNetworkOffline =
+      (typeof navigator !== 'undefined' && navigator.onLine === false) ||
+      item.lastErrorCode === 'network_offline';
+
+    const isStalled = item.lastErrorCode === 'upload_stalled';
+
+    const isPermissionError =
+      item.lastErrorCode === 'permission_denied' ||
+      item.lastErrorCode === 'storage/unauthorized' ||
+      Boolean(item.lastError && item.lastError.toLowerCase().includes('permission'));
+
+    let diagnosticCategory: PhotoDiagnosticInfo['diagnosticCategory'] = 'normal';
+    if (item.unrecoverable) diagnosticCategory = 'unrecoverable';
+    else if (isPermissionError) diagnosticCategory = 'permission_denied';
+    else if (isStalled) diagnosticCategory = 'stalled';
+    else if (isNetworkOffline) diagnosticCategory = 'network_offline';
+
+    // No presentar un porcentaje antiguo como diagnóstico de transferencia activa:
+    // Si la foto no está activamente subiendo bytes, el progreso en curso es 0
+    const currentActivePercent = item.status === 'uploading' ? (item.progressPercent || 0) : 0;
 
     return {
       photoId: item.id,
@@ -672,6 +975,11 @@ export const photoOfflineQueue = {
       lockActive: Boolean(item.lockUntil && item.lockUntil > now),
       opVersion: item.opVersion,
       unrecoverable: item.unrecoverable,
+      isNetworkOffline,
+      isStalled,
+      isPermissionError,
+      diagnosticCategory,
+      currentActivePercent,
     };
   },
 
@@ -687,10 +995,15 @@ export const photoOfflineQueue = {
       `Foto ID: ${diag.photoId}`,
       `Cultivo ID: ${diag.cultivationId}`,
       `Fase: ${diag.phase} | Estado: ${diag.status}`,
-      `Progreso: ${diag.progressPercent}% (${diag.bytesTransferred} / ${diag.totalBytes} bytes)`,
-      `Último avance: ${diag.lastProgressAt || 'Sin avance registrado'}`,
+      `Categoría diagnóstico: ${diag.diagnosticCategory.toUpperCase()}`,
+      `Progreso activo en curso: ${diag.currentActivePercent}%`,
+      `Último avance registrado: ${diag.progressPercent}% (${diag.bytesTransferred} / ${diag.totalBytes} bytes)`,
+      `Fecha último avance: ${diag.lastProgressAt || 'Sin avance registrado'}`,
       `Tiempo transcurrido: ${diag.elapsedSeconds ? `${diag.elapsedSeconds}s` : 'N/A'}`,
       `Intentos: ${diag.retryCount}`,
+      `Falta de red: ${diag.isNetworkOffline ? 'SÍ (Sin red)' : 'No'}`,
+      `Subida estancada: ${diag.isStalled ? 'SÍ (Sin avance de bytes en red)' : 'No'}`,
+      `Error de permisos: ${diag.isPermissionError ? 'SÍ (Acceso denegado en Firebase)' : 'No'}`,
       `Código de error SDK: ${diag.lastErrorCode || 'Ninguno'}`,
       `Mensaje: ${diag.lastError || 'Ninguno'}`,
       `Bloqueo activo: ${diag.lockActive ? `Sí (${diag.lockOwner})` : 'No'}`,
@@ -704,295 +1017,227 @@ export const photoOfflineQueue = {
 
   /**
    * Sincroniza la cola de fotos pendientes hacia Firebase de forma NO bloqueante.
-   * Reglas críticas:
-   * 1. Reclama cada tarea atómicamente en una transacción readwrite de IDB y la CIERRA antes de la red.
-   * 2. Usa uploadBytesResumable con progreso observable y detección de falta de avance.
-   * 3. Two-phase commit: guarda cloudDownloadUrl tras Storage para no re-subir binario si falla Firestore.
-   * 4. No bloquea la UI: no usa Promise.race para cancelar setDoc de forma ficticia.
-   * 5. No borra el Blob de IndexedDB hasta confirmar AMBOS (Storage y Firestore).
-   * 6. Continúa con los demás elementos de la cola si una fotografía falla o es lenta.
-   * 7. Re-entrancia protegida: llamadas concurrentes en la misma pestaña comparten la misma promesa.
+   * Devuelve un PhotoSyncResult tipado en todas las salidas.
+   * Controla la concurrencia y aísla las promesas por usuario/sesión.
    */
-  syncPendingPhotos(userId?: string): Promise<{ synced: number; failed: number; total: number }> {
-    if (ongoingSyncPromise) {
-      return ongoingSyncPromise;
-    }
-
-    ongoingSyncPromise = this._executeSync(userId).finally(() => {
-      ongoingSyncPromise = null;
-    });
-
-    return ongoingSyncPromise;
-  },
-
-  async _executeSync(userId?: string): Promise<{ synced: number; failed: number; total: number }> {
+  syncPendingPhotos(userId?: string): Promise<PhotoSyncResult> {
     const currentAuthUser = auth.currentUser;
     const targetUserId = userId || (currentAuthUser ? currentAuthUser.uid : autoSyncUserId);
 
     if (!targetUserId) {
       console.log('[OfflineSync] Sin usuario autenticado. Sincronización pospuesta.');
-      return { synced: 0, failed: 0, total: 0 };
+      return Promise.resolve({
+        synced: 0,
+        failed: 0,
+        pending: 0,
+        total: 0,
+        stopped: true,
+        reason: 'session_closed',
+      });
     }
 
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      console.log('[OfflineSync] Sin conexión a internet activa. Sincronización pospuesta.');
-      return { synced: 0, failed: 0, total: 0 };
+    // Reactivar sesión si fue invocada explícitamente para este usuario
+    cancelledSessions.delete(targetUserId);
+
+    const existingPromise = sessionSyncPromises.get(targetUserId);
+    if (existingPromise) {
+      return existingPromise;
+    }
+
+    const p = this._executeSync(targetUserId).finally(() => {
+      sessionSyncPromises.delete(targetUserId);
+    });
+
+    sessionSyncPromises.set(targetUserId, p);
+    return p;
+  },
+
+  /**
+   * Ejecuta la sincronización separando planificación, ejecución de subida y confirmación remota.
+   * Controla concurrencia por operación y garantiza que una confirmación lenta no bloquee la cola.
+   */
+  async _executeSync(targetUserId: string): Promise<PhotoSyncResult> {
+    if (!targetUserId) {
+      return { synced: 0, failed: 0, pending: 0, total: 0, stopped: true, reason: 'session_closed' };
+    }
+
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+      let pendingCount = 0;
+      try {
+        const p = await this.getQueuedPhotos(targetUserId);
+        pendingCount = p.length;
+      } catch {}
+      return {
+        synced: 0,
+        failed: 0,
+        pending: pendingCount,
+        total: pendingCount,
+        stopped: true,
+        reason: 'network_offline',
+      };
     }
 
     let pending: QueuedOfflinePhoto[] = [];
     try {
       pending = await this.getQueuedPhotos(targetUserId);
     } catch {
-      return { synced: 0, failed: 0, total: 0 };
+      return { synced: 0, failed: 0, pending: 0, total: 0, stopped: true, reason: 'aborted' };
     }
 
-    if (pending.length === 0) {
-      return { synced: 0, failed: 0, total: 0 };
+    // Filtrar elementos irrecuperables por falta de binario
+    const eligiblePhotos: QueuedOfflinePhoto[] = [];
+    let unrecoverableCount = 0;
+    for (const item of pending) {
+      if (item.unrecoverable) {
+        unrecoverableCount++;
+      } else if (!deletedPhotoIds.has(item.id)) {
+        eligiblePhotos.push(item);
+      }
+    }
+
+    if (eligiblePhotos.length === 0) {
+      return {
+        synced: 0,
+        failed: unrecoverableCount,
+        pending: 0,
+        total: pending.length,
+        stopped: false,
+        reason: 'completed',
+      };
     }
 
     let synced = 0;
-    let failed = 0;
+    let failed = unrecoverableCount;
+    let stopped = false;
+    let stopReason: PhotoSyncResult['reason'] = 'completed';
 
-    for (const rawItem of pending) {
-      // 0. Si el elemento es irrecuperable por falta de blob, omitir subida de red
-      if (rawItem.unrecoverable) {
-        failed++;
-        continue;
+    // ==============================================================
+    // PIPELINE DE CONCURRENCIA DESACOPLADO
+    // Etapa 1: Subida de binarios a Storage (MAX 2 trabajadores)
+    // Etapa 2: Confirmación de metadatos en Firestore (cola pipelined, MAX 3 concurrentes)
+    // Una espera individual de Firestore jamás bloquea la subida de las demás fotos.
+    // ==============================================================
+    const MAX_UPLOAD_CONCURRENCY = 2;
+    const MAX_CONFIRM_CONCURRENCY = 3;
+    let uploadCursor = 0;
+
+    const confirmationQueue: QueuedOfflinePhoto[] = [];
+    let activeConfirmations = 0;
+    const confirmationSettled: Promise<void>[] = [];
+
+    const scheduleConfirmations = (): void => {
+      while (confirmationQueue.length > 0 && activeConfirmations < MAX_CONFIRM_CONCURRENCY) {
+        if (cancelledSessions.has(targetUserId) || (auth.currentUser && auth.currentUser.uid !== targetUserId)) {
+          stopped = true;
+          stopReason = 'session_closed';
+          break;
+        }
+
+        const nextPhoto = confirmationQueue.shift();
+        if (!nextPhoto) break;
+
+        activeConfirmations++;
+        const promise = this._confirmPhotoInFirestore(nextPhoto, targetUserId)
+          .then((outcome) => {
+            if (outcome === 'synced') {
+              synced++;
+            } else if (outcome === 'failed') {
+              failed++;
+            } else if (outcome === 'session_closed') {
+              stopped = true;
+              stopReason = 'session_closed';
+            }
+          })
+          .catch((err) => {
+            console.warn(`[ConfirmationPipeline] Error inesperado en confirmación de ${nextPhoto.id}:`, err);
+            failed++;
+          })
+          .finally(() => {
+            activeConfirmations--;
+            scheduleConfirmations();
+          });
+
+        confirmationSettled.push(promise);
       }
+    };
 
-      // 1. Reclamo atómico de la tarea
-      const claimResult = await this.claimTask(rawItem.id, targetUserId);
-      if (!claimResult.claimed || !claimResult.item) {
-        // Bloqueada por otra pestaña activa; omitir
-        continue;
+    const uploadWorker = async (): Promise<void> => {
+      while (uploadCursor < eligiblePhotos.length) {
+        if (cancelledSessions.has(targetUserId) || (auth.currentUser && auth.currentUser.uid !== targetUserId)) {
+          stopped = true;
+          stopReason = 'session_closed';
+          break;
+        }
+
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+          stopped = true;
+          stopReason = 'network_offline';
+          break;
+        }
+
+        const rawItem = eligiblePhotos[uploadCursor++];
+        if (!rawItem || deletedPhotoIds.has(rawItem.id)) {
+          continue;
+        }
+
+        // Reclamo atómico en transacción IDB
+        const claimResult = await this.claimTask(rawItem.id, targetUserId);
+        if (!claimResult.claimed || !claimResult.item) {
+          continue;
+        }
+
+        const claimedItem = claimResult.item;
+
+        // Si ya tiene cloudDownloadUrl (Two-Phase Commit previo), saltar directo a confirmación remota
+        if (claimedItem.cloudDownloadUrl) {
+          confirmationQueue.push(claimedItem);
+          scheduleConfirmations();
+          continue;
+        }
+
+        // Ejecutar subida de binario
+        const uploadOutcome = await this._uploadBinaryToStorage(claimedItem, targetUserId);
+
+        if (uploadOutcome.status === 'ready_for_confirm' && uploadOutcome.item) {
+          // El binario está confirmado en Storage y registrado en IDB.
+          // Inmediatamente liberamos este worker de subida para la siguiente foto,
+          // y pasamos la confirmación remota a la cola de Firestore
+          confirmationQueue.push(uploadOutcome.item);
+          scheduleConfirmations();
+        } else if (uploadOutcome.status === 'failed') {
+          failed++;
+        } else if (uploadOutcome.status === 'session_closed') {
+          stopped = true;
+          stopReason = 'session_closed';
+          break;
+        } else if (uploadOutcome.status === 'network_offline') {
+          stopped = true;
+          stopReason = 'network_offline';
+          break;
+        }
+        // Fotos eliminadas o pospuestas para reintento no detienen el lote de las demás
       }
+    };
 
-      const item = claimResult.item;
-      const opVersion = item.opVersion || 1;
+    const uploadWorkers = Array.from(
+      { length: Math.min(MAX_UPLOAD_CONCURRENCY, eligiblePhotos.length) },
+      () => uploadWorker()
+    );
 
-      // 2. Iniciar latido de renovación de concesión
-      this.startHeartbeat(item.id, opVersion);
+    // Esperar a que todos los trabajadores de subida de binarios concluyan
+    await Promise.all(uploadWorkers);
 
-      try {
-        let downloadUrl = item.cloudDownloadUrl;
-
-        // ==============================================================
-        // FASE 1: Subida del binario a Storage con uploadBytesResumable
-        // ==============================================================
-        if (!downloadUrl) {
-          item.status = 'uploading';
-          await this.updateItem(item);
-
-          // Actualizar estado reactivo en localStore
-          localStore.saveItem<Partial<PhotoRecord> & { id: string; userId: string }>('photos', {
-            id: item.id,
-            userId: item.userId,
-            syncStatus: 'uploading',
-            isPendingSync: true,
-          });
-
-          const storageRef = ref(storage, item.storagePath);
-          const uploadTask = uploadBytesResumable(storageRef, item.fileBlob, {
-            contentType: item.fileType,
-          });
-          activeUploadTasks.set(item.id, uploadTask);
-
-          // Monitor de progreso y detección de bloqueo (stall detection)
-          let lastBytes = 0;
-          let lastProgressTimestamp = Date.now();
-
-          const stallCheckTimer = setInterval(() => {
-            const now = Date.now();
-            if (typeof navigator !== 'undefined' && !navigator.onLine) {
-              cancellationReasons.set(item.id, 'offline');
-              uploadTask.cancel();
-              return;
-            }
-            // Si pasan 35 segundos sin transferir ningún byte adicional
-            if (now - lastProgressTimestamp > 35000) {
-              console.warn(`[OfflineSync] Subida estancada detectada en foto ${item.id}. Cancelando tarea para reintento.`);
-              cancellationReasons.set(item.id, 'stalled');
-              uploadTask.cancel();
-            }
-          }, 5000);
-
-          uploadTask.on('state_changed', (snapshot) => {
-            if (snapshot.bytesTransferred > lastBytes) {
-              lastBytes = snapshot.bytesTransferred;
-              lastProgressTimestamp = Date.now();
-            } else if (snapshot.state === 'running' && lastBytes === 0) {
-              lastProgressTimestamp = Date.now();
-            }
-
-            item.bytesTransferred = snapshot.bytesTransferred;
-            item.totalBytes = snapshot.totalBytes;
-            item.progressPercent =
-              snapshot.totalBytes > 0
-                ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)
-                : 0;
-            item.lastProgressAt = new Date().toISOString();
-
-            // Notificación ligera
-            notifyQueueUpdated();
-          });
-
-          try {
-            await uploadTask;
-          } finally {
-            clearInterval(stallCheckTimer);
-            activeUploadTasks.delete(item.id);
-          }
-
-          downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-
-          // TWO-PHASE COMMIT: Persistir inmediatamente la URL de Storage en IndexedDB.
-          // Si setDoc falla posteriormente, ¡NO se volverá a subir el archivo!
-          item.cloudDownloadUrl = downloadUrl;
-          item.stagePending = 'firestore';
-          item.progressPercent = 100;
-          await this.updateItem(item);
-        }
-
-        // ==============================================================
-        // FASE 2: Persistencia de metadatos en Cloud Firestore
-        // ==============================================================
-        item.status = 'saving_metadata';
-        await this.updateItem(item);
-
-        localStore.saveItem<Partial<PhotoRecord> & { id: string; userId: string }>('photos', {
-          id: item.id,
-          userId: item.userId,
-          syncStatus: 'saving_metadata',
-          isPendingSync: true,
-        });
-
-        const photoRecord: PhotoRecord = {
-          id: item.id,
-          userId: item.userId,
-          cultivationId: item.cultivationId,
-          url: downloadUrl,
-          storagePath: item.storagePath,
-          syncStatus: 'synced',
-          fileSize: item.fileSize,
-          mimeType: item.fileType,
-          date: item.date,
-          dayOfCultivation: item.dayOfCultivation,
-          stage: item.stage,
-          category: item.category,
-          caption: item.caption,
-          isDemo: item.isDemo,
-          isPendingSync: false,
-          createdAt: item.createdAt,
-        };
-
-        const docRef = doc(db, 'photos', item.id);
-        const cleaned = cleanFirestoreData(photoRecord);
-
-        // Validar que el usuario autenticado no haya cambiado durante la operación de red
-        if (auth.currentUser && auth.currentUser.uid !== item.userId) {
-          throw new Error('Sesión de usuario alterada durante la sincronización.');
-        }
-
-        // setDoc autoritativo con confirmación del servidor
-        await setDoc(docRef, cleaned);
-
-        // ==============================================================
-        // FASE 3: Confirmación exitosa en Storage + Firestore -> Limpieza
-        // ==============================================================
-        this.stopHeartbeat(item.id);
-
-        // Actualizar almacén local marcando como completamente sincronizada
-        localStore.saveItem('photos', photoRecord);
-
-        // Ahora y solo ahora limpiar de la cola IndexedDB
-        await this.cleanupConfirmedPhoto(item.id);
-        synced++;
-        console.log(`[OfflineSync] ✅ Foto ${item.id} sincronizada y confirmada en la nube.`);
-      } catch (stepErr: unknown) {
-        this.stopHeartbeat(item.id);
-        activeUploadTasks.delete(item.id);
-
-        const errObj = stepErr as { message?: string; code?: string; name?: string } | undefined;
-        const isCanceled = errObj?.code === 'storage/canceled';
-        const cancelReason = cancellationReasons.get(item.id);
-        cancellationReasons.delete(item.id);
-
-        if (isCanceled) {
-          if (cancelReason === 'user_deleted') {
-            console.log(`[OfflineSync] Subida de foto ${item.id} detenida por eliminación voluntaria.`);
-            return;
-          }
-          if (cancelReason === 'logout') {
-            console.log(`[OfflineSync] Subida de foto ${item.id} pausada por cierre de sesión.`);
-            item.lockUntil = undefined;
-            item.lockOwner = undefined;
-            item.status = 'queued';
-            await this.updateItem(item);
-            return;
-          }
-          if (cancelReason === 'offline' || (typeof navigator !== 'undefined' && !navigator.onLine)) {
-            console.info(`[OfflineSync] Subida de foto ${item.id} pausada por desconexión de red.`);
-            item.status = 'waiting_network';
-            item.lastError = 'Conexión de red interrumpida durante la subida.';
-            item.lastErrorCode = 'network-offline';
-            item.lockUntil = undefined;
-            item.lockOwner = undefined;
-            await this.updateItem(item);
-            localStore.saveItem<Partial<PhotoRecord> & { id: string; userId: string }>('photos', {
-              id: item.id,
-              userId: item.userId,
-              syncStatus: 'waiting_network',
-              syncError: item.lastError,
-              isPendingSync: true,
-            });
-            return;
-          }
-          if (cancelReason === 'stalled') {
-            console.warn(`[OfflineSync] Subida de foto ${item.id} estancada en red; reprogramada para el próximo ciclo.`);
-            item.status = 'queued';
-            item.lastError = 'La subida se estancó sin avance de bytes; reprogramada.';
-            item.lastErrorCode = 'upload-stalled';
-            item.lockUntil = undefined;
-            item.lockOwner = undefined;
-            await this.updateItem(item);
-            return;
-          }
-
-          // Cancelación general o manual no catalogada
-          console.warn(`[OfflineSync] Subida de foto ${item.id} cancelada. Reprogramando.`);
-          item.status = (typeof navigator !== 'undefined' && !navigator.onLine) ? 'waiting_network' : 'queued';
-          item.lastError = 'Subida cancelada o reprogramada.';
-          item.lastErrorCode = 'storage/canceled';
-          item.lockUntil = undefined;
-          item.lockOwner = undefined;
-          await this.updateItem(item);
-          return;
-        }
-
-        // Fallo real no atribuible a cancelación controlada
-        console.error(`[OfflineSync] Fallo en sincronización de foto ${item.id}:`, stepErr);
-
-        item.status = (typeof navigator !== 'undefined' && !navigator.onLine) ? 'waiting_network' : 'failed';
-        item.retryCount = (item.retryCount || 0) + 1;
-        item.lastError = errObj?.message || 'Error durante la sincronización.';
-        item.lastErrorCode = errObj?.code || (errObj?.name === 'FirebaseError' ? 'firebase-error' : 'network-error');
-        item.lastErrorAt = new Date().toISOString();
-        item.lockUntil = undefined;
-        item.lockOwner = undefined;
-
-        await this.updateItem(item);
-
-        localStore.saveItem<Partial<PhotoRecord> & { id: string; userId: string }>('photos', {
-          id: item.id,
-          userId: item.userId,
-          syncStatus: mapQueueStatusToSyncStatus(item.status),
-          syncError: item.lastError,
-          isPendingSync: true,
-        });
-
-        failed++;
+    // Esperar a que se procesen todas las confirmaciones remotas pendientes
+    scheduleConfirmations();
+    while (activeConfirmations > 0 || confirmationQueue.length > 0) {
+      if (confirmationSettled.length > 0) {
+        await Promise.all(confirmationSettled);
+      } else {
+        break;
       }
     }
+
+    const pendingCount = Math.max(0, pending.length - synced - failed);
 
     if (synced > 0 && typeof window !== 'undefined') {
       window.dispatchEvent(
@@ -1002,41 +1247,428 @@ export const photoOfflineQueue = {
       );
     }
 
-    return { synced, failed, total: pending.length };
+    return {
+      synced,
+      failed,
+      pending: pendingCount,
+      total: pending.length,
+      stopped,
+      reason: stopReason,
+    };
+  },
+
+  /**
+   * Ejecución por foto: Fase de subida de binarios a Storage con uploadBytesResumable.
+   * Maneja checkpoints durables en IndexedDB y no bloquea el pipeline de confirmación remota.
+   */
+  async _uploadBinaryToStorage(
+    item: QueuedOfflinePhoto,
+    targetUserId: string
+  ): Promise<{
+    status: 'ready_for_confirm' | 'failed' | 'deleted' | 'session_closed' | 'network_offline' | 'retry_later';
+    item?: QueuedOfflinePhoto;
+  }> {
+    if (deletedPhotoIds.has(item.id)) {
+      return { status: 'deleted' };
+    }
+    if (cancelledSessions.has(targetUserId) || (auth.currentUser && auth.currentUser.uid !== targetUserId)) {
+      return { status: 'session_closed' };
+    }
+
+    const opVersion = item.opVersion || 1;
+    this.startHeartbeat(item.id, opVersion);
+
+    try {
+      item.status = 'uploading';
+      await this.updateItem(item);
+
+      if (auth.currentUser?.uid === targetUserId && !deletedPhotoIds.has(item.id)) {
+        localStore.saveItem<Partial<PhotoRecord> & { id: string; userId: string }>('photos', {
+          id: item.id,
+          userId: item.userId,
+          syncStatus: 'uploading',
+          isPendingSync: true,
+        });
+      }
+
+      const doUpload = activeAdapters.uploadBytesResumable || uploadBytesResumable;
+      const doGetDownloadURL = activeAdapters.getDownloadURL || getDownloadURL;
+      const doDeleteObject = activeAdapters.deleteObject || deleteObject;
+
+      const storageRef = ref(storage, item.storagePath);
+      const uploadTask = doUpload(storageRef, item.fileBlob, {
+        contentType: item.fileType,
+      });
+      activeUploadTasks.set(item.id, uploadTask);
+
+      let lastBytes = 0;
+      let lastProgressTimestamp = Date.now();
+      let lastPersistedPercent = item.progressPercent || 0;
+      let lastPersistedTime = Date.now();
+
+      const stallCheckTimer = setInterval(() => {
+        const now = Date.now();
+        if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+          cancellationReasons.set(item.id, 'offline');
+          uploadTask.cancel();
+          return;
+        }
+        if (now - lastProgressTimestamp > 35000) {
+          console.warn(`[OfflineSync] Subida estancada detectada en foto ${item.id}. Cancelando tarea para reintento.`);
+          cancellationReasons.set(item.id, 'stalled');
+          uploadTask.cancel();
+        }
+      }, 5000);
+
+      uploadTask.on('state_changed', (snapshot) => {
+        const now = Date.now();
+        if (snapshot.bytesTransferred > lastBytes) {
+          lastBytes = snapshot.bytesTransferred;
+          lastProgressTimestamp = now;
+        } else if (snapshot.state === 'running' && lastBytes === 0) {
+          lastProgressTimestamp = now;
+        }
+
+        const percent =
+          snapshot.totalBytes > 0
+            ? Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100)
+            : 0;
+
+        item.bytesTransferred = snapshot.bytesTransferred;
+        item.totalBytes = snapshot.totalBytes;
+        item.progressPercent = percent;
+        item.lastProgressAt = new Date().toISOString();
+
+        // 1. Notificación reactiva instantánea en memoria
+        liveQueueItems.set(item.id, { ...item });
+        notifyQueueUpdated();
+
+        // 2. Persistencia durable controlada de checkpoints en IndexedDB (cada 25% o 5 segundos)
+        if (percent - lastPersistedPercent >= 25 || now - lastPersistedTime >= 5000) {
+          lastPersistedPercent = percent;
+          lastPersistedTime = now;
+          this.persistProgressCheckpoint(item);
+        }
+      });
+
+      try {
+        await uploadTask;
+      } finally {
+        clearInterval(stallCheckTimer);
+        activeUploadTasks.delete(item.id);
+      }
+
+      // Comprobación de borrado durante la subida
+      if (deletedPhotoIds.has(item.id)) {
+        try {
+          await doDeleteObject(uploadTask.snapshot.ref);
+        } catch {}
+        this.stopHeartbeat(item.id);
+        return { status: 'deleted' };
+      }
+
+      // Comprobación de cambio de sesión durante la subida
+      if (cancelledSessions.has(targetUserId) || (auth.currentUser && auth.currentUser.uid !== targetUserId)) {
+        this.stopHeartbeat(item.id);
+        item.lockUntil = undefined;
+        item.lockOwner = undefined;
+        item.status = 'queued';
+        await this.updateItem(item);
+        return { status: 'session_closed' };
+      }
+
+      // Obtener URL de descarga en la nube
+      const downloadUrl = await doGetDownloadURL(uploadTask.snapshot.ref);
+
+      if (deletedPhotoIds.has(item.id)) {
+        try {
+          await doDeleteObject(uploadTask.snapshot.ref);
+        } catch {}
+        this.stopHeartbeat(item.id);
+        return { status: 'deleted' };
+      }
+
+      // TWO-PHASE COMMIT: Guardar cloudDownloadUrl en IndexedDB antes de pasar a Firestore
+      item.cloudDownloadUrl = downloadUrl;
+      item.stagePending = 'firestore';
+      item.progressPercent = 100;
+      await this.updateItem(item);
+
+      return { status: 'ready_for_confirm', item };
+    } catch (stepErr: unknown) {
+      this.stopHeartbeat(item.id);
+      activeUploadTasks.delete(item.id);
+
+      const errObj = stepErr as { message?: string; code?: string; name?: string } | undefined;
+      const isCanceled = errObj?.code === 'storage/canceled';
+      const cancelReason = cancellationReasons.get(item.id);
+      cancellationReasons.delete(item.id);
+
+      if (isCanceled) {
+        if (cancelReason === 'user_deleted' || deletedPhotoIds.has(item.id)) {
+          console.log(`[OfflineSync] Subida de foto ${item.id} cancelada por eliminación voluntaria.`);
+          return { status: 'deleted' };
+        }
+        if (cancelReason === 'logout' || cancelledSessions.has(targetUserId)) {
+          console.log(`[OfflineSync] Subida de foto ${item.id} pausada por cierre de sesión.`);
+          item.lockUntil = undefined;
+          item.lockOwner = undefined;
+          item.status = 'queued';
+          await this.updateItem(item);
+          return { status: 'session_closed' };
+        }
+        if (cancelReason === 'offline' || (typeof navigator !== 'undefined' && navigator.onLine === false)) {
+          console.info(`[OfflineSync] Subida de foto ${item.id} pausada por desconexión de red.`);
+          item.status = 'waiting_network';
+          item.lastError = 'Conexión de red interrumpida durante la subida.';
+          item.lastErrorCode = 'network_offline';
+          item.lockUntil = undefined;
+          item.lockOwner = undefined;
+          await this.updateItem(item);
+          if (auth.currentUser?.uid === targetUserId && !deletedPhotoIds.has(item.id)) {
+            localStore.saveItem<Partial<PhotoRecord> & { id: string; userId: string }>('photos', {
+              id: item.id,
+              userId: item.userId,
+              syncStatus: 'waiting_network',
+              syncError: item.lastError,
+              isPendingSync: true,
+            });
+          }
+          return { status: 'network_offline' };
+        }
+        if (cancelReason === 'stalled') {
+          console.warn(`[OfflineSync] Subida de foto ${item.id} estancada en red; reprogramada.`);
+          item.status = 'queued';
+          item.lastError = 'La subida se estancó sin avance de bytes; reprogramada.';
+          item.lastErrorCode = 'upload_stalled';
+          item.lockUntil = undefined;
+          item.lockOwner = undefined;
+          await this.updateItem(item);
+          return { status: 'retry_later' };
+        }
+
+        // Cancelación general no catalogada
+        item.status = typeof navigator !== 'undefined' && navigator.onLine === false ? 'waiting_network' : 'queued';
+        item.lastError = 'Subida cancelada o reprogramada.';
+        item.lastErrorCode = 'storage/canceled';
+        item.lockUntil = undefined;
+        item.lockOwner = undefined;
+        await this.updateItem(item);
+        return { status: 'retry_later' };
+      }
+
+      if (deletedPhotoIds.has(item.id)) {
+        return { status: 'deleted' };
+      }
+
+      // Fallo real no atribuible a cancelación controlada
+      console.error(`[OfflineSync] Fallo en subida de foto ${item.id}:`, stepErr);
+
+      const isPermission =
+        errObj?.code === 'storage/unauthorized' ||
+        errObj?.code === 'permission-denied' ||
+        Boolean(errObj?.message && errObj.message.toLowerCase().includes('permission'));
+
+      item.status = typeof navigator !== 'undefined' && navigator.onLine === false ? 'waiting_network' : 'failed';
+      item.retryCount = (item.retryCount || 0) + 1;
+      item.lastError = errObj?.message || 'Error durante la subida a Storage.';
+      item.lastErrorCode = isPermission
+        ? 'permission_denied'
+        : errObj?.code || (errObj?.name === 'FirebaseError' ? 'firebase-error' : 'network-error');
+      item.lastErrorAt = new Date().toISOString();
+      item.lockUntil = undefined;
+      item.lockOwner = undefined;
+
+      await this.updateItem(item);
+
+      if (auth.currentUser?.uid === targetUserId && !deletedPhotoIds.has(item.id)) {
+        localStore.saveItem<Partial<PhotoRecord> & { id: string; userId: string }>('photos', {
+          id: item.id,
+          userId: item.userId,
+          syncStatus: mapQueueStatusToSyncStatus(item.status),
+          syncError: item.lastError,
+          isPendingSync: true,
+        });
+      }
+
+      return { status: 'failed' };
+    }
+  },
+
+  /**
+   * Confirmación remota: Fase de persistencia de metadatos en Cloud Firestore.
+   * NO simula cancelación mediante Promise.race; gestiona confirmaciones tardías
+   * sin duplicar escrituras ni marcar sincronizada una foto sin confirmación real.
+   */
+  async _confirmPhotoInFirestore(
+    item: QueuedOfflinePhoto,
+    targetUserId: string
+  ): Promise<'synced' | 'failed' | 'deleted' | 'session_closed'> {
+    const doSetDoc = activeAdapters.setDoc || setDoc;
+    const doDeleteDoc = activeAdapters.deleteDoc || deleteDoc;
+    const doDeleteObject = activeAdapters.deleteObject || deleteObject;
+
+    if (deletedPhotoIds.has(item.id)) {
+      if (item.cloudDownloadUrl) {
+        try {
+          await doDeleteObject(ref(storage, item.storagePath));
+        } catch {}
+      }
+      this.stopHeartbeat(item.id);
+      return 'deleted';
+    }
+
+    if (cancelledSessions.has(targetUserId) || (auth.currentUser && auth.currentUser.uid !== targetUserId)) {
+      this.stopHeartbeat(item.id);
+      item.lockUntil = undefined;
+      item.lockOwner = undefined;
+      item.status = 'queued';
+      await this.updateItem(item);
+      return 'session_closed';
+    }
+
+    const opVersion = item.opVersion || 1;
+    this.startHeartbeat(item.id, opVersion);
+
+    item.status = 'saving_metadata';
+    await this.updateItem(item);
+
+    if (auth.currentUser?.uid === targetUserId && !deletedPhotoIds.has(item.id)) {
+      localStore.saveItem<Partial<PhotoRecord> & { id: string; userId: string }>('photos', {
+        id: item.id,
+        userId: item.userId,
+        syncStatus: 'saving_metadata',
+        isPendingSync: true,
+      });
+    }
+
+    const photoRecord: PhotoRecord = {
+      id: item.id,
+      userId: item.userId,
+      cultivationId: item.cultivationId,
+      url: item.cloudDownloadUrl || '',
+      storagePath: item.storagePath,
+      syncStatus: 'synced',
+      fileSize: item.fileSize,
+      mimeType: item.fileType,
+      date: item.date,
+      dayOfCultivation: item.dayOfCultivation,
+      stage: item.stage,
+      category: item.category,
+      caption: item.caption,
+      isDemo: item.isDemo,
+      isPendingSync: false,
+      createdAt: item.createdAt,
+    };
+
+    const docRef = doc(db, 'photos', item.id);
+    const cleaned = cleanFirestoreData(photoRecord);
+
+    const saveExecution = (async (): Promise<void> => {
+      // Escritura real en Firestore sin Promise.race artificial
+      await doSetDoc(docRef, cleaned);
+    })();
+
+    activeFirestoreSaves.set(item.id, {
+      promise: saveExecution,
+      opVersion,
+      userId: targetUserId,
+    });
+
+    try {
+      await saveExecution;
+    } catch (saveErr: unknown) {
+      activeFirestoreSaves.delete(item.id);
+      this.stopHeartbeat(item.id);
+
+      if (deletedPhotoIds.has(item.id)) {
+        return 'deleted';
+      }
+
+      console.error(`[OfflineSync] Error al guardar metadatos en Firestore para foto ${item.id}:`, saveErr);
+
+      const errObj = saveErr as { message?: string; code?: string; name?: string } | undefined;
+      const isPermission =
+        errObj?.code === 'permission-denied' ||
+        Boolean(errObj?.message && errObj.message.toLowerCase().includes('permission'));
+
+      item.status = 'failed';
+      item.retryCount = (item.retryCount || 0) + 1;
+      item.lastError = errObj?.message || 'Error al persistir metadatos en Firestore.';
+      item.lastErrorCode = isPermission ? 'permission_denied' : errObj?.code || 'firestore_error';
+      item.lastErrorAt = new Date().toISOString();
+      item.lockUntil = undefined;
+      item.lockOwner = undefined;
+
+      await this.updateItem(item);
+
+      if (auth.currentUser?.uid === targetUserId && !deletedPhotoIds.has(item.id)) {
+        localStore.saveItem<Partial<PhotoRecord> & { id: string; userId: string }>('photos', {
+          id: item.id,
+          userId: item.userId,
+          syncStatus: 'error',
+          syncError: item.lastError,
+          isPendingSync: true,
+        });
+      }
+
+      return 'failed';
+    } finally {
+      activeFirestoreSaves.delete(item.id);
+    }
+
+    // ==============================================================
+    // GESTIÓN DE CONFIRMACIONES TARDÍAS Y BORRADO CONCURRENTE
+    // ==============================================================
+    if (deletedPhotoIds.has(item.id)) {
+      console.warn(`[OfflineSync] Foto ${item.id} confirmada después de solicitar borrado. Purgando documentos remotos.`);
+      try {
+        await doDeleteDoc(docRef);
+      } catch {}
+      try {
+        await doDeleteObject(ref(storage, item.storagePath));
+      } catch {}
+      this.stopHeartbeat(item.id);
+      return 'deleted';
+    }
+
+    if (cancelledSessions.has(targetUserId) || (auth.currentUser && auth.currentUser.uid !== targetUserId)) {
+      console.info(`[OfflineSync] Foto ${item.id} confirmada tras cambio de sesión. Limpiando de cola sin alterar UI ajena.`);
+      this.stopHeartbeat(item.id);
+      await this.cleanupConfirmedPhoto(item.id);
+      return 'session_closed';
+    }
+
+    // Confirmación exitosa completa
+    this.stopHeartbeat(item.id);
+    localStore.saveItem('photos', photoRecord);
+    await this.cleanupConfirmedPhoto(item.id);
+    console.log(`[OfflineSync] ✅ Foto ${item.id} confirmada y sincronizada en Firestore.`);
+    return 'synced';
   },
 
   /**
    * Suscripción reactiva para observar cambios en la cola.
+   * Los observadores reciben actualizaciones instantáneas desde la fuente viva en memoria,
+   * sin incurrir en lecturas pesadas a IndexedDB en cada porcentaje de avance.
    */
   subscribeQueue(callback: (pending: QueuedOfflinePhoto[]) => void, userId?: string): () => void {
-    if (typeof window === 'undefined') return () => {};
+    const subscriber = { callback, userId };
+    queueSubscribers.add(subscriber);
 
-    let isSubscribed = true;
-
-    const emit = async () => {
-      if (!isSubscribed) return;
-      try {
-        const items = await photoOfflineQueue.getQueuedPhotos(userId || autoSyncUserId || undefined);
-        if (isSubscribed) {
+    // Emisión inmediata con estado actual
+    this.getQueuedPhotos(userId || autoSyncUserId || undefined)
+      .then((items) => {
+        if (queueSubscribers.has(subscriber)) {
           callback(items);
         }
-      } catch (err) {
-        console.warn('[subscribeQueue] Error emitiendo cola:', err);
-      }
-    };
-
-    emit();
-
-    const handler = () => emit();
-    window.addEventListener('cultiveta_offline_queue_changed', handler);
-    window.addEventListener('online', handler);
-    window.addEventListener('offline', handler);
+      })
+      .catch((err) => {
+        console.warn('[subscribeQueue] Error emitiendo cola inicial:', err);
+      });
 
     return () => {
-      isSubscribed = false;
-      window.removeEventListener('cultiveta_offline_queue_changed', handler);
-      window.removeEventListener('online', handler);
-      window.removeEventListener('offline', handler);
+      queueSubscribers.delete(subscriber);
     };
   },
 
@@ -1046,6 +1678,9 @@ export const photoOfflineQueue = {
    */
   initAutoSync(userId: string): () => void {
     if (typeof window === 'undefined' || !userId) return () => {};
+
+    // Reactivar sesión si estaba marcada como cancelada
+    cancelledSessions.delete(userId);
 
     // Si ya está activo exactamente para este mismo usuario, mantener la sincronización activa
     if (autoSyncUserId === userId && (autoSyncInterval || autoSyncOnlineHandler)) {
@@ -1078,7 +1713,7 @@ export const photoOfflineQueue = {
     window.addEventListener('online', autoSyncOnlineHandler);
 
     // Ejecución inicial si ya hay conexión
-    if (navigator.onLine) {
+    if (typeof navigator === 'undefined' || navigator.onLine !== false) {
       setTimeout(() => {
         if (autoSyncUserId) {
           photoOfflineQueue.syncPendingPhotos(autoSyncUserId).catch(() => {});
@@ -1088,14 +1723,14 @@ export const photoOfflineQueue = {
 
     // Revisión periódica en segundo plano cada 45 segundos
     autoSyncInterval = setInterval(() => {
-      if (navigator.onLine && autoSyncUserId) {
+      if ((typeof navigator === 'undefined' || navigator.onLine !== false) && autoSyncUserId) {
         photoOfflineQueue.syncPendingPhotos(autoSyncUserId).catch(() => {});
       }
     }, 45000);
 
     return () => {
       // Al desmontar, solo detener si la sesión realmente finalizó o cambió de UID
-      if (auth.currentUser?.uid !== userId) {
+      if (autoSyncUserId && autoSyncUserId !== userId) {
         this.stopAutoSync();
       }
     };
@@ -1104,8 +1739,16 @@ export const photoOfflineQueue = {
   /**
    * Detiene el procesamiento de la cola al cerrar sesión o cambiar de usuario.
    * Cancela tareas de subida activas, temporizadores y latidos.
+   * Conserva intactos los archivos pendientes en IndexedDB.
    */
   stopAutoSync(): void {
+    if (autoSyncUserId) {
+      cancelledSessions.add(autoSyncUserId);
+    }
+    sessionSyncPromises.forEach((_, uid) => {
+      cancelledSessions.add(uid);
+    });
+
     if (autoSyncOnlineHandler && typeof window !== 'undefined') {
       window.removeEventListener('online', autoSyncOnlineHandler);
       autoSyncOnlineHandler = null;
