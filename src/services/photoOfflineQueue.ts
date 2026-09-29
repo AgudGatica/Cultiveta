@@ -134,6 +134,20 @@ const confirmationQueues = new Map<string, QueuedOfflinePhoto[]>();
 const confirmationCount = new Map<string, number>();
 const confirmationSettledPromises = new Map<string, Promise<void>[]>();
 
+// Rastreo atómico de resultados de lote durante la ejecución de sincronización
+// Clave compuesta: `${userId}:${sessionGen}` para aislamiento estricto entre sesiones y generaciones
+const batchTrackers = new Map<
+  string,
+  {
+    synced: Set<string>;
+    failed: Set<string>;
+    deleted: Set<string>;
+  }
+>();
+
+// Control de limpiezas remotas en vuelo para evitar ejecuciones concurrentes redundantes
+const inFlightDeletions = new Set<string>();
+
 // Fotografías marcadas para eliminación para evitar resurrección y asegurar limpieza tardía
 const deletedPhotoIds = new Set<string>();
 
@@ -180,6 +194,8 @@ export function resetQueueStateForTesting(): void {
   deletedPhotoIds.clear();
   liveQueueItems.clear();
   queueSubscribers.clear();
+  batchTrackers.clear();
+  inFlightDeletions.clear();
   autoSyncUserId = null;
   if (autoSyncInterval) {
     clearInterval(autoSyncInterval);
@@ -532,8 +548,6 @@ export const photoOfflineQueue = {
         .filter((item) => {
           if (item.deletionPending || item.isDeleted || deletedPhotoIds.has(item.id)) {
             deletedPhotoIds.add(item.id);
-            // Reintentar purga remota en segundo plano para limpiezas pendientes
-            this._purgeRemoteArtifactsAndFinalize(item.id, item).catch(() => {});
             return false;
           }
           return true;
@@ -782,6 +796,13 @@ export const photoOfflineQueue = {
     deletedPhotoIds.add(id);
     liveQueueItems.delete(id);
 
+    // Registrar en todos los batchTrackers que pertenezcan a este usuario
+    for (const [key, tr] of batchTrackers.entries()) {
+      if (key.startsWith(`${userId}:`)) {
+        tr.deleted.add(id);
+      }
+    }
+
     // Cancelar subida en Storage si está activa
     const task = activeUploadTasks.get(id);
     if (task) {
@@ -806,10 +827,17 @@ export const photoOfflineQueue = {
     // 1. Marcar intención de borrado persistente en IndexedDB (DURABLE DELETE)
     let itemRecord: QueuedOfflinePhoto | null = null;
     try {
-      await runIDBTransaction('readwrite', (store) => {
-        const req = store.get(id);
-        req.onsuccess = () => {
-          const raw = req.result;
+      const idb = await getIndexedDB();
+      await new Promise<void>((resolve, reject) => {
+        const tx = idb.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
+
+        const getReq = store.get(id);
+        getReq.onsuccess = () => {
+          const raw = getReq.result;
           if (raw) {
             raw.deletionPending = true;
             raw.isDeleted = true;
@@ -835,39 +863,91 @@ export const photoOfflineQueue = {
    * elimina definitivamente el registro durable de IndexedDB.
    */
   async _purgeRemoteArtifactsAndFinalize(id: string, item: QueuedOfflinePhoto | null): Promise<boolean> {
-    let remoteCleaned = true;
-    const doDeleteDoc = activeAdapters.deleteDoc || deleteDoc;
-    const doDeleteObject = activeAdapters.deleteObject || deleteObject;
+    if (inFlightDeletions.has(id)) {
+      return false;
+    }
+    inFlightDeletions.add(id);
 
-    if (item?.storagePath) {
-      try {
-        await doDeleteObject(ref(storage, item.storagePath));
-      } catch (err: any) {
-        if (err?.code !== 'storage/object-not-found') {
-          console.warn(`[DurableDelete] Error al purgar binario en Storage para ${id}:`, err);
-          remoteCleaned = false;
+    try {
+      let remoteCleaned = true;
+      const doDeleteDoc = activeAdapters.deleteDoc || deleteDoc;
+      const doDeleteObject = activeAdapters.deleteObject || deleteObject;
+
+      if (item?.storagePath) {
+        try {
+          await doDeleteObject(ref(storage, item.storagePath));
+        } catch (err: any) {
+          if (err?.code !== 'storage/object-not-found') {
+            console.warn(`[DurableDelete] Error al purgar binario en Storage para ${id}:`, err);
+            remoteCleaned = false;
+          }
         }
+      }
+
+      try {
+        const docRef = doc(db, 'photos', id);
+        await doDeleteDoc(docRef);
+      } catch (err: any) {
+        console.warn(`[DurableDelete] Error al purgar documento en Firestore para ${id}:`, err);
+        remoteCleaned = false;
+      }
+
+      if (remoteCleaned) {
+        try {
+          await runIDBTransaction('readwrite', (store) => store.delete(id));
+        } catch {}
+        deletedPhotoIds.delete(id);
+        notifyQueueUpdated();
+      } else {
+        console.warn(`[DurableDelete] ⚠️ Limpieza remota pendiente de reintento para ${id}. Se conserva intención duradera.`);
+      }
+
+      return remoteCleaned;
+    } finally {
+      inFlightDeletions.delete(id);
+    }
+  },
+
+  /**
+   * Trabajador independiente para procesar intenciones de borrado durable.
+   * Concurrencia controlada, verificación de propiedad y espera entre reintentos.
+   * Las lecturas quedan 100% libres de llamadas remotas de eliminación.
+   */
+  async processDurableDeletions(userId: string): Promise<{ cleaned: number; pending: number }> {
+    if (!userId) return { cleaned: 0, pending: 0 };
+
+    let candidates: QueuedOfflinePhoto[] = [];
+    try {
+      const allItems = await runIDBTransaction<any[]>('readonly', (store) => store.getAll());
+      if (Array.isArray(allItems)) {
+        candidates = allItems
+          .map(normalizeRecord)
+          .filter((item) => (item.deletionPending || item.isDeleted) && item.userId === userId);
+      }
+    } catch {
+      return { cleaned: 0, pending: 0 };
+    }
+
+    let cleaned = 0;
+    let pending = 0;
+
+    for (const item of candidates) {
+      if (item.userId !== userId) continue;
+      if (inFlightDeletions.has(item.id)) {
+        pending++;
+        continue;
+      }
+
+      const success = await this._purgeRemoteArtifactsAndFinalize(item.id, item);
+      if (success) {
+        cleaned++;
+      } else {
+        pending++;
+        await new Promise((r) => setTimeout(r, 40));
       }
     }
 
-    try {
-      const docRef = doc(db, 'photos', id);
-      await doDeleteDoc(docRef);
-    } catch (err: any) {
-      console.warn(`[DurableDelete] Error al purgar documento en Firestore para ${id}:`, err);
-      remoteCleaned = false;
-    }
-
-    if (remoteCleaned) {
-      try {
-        await runIDBTransaction('readwrite', (store) => store.delete(id));
-      } catch {}
-    } else {
-      console.warn(`[DurableDelete] ⚠️ Limpieza remota pendiente de reintento para ${id}. Se conserva intención duradera.`);
-    }
-
-    notifyQueueUpdated();
-    return remoteCleaned;
+    return { cleaned, pending };
   },
 
   /**
@@ -1319,8 +1399,19 @@ export const photoOfflineQueue = {
       confirmationCount.set(targetUserId, currentActive);
 
       const promise = this._confirmPhotoInFirestore(nextPhoto, targetUserId, sessionGen)
+        .then((status) => {
+          const tracker = batchTrackers.get(`${targetUserId}:${sessionGen}`);
+          if (tracker) {
+            if (status === 'synced') tracker.synced.add(nextPhoto.id);
+            else if (status === 'deleted') tracker.deleted.add(nextPhoto.id);
+            else if (status === 'failed') tracker.failed.add(nextPhoto.id);
+          }
+          return status;
+        })
         .catch((err) => {
           console.warn(`[ConfirmationPipeline] Error inesperado en confirmación de ${nextPhoto.id}:`, err);
+          const tracker = batchTrackers.get(`${targetUserId}:${sessionGen}`);
+          if (tracker) tracker.failed.add(nextPhoto.id);
           return 'failed';
         })
         .finally(() => {
@@ -1366,6 +1457,14 @@ export const photoOfflineQueue = {
       return { synced: 0, failed: 0, deleted: 0, pending: 0, total: 0, stopped: true, reason: 'aborted' };
     }
 
+    const sessionKey = `${targetUserId}:${sessionGen}`;
+    const tracker = {
+      synced: new Set<string>(),
+      failed: new Set<string>(),
+      deleted: new Set<string>(),
+    };
+    batchTrackers.set(sessionKey, tracker);
+
     let unrecoverableCount = 0;
     for (const item of initialPending) {
       if (item.unrecoverable) {
@@ -1373,85 +1472,109 @@ export const photoOfflineQueue = {
       }
     }
 
-    let synced = 0;
-    let failed = unrecoverableCount;
-    let deletedCount = 0;
     let stopped = false;
     let stopReason: PhotoSyncResult['reason'] = 'completed';
 
-    // Lanzar y asegurar pipeline de subida
-    const uploadRunner = this._ensureUploadPipeline(targetUserId, sessionGen);
+    try {
+      // Lanzar y asegurar pipeline de subida
+      const uploadRunner = this._ensureUploadPipeline(targetUserId, sessionGen);
 
-    // Esperar a que la subida de los elementos iniciales concluya
-    await uploadRunner;
+      // Esperar a que la subida de los elementos iniciales concluya
+      await uploadRunner;
 
-    // Disparar y esperar que concluyan las confirmaciones de esta sesión
-    this._scheduleConfirmations(targetUserId, sessionGen);
+      // Disparar y esperar que concluyan las confirmaciones de esta sesión
+      this._scheduleConfirmations(targetUserId, sessionGen);
 
-    const q = confirmationQueues.get(targetUserId) || [];
-
-    while (
-      (confirmationCount.get(targetUserId) || 0) > 0 ||
-      (confirmationQueues.get(targetUserId) && confirmationQueues.get(targetUserId)!.length > 0)
-    ) {
-      if (!isSessionValid(targetUserId, sessionGen) || (auth.currentUser && auth.currentUser.uid !== targetUserId)) {
-        stopped = true;
-        stopReason = 'session_closed';
-        const currentQ = confirmationQueues.get(targetUserId);
-        if (currentQ) {
-          while (currentQ.length > 0) {
-            const waitingItem = currentQ.shift();
-            if (waitingItem) {
-              waitingItem.lockOwner = undefined;
-              waitingItem.lockUntil = undefined;
-              waitingItem.status = 'queued';
-              this.updateItem(waitingItem).catch(() => {});
+      while (
+        (confirmationCount.get(targetUserId) || 0) > 0 ||
+        (confirmationQueues.get(targetUserId) && confirmationQueues.get(targetUserId)!.length > 0)
+      ) {
+        if (!isSessionValid(targetUserId, sessionGen) || (auth.currentUser && auth.currentUser.uid !== targetUserId)) {
+          stopped = true;
+          stopReason = 'session_closed';
+          const currentQ = confirmationQueues.get(targetUserId);
+          if (currentQ) {
+            while (currentQ.length > 0) {
+              const waitingItem = currentQ.shift();
+              if (waitingItem) {
+                waitingItem.lockOwner = undefined;
+                waitingItem.lockUntil = undefined;
+                waitingItem.status = 'queued';
+                this.updateItem(waitingItem).catch(() => {});
+              }
             }
           }
         }
+
+        const settledList = confirmationSettledPromises.get(targetUserId);
+        if (settledList && settledList.length > 0) {
+          const toWait = [...settledList];
+          settledList.length = 0;
+          await Promise.all(toWait);
+        } else {
+          await new Promise((r) => setTimeout(r, 20));
+        }
       }
 
-      const settledList = confirmationSettledPromises.get(targetUserId);
-      if (settledList && settledList.length > 0) {
-        const toWait = [...settledList];
-        settledList.length = 0;
-        await Promise.all(toWait);
+      // Verificación explícita de validez de sesión (sin depender únicamente de haber entrado al bucle)
+      if (!isSessionValid(targetUserId, sessionGen) || (auth.currentUser && auth.currentUser.uid !== targetUserId)) {
+        stopped = true;
+        stopReason = 'session_closed';
+      }
+
+      // Determinar cantidades exactas registradas para este lote
+      const synced = tracker.synced.size;
+      const deleted = tracker.deleted.size;
+      const failed = tracker.failed.size + unrecoverableCount;
+
+      // Calcular cantidad real de pendientes en la cola tras la sincronización
+      let realPendingCount = 0;
+      try {
+        const remainingItems = await this.getQueuedPhotos(targetUserId);
+        realPendingCount = remainingItems.filter(
+          (p) => !p.isDeleted && !p.deletionPending && !deletedPhotoIds.has(p.id) && p.status !== 'synced'
+        ).length;
+      } catch {
+        realPendingCount = 0;
+      }
+
+      const pending = realPendingCount;
+      const total = Math.max(initialPending.length, synced + failed + deleted + pending);
+
+      if (synced > 0 && typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('cultiveta_photos_synced', {
+            detail: { syncedCount: synced },
+          })
+        );
+      }
+
+      if (stopped) {
+        // Conservamos stopReason (ej. session_closed)
+      } else if (pending > 0 && synced > 0) {
+        stopReason = 'partial';
+      } else if (pending > 0 && synced === 0 && failed > 0) {
+        stopReason = 'failed';
+      } else if (pending > 0) {
+        stopReason = 'partial';
+      } else if (failed > 0 && synced === 0) {
+        stopReason = 'failed';
       } else {
-        await new Promise((r) => setTimeout(r, 20));
+        stopReason = 'completed';
       }
+
+      return {
+        synced,
+        failed,
+        deleted,
+        pending,
+        total,
+        stopped,
+        reason: stopReason,
+      };
+    } finally {
+      batchTrackers.delete(sessionKey);
     }
-
-    // Calcular cantidad real de pendientes en la cola tras la sincronización
-    let realPendingCount = 0;
-    try {
-      const remainingItems = await this.getQueuedPhotos(targetUserId);
-      realPendingCount = remainingItems.filter(
-        (p) => !p.isDeleted && !p.deletionPending && !deletedPhotoIds.has(p.id) && p.status !== 'synced'
-      ).length;
-    } catch {
-      realPendingCount = Math.max(0, initialPending.length - synced - failed - deletedCount);
-    }
-
-    // Determinar cantidad de sincronizadas reales
-    const syncedCount = Math.max(0, initialPending.length - realPendingCount - failed - deletedCount);
-
-    if (syncedCount > 0 && typeof window !== 'undefined') {
-      window.dispatchEvent(
-        new CustomEvent('cultiveta_photos_synced', {
-          detail: { syncedCount },
-        })
-      );
-    }
-
-    return {
-      synced: syncedCount,
-      failed,
-      deleted: deletedCount,
-      pending: realPendingCount,
-      total: initialPending.length,
-      stopped,
-      reason: stopReason,
-    };
   },
 
   /**
@@ -1466,6 +1589,7 @@ export const photoOfflineQueue = {
     item?: QueuedOfflinePhoto;
   }> {
     if (deletedPhotoIds.has(item.id) || item.deletionPending || item.isDeleted) {
+      batchTrackers.get(`${targetUserId}:${sessionGen}`)?.deleted.add(item.id);
       return { status: 'deleted' };
     }
     if (!isSessionValid(targetUserId, sessionGen) || (auth.currentUser && auth.currentUser.uid !== targetUserId)) {
@@ -1561,6 +1685,7 @@ export const photoOfflineQueue = {
           await doDeleteObject(uploadTask.snapshot.ref);
         } catch {}
         this.stopHeartbeat(item.id);
+        batchTrackers.get(`${targetUserId}:${sessionGen}`)?.deleted.add(item.id);
         return { status: 'deleted' };
       }
 
@@ -1582,6 +1707,7 @@ export const photoOfflineQueue = {
           await doDeleteObject(uploadTask.snapshot.ref);
         } catch {}
         this.stopHeartbeat(item.id);
+        batchTrackers.get(`${targetUserId}:${sessionGen}`)?.deleted.add(item.id);
         return { status: 'deleted' };
       }
 
@@ -1604,6 +1730,7 @@ export const photoOfflineQueue = {
       if (isCanceled) {
         if (cancelReason === 'user_deleted' || deletedPhotoIds.has(item.id) || item.deletionPending || item.isDeleted) {
           console.log(`[OfflineSync] Subida de foto ${item.id} cancelada por eliminación voluntaria.`);
+          batchTrackers.get(`${targetUserId}:${sessionGen}`)?.deleted.add(item.id);
           return { status: 'deleted' };
         }
         if (cancelReason === 'logout' || !isSessionValid(targetUserId, sessionGen)) {
@@ -1654,6 +1781,7 @@ export const photoOfflineQueue = {
       }
 
       if (deletedPhotoIds.has(item.id) || item.deletionPending || item.isDeleted) {
+        batchTrackers.get(`${targetUserId}:${sessionGen}`)?.deleted.add(item.id);
         return { status: 'deleted' };
       }
 
@@ -1686,6 +1814,7 @@ export const photoOfflineQueue = {
         });
       }
 
+      batchTrackers.get(`${targetUserId}:${sessionGen}`)?.failed.add(item.id);
       return { status: 'failed' };
     }
   },
@@ -1815,7 +1944,20 @@ export const photoOfflineQueue = {
     // ==============================================================
     // GESTIÓN DE CONFIRMACIONES TARDÍAS Y BORRADO CONCURRENTE
     // ==============================================================
-    if (deletedPhotoIds.has(item.id) || item.deletionPending || item.isDeleted) {
+    let wasDeleted = deletedPhotoIds.has(item.id) || item.deletionPending || item.isDeleted;
+    if (!wasDeleted) {
+      try {
+        const fresh = await runIDBTransaction<any>('readonly', (store) => store.get(item.id));
+        if (!fresh || fresh.deletionPending || fresh.isDeleted) {
+          wasDeleted = true;
+          deletedPhotoIds.add(item.id);
+        }
+      } catch {
+        wasDeleted = true;
+      }
+    }
+
+    if (wasDeleted) {
       console.warn(`[OfflineSync] Foto ${item.id} confirmada después de solicitar borrado. Purgando documentos remotos.`);
       try {
         await doDeleteDoc(docRef);
@@ -1824,6 +1966,7 @@ export const photoOfflineQueue = {
         await doDeleteObject(ref(storage, item.storagePath));
       } catch {}
       this.stopHeartbeat(item.id);
+      localStore.deleteItem('photos', item.id, targetUserId);
       return 'deleted';
     }
 
@@ -1929,10 +2072,29 @@ export const photoOfflineQueue = {
    * Conserva intactos los archivos pendientes en IndexedDB.
    */
   stopAutoSync(): void {
-    if (autoSyncUserId) {
-      invalidateSession(autoSyncUserId);
-    }
     userSessionGenerations.clear();
+
+    // Despertar inmediatamente a los workers de subida para que concluyan sin esperar timeouts
+    uploadWakeTriggers.forEach((waker) => {
+      try {
+        waker();
+      } catch {}
+    });
+    uploadWakeTriggers.clear();
+
+    // Devolver cualquier elemento en cola de confirmación a estado 'queued' liberando bloqueos
+    confirmationQueues.forEach((q) => {
+      while (q.length > 0) {
+        const item = q.shift();
+        if (item) {
+          item.lockOwner = undefined;
+          item.lockUntil = undefined;
+          item.status = 'queued';
+          this.updateItem(item).catch(() => {});
+        }
+      }
+    });
+    confirmationQueues.clear();
 
     if (autoSyncOnlineHandler && typeof window !== 'undefined') {
       window.removeEventListener('online', autoSyncOnlineHandler);

@@ -275,6 +275,8 @@ async function runTests() {
       },
       getDownloadURL: async () => 'https://mock.storage.url/photo.jpg',
       setDoc: async () => {},
+      deleteDoc: async () => {},
+      deleteObject: async () => {},
     });
 
     await photoOfflineQueue.enqueuePhoto({

@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "tsx tests/sync_scenarios.test.ts"
+    "test": "tsx tests/run_all_tests.ts"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",

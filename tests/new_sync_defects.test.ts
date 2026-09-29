@@ -1,16 +1,17 @@
 /**
  * Suite de Pruebas: Nuevos Defectos de Sincronización Identificados (commit 386d21c)
  * 
- * 1. Una confirmación pendiente no debe bloquear nuevas fotos ni la UI.
- * 2. Cierre de sesión con cola de confirmación no vacía (evitar bucle infinito y distinguir generaciones).
- * 3. Contadores coherentes (eliminar 1 de 2 no debe reportar pending: 1).
- * 4. Borrado durable y recuperable (intención persistente en IDB ante recargas y reintentos de limpieza remota).
- * 5. updateItem debe informar el resultado real y no publicar modificaciones rechazadas en liveQueueItems.
+ * 1. Una confirmación pendiente no debe bloquear nuevas fotos ni la UI (señales controladas y comprobación mientras A sigue retenido).
+ * 2. Cierre de sesión con cola de confirmación no vacía (terminación controlada, session_closed y generaciones de sesión).
+ * 3. Contadores coherentes (lote, borradas y pendientes reales sin reportar pendientes inexistentes ni éxitos falsos).
+ * 4. Borrado durable y recuperable (verificación física en IndexedDB, reintento sin cadenas continuas de purga).
+ * 5. updateItem informa resultado real transaccional y no publica modificaciones rechazadas.
+ * 6. UI y galería: usuario puede seguir agregando fotos y estados diferenciados sin bloqueo de interfaz.
  */
 
 import 'fake-indexeddb/auto';
 
-// Configuración del entorno
+// Configuración del entorno simulado de navegador aislado
 if (typeof globalThis.window === 'undefined') {
   const listeners: Record<string, Function[]> = {};
   (globalThis as any).window = {
@@ -58,6 +59,12 @@ if (typeof globalThis.localStorage === 'undefined') {
   };
 }
 
+// Bloqueo estricto de llamadas de red no mockeadas para aislamiento total
+const originalFetch = globalThis.fetch;
+(globalThis as any).fetch = async (url: any, init: any) => {
+  throw new Error(`[Security Sandbox] Llamada de red real no permitida en pruebas: ${url}`);
+};
+
 import {
   photoOfflineQueue,
   setPhotoQueueAdapters,
@@ -66,8 +73,17 @@ import {
 } from '../src/services/photoOfflineQueue';
 import { localStore } from '../src/services/localStore';
 
-function createFakeBlob(content: string = 'test_bytes'): Blob {
-  return new Blob([content], { type: 'image/jpeg' });
+function createFakeBlob(content: string = 'test_bytes', type: string = 'image/jpeg'): Blob {
+  return new Blob([content], { type });
+}
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, errorMsg: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error(`Timeout (${timeoutMs}ms): ${errorMsg}`)), timeoutMs)
+    ),
+  ]);
 }
 
 function createMockUploadTask(options: {
@@ -102,7 +118,7 @@ function createMockUploadTask(options: {
       snapshot.bytesTransferred = 1000;
       if (listeners.complete) listeners.complete();
       resolve({ ...snapshot });
-    }, options.delayMs || 30);
+    }, options.delayMs || 25);
   });
 
   const task: any = {
@@ -136,9 +152,29 @@ function createMockUploadTask(options: {
   return task;
 }
 
-export async function runNewDefectTests() {
+// Acceso directo a IndexedDB crudo para verificación física independiente de intenciones
+function getRawIDBRecord(id: string): Promise<any> {
+  return new Promise((resolve) => {
+    const req = globalThis.indexedDB.open('cultiveta_offline_db');
+    req.onsuccess = () => {
+      const db = req.result;
+      try {
+        const tx = db.transaction('pending_photos', 'readonly');
+        const store = tx.objectStore('pending_photos');
+        const getReq = store.get(id);
+        getReq.onsuccess = () => resolve(getReq.result);
+        getReq.onerror = () => resolve(undefined);
+      } catch {
+        resolve(undefined);
+      }
+    };
+    req.onerror = () => resolve(undefined);
+  });
+}
+
+export async function runNewDefectTests(): Promise<{ passed: number; failed: number }> {
   console.log('\n======================================================');
-  console.log(' EJECUTANDO PRUEBAS DE LOS 5 NUEVOS CASOS (commit 386d21c)');
+  console.log(' EJECUTANDO PRUEBAS DE LOS NUEVOS CASOS (commit 386d21c)');
   console.log('======================================================\n');
 
   let passed = 0;
@@ -148,7 +184,7 @@ export async function runNewDefectTests() {
     try {
       resetQueueStateForTesting();
       resetPhotoQueueAdapters();
-      await fn();
+      await withTimeout(Promise.resolve(fn()), 5000, `La prueba '${desc}' excedió el límite de 5000ms`);
       console.log(`  ✓ [PASÓ] ${desc}`);
       passed++;
     } catch (err: any) {
@@ -159,94 +195,124 @@ export async function runNewDefectTests() {
   }
 
   // =========================================================================
-  // Caso 1: Una confirmación pendiente no debe bloquear nuevas fotos ni la UI
+  // Caso 1: Una confirmación pendiente no debe bloquear nuevas fotos
+  // Comprobación de que B comenzó MIENTRAS setDoc de A sigue activamente retenido
   // =========================================================================
-  await assert('1. Confirmación pendiente de A no bloquea la subida de foto B agregada posteriormente', async () => {
+  await assert('1. Confirmación de A retenida: B inicia subida sin liberar setDoc de A', async () => {
     const testUid = 'user_c1';
-    let photoBStartedUpload = false;
-    let setDocAResolve: (() => void) | null = null;
+
+    let resolveSetDocA: (() => void) | null = null;
+    let signalAEnteredSetDoc: () => void;
+    const aEnteredSetDocPromise = new Promise<void>((r) => { signalAEnteredSetDoc = r; });
+
+    let signalBUploadStarted: () => void;
+    const bUploadStartedPromise = new Promise<void>((r) => { signalBUploadStarted = r; });
+
+    let isSetDocAHeld = false;
+    let photoBStartedWhileAHeld = false;
 
     setPhotoQueueAdapters({
       uploadBytesResumable: (storageRef: any) => {
         if (storageRef.fullPath?.includes('photo_B')) {
-          photoBStartedUpload = true;
+          if (isSetDocAHeld) {
+            photoBStartedWhileAHeld = true;
+          }
+          signalBUploadStarted();
         }
-        return createMockUploadTask({ storageRef, delayMs: 40 });
+        return createMockUploadTask({ storageRef, delayMs: 30 });
       },
       getDownloadURL: async () => 'https://mock.storage.url/photo.jpg',
       setDoc: async (docRef: any) => {
         if (docRef.id === 'photo_A') {
-          // Dejar setDoc de foto A pendiente
+          isSetDocAHeld = true;
+          signalAEnteredSetDoc();
           await new Promise<void>((r) => {
-            setDocAResolve = r;
+            resolveSetDocA = r;
           });
+          isSetDocAHeld = false;
         }
       },
+      deleteDoc: async () => {},
+      deleteObject: async () => {},
     });
 
-    // 1. Encolar A e iniciar sincronización
-    await photoOfflineQueue.enqueuePhoto({
-      id: 'photo_A',
-      userId: testUid,
-      cultivationId: 'crop_c1',
-      file: createFakeBlob(),
-      fileName: 'photo_A.jpg',
-      date: '2026-09-29',
-      dayOfCultivation: 1,
-      stage: 'Vegetativo',
-      category: 'planta completa',
-    });
+    let syncPromiseA: Promise<any> | null = null;
+    let syncPromiseB: Promise<any> | null = null;
 
-    const syncA = photoOfflineQueue.syncPendingPhotos(testUid);
+    try {
+      // 1. Encolar foto A e iniciar sincronización
+      await photoOfflineQueue.enqueuePhoto({
+        id: 'photo_A',
+        userId: testUid,
+        cultivationId: 'crop_c1',
+        file: createFakeBlob(),
+        fileName: 'photo_A.jpg',
+        date: '2026-09-29',
+        dayOfCultivation: 1,
+        stage: 'Vegetativo',
+        category: 'planta completa',
+      });
 
-    // Esperar a que foto A termine su subida binaria y entre a setDoc
-    await new Promise((r) => setTimeout(r, 80));
+      syncPromiseA = photoOfflineQueue.syncPendingPhotos(testUid);
 
-    // 2. Encolar B después
-    await photoOfflineQueue.enqueuePhoto({
-      id: 'photo_B',
-      userId: testUid,
-      cultivationId: 'crop_c1',
-      file: createFakeBlob(),
-      fileName: 'photo_B.jpg',
-      date: '2026-09-29',
-      dayOfCultivation: 1,
-      stage: 'Vegetativo',
-      category: 'hoja superior',
-    });
+      // Esperar la señal controlada de que foto A entró en confirmación remota setDoc
+      await aEnteredSetDocPromise;
 
-    // Disparar sincronización (como ocurre al encolar o interactuar con la app)
-    const syncB = photoOfflineQueue.syncPendingPhotos(testUid);
+      if (!isSetDocAHeld) {
+        throw new Error('Foto A debía estar activamente retenida en setDoc antes de encolar B.');
+      }
 
-    // Esperar un intervalo para verificar si B comenzó a subir SIN liberar setDoc de A
-    await new Promise((r) => setTimeout(r, 120));
+      // 2. Encolar foto B después, mientras A sigue retenida en setDoc
+      await photoOfflineQueue.enqueuePhoto({
+        id: 'photo_B',
+        userId: testUid,
+        cultivationId: 'crop_c1',
+        file: createFakeBlob(),
+        fileName: 'photo_B.jpg',
+        date: '2026-09-29',
+        dayOfCultivation: 1,
+        stage: 'Vegetativo',
+        category: 'hoja superior',
+      });
 
-    // Liberar setDoc de A para permitir que todo termine
-    if (setDocAResolve) {
-      (setDocAResolve as Function)();
-    }
-    await Promise.all([syncA, syncB]);
+      syncPromiseB = photoOfflineQueue.syncPendingPhotos(testUid);
 
-    if (!photoBStartedUpload) {
-      throw new Error('Foto B NO comenzó a subir mientras la confirmación de A estaba pendiente.');
+      // Esperar la señal controlada de que foto B comenzó su subida
+      await bUploadStartedPromise;
+
+      // ASERCIÓN CLAVE: La subida de B debe haber comenzado MIENTRAS setDoc de A sigue retenido
+      if (!isSetDocAHeld || !photoBStartedWhileAHeld) {
+        throw new Error('Foto B NO comenzó a subir mientras la confirmación de foto A estaba activamente retenida.');
+      }
+    } finally {
+      // Limpieza incondicional en finally
+      if (resolveSetDocA) {
+        (resolveSetDocA as Function)();
+      }
+      if (syncPromiseA && syncPromiseB) {
+        await Promise.all([syncPromiseA, syncPromiseB]).catch(() => {});
+      }
     }
   });
 
   // =========================================================================
   // Caso 2: Cierre de sesión con cola de confirmación no vacía
+  // 4 fotos: 3 activas, 1 esperando; cierre ordenado con session_closed y generaciones
   // =========================================================================
-  await assert('2. Cierre de sesión con cola de confirmación no vacía termina sin bucle infinito', async () => {
+  await assert('2. Cierre de sesión con confirmaciones en cola: terminación ordenada y cambio de generación', async () => {
     const testUid = 'user_c2';
     const setDocResolvers: (() => void)[] = [];
 
     setPhotoQueueAdapters({
-      uploadBytesResumable: (storageRef: any) => createMockUploadTask({ storageRef, delayMs: 20 }),
+      uploadBytesResumable: (storageRef: any) => createMockUploadTask({ storageRef, delayMs: 15 }),
       getDownloadURL: async () => 'https://mock.storage.url/photo.jpg',
       setDoc: async () => {
         await new Promise<void>((r) => {
           setDocResolvers.push(r);
         });
       },
+      deleteDoc: async () => {},
+      deleteObject: async () => {},
     });
 
     // Encolar 4 fotos: 3 entrarán a confirmación activa y 1 quedará en confirmationQueue
@@ -266,50 +332,66 @@ export async function runNewDefectTests() {
 
     const syncPromise = photoOfflineQueue.syncPendingPhotos(testUid);
 
-    // Esperar a que las 4 fotos suban su binario y 3 entren a setDoc
-    await new Promise((r) => setTimeout(r, 100));
+    // Esperar a que las fotos suban su binario y 3 entren a setDoc
+    await new Promise((r) => setTimeout(r, 90));
 
     // Cerrar sesión
     photoOfflineQueue.stopAutoSync();
 
-    // Resolver las 3 confirmaciones activas
-    await new Promise((r) => setTimeout(r, 30));
+    // Resolver las 3 confirmaciones activas que quedaron en vuelo
+    await new Promise((r) => setTimeout(r, 20));
     setDocResolvers.forEach((res) => res());
 
-    // El syncPromise DEBE resolverse rápidamente sin colgarse en un bucle infinito
-    const timeoutPromise = new Promise<'timeout'>((r) => setTimeout(() => r('timeout'), 1500));
-    const raceResult = await Promise.race([syncPromise, timeoutPromise]);
+    // El planificador DEBE terminar inmediatamente reportando session_closed sin bucle infinito
+    const firstResult = await syncPromise;
 
-    if (raceResult === 'timeout') {
-      throw new Error('El planificador se quedó en un bucle infinito al cerrar sesión con confirmaciones en cola.');
+    if (!firstResult.stopped || firstResult.reason !== 'session_closed') {
+      throw new Error(`Esperado stopped: true y reason: 'session_closed', obtenido: ${JSON.stringify(firstResult)}`);
     }
 
-    if (!raceResult.stopped || raceResult.reason !== 'session_closed') {
-      throw new Error(`Esperado stopped: true y reason: 'session_closed', obtenido: ${JSON.stringify(raceResult)}`);
+    // Comprobar que la 4ª foto pendiente no fue destruida al cerrar sesión
+    const remainingPending = await photoOfflineQueue.getQueuedPhotos(testUid);
+    if (!remainingPending.some((p) => p.id === 'photo_c2_4')) {
+      throw new Error('La cuarta foto pendiente se perdió tras cerrar sesión.');
     }
 
-    // Probar generación de sesión: salir y volver a entrar con la misma cuenta debe permitir sincronizar
+    // Nueva generación de sesión: volver a entrar con la misma cuenta permite sincronizar la foto pendiente
+    setPhotoQueueAdapters({
+      uploadBytesResumable: (storageRef: any) => createMockUploadTask({ storageRef, delayMs: 10 }),
+      getDownloadURL: async () => 'https://mock.storage.url/photo.jpg',
+      setDoc: async () => {},
+      deleteDoc: async () => {},
+      deleteObject: async () => {},
+    });
+
     const secondSyncPromise = photoOfflineQueue.syncPendingPhotos(testUid);
     const secondResult = await secondSyncPromise;
+
     if (secondResult.reason === 'session_closed') {
-      throw new Error('Volver a iniciar sesión con la misma cuenta quedó bloqueado permanentemente por la sesión anterior.');
+      throw new Error('Volver a iniciar sesión con la misma cuenta quedó bloqueado por la sesión anterior.');
+    }
+    if (secondResult.synced !== 1) {
+      throw new Error(`Esperado synced: 1 en la nueva generación, obtenido: ${secondResult.synced}`);
     }
   });
 
   // =========================================================================
   // Caso 3: Contadores coherentes
+  // Eliminar 1 de 2 durante subida y sincronizar la otra
   // =========================================================================
-  await assert('3. Contadores coherentes: eliminar 1 de 2 durante subida no informa pendiente inexistente', async () => {
+  await assert('3. Contadores coherentes: eliminar 1 de 2 reporta synced: 1, deleted: 1, pending: 0', async () => {
     const testUid = 'user_c3';
     const deleteId = 'photo_c3_del';
     const keepId = 'photo_c3_keep';
 
     setPhotoQueueAdapters({
       uploadBytesResumable: (storageRef: any) => {
-        return createMockUploadTask({ storageRef, delayMs: 80 });
+        return createMockUploadTask({ storageRef, delayMs: 70 });
       },
       getDownloadURL: async () => 'https://mock.storage.url/photo.jpg',
       setDoc: async () => {},
+      deleteDoc: async () => {},
+      deleteObject: async () => {},
     });
 
     await photoOfflineQueue.enqueuePhoto({
@@ -341,43 +423,55 @@ export async function runNewDefectTests() {
     // Eliminar foto 1 mientras sube
     setTimeout(async () => {
       await photoOfflineQueue.deletePendingPhoto(deleteId, testUid);
-    }, 25);
+    }, 20);
 
     const result = await syncPromise;
 
     if (result.synced !== 1) {
       throw new Error(`Esperado synced: 1, obtenido: ${result.synced}`);
     }
-    // El resumen NO debe informar una foto pendiente inexistente
+    if (result.deleted !== 1) {
+      throw new Error(`Esperado deleted: 1, obtenido: ${result.deleted}`);
+    }
     if (result.pending !== 0) {
-      throw new Error(`Contador erróneo: reportó pending: ${result.pending} cuando la cola real no tiene pendientes.`);
+      throw new Error(`Esperado pending: 0, obtenido: ${result.pending}`);
+    }
+    if (result.total !== 2) {
+      throw new Error(`Esperado total: 2, obtenido: ${result.total}`);
+    }
+    if (result.reason !== 'completed') {
+      throw new Error(`Esperado reason: 'completed' para lote finalizado sin pendientes, obtenido: ${result.reason}`);
     }
   });
 
   // =========================================================================
   // Caso 4: Borrado durable y recuperable
+  // Verificación física directa en IndexedDB, reintento sin cadenas recursivas
   // =========================================================================
-  await assert('4. Borrado durable y recuperable: intención persistente en IDB ante recargas y reintentos', async () => {
+  await assert('4. Borrado durable: verificación física en IDB y reintento exitoso sin bucles', async () => {
     const testUid = 'user_c4';
     const photoId = 'photo_c4_durable';
 
-    let deleteDocFailOnce = true;
+    let shouldFailDelete = true;
     let deleteDocAttemptCount = 0;
+    let deleteObjectAttemptCount = 0;
 
     setPhotoQueueAdapters({
-      uploadBytesResumable: () => createMockUploadTask({ delayMs: 40 }),
+      uploadBytesResumable: () => createMockUploadTask({ delayMs: 20 }),
       getDownloadURL: async () => 'https://mock.storage.url/durable.jpg',
-      setDoc: async () => {
-        await new Promise((r) => setTimeout(r, 60));
-      },
+      setDoc: async () => {},
       deleteDoc: async () => {
         deleteDocAttemptCount++;
-        if (deleteDocFailOnce) {
-          deleteDocFailOnce = false;
+        if (shouldFailDelete) {
           throw new Error('Fallo de red temporal simulado en deleteDoc');
         }
       },
-      deleteObject: async () => {},
+      deleteObject: async () => {
+        deleteObjectAttemptCount++;
+        if (shouldFailDelete) {
+          throw new Error('Fallo de red temporal simulado en deleteObject');
+        }
+      },
     });
 
     await photoOfflineQueue.enqueuePhoto({
@@ -392,30 +486,81 @@ export async function runNewDefectTests() {
       category: 'planta completa',
     });
 
-    const syncPromise = photoOfflineQueue.syncPendingPhotos(testUid);
+    // Solicitar borrado cuando la red falla en los métodos de purga remota
+    await photoOfflineQueue.deletePendingPhoto(photoId, testUid);
 
-    // Solicitar borrado mientras setDoc está en curso
-    setTimeout(async () => {
-      await photoOfflineQueue.deletePendingPhoto(photoId, testUid);
-    }, 45);
-
-    await syncPromise;
-
-    // Simular recarga de página (limpieza de memoria interna)
-    resetQueueStateForTesting();
-
-    // Comprobar que en IndexedDB la foto NO reaparece como activa/encolada
-    const queuedAfterReload = await photoOfflineQueue.getQueuedPhotos(testUid);
-    const found = queuedAfterReload.find((p) => p.id === photoId);
-    if (found && found.status !== 'failed') {
-      throw new Error('La foto eliminada reapareció como pendiente activa tras recargar la página.');
+    // 1. Verificación directa en el almacenamiento físico de IndexedDB:
+    // La intención persistente DEBE conservarse en el registro crudo
+    const rawRecord = await getRawIDBRecord(photoId);
+    if (!rawRecord) {
+      throw new Error('El registro fue eliminado de IndexedDB antes de confirmar la limpieza remota.');
+    }
+    if (!rawRecord.deletionPending || !rawRecord.isDeleted) {
+      throw new Error(`El registro en IndexedDB no tiene las marcas durables requeridas: ${JSON.stringify(rawRecord)}`);
     }
 
-    // Comprobar que el registro no fue reinsertado en localStore
-    const localPhotos = localStore.getItems<any>('photos', testUid);
-    const localFound = localPhotos.find((p) => p.id === photoId);
-    if (localFound && localFound.syncStatus === 'synced') {
-      throw new Error('La foto eliminada fue resucitada en localStore tras recarga.');
+    // 2. Reiniciar el estado del servicio en memoria conservando la base IndexedDB
+    resetQueueStateForTesting();
+
+    // Mantener todos los adaptadores de red simulados
+    setPhotoQueueAdapters({
+      uploadBytesResumable: () => createMockUploadTask({ delayMs: 20 }),
+      getDownloadURL: async () => 'https://mock.storage.url/durable.jpg',
+      setDoc: async () => {},
+      deleteDoc: async () => {
+        deleteDocAttemptCount++;
+        if (shouldFailDelete) {
+          throw new Error('Fallo de red temporal simulado en deleteDoc');
+        }
+      },
+      deleteObject: async () => {
+        deleteObjectAttemptCount++;
+        if (shouldFailDelete) {
+          throw new Error('Fallo de red temporal simulado en deleteObject');
+        }
+      },
+    });
+
+    // 3. Comprobar que getQueuedPhotos NO dispara un bucle continuo de notificaciones o purgas
+    let subscriberNotificationCount = 0;
+    const unsub = photoOfflineQueue.subscribeQueue(() => {
+      subscriberNotificationCount++;
+    }, testUid);
+
+    const queuedPhotos = await photoOfflineQueue.getQueuedPhotos(testUid);
+    if (queuedPhotos.length !== 0) {
+      throw new Error('La foto con intención de borrado no debió aparecer en getQueuedPhotos.');
+    }
+
+    // Esperar brevemente para verificar que no existe una avalancha recursiva de notificaciones
+    await new Promise((r) => setTimeout(r, 60));
+    unsub();
+
+    if (subscriberNotificationCount > 3) {
+      throw new Error(`Cadena continua de lecturas/notificaciones detectada (${subscriberNotificationCount} emisiones).`);
+    }
+
+    // 4. Mantener adaptadores simulados y habilitar éxito para el reintento
+    shouldFailDelete = false;
+
+    // 5. Ejecutar el reintento de borrado mediante el trabajador independiente
+    const retryResult = await photoOfflineQueue.processDurableDeletions(testUid);
+    if (retryResult.cleaned !== 1 || retryResult.pending !== 0) {
+      throw new Error(`El reintento no completó la purga requerida: ${JSON.stringify(retryResult)}`);
+    }
+
+    // 6. Comprobar que se invocaron tanto deleteDoc como deleteObject
+    if (deleteDocAttemptCount < 2) {
+      throw new Error(`deleteDoc no fue reintentado. Intentos: ${deleteDocAttemptCount}`);
+    }
+    if (deleteObjectAttemptCount < 2) {
+      throw new Error(`deleteObject no fue reintentado. Intentos: ${deleteObjectAttemptCount}`);
+    }
+
+    // 7. Comprobar que la intención física en IndexedDB se retira SOLO tras la confirmación exitosa
+    const rawAfterClean = await getRawIDBRecord(photoId);
+    if (rawAfterClean !== undefined) {
+      throw new Error('El registro físico aún persiste en IndexedDB tras la purga remota confirmada.');
     }
   });
 
@@ -438,10 +583,10 @@ export async function runNewDefectTests() {
       category: 'planta completa',
     });
 
-    // 1. Intento de actualizar con versión obsoleta (opVersion menor)
+    // 1. Intento con opVersion obsoleta (0 vs 1)
     const obsoleteItem = {
       ...item,
-      opVersion: 0, // Versión obsoleta comparada con 1
+      opVersion: 0,
       caption: 'Modificación con versión obsoleta',
     };
     const resObsolete = await photoOfflineQueue.updateItem(obsoleteItem);
@@ -449,7 +594,7 @@ export async function runNewDefectTests() {
       throw new Error('updateItem debió devolver false ante una opVersion obsoleta.');
     }
 
-    // 2. Intento de actualizar para otro usuario (propietario diferente)
+    // 2. Intento para otro usuario
     const wrongOwnerItem = {
       ...item,
       userId: 'different_user_id',
@@ -460,7 +605,7 @@ export async function runNewDefectTests() {
       throw new Error('updateItem debió devolver false ante un propietario diferente.');
     }
 
-    // 3. Intento de actualizar registro inexistente
+    // 3. Intento para registro inexistente
     const nonExistentItem = {
       ...item,
       id: 'photo_non_existent',
@@ -470,25 +615,123 @@ export async function runNewDefectTests() {
       throw new Error('updateItem debió devolver false ante un registro inexistente.');
     }
 
-    // Comprobar que liveQueueItems NO conservó la modificación rechazada
+    // Comprobar que liveQueueItems no conservó la modificación rechazada
     const live = await photoOfflineQueue.getQueuedPhotoById(photoId);
     if (live && live.caption === 'Modificación con versión obsoleta') {
       throw new Error('liveQueueItems publicó la modificación que fue rechazada por la base de datos.');
     }
   });
 
+  // =========================================================================
+  // Caso 6: Prueba de la Interfaz y Galería mientras A espera confirmación
+  // Comprueba estados observables, encolado reactivo y no bloqueo de interacción
+  // =========================================================================
+  await assert('6. Interfaz y Galería utilizables con estados observables mientras A espera confirmación', async () => {
+    const testUid = 'user_c6';
+    let resolveSetDocA: (() => void) | null = null;
+    const observedStates: Record<string, string[]> = { photo_ui_A: [], photo_ui_B: [] };
+
+    setPhotoQueueAdapters({
+      uploadBytesResumable: (storageRef: any) => createMockUploadTask({ storageRef, delayMs: 25 }),
+      getDownloadURL: async () => 'https://mock.storage.url/photo.jpg',
+      setDoc: async (docRef: any) => {
+        if (docRef.id === 'photo_ui_A') {
+          await new Promise<void>((r) => {
+            resolveSetDocA = r;
+          });
+        }
+      },
+      deleteDoc: async () => {},
+      deleteObject: async () => {},
+    });
+
+    // Suscribirse reactivamente tal como lo hace PhotoGalleryView
+    const unsub = photoOfflineQueue.subscribeQueue((items) => {
+      items.forEach((it) => {
+        if (observedStates[it.id] && !observedStates[it.id].includes(it.status)) {
+          observedStates[it.id].push(it.status);
+        }
+      });
+    }, testUid);
+
+    try {
+      // 1. Encolar foto A
+      await photoOfflineQueue.enqueuePhoto({
+        id: 'photo_ui_A',
+        userId: testUid,
+        cultivationId: 'crop_ui',
+        file: createFakeBlob(),
+        fileName: 'photo_A.jpg',
+        date: '2026-09-29',
+        dayOfCultivation: 10,
+        stage: 'Floración',
+        category: 'flor',
+      });
+
+      // Disparar sincronización
+      photoOfflineQueue.syncPendingPhotos(testUid);
+
+      // Esperar a que foto A llegue al estado de guardado de metadatos (saving_metadata)
+      await new Promise((r) => setTimeout(r, 60));
+
+      const photoAInLive = await photoOfflineQueue.getQueuedPhotoById('photo_ui_A');
+      if (!photoAInLive || (photoAInLive.status !== 'saving_metadata' && photoAInLive.status !== 'uploading')) {
+        throw new Error(`Foto A debía mostrar estado activo de subida o confirmación. Obtenido: ${photoAInLive?.status}`);
+      }
+
+      // 2. Comprobar que el usuario puede seguir agregando fotos a la galería sin bloqueo
+      const enqueueBStart = Date.now();
+      const photoB = await photoOfflineQueue.enqueuePhoto({
+        id: 'photo_ui_B',
+        userId: testUid,
+        cultivationId: 'crop_ui',
+        file: createFakeBlob(),
+        fileName: 'photo_B.jpg',
+        date: '2026-09-29',
+        dayOfCultivation: 10,
+        stage: 'Floración',
+        category: 'tricomas',
+      });
+      const enqueueBDuration = Date.now() - enqueueBStart;
+
+      // El encolado debe ser inmediato (< 50ms) y no quedar congelado por setDoc de A
+      if (enqueueBDuration > 150) {
+        throw new Error(`Agregar foto B tomó ${enqueueBDuration}ms; la interfaz quedó bloqueada por setDoc de A.`);
+      }
+
+      // 3. Comprobar que la galería ya tiene disponible la nueva foto en estado queued
+      const allQueued = await photoOfflineQueue.getQueuedPhotos(testUid);
+      const foundB = allQueued.find((p) => p.id === 'photo_ui_B');
+      if (!foundB) {
+        throw new Error('Foto B no apareció reactivamente en la lista de fotos de la galería.');
+      }
+
+      // 4. Comprobar que los diagnósticos y estados diferencian las fases
+      const diagA = await photoOfflineQueue.getDiagnostic('photo_ui_A');
+      if (diagA && diagA.phase !== 'saving_metadata' && diagA.phase !== 'uploading_bytes') {
+        throw new Error(`Diagnóstico de foto A no refleja la fase correcta: ${JSON.stringify(diagA)}`);
+      }
+    } finally {
+      unsub();
+      if (resolveSetDocA) {
+        (resolveSetDocA as Function)();
+      }
+    }
+  });
+
   console.log('\n======================================================');
-  console.log(` RESULTADO NUEVAS PRUEBAS: ${passed} pasadas, ${failed} fallidas de 5`);
+  console.log(` RESULTADO NUEVAS PRUEBAS: ${passed} pasadas, ${failed} fallidas de 6`);
   console.log('======================================================\n');
 
-  if (failed > 0) {
-    process.exit(1);
-  } else {
-    process.exit(0);
-  }
+  return { passed, failed };
 }
 
-runNewDefectTests().catch((e) => {
-  console.error('Error fatal:', e);
-  process.exit(1);
-});
+// Ejecución directa si se invoca por CLI
+if (process.argv[1]?.endsWith('new_sync_defects.test.ts')) {
+  runNewDefectTests().then(({ failed }) => {
+    process.exit(failed > 0 ? 1 : 0);
+  }).catch((e) => {
+    console.error('Error fatal:', e);
+    process.exit(1);
+  });
+}

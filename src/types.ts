@@ -290,7 +290,7 @@ export interface PhotoSyncResult {
   pending: number;
   total: number;
   stopped?: boolean;
-  reason?: 'completed' | 'session_closed' | 'network_offline' | 'aborted';
+  reason?: 'completed' | 'session_closed' | 'network_offline' | 'aborted' | 'partial' | 'failed';
 }
 
 export interface PhotoRecord {
