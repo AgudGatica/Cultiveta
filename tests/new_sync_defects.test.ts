@@ -90,6 +90,8 @@ function createMockUploadTask(options: {
   storageRef?: any;
   delayMs?: number;
   onCancel?: () => void;
+  shouldFail?: boolean;
+  failError?: any;
 }) {
   const listeners: {
     next?: (snapshot: any) => void;
@@ -100,7 +102,12 @@ function createMockUploadTask(options: {
   let isCanceled = false;
   let isSettled = false;
 
-  const fullPath = options.storageRef?.fullPath || options.storageRef?.name || 'mock/path/photo.jpg';
+  const fullPath =
+    options.storageRef?.fullPath ||
+    options.storageRef?._location?.path ||
+    options.storageRef?.name ||
+    'mock/path/photo.jpg';
+
   const snapshot = {
     bytesTransferred: 0,
     totalBytes: 1000,
@@ -114,6 +121,13 @@ function createMockUploadTask(options: {
     setTimeout(() => {
       if (isCanceled || isSettled) return;
       isSettled = true;
+      if (options.shouldFail) {
+        const err = options.failError || new Error('Fallo simulado en Storage');
+        snapshot.state = 'error';
+        if (listeners.error) listeners.error(err);
+        reject(err);
+        return;
+      }
       snapshot.state = 'success';
       snapshot.bytesTransferred = 1000;
       if (listeners.complete) listeners.complete();
@@ -623,10 +637,9 @@ export async function runNewDefectTests(): Promise<{ passed: number; failed: num
   });
 
   // =========================================================================
-  // Caso 6: Prueba de la Interfaz y Galería mientras A espera confirmación
-  // Comprueba estados observables, encolado reactivo y no bloqueo de interacción
+  // Caso 6: [Servicio] Desacoplamiento de confirmaciones lentas y estados observables
   // =========================================================================
-  await assert('6. Interfaz y Galería utilizables con estados observables mientras A espera confirmación', async () => {
+  await assert('6. [Servicio] Desacoplamiento de confirmaciones y estados observables en servicio', async () => {
     const testUid = 'user_c6';
     let resolveSetDocA: (() => void) | null = null;
     const observedStates: Record<string, string[]> = { photo_ui_A: [], photo_ui_B: [] };
@@ -719,8 +732,174 @@ export async function runNewDefectTests(): Promise<{ passed: number; failed: num
     }
   });
 
+  // =========================================================================
+  // Caso 7: Errores persistentes en Storage: backoff programado, avance de B y sin bucles
+  // =========================================================================
+  await assert('7. Errores persistentes en Storage: backoff programado, avance de foto B y sin bucles en el mismo ciclo', async () => {
+    const testUid = 'user_c7';
+    let uploadCallsA = 0;
+    let uploadCallsB = 0;
+    let setDocCallsB = 0;
+
+    setPhotoQueueAdapters({
+      uploadBytesResumable: (storageRef: any) => {
+        const fullPath =
+          storageRef?.fullPath ||
+          storageRef?._location?.path ||
+          storageRef?.name ||
+          '';
+        if (fullPath.includes('photo_err_A')) {
+          uploadCallsA++;
+          return createMockUploadTask({
+            storageRef,
+            delayMs: 10,
+            shouldFail: true,
+            failError: new Error('503 Service Unavailable: Storage upload failed persistently'),
+          });
+        }
+        if (fullPath.includes('photo_ok_B')) {
+          uploadCallsB++;
+          return createMockUploadTask({
+            storageRef,
+            delayMs: 15,
+            shouldFail: false,
+          });
+        }
+        return createMockUploadTask({ storageRef, delayMs: 10 });
+      },
+      getDownloadURL: async (ref: any) => {
+        return `https://mock.storage.url/${ref?.fullPath || 'photo.jpg'}`;
+      },
+      setDoc: async (docRef: any) => {
+        if (docRef.id === 'photo_ok_B') {
+          setDocCallsB++;
+        }
+      },
+      deleteDoc: async () => {},
+      deleteObject: async () => {},
+    });
+
+    try {
+      // 1. Encolar Foto A (fallará en Storage) y Foto B (saludable)
+      await photoOfflineQueue.enqueuePhoto({
+        id: 'photo_err_A',
+        userId: testUid,
+        cultivationId: 'crop_c7',
+        file: createFakeBlob(),
+        fileName: 'photo_err_A.jpg',
+        date: '2026-09-29',
+        dayOfCultivation: 12,
+        stage: 'Floración',
+        category: 'flor',
+      });
+
+      await photoOfflineQueue.enqueuePhoto({
+        id: 'photo_ok_B',
+        userId: testUid,
+        cultivationId: 'crop_c7',
+        file: createFakeBlob(),
+        fileName: 'photo_ok_B.jpg',
+        date: '2026-09-29',
+        dayOfCultivation: 12,
+        stage: 'Floración',
+        category: 'tricomas',
+      });
+
+      // 2. Ejecutar ciclo de sincronización
+      await photoOfflineQueue.syncPendingPhotos(testUid);
+
+      // 3. Verificaciones de llamadas y no-repetición en el mismo ciclo
+      if (uploadCallsA !== 1) {
+        throw new Error(`Foto A debió llamarse exactamente 1 vez en este ciclo, pero se llamó ${uploadCallsA} veces (bucle detectado).`);
+      }
+      if (uploadCallsB !== 1) {
+        throw new Error(`Foto B debió llamarse 1 vez, llamadas: ${uploadCallsB}.`);
+      }
+      if (setDocCallsB !== 1) {
+        throw new Error(`setDoc de Foto B debió confirmarse 1 vez, llamadas: ${setDocCallsB}.`);
+      }
+
+      // 4. Verificación de Foto A: conserva su binario, muestra error, y tiene espera programada (backoff)
+      const photoA = await photoOfflineQueue.getQueuedPhotoById('photo_err_A');
+      if (!photoA) {
+        throw new Error('Foto A no debe borrarse al fallar.');
+      }
+      if (!photoA.fileBlob || photoA.fileBlob.size === 0) {
+        throw new Error('Foto A perdió su archivo binario en IndexedDB tras el fallo.');
+      }
+      if (photoA.status !== 'failed') {
+        throw new Error(`Foto A debía tener estado "failed", actual: ${photoA.status}`);
+      }
+      if (!photoA.nextRetryAt || photoA.nextRetryAt <= Date.now()) {
+        throw new Error(`Foto A debía tener una fecha de próximo intento (backoff) en el futuro: ${photoA.nextRetryAt}`);
+      }
+
+      // 5. Verificación de Foto B: avanzó y completó su sincronización
+      const photoB = await photoOfflineQueue.getQueuedPhotoById('photo_ok_B');
+      if (photoB) {
+        throw new Error('Foto B debió completar su confirmación y ser purgada de la cola.');
+      }
+
+      // 6. Verificación de error de permisos: exige recuperación explícita o reactivación
+      let uploadCallsC = 0;
+      setPhotoQueueAdapters({
+        uploadBytesResumable: (storageRef: any) => {
+          uploadCallsC++;
+          const err: any = new Error('Permission denied: storage/unauthorized');
+          err.code = 'storage/unauthorized';
+          return createMockUploadTask({ storageRef, delayMs: 10, shouldFail: true, failError: err });
+        },
+        getDownloadURL: async () => 'https://mock.storage.url/photo_c.jpg',
+        setDoc: async () => {},
+        deleteDoc: async () => {},
+        deleteObject: async () => {},
+      });
+
+      await photoOfflineQueue.enqueuePhoto({
+        id: 'photo_perm_C',
+        userId: testUid,
+        cultivationId: 'crop_c7',
+        file: createFakeBlob(),
+        fileName: 'photo_perm_C.jpg',
+        date: '2026-09-29',
+        dayOfCultivation: 12,
+        stage: 'Floración',
+        category: 'flor',
+      });
+
+      await photoOfflineQueue.syncPendingPhotos(testUid);
+
+      const photoC = await photoOfflineQueue.getQueuedPhotoById('photo_perm_C');
+      if (!photoC) {
+        throw new Error('Foto C no debe borrarse.');
+      }
+      if (!photoC.requiresIntervention) {
+        throw new Error('Foto C con storage/unauthorized debía marcar requiresIntervention = true.');
+      }
+
+      // Comprobar que una segunda sincronización automática ignora C sin reintentarla
+      const prevCallsC = uploadCallsC;
+      await photoOfflineQueue.syncPendingPhotos(testUid);
+      if (uploadCallsC !== prevCallsC) {
+        throw new Error('Foto C con error de permisos fue reintentada automáticamente sin reactivación.');
+      }
+
+      // Comprobar recuperación explícita mediante reactivatePermissionErrors
+      const reactivated = await photoOfflineQueue.reactivatePermissionErrors(testUid);
+      if (reactivated < 1) {
+        throw new Error('reactivatePermissionErrors debió reactivar la foto C.');
+      }
+      const photoCReactivated = await photoOfflineQueue.getQueuedPhotoById('photo_perm_C');
+      if (photoCReactivated?.requiresIntervention) {
+        throw new Error('Foto C reactivada no debió tener requiresIntervention.');
+      }
+    } finally {
+      resetPhotoQueueAdapters();
+    }
+  });
+
   console.log('\n======================================================');
-  console.log(` RESULTADO NUEVAS PRUEBAS: ${passed} pasadas, ${failed} fallidas de 6`);
+  console.log(` RESULTADO NUEVAS PRUEBAS: ${passed} pasadas, ${failed} fallidas de 7`);
   console.log('======================================================\n');
 
   return { passed, failed };

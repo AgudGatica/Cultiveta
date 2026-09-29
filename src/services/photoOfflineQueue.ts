@@ -41,6 +41,8 @@ export interface QueuedOfflinePhoto {
   unrecoverable?: boolean; // Elementos corruptos que deben ser exportables pero no bloquear
   isDeleted?: boolean; // Marca interna para invalidación atómica
   deletionPending?: boolean; // Intención duradera de borrado persistente en IndexedDB
+  nextRetryAt?: number; // Timestamp ms antes del cual no debe reintentarse automáticamente (backoff)
+  requiresIntervention?: boolean; // Errores no transitorios (permisos/autenticación) que exigen reactivación explícita
   createdAt: string;
   updatedAt?: string;
 }
@@ -71,6 +73,19 @@ export interface PhotoDiagnosticInfo {
   isPermissionError: boolean;
   diagnosticCategory: 'normal' | 'network_offline' | 'stalled' | 'permission_denied' | 'unrecoverable';
   currentActivePercent?: number;
+  nextRetryAt?: number;
+  requiresIntervention?: boolean;
+  backoffRemainingMs?: number;
+}
+
+/**
+ * Calcula la espera programada con retroceso exponencial (exponential backoff).
+ * Base de 2 segundos, escalado según intentos previos, con tope de 60 segundos.
+ */
+export function calculateRetryDelayMs(retryCount: number): number {
+  const exponent = Math.max(0, Math.min(6, retryCount - 1));
+  const base = 2000;
+  return Math.min(60000, base * Math.pow(2, exponent));
 }
 
 const DB_NAME = 'cultiveta_offline_db';
@@ -288,6 +303,8 @@ function normalizeRecord(raw: any): QueuedOfflinePhoto {
     unrecoverable,
     isDeleted: Boolean(raw.isDeleted),
     deletionPending: Boolean(raw.deletionPending),
+    nextRetryAt: typeof raw.nextRetryAt === 'number' ? raw.nextRetryAt : undefined,
+    requiresIntervention: Boolean(raw.requiresIntervention),
     createdAt: raw.createdAt || new Date().toISOString(),
     updatedAt: raw.updatedAt,
   };
@@ -692,13 +709,25 @@ export const photoOfflineQueue = {
             return;
           }
 
+          // Si requiere intervención explícita (ej. error de permisos denegados)
+          if (item.requiresIntervention) {
+            outcome = { claimed: false };
+            return;
+          }
+
+          const now = Date.now();
+          // Si tiene una espera programada activa por reintento transitorio (backoff)
+          if (item.nextRetryAt && item.nextRetryAt > now) {
+            outcome = { claimed: false };
+            return;
+          }
+
           // Si ya está activa en esta misma pestaña
           if (activeUploadTasks.has(photoId) || activeFirestoreSaves.has(photoId)) {
             outcome = { claimed: false };
             return;
           }
 
-          const now = Date.now();
           // Si el bloqueo está activo y vigente (sea de otra pestaña o de esta), NO volver a reclamar
           if (item.lockUntil && item.lockUntil > now) {
             outcome = { claimed: false };
@@ -1092,6 +1121,8 @@ export const photoOfflineQueue = {
     item.status = 'queued';
     item.lockUntil = undefined;
     item.lockOwner = undefined;
+    item.nextRetryAt = undefined;
+    item.requiresIntervention = false;
     item.lastError = undefined;
     item.lastErrorCode = undefined;
     await this.updateItem(item);
@@ -1102,6 +1133,30 @@ export const photoOfflineQueue = {
     });
 
     return true;
+  },
+
+  /**
+   * Reactiva de forma segura y explícita fotografías detenidas por errores de permisos
+   * una vez que el usuario ha iniciado sesión o renovado sus credenciales.
+   */
+  async reactivatePermissionErrors(userId: string): Promise<number> {
+    const items = await this.getQueuedPhotos(userId);
+    let reactivated = 0;
+    for (const item of items) {
+      if (item.requiresIntervention && (item.lastErrorCode === 'permission_denied' || item.lastErrorCode === 'storage/unauthorized')) {
+        item.requiresIntervention = false;
+        item.nextRetryAt = undefined;
+        item.status = 'queued';
+        item.lastError = undefined;
+        item.lastErrorCode = undefined;
+        await this.updateItem(item);
+        reactivated++;
+      }
+    }
+    if (reactivated > 0) {
+      this.triggerProcessing(userId);
+    }
+    return reactivated;
   },
 
   /**
@@ -1171,6 +1226,9 @@ export const photoOfflineQueue = {
       isPermissionError,
       diagnosticCategory,
       currentActivePercent,
+      nextRetryAt: item.nextRetryAt,
+      requiresIntervention: Boolean(item.requiresIntervention),
+      backoffRemainingMs: item.nextRetryAt && item.nextRetryAt > now ? Math.max(0, item.nextRetryAt - now) : 0,
     };
   },
 
@@ -1248,13 +1306,41 @@ export const photoOfflineQueue = {
   },
 
   /**
+   * Dispara el procesamiento asíncrono de la cola en segundo plano sin esperar
+   * a que todas las confirmaciones remotas finalicen.
+   * Permite que la interfaz de usuario se mantenga completamente reactiva.
+   */
+  triggerProcessing(userId?: string): void {
+    const currentAuthUser = auth.currentUser;
+    const targetUserId = userId || (currentAuthUser ? currentAuthUser.uid : autoSyncUserId);
+    if (!targetUserId) return;
+    const sessionGen = getOrStartSessionGen(targetUserId);
+    this._ensureUploadPipeline(targetUserId, sessionGen);
+    this.syncPendingPhotos(targetUserId).catch((err) => {
+      console.warn('[OfflineSync] Procesamiento en segundo plano:', err);
+    });
+  },
+
+  /**
    * Obtiene la siguiente tarea elegible para subida a Storage o confirmación remota.
+   * Excluye elementos con espera programada activa (backoff) o errores de permisos que requieren intervención.
    */
   async _getNextEligibleUploadTask(targetUserId: string): Promise<QueuedOfflinePhoto | null> {
     try {
+      const now = Date.now();
       const pending = await this.getQueuedPhotos(targetUserId);
       for (const item of pending) {
-        if (item.unrecoverable || item.isDeleted || item.deletionPending || deletedPhotoIds.has(item.id)) {
+        if (
+          item.unrecoverable ||
+          item.isDeleted ||
+          item.deletionPending ||
+          item.requiresIntervention ||
+          deletedPhotoIds.has(item.id)
+        ) {
+          continue;
+        }
+        // Si tiene una espera programada activa por reintento transitorio
+        if (item.nextRetryAt && item.nextRetryAt > now) {
           continue;
         }
         if (activeUploadTasks.has(item.id) || activeFirestoreSaves.has(item.id)) {
@@ -1802,6 +1888,15 @@ export const photoOfflineQueue = {
       item.lockUntil = undefined;
       item.lockOwner = undefined;
 
+      if (isPermission) {
+        item.requiresIntervention = true;
+        item.nextRetryAt = undefined;
+      } else {
+        item.requiresIntervention = false;
+        const delayMs = calculateRetryDelayMs(item.retryCount);
+        item.nextRetryAt = Date.now() + delayMs;
+      }
+
       await this.updateItem(item);
 
       if (auth.currentUser?.uid === targetUserId && !deletedPhotoIds.has(item.id)) {
@@ -1923,6 +2018,15 @@ export const photoOfflineQueue = {
       item.lastErrorAt = new Date().toISOString();
       item.lockUntil = undefined;
       item.lockOwner = undefined;
+
+      if (isPermission) {
+        item.requiresIntervention = true;
+        item.nextRetryAt = undefined;
+      } else {
+        item.requiresIntervention = false;
+        const delayMs = calculateRetryDelayMs(item.retryCount);
+        item.nextRetryAt = Date.now() + delayMs;
+      }
 
       await this.updateItem(item);
 

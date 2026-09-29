@@ -365,19 +365,14 @@ export default function App() {
     setIsSyncing(true);
     setSyncError(null);
     try {
-      // 1. Sync pending offline photos
-      const syncResult = await photoOfflineQueue.syncPendingPhotos(currentUser.uid);
-      // 2. Fetch server meteorological records
+      // 1. Iniciar el procesamiento de la cola de fotos en segundo plano de forma desacoplada,
+      // sin bloquear la interfaz ni esperar que todas las confirmaciones remotas de setDoc finalicen.
+      photoOfflineQueue.triggerProcessing(currentUser.uid);
+
+      // 2. Actualizar registros meteorológicos del servidor
       await environmentService.fetchServerRecords(currentUser.uid);
-      if (syncResult.failed > 0) {
-        showToast(`Sincronizadas: ${syncResult.synced}. ${syncResult.failed} foto(s) pendientes de atención.`);
-      } else if (syncResult.pending > 0) {
-        showToast(`Sincronizadas: ${syncResult.synced}. ${syncResult.pending} foto(s) aún en cola.`);
-      } else if (syncResult.synced > 0) {
-        showToast(`✓ Sincronización exitosa: ${syncResult.synced} foto(s) subidas a la nube.`);
-      } else {
-        showToast('✓ Datos sincronizados con la nube.');
-      }
+
+      showToast('Actualizando datos con el servidor...');
     } catch (err: any) {
       console.warn('Sync error:', err);
       setSyncError('Error al sincronizar con el servidor.');

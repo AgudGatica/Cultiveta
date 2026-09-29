@@ -254,8 +254,9 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                   </span>
                 )}
                 {savingMetaPhotos.length > 0 && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                    Confirmando metadatos
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Pendiente de confirmación
                   </span>
                 )}
               </div>
@@ -271,7 +272,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                         : ''
                     }`
                   : savingMetaPhotos.length > 0
-                  ? 'Guardando metadatos e índices en Firestore...'
+                  ? 'Fotografía subida a Storage. Pendiente de confirmación en servidor...'
                   : failedPhotos.length > 0
                   ? 'Algunas fotos no pudieron sincronizarse. Puedes reintentar o exportar el archivo original para nunca perderlo.'
                   : 'Listo para sincronizar en segundo plano.'}
@@ -352,7 +353,10 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
           {filteredPhotos.map((photo) => {
             const queueItem = queuedMap.get(photo.id);
             const isUploading = photo.syncStatus === 'uploading' || queueItem?.status === 'uploading';
-            const isSavingMeta = photo.syncStatus === 'saving_metadata' || queueItem?.status === 'saving_metadata';
+            const isSavingMeta =
+              photo.syncStatus === 'saving_metadata' ||
+              queueItem?.status === 'saving_metadata' ||
+              (queueItem?.stagePending === 'firestore' && queueItem?.status !== 'failed');
             const isFailed = photo.syncStatus === 'error' || queueItem?.status === 'failed' || queueItem?.unrecoverable;
             const isWaitingNetwork = photo.syncStatus === 'waiting_network' || queueItem?.status === 'waiting_network';
             const isPending = photo.isPendingSync || !!queueItem;
@@ -414,11 +418,11 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
 
                   {isSavingMeta && (
                     <div
-                      title="Guardando metadatos en Firestore..."
+                      title="Subida a Storage finalizada. Pendiente de confirmación en servidor Firestore..."
                       className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-purple-950/80 backdrop-blur-xs text-purple-300 border border-purple-500/30 text-[10px] font-bold flex items-center gap-1 shadow-sm"
                     >
                       <Loader2 className="w-3 h-3 text-purple-400 animate-spin" />
-                      <span>Metadatos...</span>
+                      <span>Pendiente de confirmación</span>
                     </div>
                   )}
 
