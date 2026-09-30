@@ -88,6 +88,38 @@ export function calculateRetryDelayMs(retryCount: number): number {
   return Math.min(60000, base * Math.pow(2, exponent));
 }
 
+/**
+ * Configuración del Watchdog para detección de transferencias estancadas.
+ * Permite separar la tolerancia de conexión inicial de la tolerancia ante pausas intermedias.
+ */
+export interface WatchdogConfig {
+  /** Tiempo máximo de espera desde el inicio hasta recibir el primer byte transferido (> 0) */
+  initialByteTimeoutMs: number;
+  /** Tiempo máximo sin nuevos bytes una vez iniciada la transferencia */
+  subsequentBytesTimeoutMs: number;
+  /** Intervalo de comprobación del temporizador del watchdog */
+  checkIntervalMs: number;
+  /** Número máximo de stalls consecutivos antes de requerir intervención explícita */
+  maxConsecutiveStalls: number;
+}
+
+export const DEFAULT_WATCHDOG_CONFIG: WatchdogConfig = {
+  initialByteTimeoutMs: 40000,
+  subsequentBytesTimeoutMs: 30000,
+  checkIntervalMs: 3000,
+  maxConsecutiveStalls: 4,
+};
+
+let currentWatchdogConfig: WatchdogConfig = { ...DEFAULT_WATCHDOG_CONFIG };
+
+export function setWatchdogConfigForTesting(config: Partial<WatchdogConfig>): void {
+  currentWatchdogConfig = { ...DEFAULT_WATCHDOG_CONFIG, ...config };
+}
+
+export function resetWatchdogConfig(): void {
+  currentWatchdogConfig = { ...DEFAULT_WATCHDOG_CONFIG };
+}
+
 const DB_NAME = 'cultiveta_offline_db';
 const DB_VERSION = 2;
 const STORE_NAME = 'pending_photos';
@@ -116,6 +148,9 @@ const activeFirestoreSaves = new Map<
   }
 >();
 
+// Temporizadores de despertar para reintentos con backoff exponencial
+const activeBackoffTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
 // Control de generaciones de sesión para distinguir salir y volver a entrar con la misma cuenta
 let globalSessionGeneration = 0;
 const userSessionGenerations = new Map<string, number>();
@@ -143,9 +178,6 @@ const sessionSyncPromises = new Map<string, Promise<PhotoSyncResult>>();
 // Control de workers de subida desacoplados por sesión
 const activeUploadWorkers = new Map<string, Promise<void>>();
 const uploadWakeTriggers = new Map<string, () => void>();
-
-// Temporizadores de retroceso programado para despertar el scheduler cerca de nextRetryAt
-const scheduledBackoffTimers = new Map<string, { timer: ReturnType<typeof setTimeout>; targetTime: number }>();
 
 // Colas de confirmación remota por usuario
 const confirmationQueues = new Map<string, QueuedOfflinePhoto[]>();
@@ -197,6 +229,8 @@ export function resetPhotoQueueAdapters(): void {
 }
 
 export function resetQueueStateForTesting(): void {
+  activeBackoffTimers.forEach((t) => clearTimeout(t));
+  activeBackoffTimers.clear();
   activeUploadTasks.clear();
   activeHeartbeats.forEach((int) => clearInterval(int));
   activeHeartbeats.clear();
@@ -1325,32 +1359,20 @@ export const photoOfflineQueue = {
   },
 
   /**
-   * Planifica un despertar automático cerca de la fecha del próximo reintento (nextRetryAt).
-   * Evita esperar innecesariamente los 45 segundos del intervalo global de autoSync,
-   * sin crear temporizadores duplicados ni reintentos agresivos.
+   * Programa el despertar asíncrono de la cola de sincronización una vez alcanzado nextRetryAt.
+   * Evita esperar pasivamente al intervalo global de 45 segundos y previene timers duplicados.
    */
-  _scheduleBackoffWakeup(targetUserId: string, nextRetryAt: number): void {
-    if (!targetUserId || !nextRetryAt) return;
-    const now = Date.now();
-    const delayMs = Math.max(500, nextRetryAt - now);
-
-    const existing = scheduledBackoffTimers.get(targetUserId);
+  _scheduleBackoffWakeup(nextRetryAt: number, targetUserId: string): void {
+    const delay = Math.max(50, nextRetryAt - Date.now());
+    const existing = activeBackoffTimers.get(targetUserId);
     if (existing) {
-      // Si el temporizador existente ya se ejecutará antes o casi al mismo tiempo, mantenerlo
-      if (existing.targetTime <= nextRetryAt + 1000) {
-        return;
-      }
-      clearTimeout(existing.timer);
+      clearTimeout(existing);
     }
-
     const timer = setTimeout(() => {
-      scheduledBackoffTimers.delete(targetUserId);
-      if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
-      if (auth.currentUser && auth.currentUser.uid !== targetUserId) return;
+      activeBackoffTimers.delete(targetUserId);
       this.triggerProcessing(targetUserId);
-    }, delayMs);
-
-    scheduledBackoffTimers.set(targetUserId, { timer, targetTime: nextRetryAt });
+    }, delay);
+    activeBackoffTimers.set(targetUserId, timer);
   },
 
   /**
@@ -1416,8 +1438,9 @@ export const photoOfflineQueue = {
       return existingRunner;
     }
 
-    const MAX_CONCURRENT_UPLOADS = 2;
-
+    // Procesamiento de subida secuencial determinista por sesión de usuario.
+    // Garantiza orden predecible, evita inanición de ancho de banda móvil y
+    // previene colisiones de bloqueo entre pestañas.
     const runner = (async () => {
       let keepRunning = true;
       while (keepRunning && isSessionValid(targetUserId, sessionGen)) {
@@ -1741,7 +1764,8 @@ export const photoOfflineQueue = {
       activeUploadTasks.set(item.id, uploadTask);
 
       let lastBytes = 0;
-      let lastProgressTimestamp = Date.now();
+      const uploadStartTime = Date.now();
+      let lastProgressTimestamp = uploadStartTime;
       let lastPersistedPercent = item.progressPercent || 0;
       let lastPersistedTime = Date.now();
 
@@ -1752,19 +1776,66 @@ export const photoOfflineQueue = {
           uploadTask.cancel();
           return;
         }
-        if (now - lastProgressTimestamp > 35000) {
-          console.warn(`[OfflineSync] Subida estancada detectada en foto ${item.id}. Cancelando tarea para reintento.`);
+
+        let isStalled = false;
+        let stallType: 'connection_never_started' | 'transfer_halted' = 'connection_never_started';
+        let timeWithoutProgress = 0;
+
+        if (lastBytes === 0) {
+          // No se ha transferido ningún byte desde el inicio de la conexión
+          timeWithoutProgress = now - uploadStartTime;
+          if (timeWithoutProgress > currentWatchdogConfig.initialByteTimeoutMs) {
+            isStalled = true;
+            stallType = 'connection_never_started';
+          }
+        } else {
+          // La transferencia ya había iniciado pero se detuvo el avance real de bytes
+          timeWithoutProgress = now - lastProgressTimestamp;
+          if (timeWithoutProgress > currentWatchdogConfig.subsequentBytesTimeoutMs) {
+            isStalled = true;
+            stallType = 'transfer_halted';
+          }
+        }
+
+        if (isStalled) {
+          // Diagnóstico seguro antes de cancelar (sin tokens ni credenciales)
+          const effectiveBucket = storage.app?.options?.storageBucket || FIREBASE_CONFIG_METADATA.storageBucket || '';
+          const currentAuthUid = auth.currentUser?.uid;
+          const uidMatches = Boolean(currentAuthUid && currentAuthUid === item.userId);
+
+          const stallDiagnostic = {
+            diagnosticCategory: 'upload_stalled',
+            stallReason: stallType === 'connection_never_started'
+              ? 'Conexión al bucket que nunca inicia (0 bytes transferidos)'
+              : 'Transferencia que empezó y se frenó (sin avance de nuevos bytes)',
+            photoId: item.id,
+            storagePath: item.storagePath,
+            effectiveBucket,
+            mimeType: item.fileType || 'image/jpeg',
+            fileSize: item.fileSize || (item.fileBlob ? item.fileBlob.size : 0),
+            bytesTransferred: lastBytes,
+            totalBytes: item.totalBytes || 0,
+            timeWithoutProgressMs: timeWithoutProgress,
+            retryCount: item.retryCount || 0,
+            navigatorOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+            uidMatches,
+          };
+
+          console.warn(
+            `[OfflineSync] ⚠️ Subida estancada detectada en foto ${item.id} (${stallDiagnostic.stallReason}). Cancelando tarea para reintento programado:`,
+            stallDiagnostic
+          );
+
           cancellationReasons.set(item.id, 'stalled');
           uploadTask.cancel();
         }
-      }, 5000);
+      }, currentWatchdogConfig.checkIntervalMs);
 
       uploadTask.on('state_changed', (snapshot) => {
         const now = Date.now();
+        // Solo considerar avance de progreso real si aumentaron los bytes transferidos
         if (snapshot.bytesTransferred > lastBytes) {
           lastBytes = snapshot.bytesTransferred;
-          lastProgressTimestamp = now;
-        } else if (snapshot.state === 'running' && lastBytes === 0) {
           lastProgressTimestamp = now;
         }
 
@@ -1879,13 +1950,47 @@ export const photoOfflineQueue = {
           return { status: 'network_offline' };
         }
         if (cancelReason === 'stalled') {
-          console.warn(`[OfflineSync] Subida de foto ${item.id} estancada en red; reprogramada.`);
-          item.status = 'queued';
-          item.lastError = 'La subida se estancó sin avance de bytes; reprogramada.';
-          item.lastErrorCode = 'upload_stalled';
+          const newRetryCount = (item.retryCount || 0) + 1;
+          item.retryCount = newRetryCount;
           item.lockUntil = undefined;
           item.lockOwner = undefined;
+          item.lastErrorCode = 'upload_stalled';
+          item.lastErrorAt = new Date().toISOString();
+
+          // Comprobar si excedió el límite de bloqueos consecutivos sin avance
+          if (newRetryCount >= currentWatchdogConfig.maxConsecutiveStalls) {
+            console.warn(
+              `[OfflineSync] Foto ${item.id} estancada ${newRetryCount} veces consecutivas. Requiere intervención explícita.`
+            );
+            item.status = 'failed';
+            item.requiresIntervention = true;
+            item.nextRetryAt = undefined;
+            item.lastError = `La subida se estancó ${newRetryCount} veces consecutivas sin transferir bytes. Requiere intervención o reintento manual.`;
+          } else {
+            const delayMs = calculateRetryDelayMs(newRetryCount);
+            const nextRetryAt = Date.now() + delayMs;
+            item.nextRetryAt = nextRetryAt;
+            item.status = typeof navigator !== 'undefined' && navigator.onLine === false ? 'waiting_network' : 'failed';
+            item.lastError = `La subida se estancó sin avance de bytes; reprogramada con espera de ${Math.round(delayMs / 1000)}s (intento ${newRetryCount}).`;
+            console.warn(
+              `[OfflineSync] Subida de foto ${item.id} estancada en red. Incrementado retryCount a ${newRetryCount}, próximo reintento en ${delayMs}ms.`
+            );
+            this._scheduleBackoffWakeup(nextRetryAt, targetUserId);
+          }
+
+          // fileBlob SE CONSERVA TOTALMENTE INTACTO en item
           await this.updateItem(item);
+
+          if (auth.currentUser?.uid === targetUserId && !deletedPhotoIds.has(item.id)) {
+            localStore.saveItem<Partial<PhotoRecord> & { id: string; userId: string }>('photos', {
+              id: item.id,
+              userId: item.userId,
+              syncStatus: item.status === 'failed' && item.requiresIntervention ? 'error' : 'queued',
+              syncError: item.lastError,
+              isPendingSync: true,
+            });
+          }
+
           return { status: 'retry_later' };
         }
 
@@ -1927,7 +2032,6 @@ export const photoOfflineQueue = {
         item.requiresIntervention = false;
         const delayMs = calculateRetryDelayMs(item.retryCount);
         item.nextRetryAt = Date.now() + delayMs;
-        this._scheduleBackoffWakeup(targetUserId, item.nextRetryAt);
       }
 
       await this.updateItem(item);
@@ -2059,7 +2163,6 @@ export const photoOfflineQueue = {
         item.requiresIntervention = false;
         const delayMs = calculateRetryDelayMs(item.retryCount);
         item.nextRetryAt = Date.now() + delayMs;
-        this._scheduleBackoffWakeup(targetUserId, item.nextRetryAt);
       }
 
       await this.updateItem(item);

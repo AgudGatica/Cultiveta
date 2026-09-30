@@ -70,6 +70,8 @@ import {
   setPhotoQueueAdapters,
   resetPhotoQueueAdapters,
   resetQueueStateForTesting,
+  setWatchdogConfigForTesting,
+  resetWatchdogConfig,
 } from '../src/services/photoOfflineQueue';
 import { localStore } from '../src/services/localStore';
 
@@ -92,6 +94,7 @@ function createMockUploadTask(options: {
   onCancel?: () => void;
   shouldFail?: boolean;
   failError?: any;
+  isStalledRunning?: boolean;
 }) {
   const listeners: {
     next?: (snapshot: any) => void;
@@ -118,6 +121,11 @@ function createMockUploadTask(options: {
   let rejectPromise: ((reason?: any) => void) | null = null;
   const promise = new Promise<any>((resolve, reject) => {
     rejectPromise = reject;
+    if (options.isStalledRunning) {
+      // Permanece en estado running indefinidamente sin transferir bytes
+      // Solo concluye cuando el watchdog del cliente invoque cancel()
+      return;
+    }
     setTimeout(() => {
       if (isCanceled || isSettled) return;
       isSettled = true;
@@ -898,8 +906,151 @@ export async function runNewDefectTests(): Promise<{ passed: number; failed: num
     }
   });
 
+  // =========================================================================
+  // Caso 8: Watchdog real de upload_stalled: cancel() por inactividad, backoff sin bucle y avance
+  // =========================================================================
+  await assert('8. Watchdog real de upload_stalled: cancel() por inactividad, backoff sin bucle y avance de cola', async () => {
+    const testUid = 'user_c8_watchdog';
+    let uploadCallsA = 0;
+    let watchdogCancelCallsA = 0;
+    let uploadCallsB = 0;
+    let setDocCallsB = 0;
+
+    // Configurar umbrales rápidos para la prueba (no esperar 35 segundos reales)
+    setWatchdogConfigForTesting({
+      initialByteTimeoutMs: 30,
+      subsequentBytesTimeoutMs: 25,
+      checkIntervalMs: 10,
+      maxConsecutiveStalls: 4,
+    });
+
+    setPhotoQueueAdapters({
+      uploadBytesResumable: (storageRef: any) => {
+        const fullPath =
+          storageRef?.fullPath ||
+          storageRef?._location?.path ||
+          storageRef?.name ||
+          '';
+
+        if (fullPath.includes('photo_stall_A')) {
+          uploadCallsA++;
+          // Permanece en estado running, no transfiere bytes y solo concluye cuando el watchdog llama a cancel()
+          return createMockUploadTask({
+            storageRef,
+            isStalledRunning: true,
+            onCancel: () => {
+              watchdogCancelCallsA++;
+            },
+          });
+        }
+
+        if (fullPath.includes('photo_healthy_B')) {
+          uploadCallsB++;
+          return createMockUploadTask({
+            storageRef,
+            delayMs: 15,
+            shouldFail: false,
+          });
+        }
+
+        return createMockUploadTask({ storageRef, delayMs: 10 });
+      },
+      getDownloadURL: async (ref: any) => {
+        return `https://mock.storage.url/${ref?.fullPath || 'photo.jpg'}`;
+      },
+      setDoc: async (docRef: any) => {
+        if (docRef.id === 'photo_healthy_B') {
+          setDocCallsB++;
+        }
+      },
+      deleteDoc: async () => {},
+      deleteObject: async () => {},
+    });
+
+    try {
+      // 1. Encolar Foto A (se estancará en red) y Foto B (saludable)
+      await photoOfflineQueue.enqueuePhoto({
+        id: 'photo_stall_A',
+        userId: testUid,
+        cultivationId: 'crop_c8',
+        file: createFakeBlob('bytes_foto_A', 'image/jpeg'),
+        fileName: 'photo_stall_A.jpg',
+        date: '2026-09-30',
+        dayOfCultivation: 15,
+        stage: 'Floración',
+        category: 'flor',
+      });
+
+      await photoOfflineQueue.enqueuePhoto({
+        id: 'photo_healthy_B',
+        userId: testUid,
+        cultivationId: 'crop_c8',
+        file: createFakeBlob('bytes_foto_B', 'image/png'),
+        fileName: 'photo_healthy_B.png',
+        date: '2026-09-30',
+        dayOfCultivation: 15,
+        stage: 'Floración',
+        category: 'tricomas',
+      });
+
+      // 2. Ejecutar sincronización de la cola
+      await photoOfflineQueue.syncPendingPhotos(testUid);
+
+      // 3. Verificaciones de intervención del Watchdog
+      if (watchdogCancelCallsA !== 1) {
+        throw new Error(`El watchdog debió cancelar la foto A exactamente 1 vez, llamadas cancel(): ${watchdogCancelCallsA}`);
+      }
+
+      // 4. Verificación de no-repetición inmediata (sin bucle en el mismo ciclo)
+      if (uploadCallsA !== 1) {
+        throw new Error(`Foto A debió intentar subirse exactamente 1 vez en este ciclo, pero se llamó ${uploadCallsA} veces (bucle detectado).`);
+      }
+
+      // 5. Verificación de que la foto B avanzó y completó su ciclo sin ser bloqueada
+      if (uploadCallsB !== 1) {
+        throw new Error(`Foto B debió intentar subirse 1 vez, llamadas: ${uploadCallsB}`);
+      }
+      if (setDocCallsB !== 1) {
+        throw new Error(`Foto B debió confirmarse en Firestore 1 vez, llamadas setDoc: ${setDocCallsB}`);
+      }
+
+      // 6. Verificación durable de Foto A: conserva su binario, retryCount incrementado y backoff futuro
+      const photoA = await photoOfflineQueue.getQueuedPhotoById('photo_stall_A');
+      if (!photoA) {
+        throw new Error('Foto A no debe borrarse al estancarse.');
+      }
+      if (!photoA.fileBlob || photoA.fileBlob.size === 0) {
+        throw new Error('Foto A perdió su archivo binario en IndexedDB tras la cancelación por watchdog.');
+      }
+      if (photoA.retryCount !== 1) {
+        throw new Error(`retryCount de Foto A debía ser 1, obtenido: ${photoA.retryCount}`);
+      }
+      if (photoA.lastErrorCode !== 'upload_stalled') {
+        throw new Error(`lastErrorCode de Foto A debía ser "upload_stalled", obtenido: ${photoA.lastErrorCode}`);
+      }
+      if (!photoA.nextRetryAt || photoA.nextRetryAt <= Date.now()) {
+        throw new Error(`nextRetryAt de Foto A debía estar programado en el futuro, obtenido: ${photoA.nextRetryAt}`);
+      }
+
+      // 7. Comprobar que una sincronización subsiguiente inmediata NO reintenta Foto A antes de su backoff
+      await photoOfflineQueue.syncPendingPhotos(testUid);
+      if (uploadCallsA !== 1) {
+        throw new Error(`Foto A fue reintentada antes de cumplir su tiempo de backoff (llamadas totales: ${uploadCallsA})`);
+      }
+
+      // 8. Verificación de que Foto B fue removida de la cola tras éxito
+      const photoB = await photoOfflineQueue.getQueuedPhotoById('photo_healthy_B');
+      if (photoB) {
+        throw new Error('Foto B debió ser purgada de la cola tras confirmarse.');
+      }
+    } finally {
+      resetWatchdogConfig();
+      resetPhotoQueueAdapters();
+    }
+  });
+
   console.log('\n======================================================');
-  console.log(` RESULTADO NUEVAS PRUEBAS: ${passed} pasadas, ${failed} fallidas de 7`);
+  console.log(` RESULTADO NUEVAS PRUEBAS: ${passed} pasadas, ${failed} fallidas de 8`);
   console.log('======================================================\n');
 
   return { passed, failed };

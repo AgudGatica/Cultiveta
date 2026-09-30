@@ -45,10 +45,17 @@ const suites: SuiteConfig[] = [
   },
   {
     id: 'new_sync_defects',
-    name: 'Mocks: 7 Casos Críticos (Concurrencia, Cierre de Sesión, Contadores, Borrado y Backoff)',
+    name: 'Mocks: 8 Casos Críticos (Concurrencia, Cierre de Sesión, Contadores, Borrado, Backoff y Watchdog Stalled)',
     category: 'mocks',
     file: 'tests/new_sync_defects.test.ts',
-    expectedTests: 7,
+    expectedTests: 8,
+  },
+  {
+    id: 'firestore_tasks_isolation',
+    name: 'Seguridad y Aislamiento: Consulta estricta por UID de tareas y alertas',
+    category: 'mocks',
+    file: 'tests/firestore_tasks_isolation.test.ts',
+    expectedTests: 3,
   },
   {
     id: 'component_gallery_real',

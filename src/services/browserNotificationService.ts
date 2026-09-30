@@ -335,16 +335,25 @@ class BrowserNotificationService {
   }
 
   /**
-   * Escucha la colección 'tasks' de Firestore para alertas generadas por el cron job en la nube
+   * Escucha la colección 'tasks' de Firestore para alertas generadas por el cron job en la nube.
+   * Consulta estrictamente por el userId del usuario autenticado para respetar las reglas de seguridad
+   * y garantizar aislamiento total entre cuentas.
    */
   public initFirestoreListener(userId?: string) {
-    if (!db || this.firestoreUnsub) return;
+    if (this.firestoreUnsub) {
+      this.firestoreUnsub();
+      this.firestoreUnsub = null;
+    }
+
+    if (!db || !userId) return;
 
     try {
       const tasksRef = collection(db, 'tasks');
-      const q = userId
-        ? query(tasksRef, where('type', '==', 'env_alert'), where('userId', 'in', [userId, 'system']))
-        : query(tasksRef, where('type', '==', 'env_alert'));
+      const q = query(
+        tasksRef,
+        where('type', '==', 'env_alert'),
+        where('userId', '==', userId)
+      );
 
       this.firestoreUnsub = onSnapshot(
         q,
@@ -372,15 +381,15 @@ class BrowserNotificationService {
    */
   public async init(userId?: string) {
     this.currentUserId = userId || null;
+    this.initFirestoreListener(userId);
+    this.initSSEStream(userId);
+
     if (this.isInitialized) return;
     this.isInitialized = true;
 
     if (this.isSupported() && Notification.permission === 'granted') {
       await this.registerServiceWorker();
     }
-
-    this.initSSEStream(userId);
-    this.initFirestoreListener(userId);
 
     // Escuchar mensajes provenientes del Service Worker (por ejemplo, clicks en notificaciones)
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
