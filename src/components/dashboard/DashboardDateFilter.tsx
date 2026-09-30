@@ -140,41 +140,41 @@ export const DashboardDateFilter: React.FC<DashboardDateFilterProps> = ({
   return (
     <div
       id="dashboard-date-filter"
-      className="bg-[#0F0F0F] rounded-[28px] p-4 sm:p-6 border border-zinc-800 shadow-xl space-y-4"
+      className="bg-white rounded-[28px] p-4 sm:p-6 border border-[#EFE3CF] shadow-xs space-y-4"
     >
       {/* Header bar: Icon, title, active badge, and clear button */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-800/80">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#EFE3CF]">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+          <div className="p-2.5 rounded-xl bg-[#6C45C7]/10 text-[#6C45C7] border border-[#6C45C7]/20">
             <Calendar className="w-4 h-4" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xs sm:text-sm font-bold text-white">Filtrar por Fecha</span>
+              <span className="text-xs sm:text-sm font-extrabold text-[#29202F]">Filtrar por Fecha</span>
               {isFilterActive && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#6C45C7]/15 text-[#6C45C7] border border-[#6C45C7]/30">
                   Filtro Activo
                 </span>
               )}
             </div>
-            <p className="text-[11px] text-zinc-400 mt-0.5">{getRangeDescription()}</p>
+            <p className="text-[11px] text-[#6E5D77] mt-0.5">{getRangeDescription()}</p>
           </div>
         </div>
 
         {/* Quick event count summary & reset */}
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-zinc-900 border border-zinc-800 text-[11px] text-zinc-300">
-            <span className="font-mono font-bold text-white">{totalRecordsCount}</span>
-            <span className="text-zinc-500">eventos</span>
-            <span className="text-zinc-700">|</span>
-            <span className="text-cyan-400 font-mono">{wateringsCount}</span>
-            <span className="text-zinc-500">riegos</span>
-            <span className="text-zinc-700">|</span>
-            <span className="text-amber-400 font-mono">{envCount}</span>
-            <span className="text-zinc-500">amb</span>
-            <span className="text-zinc-700">|</span>
-            <span className="text-blue-400 font-mono">{photosCount}</span>
-            <span className="text-zinc-500">fotos</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#FFFDF7] border border-[#EFE3CF] text-[11px] text-[#6E5D77]">
+            <span className="font-bold text-[#29202F]">{totalRecordsCount}</span>
+            <span className="text-[#9887A2]">eventos</span>
+            <span className="text-[#DECDB3]">|</span>
+            <span className="text-[#6C45C7] font-bold">{wateringsCount}</span>
+            <span className="text-[#9887A2]">riegos</span>
+            <span className="text-[#DECDB3]">|</span>
+            <span className="text-[#62B95B] font-bold">{envCount}</span>
+            <span className="text-[#9887A2]">amb</span>
+            <span className="text-[#DECDB3]">|</span>
+            <span className="text-[#EB7864] font-bold">{photosCount}</span>
+            <span className="text-[#9887A2]">fotos</span>
           </div>
 
           {isFilterActive && (
@@ -182,7 +182,7 @@ export const DashboardDateFilter: React.FC<DashboardDateFilterProps> = ({
               type="button"
               id="reset-date-filter-btn"
               onClick={() => handlePresetSelect('all')}
-              className="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 text-[11px] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="px-3 py-1.5 rounded-xl bg-[#FAF2E1] hover:bg-[#EFE3CF] text-[#29202F] border border-[#EFE3CF] text-[11px] font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
               title="Restablecer filtro a todo el historial"
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -200,8 +200,8 @@ export const DashboardDateFilter: React.FC<DashboardDateFilterProps> = ({
           onClick={() => handlePresetSelect('all')}
           className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
             filter.preset === 'all'
-              ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/20 font-bold'
-              : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-850 border border-zinc-800'
+              ? 'bg-[#6C45C7] text-white shadow-md shadow-[#6C45C7]/20 font-bold'
+              : 'bg-[#FFFDF7] text-[#6E5D77] hover:text-[#29202F] hover:bg-[#FAF2E1] border border-[#EFE3CF]'
           }`}
         >
           <span>Todo el Histórico</span>
@@ -213,8 +213,8 @@ export const DashboardDateFilter: React.FC<DashboardDateFilterProps> = ({
           onClick={() => handlePresetSelect('today')}
           className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
             filter.preset === 'today'
-              ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/20 font-bold'
-              : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-850 border border-zinc-800'
+              ? 'bg-[#6C45C7] text-white shadow-md shadow-[#6C45C7]/20 font-bold'
+              : 'bg-[#FFFDF7] text-[#6E5D77] hover:text-[#29202F] hover:bg-[#FAF2E1] border border-[#EFE3CF]'
           }`}
         >
           <span>Hoy</span>
@@ -226,8 +226,8 @@ export const DashboardDateFilter: React.FC<DashboardDateFilterProps> = ({
           onClick={() => handlePresetSelect('7d')}
           className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
             filter.preset === '7d'
-              ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/20 font-bold'
-              : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-850 border border-zinc-800'
+              ? 'bg-[#6C45C7] text-white shadow-md shadow-[#6C45C7]/20 font-bold'
+              : 'bg-[#FFFDF7] text-[#6E5D77] hover:text-[#29202F] hover:bg-[#FAF2E1] border border-[#EFE3CF]'
           }`}
         >
           <span>Últimos 7 días</span>
@@ -239,8 +239,8 @@ export const DashboardDateFilter: React.FC<DashboardDateFilterProps> = ({
           onClick={() => handlePresetSelect('30d')}
           className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
             filter.preset === '30d'
-              ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/20 font-bold'
-              : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-850 border border-zinc-800'
+              ? 'bg-[#6C45C7] text-white shadow-md shadow-[#6C45C7]/20 font-bold'
+              : 'bg-[#FFFDF7] text-[#6E5D77] hover:text-[#29202F] hover:bg-[#FAF2E1] border border-[#EFE3CF]'
           }`}
         >
           <span>Últimos 30 días</span>
@@ -252,8 +252,8 @@ export const DashboardDateFilter: React.FC<DashboardDateFilterProps> = ({
           onClick={() => handlePresetSelect('single')}
           className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
             filter.preset === 'single'
-              ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/20 font-bold'
-              : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-850 border border-zinc-800'
+              ? 'bg-[#6C45C7] text-white shadow-md shadow-[#6C45C7]/20 font-bold'
+              : 'bg-[#FFFDF7] text-[#6E5D77] hover:text-[#29202F] hover:bg-[#FAF2E1] border border-[#EFE3CF]'
           }`}
         >
           <Clock className="w-3.5 h-3.5" />
@@ -266,8 +266,8 @@ export const DashboardDateFilter: React.FC<DashboardDateFilterProps> = ({
           onClick={() => handlePresetSelect('custom')}
           className={`px-3.5 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
             filter.preset === 'custom'
-              ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/20 font-bold'
-              : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-850 border border-zinc-800'
+              ? 'bg-[#6C45C7] text-white shadow-md shadow-[#6C45C7]/20 font-bold'
+              : 'bg-[#FFFDF7] text-[#6E5D77] hover:text-[#29202F] hover:bg-[#FAF2E1] border border-[#EFE3CF]'
           }`}
         >
           <Filter className="w-3.5 h-3.5" />
@@ -279,9 +279,9 @@ export const DashboardDateFilter: React.FC<DashboardDateFilterProps> = ({
       {isCustomOpen && (
         <div className="pt-2 animate-in fade-in slide-in-from-top-2 duration-150">
           {filter.preset === 'single' ? (
-            <div className="flex flex-wrap items-center gap-3 p-3.5 rounded-2xl bg-zinc-900/90 border border-zinc-800">
-              <label htmlFor="single-date-input" className="text-xs text-zinc-300 font-medium flex items-center gap-2">
-                <Clock className="w-3.5 h-3.5 text-emerald-400" />
+            <div className="flex flex-wrap items-center gap-3 p-3.5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF]">
+              <label htmlFor="single-date-input" className="text-xs text-[#29202F] font-medium flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5 text-[#6C45C7]" />
                 <span>Seleccionar fecha a inspeccionar:</span>
               </label>
               <input
@@ -290,19 +290,19 @@ export const DashboardDateFilter: React.FC<DashboardDateFilterProps> = ({
                 value={filter.startDate || customStart}
                 max={getTodayString()}
                 onChange={(e) => handleSingleDayChange(e.target.value)}
-                className="bg-black/60 border border-zinc-700 hover:border-emerald-500/50 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-400 transition-colors font-mono cursor-pointer"
+                className="bg-white border border-[#DECDB3] hover:border-[#6C45C7] rounded-xl px-3 py-1.5 text-xs text-[#29202F] focus:outline-none focus:border-[#6C45C7] transition-colors cursor-pointer"
               />
-              <span className="text-[11px] text-zinc-500">
+              <span className="text-[11px] text-[#6E5D77]">
                 Se muestran solo las métricas y registros guardados en esta fecha exacta.
               </span>
             </div>
           ) : (
             <form
               onSubmit={handleApplyCustomRange}
-              className="flex flex-wrap items-center gap-3 p-3.5 rounded-2xl bg-zinc-900/90 border border-zinc-800"
+              className="flex flex-wrap items-center gap-3 p-3.5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF]"
             >
               <div className="flex items-center gap-2">
-                <label htmlFor="custom-date-start" className="text-xs text-zinc-400 font-medium">
+                <label htmlFor="custom-date-start" className="text-xs text-[#6E5D77] font-medium">
                   Desde:
                 </label>
                 <input
@@ -311,12 +311,12 @@ export const DashboardDateFilter: React.FC<DashboardDateFilterProps> = ({
                   value={customStart}
                   max={customEnd || getTodayString()}
                   onChange={(e) => setCustomStart(e.target.value)}
-                  className="bg-black/60 border border-zinc-700 hover:border-emerald-500/50 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-400 transition-colors font-mono cursor-pointer"
+                  className="bg-white border border-[#DECDB3] hover:border-[#6C45C7] rounded-xl px-3 py-1.5 text-xs text-[#29202F] focus:outline-none focus:border-[#6C45C7] transition-colors cursor-pointer"
                 />
               </div>
 
               <div className="flex items-center gap-2">
-                <label htmlFor="custom-date-end" className="text-xs text-zinc-400 font-medium">
+                <label htmlFor="custom-date-end" className="text-xs text-[#6E5D77] font-medium">
                   Hasta:
                 </label>
                 <input
@@ -326,14 +326,14 @@ export const DashboardDateFilter: React.FC<DashboardDateFilterProps> = ({
                   min={customStart}
                   max={getTodayString()}
                   onChange={(e) => setCustomEnd(e.target.value)}
-                  className="bg-black/60 border border-zinc-700 hover:border-emerald-500/50 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-400 transition-colors font-mono cursor-pointer"
+                  className="bg-white border border-[#DECDB3] hover:border-[#6C45C7] rounded-xl px-3 py-1.5 text-xs text-[#29202F] focus:outline-none focus:border-[#6C45C7] transition-colors cursor-pointer"
                 />
               </div>
 
               <button
                 type="submit"
                 id="apply-custom-date-btn"
-                className="px-4 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5"
+                className="px-4 py-1.5 rounded-xl bg-[#62B95B] hover:bg-[#52A54C] text-white text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs"
               >
                 <Check className="w-3.5 h-3.5 stroke-[2.5]" />
                 <span>Aplicar Rango</span>

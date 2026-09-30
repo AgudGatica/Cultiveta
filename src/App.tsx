@@ -465,12 +465,12 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-zinc-100 flex flex-col selection:bg-emerald-500 selection:text-black">
+    <div className="min-h-screen bg-[#FFF8E8] text-[#29202F] flex flex-col selection:bg-[#6C45C7] selection:text-white">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-5 right-5 z-50 px-5 py-3 rounded-2xl bg-[#0F0F0F] text-emerald-400 text-xs font-bold shadow-2xl border border-zinc-800 animate-in slide-in-from-top duration-200 flex items-center gap-2">
-          <div className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></div>
-          {toastMessage}
+        <div className="fixed top-5 right-5 z-50 px-5 py-3 rounded-2xl bg-white text-[#29202F] text-xs font-bold shadow-xl border border-[#EFE3CF] animate-in slide-in-from-top duration-200 flex items-center gap-2.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-[#62B95B] animate-ping" />
+          <span>{toastMessage}</span>
         </div>
       )}
 
@@ -568,12 +568,11 @@ export default function App() {
           {/* VIEW: CULTIVATIONS LIST */}
           {currentView === 'cultivations' && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between bg-[#0F0F0F] rounded-[32px] p-6 sm:p-8 border border-zinc-800 shadow-sm relative overflow-hidden">
-                <div className="absolute inset-0 opacity-5 bg-[radial-gradient(circle_at_20%_20%,#10b981_0%,transparent_60%)] pointer-events-none"></div>
+              <div className="flex items-center justify-between bg-white rounded-[32px] p-6 sm:p-8 border border-[#EFE3CF] shadow-xs relative overflow-hidden">
                 <div className="relative z-10">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-[0.25em] text-zinc-500 mb-1 block">Gestión de Salas</span>
-                  <h2 className="font-bold text-2xl text-white">Mis Cultivos 🌱</h2>
-                  <p className="text-xs text-zinc-400 mt-1">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#9887A2] mb-1 block">Gestión de Salas</span>
+                  <h2 className="font-extrabold text-2xl text-[#29202F]">Mis Cultivos 🌱</h2>
+                  <p className="text-xs text-[#6E5D77] mt-1">
                     Seguimiento individual de carpas, salas y plantas
                   </p>
                 </div>
@@ -585,9 +584,9 @@ export default function App() {
                     setCultivationToEdit(null);
                     setIsCultivationFormOpen(true);
                   }}
-                  className="relative z-10 px-6 py-3 rounded-2xl bg-white hover:bg-zinc-200 text-black text-xs font-bold transition-all shadow-md flex items-center gap-2 cursor-pointer"
+                  className="relative z-10 px-6 py-3 rounded-2xl bg-[#62B95B] hover:bg-[#52A54C] text-white text-xs font-bold transition-all shadow-md shadow-[#62B95B]/20 flex items-center gap-2 cursor-pointer"
                 >
-                  <Plus className="w-4 h-4 text-black stroke-[2.5]" />
+                  <Plus className="w-4 h-4 text-white stroke-[2.5]" />
                   <span>Nuevo Cultivo</span>
                 </button>
               </div>
@@ -604,14 +603,14 @@ export default function App() {
               )}
 
               {cultivations.length === 0 ? (
-                <div className="bg-[#0F0F0F] rounded-[32px] p-12 border border-zinc-800 text-center space-y-4">
-                  <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 text-emerald-400 flex items-center justify-center mx-auto">
+                <div className="bg-white rounded-[32px] p-12 border border-[#EFE3CF] text-center space-y-4 shadow-xs">
+                  <div className="w-16 h-16 rounded-2xl bg-[#FAF2E1] border border-[#EFE3CF] text-[#62B95B] flex items-center justify-center mx-auto">
                     <Sprout className="w-8 h-8" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-white text-base">No hay cultivos registrados</h3>
-                    <p className="text-xs text-zinc-400 max-w-sm mx-auto mt-1">
-                      Crea un nuevo cultivo para empezar a registrar riegos, parámetros y fotografías.
+                    <h3 className="font-bold text-[#29202F] text-base">Todavía no anotaste ningún cultivo</h3>
+                    <p className="text-xs text-[#6E5D77] max-w-sm mx-auto mt-1">
+                      Crea tu primer cultivo para empezar a registrar riegos, parámetros y fotografías.
                     </p>
                   </div>
                   <button
@@ -620,22 +619,22 @@ export default function App() {
                       setCultivationToEdit(null);
                       setIsCultivationFormOpen(true);
                     }}
-                    className="px-6 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition-all shadow-lg shadow-emerald-500/20 cursor-pointer inline-flex items-center gap-2"
+                    className="px-6 py-3 rounded-2xl bg-[#62B95B] hover:bg-[#52A54C] text-white font-bold text-xs transition-all shadow-lg shadow-[#62B95B]/20 cursor-pointer inline-flex items-center gap-2"
                   >
                     <Plus className="w-4 h-4 stroke-[2.5]" />
                     Crear Primer Cultivo
                   </button>
                 </div>
               ) : filteredCultivations.length === 0 ? (
-                <div className="bg-[#0F0F0F] rounded-[32px] p-10 border border-zinc-800 text-center space-y-3">
-                  <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-400 flex items-center justify-center mx-auto">
+                <div className="bg-white rounded-[32px] p-10 border border-[#EFE3CF] text-center space-y-3 shadow-xs">
+                  <div className="w-12 h-12 rounded-2xl bg-[#FAF2E1] border border-[#EFE3CF] text-[#9887A2] flex items-center justify-center mx-auto">
                     <SlidersHorizontal className="w-6 h-6" />
                   </div>
-                  <h3 className="font-bold text-white text-base">No hay cultivos que coincidan</h3>
-                  <p className="text-xs text-zinc-400 max-w-sm mx-auto">
+                  <h3 className="font-bold text-[#29202F] text-base">No hay cultivos que coincidan</h3>
+                  <p className="text-xs text-[#6E5D77] max-w-sm mx-auto">
                     No encontramos plantas activas con el filtro seleccionado
-                    {stageFilter !== 'all' && <> (etapa: <strong className="text-zinc-200 capitalize">{stageFilter}</strong>)</>}
-                    {cultivationSearchQuery && <> y término &quot;<strong className="text-zinc-200">{cultivationSearchQuery}</strong>&quot;</>}.
+                    {stageFilter !== 'all' && <> (etapa: <strong className="text-[#29202F] capitalize">{stageFilter}</strong>)</>}
+                    {cultivationSearchQuery && <> y término &quot;<strong className="text-[#29202F]">{cultivationSearchQuery}</strong>&quot;</>}.
                   </p>
                   <button
                     type="button"
@@ -643,7 +642,7 @@ export default function App() {
                       setStageFilter('all');
                       setCultivationSearchQuery('');
                     }}
-                    className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white font-semibold text-xs transition-colors cursor-pointer inline-flex items-center gap-2"
+                    className="px-4 py-2 rounded-xl bg-[#FAF2E1] hover:bg-[#EFE3CF] text-[#29202F] font-semibold text-xs transition-colors cursor-pointer inline-flex items-center gap-2"
                   >
                     Mostrar todos los cultivos
                   </button>
