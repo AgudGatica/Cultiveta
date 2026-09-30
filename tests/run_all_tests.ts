@@ -58,6 +58,13 @@ const suites: SuiteConfig[] = [
     expectedTests: 3,
   },
   {
+    id: 'sync_hardenings',
+    name: 'Hardenings: Limpieza de timers en stopAutoSync, consecutiveStallCount, scheduler prioritario y evaluador Storage',
+    category: 'mocks',
+    file: 'tests/sync_hardenings.test.ts',
+    expectedTests: 4,
+  },
+  {
     id: 'component_gallery_real',
     name: 'JSDOM: Pruebas de Componentes con React act y Binarios Reales JPEG/PNG',
     category: 'jsdom',

@@ -43,6 +43,7 @@ export interface QueuedOfflinePhoto {
   deletionPending?: boolean; // Intención duradera de borrado persistente en IndexedDB
   nextRetryAt?: number; // Timestamp ms antes del cual no debe reintentarse automáticamente (backoff)
   requiresIntervention?: boolean; // Errores no transitorios (permisos/autenticación) que exigen reactivación explícita
+  consecutiveStallCount?: number; // Contador específico de bloqueos consecutivos por inactividad de red/watchdog
   createdAt: string;
   updatedAt?: string;
 }
@@ -59,6 +60,7 @@ export interface PhotoDiagnosticInfo {
   lastProgressAt?: string;
   elapsedSeconds?: number;
   retryCount: number;
+  consecutiveStallCount?: number;
   lastErrorCode?: string;
   lastError?: string;
   effectiveProjectId: string;
@@ -149,7 +151,16 @@ const activeFirestoreSaves = new Map<
 >();
 
 // Temporizadores de despertar para reintentos con backoff exponencial
-const activeBackoffTimers = new Map<string, ReturnType<typeof setTimeout>>();
+interface BackoffTimerEntry {
+  timer: ReturnType<typeof setTimeout>;
+  targetTime: number;
+}
+const activeBackoffTimers = new Map<string, BackoffTimerEntry>();
+
+export function getActiveBackoffTimerForTesting(userId: string): { targetTime: number } | undefined {
+  const entry = activeBackoffTimers.get(userId);
+  return entry ? { targetTime: entry.targetTime } : undefined;
+}
 
 // Control de generaciones de sesión para distinguir salir y volver a entrar con la misma cuenta
 let globalSessionGeneration = 0;
@@ -229,7 +240,7 @@ export function resetPhotoQueueAdapters(): void {
 }
 
 export function resetQueueStateForTesting(): void {
-  activeBackoffTimers.forEach((t) => clearTimeout(t));
+  activeBackoffTimers.forEach((entry) => clearTimeout(entry.timer));
   activeBackoffTimers.clear();
   activeUploadTasks.clear();
   activeHeartbeats.forEach((int) => clearInterval(int));
@@ -342,6 +353,7 @@ function normalizeRecord(raw: any): QueuedOfflinePhoto {
     deletionPending: Boolean(raw.deletionPending),
     nextRetryAt: typeof raw.nextRetryAt === 'number' ? raw.nextRetryAt : undefined,
     requiresIntervention: Boolean(raw.requiresIntervention),
+    consecutiveStallCount: typeof raw.consecutiveStallCount === 'number' ? raw.consecutiveStallCount : 0,
     createdAt: raw.createdAt || new Date().toISOString(),
     updatedAt: raw.updatedAt,
   };
@@ -1160,6 +1172,7 @@ export const photoOfflineQueue = {
     item.lockOwner = undefined;
     item.nextRetryAt = undefined;
     item.requiresIntervention = false;
+    item.consecutiveStallCount = 0;
     item.lastError = undefined;
     item.lastErrorCode = undefined;
     await this.updateItem(item);
@@ -1360,19 +1373,35 @@ export const photoOfflineQueue = {
 
   /**
    * Programa el despertar asíncrono de la cola de sincronización una vez alcanzado nextRetryAt.
-   * Evita esperar pasivamente al intervalo global de 45 segundos y previene timers duplicados.
+   * Mantiene estrictamente el nextRetryAt MÁS PRÓXIMO por usuario: un retry posterior para un
+   * momento más lejano nunca reemplaza un temporizador ya programado para antes.
    */
   _scheduleBackoffWakeup(nextRetryAt: number, targetUserId: string): void {
-    const delay = Math.max(50, nextRetryAt - Date.now());
+    const now = Date.now();
     const existing = activeBackoffTimers.get(targetUserId);
-    if (existing) {
-      clearTimeout(existing);
+
+    // Si ya existe un timer programado para un momento anterior o igual al nuevo nextRetryAt,
+    // y dicho timer aún está vigente en el futuro, se conserva el existente para despertar antes.
+    if (existing && existing.targetTime <= nextRetryAt && existing.targetTime > now) {
+      return;
     }
+
+    // Si el nuevo nextRetryAt es anterior al existente (o no existía timer previo),
+    // se cancela el anterior y se programa el despertar más temprano.
+    if (existing) {
+      clearTimeout(existing.timer);
+    }
+
+    const delay = Math.max(50, nextRetryAt - now);
     const timer = setTimeout(() => {
       activeBackoffTimers.delete(targetUserId);
       this.triggerProcessing(targetUserId);
     }, delay);
-    activeBackoffTimers.set(targetUserId, timer);
+
+    activeBackoffTimers.set(targetUserId, {
+      timer,
+      targetTime: nextRetryAt,
+    });
   },
 
   /**
@@ -1837,6 +1866,10 @@ export const photoOfflineQueue = {
         if (snapshot.bytesTransferred > lastBytes) {
           lastBytes = snapshot.bytesTransferred;
           lastProgressTimestamp = now;
+          // Resetear contador de stalls consecutivos al existir progreso real de bytes
+          if (item.consecutiveStallCount && item.consecutiveStallCount > 0) {
+            item.consecutiveStallCount = 0;
+          }
         }
 
         const percent =
@@ -1950,30 +1983,35 @@ export const photoOfflineQueue = {
           return { status: 'network_offline' };
         }
         if (cancelReason === 'stalled') {
-          const newRetryCount = (item.retryCount || 0) + 1;
-          item.retryCount = newRetryCount;
+          // retryCount continúa representando intentos generales
+          item.retryCount = (item.retryCount || 0) + 1;
+
+          // consecutiveStallCount cuenta EXCLUSIVAMENTE estancamientos consecutivos
+          const stallCount = (item.consecutiveStallCount || 0) + 1;
+          item.consecutiveStallCount = stallCount;
+
           item.lockUntil = undefined;
           item.lockOwner = undefined;
           item.lastErrorCode = 'upload_stalled';
           item.lastErrorAt = new Date().toISOString();
 
-          // Comprobar si excedió el límite de bloqueos consecutivos sin avance
-          if (newRetryCount >= currentWatchdogConfig.maxConsecutiveStalls) {
+          // maxConsecutiveStalls evalúa EXCLUSIVAMENTE consecutiveStallCount
+          if (stallCount >= currentWatchdogConfig.maxConsecutiveStalls) {
             console.warn(
-              `[OfflineSync] Foto ${item.id} estancada ${newRetryCount} veces consecutivas. Requiere intervención explícita.`
+              `[OfflineSync] Foto ${item.id} estancada ${stallCount} veces consecutivas. Requiere intervención explícita.`
             );
             item.status = 'failed';
             item.requiresIntervention = true;
             item.nextRetryAt = undefined;
-            item.lastError = `La subida se estancó ${newRetryCount} veces consecutivas sin transferir bytes. Requiere intervención o reintento manual.`;
+            item.lastError = `La subida se estancó ${stallCount} veces consecutivas sin transferir bytes. Requiere intervención o reintento manual.`;
           } else {
-            const delayMs = calculateRetryDelayMs(newRetryCount);
+            const delayMs = calculateRetryDelayMs(stallCount);
             const nextRetryAt = Date.now() + delayMs;
             item.nextRetryAt = nextRetryAt;
             item.status = typeof navigator !== 'undefined' && navigator.onLine === false ? 'waiting_network' : 'failed';
-            item.lastError = `La subida se estancó sin avance de bytes; reprogramada con espera de ${Math.round(delayMs / 1000)}s (intento ${newRetryCount}).`;
+            item.lastError = `La subida se estancó sin avance de bytes; reprogramada con espera de ${Math.round(delayMs / 1000)}s (estancamiento consecutivo ${stallCount}).`;
             console.warn(
-              `[OfflineSync] Subida de foto ${item.id} estancada en red. Incrementado retryCount a ${newRetryCount}, próximo reintento en ${delayMs}ms.`
+              `[OfflineSync] Subida de foto ${item.id} estancada en red. Incrementado consecutiveStallCount a ${stallCount}, próximo reintento en ${delayMs}ms.`
             );
             this._scheduleBackoffWakeup(nextRetryAt, targetUserId);
           }
@@ -2358,6 +2396,11 @@ export const photoOfflineQueue = {
     // Detener todos los latidos
     activeHeartbeats.forEach((int) => clearInterval(int));
     activeHeartbeats.clear();
+
+    // Cancelar y limpiar todos los temporizadores de despertar de backoff para evitar
+    // que un retry de una sesión cerrada despierte posteriormente y procese el UID anterior
+    activeBackoffTimers.forEach((entry) => clearTimeout(entry.timer));
+    activeBackoffTimers.clear();
 
     autoSyncUserId = null;
     console.log('[OfflineSync] 🔴 AutoSync detenido por completo.');

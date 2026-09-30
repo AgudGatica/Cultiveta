@@ -167,17 +167,33 @@ export async function runFirebaseStorageRealE2E(): Promise<{ passed: number; fai
       });
       uploadedToStorage = true;
     } catch (uploadErr: any) {
-      // Si el bucket no está aprovisionado o facturación no habilitada en este proyecto de prueba
-      if (
-        uploadErr?.code === 'storage/unknown' ||
-        uploadErr?.code === 'storage/bucket-not-found' ||
-        uploadErr?.message?.includes('bucket does not exist') ||
-        uploadErr?.status_ === 404
-      ) {
-        console.warn('  ⚠️ [OMITIDA] El bucket de Firebase Storage no está aprovisionado en este proyecto de prueba.');
-        console.warn(`    Detalle: ${uploadErr?.message || uploadErr?.code}`);
+      const errCode = uploadErr?.code;
+      const status = uploadErr?.status_;
+      const msg = (uploadErr?.message || '').toLowerCase();
+      const srvResp = (
+        uploadErr?.serverResponse ||
+        uploadErr?.customData?.serverResponse ||
+        ''
+      ).toLowerCase();
+
+      // Evidencia concreta de bucket no aprovisionado, facturación inactiva o 404 de recurso ausente
+      const hasConcreteEvidence =
+        errCode === 'storage/bucket-not-found' ||
+        status === 404 ||
+        msg.includes('bucket does not exist') ||
+        msg.includes('billing') ||
+        srvResp.includes('bucket does not exist') ||
+        srvResp.includes('billing') ||
+        srvResp.includes('not found');
+
+      if (hasConcreteEvidence) {
+        console.warn('  ⚠️ [OMITIDA] Evidencia concreta de bucket no aprovisionado o facturación deshabilitada en este proyecto de prueba.');
+        console.warn(`    Código: ${errCode}, Status HTTP: ${status}, Detalle: ${uploadErr?.message || errCode}`);
         return { passed: 0, failed: 0, skipped: 1 };
       }
+
+      // Un storage/unknown genérico sin evidencia concreta de 404/billing/bucket-not-found debe FALLAR la prueba
+      console.error('  ✗ [FALLÓ] Error inesperado en Storage (no atribuible a bucket no aprovisionado ni facturación):', uploadErr);
       throw uploadErr;
     }
 
