@@ -148,8 +148,8 @@ export async function runFirebaseLiveCheck(): Promise<{ passed: number; failed: 
 
 // Ejecución directa si se invoca por CLI
 if (process.argv[1]?.endsWith('firebase_live_check.test.ts')) {
-  runFirebaseLiveCheck().then(({ failed }) => {
-    process.exit(failed > 0 ? 1 : 0);
+  runFirebaseLiveCheck().then(({ failed, skipped }) => {
+    process.exit(failed > 0 ? 1 : skipped > 0 ? 2 : 0);
   }).catch((e) => {
     console.error('Error fatal en chequeo de Firebase:', e);
     process.exit(1);

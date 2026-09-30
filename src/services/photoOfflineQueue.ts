@@ -144,6 +144,9 @@ const sessionSyncPromises = new Map<string, Promise<PhotoSyncResult>>();
 const activeUploadWorkers = new Map<string, Promise<void>>();
 const uploadWakeTriggers = new Map<string, () => void>();
 
+// Temporizadores de retroceso programado para despertar el scheduler cerca de nextRetryAt
+const scheduledBackoffTimers = new Map<string, { timer: ReturnType<typeof setTimeout>; targetTime: number }>();
+
 // Colas de confirmación remota por usuario
 const confirmationQueues = new Map<string, QueuedOfflinePhoto[]>();
 const confirmationCount = new Map<string, number>();
@@ -1322,6 +1325,35 @@ export const photoOfflineQueue = {
   },
 
   /**
+   * Planifica un despertar automático cerca de la fecha del próximo reintento (nextRetryAt).
+   * Evita esperar innecesariamente los 45 segundos del intervalo global de autoSync,
+   * sin crear temporizadores duplicados ni reintentos agresivos.
+   */
+  _scheduleBackoffWakeup(targetUserId: string, nextRetryAt: number): void {
+    if (!targetUserId || !nextRetryAt) return;
+    const now = Date.now();
+    const delayMs = Math.max(500, nextRetryAt - now);
+
+    const existing = scheduledBackoffTimers.get(targetUserId);
+    if (existing) {
+      // Si el temporizador existente ya se ejecutará antes o casi al mismo tiempo, mantenerlo
+      if (existing.targetTime <= nextRetryAt + 1000) {
+        return;
+      }
+      clearTimeout(existing.timer);
+    }
+
+    const timer = setTimeout(() => {
+      scheduledBackoffTimers.delete(targetUserId);
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+      if (auth.currentUser && auth.currentUser.uid !== targetUserId) return;
+      this.triggerProcessing(targetUserId);
+    }, delayMs);
+
+    scheduledBackoffTimers.set(targetUserId, { timer, targetTime: nextRetryAt });
+  },
+
+  /**
    * Obtiene la siguiente tarea elegible para subida a Storage o confirmación remota.
    * Excluye elementos con espera programada activa (backoff) o errores de permisos que requieren intervención.
    */
@@ -1895,6 +1927,7 @@ export const photoOfflineQueue = {
         item.requiresIntervention = false;
         const delayMs = calculateRetryDelayMs(item.retryCount);
         item.nextRetryAt = Date.now() + delayMs;
+        this._scheduleBackoffWakeup(targetUserId, item.nextRetryAt);
       }
 
       await this.updateItem(item);
@@ -2026,6 +2059,7 @@ export const photoOfflineQueue = {
         item.requiresIntervention = false;
         const delayMs = calculateRetryDelayMs(item.retryCount);
         item.nextRetryAt = Date.now() + delayMs;
+        this._scheduleBackoffWakeup(targetUserId, item.nextRetryAt);
       }
 
       await this.updateItem(item);

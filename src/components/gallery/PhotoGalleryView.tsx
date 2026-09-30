@@ -88,14 +88,9 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
     };
   }, [cultivation.id, cultivation.userId]);
 
-  const handleManualSync = async () => {
-    if (isSyncing) return;
-    try {
-      setIsSyncing(true);
-      await photoOfflineQueue.syncPendingPhotos(cultivation.userId);
-    } finally {
-      setIsSyncing(false);
-    }
+  const handleManualSync = () => {
+    // Dispara/reaviva el procesamiento asíncrono y devuelve inmediatamente el control de la interfaz
+    photoOfflineQueue.triggerProcessing(cultivation.userId);
   };
 
   const handleRetryPhoto = async (photoId: string) => {

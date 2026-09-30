@@ -3,6 +3,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInAnonymously,
+  signInWithCustomToken,
   signOut,
   sendPasswordResetEmail,
   onAuthStateChanged,
@@ -132,6 +133,19 @@ export const authService = {
       localStorage.setItem('cultiveta_last_user_id', cred.user.uid);
     }
     await this.syncUserProfile(cred.user, 'Cultivador Invitado');
+    return cred.user;
+  },
+
+  /**
+   * Autenticación segura mediante token personalizado (Custom Token) emitido por Firebase Admin.
+   * Utilizado para entornos de prueba y sesiones autenticadas directas.
+   */
+  async loginWithCustomToken(token: string): Promise<User> {
+    const cred = await signInWithCustomToken(auth, token);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('cultiveta_last_user_id', cred.user.uid);
+    }
+    await this.syncUserProfile(cred.user, 'Cultivador E2E');
     return cred.user;
   },
 
@@ -286,3 +300,7 @@ export const authService = {
     }
   },
 };
+
+if (typeof window !== 'undefined') {
+  (window as any).__cultivetaAuth = authService;
+}

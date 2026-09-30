@@ -1,0 +1,34 @@
+rules_version = '2';
+
+// Reglas de seguridad para Firebase Storage de Cultiveta
+// Restringe el acceso exclusivamente a usuarios autenticados para sus propios cultivos y evidencias
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Evidencias fotográficas del cultivo botánico
+    // Ruta canónica: users/{userId}/cultivations/{cultivationId}/photos/{photoId}
+    match /users/{userId}/cultivations/{cultivationId}/photos/{photoId} {
+      // Lectura permitida exclusivamente al propietario autenticado
+      allow read: if request.auth != null && request.auth.uid == userId;
+
+      // Creación/subida: propietario autenticado, tamaño máximo 15 MB, tipo MIME permitido
+      allow create: if request.auth != null 
+                    && request.auth.uid == userId
+                    && request.resource.size < 15 * 1024 * 1024
+                    && request.resource.contentType.matches('image/(jpeg|png|webp)');
+
+      // Actualización: propietario autenticado, tamaño máximo 15 MB, tipo MIME permitido
+      allow update: if request.auth != null 
+                    && request.auth.uid == userId
+                    && request.resource.size < 15 * 1024 * 1024
+                    && request.resource.contentType.matches('image/(jpeg|png|webp)');
+
+      // Eliminación permitida exclusivamente al propietario autenticado
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Denegación por defecto para cualquier otra ruta no autorizada
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

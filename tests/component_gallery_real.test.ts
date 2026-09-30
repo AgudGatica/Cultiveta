@@ -1,18 +1,20 @@
 /**
  * tests/component_gallery_real.test.ts
  * 
- * SUITE DE PRUEBAS REALES DE COMPONENTES Y NAVEGADOR
+ * SUITE DE PRUEBAS DE COMPONENTES EN JSDOM (ENTORNO EMULADO JSDOM + REACT ACT)
  * 
- * Verifica el ciclo de vida visual completo en el DOM utilizando JSDOM, React DOM (createRoot / act)
- * y binarios reales válidos de imágenes JPEG y PNG:
+ * Clasificación: Prueba de componentes en JSDOM (no navegador real).
+ * Simula el DOM y la interacción de componentes utilizando React Testing (createRoot / act)
+ * y binarios reales válidos de imágenes JPEG y PNG.
  * 
  * 1. Seleccionar la imagen y guardarla a través de PhotoUploadModal.
  * 2. Cerrar el modal y comprobar que la miniatura sigue visible y renderizada en el DOM.
  * 3. Ampliar la foto en pantalla completa mediante PhotoLightboxModal.
  * 4. Simular recarga de página conservando IndexedDB y verificar recuperación física de la imagen pendiente.
- * 5. Mantener una confirmación de Firestore (setDoc) retenida y agregar una segunda foto sin bloqueo.
- * 6. Mostrar claramente "Pendiente de confirmación" en el DOM sin bloquear acciones de pantalla ni anunciar éxito.
- * 7. Actualizar el estado en el DOM cuando finalmente confirme el servidor ("Sincronizada").
+ * 5. Mantener confirmación de Firestore (setDoc) retenida, hacer CLICK REAL en "Sincronizar ahora",
+ *    y verificar que el botón vuelve a estar disponible inmediatamente sin esperar setDoc.
+ * 6. Agregar segunda foto sin bloqueo mientras la primera espera confirmación.
+ * 7. Mostrar "Pendiente de confirmación" sin anunciar éxito prematuro, y confirmar al final.
  */
 
 import { JSDOM } from 'jsdom';
@@ -454,10 +456,34 @@ export async function runComponentGalleryRealTests(): Promise<{ passed: number; 
         throw new Error('La tarjeta no debe mostrar "Sincronizada" antes de que confirme el servidor.');
       }
 
-      // Comprobar que los botones de interacción de la pantalla no están bloqueados
+      // Comprobar e interactuar con el botón manual de sincronización
       const manualSyncBtn = container.querySelector('#gallery-manual-sync-btn') as HTMLButtonElement | null;
-      if (manualSyncBtn && manualSyncBtn.disabled) {
-        throw new Error('El botón de sincronización manual no debe quedar deshabilitado indefinidamente.');
+      if (!manualSyncBtn) {
+        throw new Error('El botón de sincronización manual (#gallery-manual-sync-btn) no existe en el DOM.');
+      }
+      if (!manualSyncBtn.textContent?.includes('Sincronizar ahora')) {
+        throw new Error(`Se esperaba texto "Sincronizar ahora" en el botón. Obtenido: "${manualSyncBtn.textContent}"`);
+      }
+
+      // HACE CLICK REALMENTE en "Sincronizar ahora" mientras setDoc de Foto A está retenido
+      await act(async () => {
+        manualSyncBtn.click();
+        await sleep(30);
+      });
+
+      // Verificar que el botón vuelve a estar disponible inmediatamente sin esperar a que setDoc termine
+      if (manualSyncBtn.disabled) {
+        throw new Error('El botón de sincronización manual quedó deshabilitado esperando que setDoc termine.');
+      }
+
+      // Verificar que NO anuncia éxito ("Sincronizada") antes de tiempo tras el clic
+      const cardAAfterClick = container.querySelector(`#photo-card-${photoA.id}`);
+      const textAfterClick = cardAAfterClick?.textContent || '';
+      if (!textAfterClick.includes('Pendiente de confirmación')) {
+        throw new Error(`La tarjeta debía mantener "Pendiente de confirmación" tras clic manual. Obtenido: "${textAfterClick}"`);
+      }
+      if (textAfterClick.includes('Sincronizada')) {
+        throw new Error('La tarjeta no debe anunciar éxito ("Sincronizada") antes de la confirmación real del servidor.');
       }
 
       // 3. Mientras A espera confirmación de Firestore, agregar Foto B (PNG real) sin bloqueo
