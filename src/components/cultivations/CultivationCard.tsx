@@ -94,14 +94,18 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
     return null;
   }, [latestWatering]);
 
+  const tempVal = (latestEnv as any)?.temperatureC ?? (latestEnv as any)?.temperature ?? null;
+  const humVal = (latestEnv as any)?.humidityPct ?? (latestEnv as any)?.humidity ?? null;
+  const vpdVal = (latestEnv as any)?.vpdKPa ?? (latestEnv as any)?.vpd ?? null;
+  const volumeVal = (latestWatering as any)?.volumeLiters ?? (latestWatering as any)?.amountLiters ?? null;
+  const phVal = (latestWatering as any)?.phIn ?? (latestWatering as any)?.ph ?? null;
+  const ecVal = (latestWatering as any)?.ecIn ?? (latestWatering as any)?.ec ?? null;
+
   // Análisis de estado único comprensible
   const isWateringUrgent = daysSinceWatering !== null && daysSinceWatering >= (isFlowering ? 3 : 4);
   const isEnvAlert =
-    latestEnv &&
-    (latestEnv.temperature < 17 ||
-      latestEnv.temperature > 31 ||
-      latestEnv.humidity < 35 ||
-      latestEnv.humidity > 75);
+    tempVal !== null &&
+    (tempVal < 17 || tempVal > 31 || (humVal !== null && (humVal < 35 || humVal > 75)));
 
   let overallStatus: {
     label: string;
@@ -129,7 +133,7 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
     overallStatus = {
       label: 'Revisar ambiente 🌡️',
       isHealthy: false,
-      hint: `${latestEnv?.temperature}°C · ${latestEnv?.humidity}% HR`,
+      hint: `${tempVal}°C · ${humVal}% HR`,
       badgeBg: 'bg-[#EB7864]/15',
       textColor: 'text-[#EB7864]',
     };
@@ -223,21 +227,21 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
               <div>
                 <span className="text-[#6E5D77] block">Ambiente:</span>
                 <span className="font-bold">
-                  {latestEnv ? `${latestEnv.temperature}°C · ${latestEnv.humidity}% HR` : 'Sin registros'}
+                  {tempVal !== null && humVal !== null ? `${tempVal}°C · ${humVal}% HR` : 'Sin registros'}
                 </span>
-                {latestEnv?.vpd !== undefined && (
-                  <span className="text-[10px] text-[#6E5D77] block">VPD: {latestEnv.vpd} kPa</span>
+                {vpdVal !== null && (
+                  <span className="text-[10px] text-[#6E5D77] block">VPD: {vpdVal} kPa</span>
                 )}
               </div>
               <div>
                 <span className="text-[#6E5D77] block">Último riego:</span>
                 <span className="font-bold">
                   {latestWatering
-                    ? `${daysSinceWatering === 0 ? 'Hoy' : daysSinceWatering === 1 ? 'Ayer' : `Hace ${daysSinceWatering}d`} · ${latestWatering.amountLiters}L`
+                    ? `${daysSinceWatering === 0 ? 'Hoy' : daysSinceWatering === 1 ? 'Ayer' : `Hace ${daysSinceWatering}d`} · ${volumeVal || 1.5}L`
                     : 'Sin riegos'}
                 </span>
-                {latestWatering?.ph !== undefined && (
-                  <span className="text-[10px] text-[#6E5D77] block">pH {latestWatering.ph} · EC {latestWatering.ec || '-'}</span>
+                {phVal !== null && (
+                  <span className="text-[10px] text-[#6E5D77] block">pH {phVal} · EC {ecVal || '-'}</span>
                 )}
               </div>
             </div>

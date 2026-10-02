@@ -290,26 +290,26 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
     return (
       <div
         id="flowering-progress-empty-section"
-        className="bg-[#0F0F0F] rounded-[32px] p-6 sm:p-7 border border-zinc-800 shadow-xl relative overflow-hidden space-y-4"
+        className="bg-white rounded-[32px] p-6 sm:p-7 border border-[#EFE3CF] shadow-xs relative overflow-hidden space-y-4"
       >
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/20 flex items-center justify-center shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-[#EB7864]/15 text-[#EB7864] border border-[#EB7864]/30 flex items-center justify-center shrink-0">
               <Flower2 className="w-6 h-6 stroke-[2]" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-rose-400">
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#EB7864]">
                   Fenología Reproductiva
                 </span>
-                <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 font-mono text-[10px]">
+                <span className="px-2 py-0.5 rounded-full bg-[#FAF2E1] text-[#6E5D77] text-[10px] font-semibold">
                   0 en Floración
                 </span>
               </div>
-              <h3 className="text-base sm:text-lg font-bold text-white mt-0.5">
+              <h3 className="text-base sm:text-lg font-extrabold text-[#29202F] mt-0.5">
                 Avance Estimado de la Etapa de Floración
               </h3>
-              <p className="text-xs text-zinc-400 mt-0.5">
+              <p className="text-xs text-[#6E5D77] mt-0.5">
                 Calcula el progreso porcentual comparando los días transcurridos contra la duración típica de la genética.
               </p>
             </div>
@@ -319,21 +319,21 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
             <button
               type="button"
               onClick={() => onSelectCultivation(nextVegetativeCrop)}
-              className="px-4 py-2 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer shrink-0"
+              className="px-4 py-2 rounded-2xl bg-[#FFFDF7] hover:bg-[#FAF2E1] text-[#29202F] border border-[#EFE3CF] text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer shrink-0"
             >
               <span>Ver {nextVegetativeCrop.name} ({nextVegetativeCrop.currentStage})</span>
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-4 h-4 text-[#9887A2]" />
             </button>
           )}
         </div>
 
-        <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-800/80 text-xs text-zinc-400 flex items-start gap-3.5">
-          <Info className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
+        <div className="p-5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#6E5D77] flex items-start gap-3.5">
+          <Info className="w-5 h-5 text-[#F3C843] shrink-0 mt-0.5" />
           <div className="space-y-1">
-            <p className="text-zinc-300 font-medium">
+            <p className="text-[#29202F] font-bold">
               Actualmente no tienes carpas en etapa de <strong>Floración</strong> o <strong>Prefloración</strong>.
             </p>
-            <p className="text-zinc-500 leading-relaxed">
+            <p className="text-[#6E5D77] leading-relaxed">
               En cuanto cambies el fotoperiodo a 12/12 o tu cultivo pase a floración, este módulo calculará en tiempo real
               el porcentaje de avance de cogollos, la semana floral actual y la proyección exacta de cosecha de acuerdo a los días declarados por el banco de semillas de tu genética.
             </p>
@@ -346,30 +346,27 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
   return (
     <div
       id="flowering-progress-section"
-      className="bg-[#0F0F0F] rounded-[32px] p-6 sm:p-8 border border-zinc-800 shadow-xl relative overflow-hidden space-y-6 animate-fade-in-up"
+      className="bg-white rounded-[32px] p-6 sm:p-8 border border-[#EFE3CF] shadow-xs relative overflow-hidden space-y-6 animate-fade-in-up text-[#29202F]"
     >
-      {/* Halo ambiental sutil en tono magenta/ámbar */}
-      <div className="absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-rose-500/10 via-purple-500/5 to-transparent rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
-
       {/* Header superior: Título, insignias y selector de cultivo si hay más de 1 en flora */}
-      <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-zinc-800/80">
+      <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-[#EFE3CF]">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-rose-500/20 to-purple-500/20 text-rose-400 border border-rose-500/30 flex items-center justify-center shrink-0 shadow-sm shadow-rose-950/50">
-            <Flower2 className="w-6 h-6 stroke-[2.2] animate-pulse" />
+          <div className="w-12 h-12 rounded-2xl bg-[#EB7864]/15 text-[#EB7864] border border-[#EB7864]/30 flex items-center justify-center shrink-0">
+            <Flower2 className="w-6 h-6 stroke-[2.2]" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-rose-400">
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#EB7864]">
                 Monitoreo Fenológico Floral
               </span>
-              <span className="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40 font-mono text-[10px] font-bold">
+              <span className="px-2 py-0.5 rounded-full bg-[#EB7864]/15 text-[#EB7864] border border-[#EB7864]/30 text-[10px] font-bold">
                 {analysis.currentWeekNumber}ª SEMANA
               </span>
             </div>
-            <h2 className="text-lg sm:text-xl font-bold text-white mt-0.5 flex items-center gap-2">
+            <h2 className="text-lg sm:text-xl font-extrabold text-[#29202F] mt-0.5 flex items-center gap-2">
               <span>Avance Estimado de Floración</span>
             </h2>
-            <p className="text-xs text-zinc-400 mt-0.5">
+            <p className="text-xs text-[#6E5D77] mt-0.5">
               Comparativa de días transcurridos vs duración típica de la genética seleccionada
             </p>
           </div>
@@ -377,8 +374,8 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
 
         {/* Selector de carpas en floración (si hay múltiples cultivos florando) */}
         {floweringCrops.length > 1 ? (
-          <div className="flex items-center gap-1.5 bg-zinc-900/90 p-1 rounded-2xl border border-zinc-800 shrink-0">
-            <span className="text-[10px] font-mono font-semibold text-zinc-400 px-2">Carpa:</span>
+          <div className="flex items-center gap-1.5 bg-[#FFFDF7] p-1 rounded-2xl border border-[#EFE3CF] shrink-0">
+            <span className="text-[10px] font-semibold text-[#6E5D77] px-2">Carpa:</span>
             {floweringCrops.map((c) => (
               <button
                 key={c.id}
@@ -386,8 +383,8 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
                 onClick={() => setSelectedCropId(c.id)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                   activeCrop.id === c.id
-                    ? 'bg-rose-500 text-white shadow-xs font-bold'
-                    : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+                    ? 'bg-[#EB7864] text-white shadow-xs font-bold'
+                    : 'text-[#6E5D77] hover:text-[#29202F] hover:bg-[#FAF2E1]'
                 }`}
               >
                 {c.name}
@@ -399,55 +396,55 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
             <button
               type="button"
               onClick={() => onSelectCultivation(activeCrop)}
-              className="px-3.5 py-2 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+              className="px-3.5 py-2 rounded-2xl bg-[#FFFDF7] hover:bg-[#FAF2E1] text-[#29202F] border border-[#EFE3CF] text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
             >
               <span>Ver Carpa</span>
-              <ArrowUpRight className="w-3.5 h-3.5 text-zinc-400" />
+              <ArrowUpRight className="w-3.5 h-3.5 text-[#9887A2]" />
             </button>
           </div>
         )}
       </div>
 
       {/* Hero Card de Avance: Visual Progress Bar + Porcentaje + Hitos */}
-      <div className="relative z-10 p-6 rounded-3xl bg-zinc-950/70 border border-zinc-800/90 space-y-6 shadow-inner">
+      <div className="relative z-10 p-6 rounded-3xl bg-[#FFFDF7] border border-[#EFE3CF] space-y-6 shadow-xs">
         {/* Cabecera del Hero con datos clave del cultivo y porcentaje */}
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight">
+              <h3 className="text-xl sm:text-2xl font-black text-[#29202F] tracking-tight">
                 {activeCrop.name}
               </h3>
-              <span className="text-xs text-rose-400 font-semibold px-2 py-0.5 rounded-md bg-rose-500/10 border border-rose-500/20">
+              <span className="text-xs text-[#EB7864] font-semibold px-2 py-0.5 rounded-md bg-[#EB7864]/10 border border-[#EB7864]/20">
                 {analysis.geneticsName}
               </span>
               {analysis.seedBank && (
-                <span className="text-xs text-zinc-400 font-medium">
+                <span className="text-xs text-[#6E5D77] font-medium">
                   · {analysis.seedBank}
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-3 text-xs text-zinc-400 mt-1">
-              <span className="flex items-center gap-1 text-zinc-300 font-mono">
-                <Clock className="w-3.5 h-3.5 text-rose-400" />
+            <div className="flex items-center gap-3 text-xs text-[#6E5D77] mt-1">
+              <span className="flex items-center gap-1 text-[#29202F] font-semibold">
+                <Clock className="w-3.5 h-3.5 text-[#EB7864]" />
                 Día {analysis.floweringDaysElapsed} de floración (Día {analysis.currentDayInWeek} de Sem. {analysis.currentWeekNumber})
               </span>
               <span>•</span>
-              <span className="font-mono text-zinc-400">
+              <span className="text-[#6E5D77]">
                 Objetivo genético: {analysis.typicalFloweringDays} días (~{analysis.typicalFloweringWeeks} semanas)
               </span>
             </div>
           </div>
 
           {/* Gran Callout Numérico de Porcentaje */}
-          <div className="flex items-baseline gap-2 shrink-0 bg-zinc-900/90 px-4 py-2.5 rounded-2xl border border-zinc-800 shadow-sm">
-            <span className="text-3xl sm:text-4xl font-mono font-black text-rose-400 tracking-tight">
+          <div className="flex items-baseline gap-2 shrink-0 bg-white px-4 py-2.5 rounded-2xl border border-[#EFE3CF] shadow-xs">
+            <span className="text-3xl sm:text-4xl font-mono font-black text-[#EB7864] tracking-tight">
               {analysis.progressPercentage}%
             </span>
             <div className="flex flex-col">
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#9887A2]">
                 Avance
               </span>
-              <span className="text-[10px] text-zinc-500 font-medium">
+              <span className="text-[10px] text-[#6E5D77] font-medium">
                 {analysis.daysRemaining === 0 ? 'Completado' : `Faltan ~${analysis.daysRemaining}d`}
               </span>
             </div>

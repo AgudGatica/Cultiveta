@@ -11,11 +11,15 @@ const TEST_CROP: Cultivation = {
   userId: 'user_e2e_chrome_fixture',
   name: 'Carpa Experimental E2E',
   currentStage: 'Floración',
+  stageStartDate: '2026-09-01',
   startDate: '2026-09-01',
   plantCount: 2,
   type: 'Indoor',
+  substrate: { type: 'Tierra', potVolumeLiters: 10, potType: 'Geotextil' },
+  status: 'Óptimo',
   isFinished: false,
   createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
 };
 
 function E2EGalleryApp() {
@@ -25,7 +29,7 @@ function E2EGalleryApp() {
   // Cargar fotos persistidas en IndexedDB para este cultivo
   const loadPhotos = async () => {
     try {
-      const all = await localStore.getItems<PhotoRecord>('photos');
+      const all = await localStore.getItems<PhotoRecord>('photos', TEST_CROP.userId);
       const cropPhotos = all.filter(
         (p) => p.userId === TEST_CROP.userId && p.cultivationId === TEST_CROP.id
       );

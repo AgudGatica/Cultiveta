@@ -6,24 +6,24 @@ export const DashboardSkeleton: React.FC = () => {
       {/* 1. Date Filter Bar Skeleton */}
       <div
         id="skeleton-date-filter"
-        className="skeleton-card bg-[#0F0F0F] rounded-[28px] p-4 sm:p-6 border border-zinc-800/90 shadow-xl space-y-4"
+        className="skeleton-card bg-white rounded-[28px] p-4 sm:p-6 border border-[#EFE3CF] shadow-xs space-y-4"
       >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-800/80">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#EFE3CF]">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl skeleton-shimmer shrink-0"></div>
+            <div className="w-9 h-9 rounded-xl skeleton-shimmer shrink-0" />
             <div className="space-y-1.5">
-              <div className="w-28 h-4 rounded-md skeleton-shimmer"></div>
-              <div className="w-48 h-3 rounded-md skeleton-shimmer"></div>
+              <div className="w-28 h-4 rounded-md skeleton-shimmer" />
+              <div className="w-48 h-3 rounded-md skeleton-shimmer" />
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-44 h-8 rounded-xl skeleton-shimmer"></div>
-            <div className="w-20 h-8 rounded-xl skeleton-shimmer"></div>
+            <div className="w-44 h-8 rounded-xl skeleton-shimmer" />
+            <div className="w-20 h-8 rounded-xl skeleton-shimmer" />
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="w-24 sm:w-28 h-9 rounded-xl skeleton-shimmer"></div>
+            <div key={i} className="w-24 sm:w-28 h-9 rounded-xl skeleton-shimmer" />
           ))}
         </div>
       </div>
@@ -31,23 +31,23 @@ export const DashboardSkeleton: React.FC = () => {
       {/* 2. Upcoming Critical Task Widget Skeleton */}
       <div
         id="skeleton-task-widget"
-        className="skeleton-card bg-[#0F0F0F] rounded-[28px] p-5 sm:p-6 border border-zinc-800/90 shadow-xl relative overflow-hidden"
+        className="skeleton-card bg-white rounded-[28px] p-5 sm:p-6 border border-[#EFE3CF] shadow-xs relative overflow-hidden"
       >
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-2xl skeleton-shimmer shrink-0"></div>
+            <div className="w-12 h-12 rounded-2xl skeleton-shimmer shrink-0" />
             <div className="space-y-2 flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <div className="w-24 h-4 rounded-full skeleton-shimmer"></div>
-                <div className="w-16 h-4 rounded-full skeleton-shimmer"></div>
+                <div className="w-24 h-4 rounded-full skeleton-shimmer" />
+                <div className="w-16 h-4 rounded-full skeleton-shimmer" />
               </div>
-              <div className="w-64 sm:w-80 h-6 rounded-lg skeleton-shimmer"></div>
-              <div className="w-48 sm:w-60 h-3.5 rounded-md skeleton-shimmer"></div>
+              <div className="w-64 sm:w-80 h-6 rounded-lg skeleton-shimmer" />
+              <div className="w-48 sm:w-60 h-3.5 rounded-md skeleton-shimmer" />
             </div>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <div className="w-28 h-10 rounded-2xl skeleton-shimmer"></div>
-            <div className="w-32 h-10 rounded-2xl skeleton-shimmer"></div>
+            <div className="w-28 h-10 rounded-2xl skeleton-shimmer" />
+            <div className="w-32 h-10 rounded-2xl skeleton-shimmer" />
           </div>
         </div>
       </div>
@@ -63,15 +63,15 @@ export const DashboardSkeleton: React.FC = () => {
           <div
             key={card.id}
             id={card.id}
-            className="skeleton-card bg-[#0F0F0F] rounded-[28px] p-5 sm:p-6 border border-zinc-800/90 flex flex-col justify-between h-36 shadow-md"
+            className="skeleton-card bg-white rounded-[28px] p-5 sm:p-6 border border-[#EFE3CF] flex flex-col justify-between h-36 shadow-xs"
           >
             <div className="flex items-center justify-between mb-2">
-              <div className="w-20 sm:w-24 h-3.5 rounded skeleton-shimmer"></div>
-              <div className="w-9 h-9 rounded-xl skeleton-shimmer"></div>
+              <div className="w-20 sm:w-24 h-3.5 rounded skeleton-shimmer" />
+              <div className="w-9 h-9 rounded-xl skeleton-shimmer" />
             </div>
             <div className="space-y-2">
-              <div className="w-16 sm:w-20 h-8 rounded-lg skeleton-shimmer"></div>
-              <div className="w-28 sm:w-32 h-3 rounded skeleton-shimmer"></div>
+              <div className="w-16 sm:w-20 h-8 rounded-lg skeleton-shimmer" />
+              <div className="w-28 sm:w-32 h-3 rounded skeleton-shimmer" />
             </div>
           </div>
         ))}
@@ -80,34 +80,34 @@ export const DashboardSkeleton: React.FC = () => {
       {/* 4. Environmental Progress Historical Chart Skeleton */}
       <div
         id="skeleton-env-chart"
-        className="skeleton-card bg-[#0F0F0F] rounded-[32px] p-6 sm:p-8 border border-zinc-800/90 shadow-xl space-y-6"
+        className="skeleton-card bg-white rounded-[32px] p-6 sm:p-8 border border-[#EFE3CF] shadow-xs space-y-6"
       >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800/80">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#EFE3CF]">
           <div className="space-y-2">
-            <div className="w-32 h-3.5 rounded skeleton-shimmer"></div>
-            <div className="w-56 sm:w-72 h-6 rounded-lg skeleton-shimmer"></div>
-            <div className="w-40 h-3 rounded skeleton-shimmer"></div>
+            <div className="w-32 h-3.5 rounded skeleton-shimmer" />
+            <div className="w-56 sm:w-72 h-6 rounded-lg skeleton-shimmer" />
+            <div className="w-40 h-3 rounded skeleton-shimmer" />
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="w-20 h-7 rounded-xl skeleton-shimmer"></div>
+              <div key={i} className="w-20 h-7 rounded-xl skeleton-shimmer" />
             ))}
           </div>
         </div>
 
         {/* Mock Chart Area with Grid Shimmer */}
-        <div className="h-64 sm:h-72 w-full rounded-2xl bg-zinc-950/60 border border-zinc-800/60 p-4 flex flex-col justify-between relative overflow-hidden">
-          <div className="absolute inset-0 skeleton-shimmer opacity-30"></div>
+        <div className="h-64 sm:h-72 w-full rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] p-4 flex flex-col justify-between relative overflow-hidden">
+          <div className="absolute inset-0 skeleton-shimmer opacity-30" />
           <div className="w-full flex justify-between">
-            <div className="w-10 h-3 rounded skeleton-shimmer"></div>
-            <div className="w-10 h-3 rounded skeleton-shimmer"></div>
+            <div className="w-10 h-3 rounded skeleton-shimmer" />
+            <div className="w-10 h-3 rounded skeleton-shimmer" />
           </div>
-          <div className="w-full h-px bg-zinc-800/50"></div>
-          <div className="w-full h-px bg-zinc-800/50"></div>
-          <div className="w-full h-px bg-zinc-800/50"></div>
+          <div className="w-full h-px bg-[#EFE3CF]" />
+          <div className="w-full h-px bg-[#EFE3CF]" />
+          <div className="w-full h-px bg-[#EFE3CF]" />
           <div className="w-full flex justify-between pt-2">
             {[1, 2, 3, 4, 5, 6].map((k) => (
-              <div key={k} className="w-8 h-3 rounded skeleton-shimmer"></div>
+              <div key={k} className="w-8 h-3 rounded skeleton-shimmer" />
             ))}
           </div>
         </div>
@@ -116,25 +116,25 @@ export const DashboardSkeleton: React.FC = () => {
       {/* 5. AI Agronomic Assistant Box Skeleton */}
       <div
         id="skeleton-ai-box"
-        className="skeleton-card bg-[#0F0F0F] rounded-[32px] p-6 sm:p-8 border border-zinc-800/90 shadow-xl"
+        className="skeleton-card bg-white rounded-[32px] p-6 sm:p-8 border border-[#EFE3CF] shadow-xs"
       >
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5 flex-1">
-            <div className="w-12 h-12 rounded-2xl skeleton-shimmer shrink-0"></div>
+            <div className="w-12 h-12 rounded-2xl skeleton-shimmer shrink-0" />
             <div className="space-y-2 flex-1">
-              <div className="w-36 h-3.5 rounded skeleton-shimmer"></div>
-              <div className="w-60 h-5 rounded-lg skeleton-shimmer"></div>
-              <div className="w-72 h-3 rounded skeleton-shimmer"></div>
+              <div className="w-36 h-3.5 rounded skeleton-shimmer" />
+              <div className="w-60 h-5 rounded-lg skeleton-shimmer" />
+              <div className="w-72 h-3 rounded skeleton-shimmer" />
             </div>
           </div>
-          <div className="w-32 h-10 rounded-2xl skeleton-shimmer shrink-0"></div>
+          <div className="w-32 h-10 rounded-2xl skeleton-shimmer shrink-0" />
         </div>
       </div>
 
       {/* 6. Active Cultivations Grid Skeleton */}
       <div className="space-y-4">
         <div className="flex items-center justify-between px-1">
-          <div className="w-48 h-6 rounded-lg skeleton-shimmer"></div>
+          <div className="w-48 h-6 rounded-lg skeleton-shimmer" />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -142,47 +142,47 @@ export const DashboardSkeleton: React.FC = () => {
             <div
               key={cardIdx}
               id={`skeleton-crop-card-${cardIdx}`}
-              className="skeleton-card bg-[#0F0F0F] rounded-[28px] p-6 border border-zinc-800/90 space-y-4 shadow-xl relative overflow-hidden"
+              className="skeleton-card bg-white rounded-[28px] p-6 border border-[#EFE3CF] space-y-4 shadow-xs relative overflow-hidden"
             >
               {/* Header tags */}
               <div className="flex items-center justify-between">
-                <div className="w-24 h-5 rounded-full skeleton-shimmer"></div>
-                <div className="w-16 h-5 rounded-full skeleton-shimmer"></div>
+                <div className="w-24 h-5 rounded-full skeleton-shimmer" />
+                <div className="w-16 h-5 rounded-full skeleton-shimmer" />
               </div>
 
               {/* Title and subtext */}
               <div className="space-y-2 pt-1">
-                <div className="w-4/5 h-6 rounded-lg skeleton-shimmer"></div>
-                <div className="w-1/2 h-3.5 rounded skeleton-shimmer"></div>
+                <div className="w-4/5 h-6 rounded-lg skeleton-shimmer" />
+                <div className="w-1/2 h-3.5 rounded skeleton-shimmer" />
               </div>
 
               {/* Progress bar */}
               <div className="space-y-1.5 pt-2">
                 <div className="flex justify-between">
-                  <div className="w-16 h-3 rounded skeleton-shimmer"></div>
-                  <div className="w-12 h-3 rounded skeleton-shimmer"></div>
+                  <div className="w-16 h-3 rounded skeleton-shimmer" />
+                  <div className="w-12 h-3 rounded skeleton-shimmer" />
                 </div>
-                <div className="w-full h-2 rounded-full skeleton-shimmer"></div>
+                <div className="w-full h-2 rounded-full skeleton-shimmer" />
               </div>
 
               {/* Parameter 4-matrix */}
               <div className="grid grid-cols-4 gap-2 pt-2">
                 {[1, 2, 3, 4].map((p) => (
-                  <div key={p} className="p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800/80 space-y-1 text-center">
-                    <div className="w-8 h-2.5 rounded skeleton-shimmer mx-auto"></div>
-                    <div className="w-10 h-3.5 rounded skeleton-shimmer mx-auto"></div>
+                  <div key={p} className="p-2.5 rounded-xl bg-[#FAF2E1] border border-[#EFE3CF] space-y-1 text-center">
+                    <div className="w-8 h-2.5 rounded skeleton-shimmer mx-auto" />
+                    <div className="w-10 h-3.5 rounded skeleton-shimmer mx-auto" />
                   </div>
                 ))}
               </div>
 
               {/* Bottom action icons */}
-              <div className="pt-3 border-t border-zinc-800/80 flex items-center justify-between">
+              <div className="pt-3 border-t border-[#EFE3CF] flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-xl skeleton-shimmer"></div>
-                  <div className="w-8 h-8 rounded-xl skeleton-shimmer"></div>
-                  <div className="w-8 h-8 rounded-xl skeleton-shimmer"></div>
+                  <div className="w-8 h-8 rounded-xl skeleton-shimmer" />
+                  <div className="w-8 h-8 rounded-xl skeleton-shimmer" />
+                  <div className="w-8 h-8 rounded-xl skeleton-shimmer" />
                 </div>
-                <div className="w-20 h-8 rounded-xl skeleton-shimmer"></div>
+                <div className="w-20 h-8 rounded-xl skeleton-shimmer" />
               </div>
             </div>
           ))}

@@ -188,50 +188,50 @@ export const DashboardEnvironmentChart: React.FC<DashboardEnvironmentChartProps>
     };
   }, [chartData]);
 
-  // Custom Dark Glassmorphism Tooltip
+  // Custom Warm Organic Tooltip
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-zinc-950/95 backdrop-blur-md p-3.5 rounded-2xl border border-zinc-800 shadow-2xl text-xs space-y-2.5 min-w-[210px] pointer-events-none">
-          <div className="flex items-center justify-between gap-2 border-b border-zinc-800/80 pb-2">
+        <div className="bg-white/95 backdrop-blur-md p-3.5 rounded-2xl border border-[#EFE3CF] shadow-xl text-xs space-y-2.5 min-w-[210px] pointer-events-none text-[#29202F]">
+          <div className="flex items-center justify-between gap-2 border-b border-[#EFE3CF] pb-2">
             <div>
-              <span className="font-bold text-white font-mono block text-xs">{data.displayDate}</span>
-              {data.time && <span className="text-[10px] text-zinc-500 font-mono">{data.time} hs</span>}
+              <span className="font-bold text-[#29202F] block text-xs">{data.displayDate}</span>
+              {data.time && <span className="text-[10px] text-[#9887A2]">{data.time} hs</span>}
             </div>
-            <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20 truncate max-w-[110px]">
+            <span className="text-[10px] font-semibold text-[#6C45C7] bg-[#6C45C7]/10 px-2 py-0.5 rounded-md border border-[#6C45C7]/20 truncate max-w-[110px]">
               {data.cropName}
             </span>
           </div>
 
           <div className="space-y-1.5 pt-0.5">
             {showTemp && data.temp !== undefined && (
-              <div className="flex items-center justify-between text-amber-400">
-                <span className="flex items-center gap-1.5 text-zinc-400">
-                  <Thermometer className="w-3.5 h-3.5 text-amber-400" />
+              <div className="flex items-center justify-between text-[#29202F]">
+                <span className="flex items-center gap-1.5 text-[#6E5D77]">
+                  <Thermometer className="w-3.5 h-3.5 text-[#EB7864]" />
                   Temperatura:
                 </span>
-                <span className="font-mono font-bold text-amber-300">{data.temp} °C</span>
+                <span className="font-bold text-[#EB7864]">{data.temp} °C</span>
               </div>
             )}
 
             {showHumidity && data.humidity !== undefined && (
-              <div className="flex items-center justify-between text-cyan-400">
-                <span className="flex items-center gap-1.5 text-zinc-400">
-                  <Droplets className="w-3.5 h-3.5 text-cyan-400" />
+              <div className="flex items-center justify-between text-[#29202F]">
+                <span className="flex items-center gap-1.5 text-[#6E5D77]">
+                  <Droplets className="w-3.5 h-3.5 text-[#62B95B]" />
                   Humedad:
                 </span>
-                <span className="font-mono font-bold text-cyan-300">{data.humidity} % HR</span>
+                <span className="font-bold text-[#62B95B]">{data.humidity} % HR</span>
               </div>
             )}
 
             {showVpd && data.vpd !== undefined && (
-              <div className="flex items-center justify-between text-purple-400">
-                <span className="flex items-center gap-1.5 text-zinc-400">
-                  <Gauge className="w-3.5 h-3.5 text-purple-400" />
+              <div className="flex items-center justify-between text-[#29202F]">
+                <span className="flex items-center gap-1.5 text-[#6E5D77]">
+                  <Gauge className="w-3.5 h-3.5 text-[#6C45C7]" />
                   Déficit (VPD):
                 </span>
-                <span className="font-mono font-bold text-purple-300">{data.vpd} kPa</span>
+                <span className="font-bold text-[#6C45C7]">{data.vpd} kPa</span>
               </div>
             )}
           </div>
@@ -244,39 +244,35 @@ export const DashboardEnvironmentChart: React.FC<DashboardEnvironmentChartProps>
   return (
     <div
       id="dashboard-environment-chart-card"
-      className="bg-[#0F0F0F] text-white rounded-[32px] p-5 sm:p-7 border border-zinc-800 shadow-xl relative overflow-hidden space-y-6"
+      className="bg-white text-[#29202F] rounded-[32px] p-5 sm:p-7 border border-[#EFE3CF] shadow-xs relative overflow-hidden space-y-6"
     >
-      {/* Background ambient lighting */}
-      <div className="absolute top-0 right-1/4 w-96 h-96 rounded-full bg-emerald-500/5 blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 left-10 w-72 h-72 rounded-full bg-cyan-500/5 blur-3xl pointer-events-none" />
-
       {/* Header section with active crop information & controls */}
-      <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pb-4 border-b border-zinc-800/80">
+      <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pb-4 border-b border-[#EFE3CF]">
         <div>
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-            <div className="p-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <div className="p-1.5 rounded-xl bg-[#62B95B]/15 text-[#62B95B] border border-[#62B95B]/30">
               <Activity className="w-4 h-4" />
             </div>
-            <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-emerald-400">
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#62B95B]">
               Telemetría Botánica
             </span>
 
             {activeCrop && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-zinc-900 text-zinc-300 border border-zinc-800">
-                <Sprout className="w-3 h-3 text-emerald-400" />
-                Cultivo Activo: <strong className="text-white">{activeCrop.name}</strong>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#FAF2E1] text-[#29202F] border border-[#EFE3CF]">
+                <Sprout className="w-3 h-3 text-[#62B95B]" />
+                Cultivo Activo: <strong className="text-[#29202F]">{activeCrop.name}</strong>
                 {activeCrop.currentStage && (
-                  <span className="text-emerald-400/90 ml-0.5">({activeCrop.currentStage})</span>
+                  <span className="text-[#6C45C7] ml-0.5">({activeCrop.currentStage})</span>
                 )}
               </span>
             )}
           </div>
 
-          <h2 className="text-lg sm:text-xl font-extrabold text-white tracking-tight flex items-center gap-2">
+          <h2 className="text-lg sm:text-xl font-extrabold text-[#29202F] tracking-tight flex items-center gap-2">
             Tendencia Ambiental (Últimos 7 Días)
           </h2>
-          <p className="text-xs text-zinc-400 mt-0.5">
-            Curva de temperatura (°C) y humedad relativa (% HR) registrada en &apos;envRecords&apos; para el cultivo activo
+          <p className="text-xs text-[#6E5D77] mt-0.5">
+            Curva de temperatura (°C) y humedad relativa (% HR) registrada para el cultivo activo
           </p>
         </div>
 
@@ -284,26 +280,26 @@ export const DashboardEnvironmentChart: React.FC<DashboardEnvironmentChartProps>
         <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
           {/* Active Cultivations Selector (when multiple active crops exist) */}
           {activeCultivations.length > 1 && (
-            <div className="relative flex items-center bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-2xl text-xs font-semibold hover:border-zinc-700 transition-colors">
+            <div className="relative flex items-center bg-[#FFFDF7] border border-[#EFE3CF] px-3 py-1.5 rounded-2xl text-xs font-semibold hover:border-[#6C45C7] transition-colors">
               <select
                 id="crop-env-filter-select"
                 value={selectedCropId}
                 onChange={(e) => setSelectedCropId(e.target.value)}
-                className="bg-transparent text-zinc-200 outline-none cursor-pointer pr-4 appearance-none text-xs font-medium"
+                className="bg-transparent text-[#29202F] outline-none cursor-pointer pr-4 appearance-none text-xs font-medium"
                 title="Seleccionar cultivo activo para visualizar tendencia"
               >
                 {activeCultivations.map((crop) => (
-                  <option key={crop.id} value={crop.id} className="bg-zinc-900 text-zinc-200">
+                  <option key={crop.id} value={crop.id} className="bg-white text-[#29202F]">
                     🌱 {crop.name} ({crop.currentStage || 'Activo'})
                   </option>
                 ))}
               </select>
-              <ChevronDown className="w-3.5 h-3.5 text-zinc-400 absolute right-2.5 pointer-events-none" />
+              <ChevronDown className="w-3.5 h-3.5 text-[#6E5D77] absolute right-2.5 pointer-events-none" />
             </div>
           )}
 
           {/* Time Range Pills (7D is default) */}
-          <div className="bg-zinc-900 border border-zinc-800 p-1 rounded-2xl flex items-center gap-1 text-xs font-semibold">
+          <div className="bg-[#FFFDF7] border border-[#EFE3CF] p-1 rounded-2xl flex items-center gap-1 text-xs font-semibold">
             {(
               [
                 { key: '7d', label: '7 Días' },
@@ -318,8 +314,8 @@ export const DashboardEnvironmentChart: React.FC<DashboardEnvironmentChartProps>
                 onClick={() => setTimeRange(t.key)}
                 className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${
                   timeRange === t.key
-                    ? 'bg-emerald-500/20 text-emerald-300 font-bold border border-emerald-500/30 shadow-xs'
-                    : 'text-zinc-400 hover:text-zinc-200'
+                    ? 'bg-[#6C45C7] text-white font-bold shadow-xs'
+                    : 'text-[#6E5D77] hover:text-[#29202F]'
                 }`}
               >
                 {t.label}
@@ -334,12 +330,12 @@ export const DashboardEnvironmentChart: React.FC<DashboardEnvironmentChartProps>
               onClick={() => setShowTemp(!showTemp)}
               className={`px-3 py-1.5 rounded-2xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-1.5 ${
                 showTemp
-                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/30 shadow-xs'
-                  : 'bg-zinc-900 text-zinc-500 border-zinc-800 opacity-60'
+                  ? 'bg-[#F3C843]/20 text-[#29202F] border-[#F3C843] shadow-xs'
+                  : 'bg-[#FFFDF7] text-[#9887A2] border-[#EFE3CF] opacity-60'
               }`}
               title="Alternar curva de temperatura"
             >
-              <span className="w-2 h-2 rounded-full bg-amber-400" />
+              <span className="w-2 h-2 rounded-full bg-[#F3C843]" />
               Temp (°C)
             </button>
 
@@ -348,12 +344,12 @@ export const DashboardEnvironmentChart: React.FC<DashboardEnvironmentChartProps>
               onClick={() => setShowHumidity(!showHumidity)}
               className={`px-3 py-1.5 rounded-2xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-1.5 ${
                 showHumidity
-                  ? 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30 shadow-xs'
-                  : 'bg-zinc-900 text-zinc-500 border-zinc-800 opacity-60'
+                  ? 'bg-[#62B95B]/20 text-[#29202F] border-[#62B95B] shadow-xs'
+                  : 'bg-[#FFFDF7] text-[#9887A2] border-[#EFE3CF] opacity-60'
               }`}
               title="Alternar curva de humedad"
             >
-              <span className="w-2 h-2 rounded-full bg-cyan-400" />
+              <span className="w-2 h-2 rounded-full bg-[#62B95B]" />
               Humedad (%)
             </button>
 
@@ -362,12 +358,12 @@ export const DashboardEnvironmentChart: React.FC<DashboardEnvironmentChartProps>
               onClick={() => setShowVpd(!showVpd)}
               className={`px-3 py-1.5 rounded-2xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-1.5 ${
                 showVpd
-                  ? 'bg-purple-500/10 text-purple-300 border-purple-500/30 shadow-xs'
-                  : 'bg-zinc-900 text-zinc-500 border-zinc-800 opacity-60'
+                  ? 'bg-[#6C45C7]/15 text-[#6C45C7] border-[#6C45C7]/40 shadow-xs'
+                  : 'bg-[#FFFDF7] text-[#9887A2] border-[#EFE3CF] opacity-60'
               }`}
               title="Alternar curva de VPD"
             >
-              <span className="w-2 h-2 rounded-full bg-purple-400" />
+              <span className="w-2 h-2 rounded-full bg-[#6C45C7]" />
               VPD
             </button>
           </div>
@@ -378,92 +374,96 @@ export const DashboardEnvironmentChart: React.FC<DashboardEnvironmentChartProps>
       {stats.count > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Average Temperature */}
-          <div className="bg-zinc-900/80 border border-zinc-800/90 rounded-2xl p-3.5 flex flex-col justify-between">
+          <div className="bg-[#FFFDF7] border border-[#EFE3CF] rounded-2xl p-3.5 flex flex-col justify-between">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">
+              <span className="text-[10px] uppercase tracking-wider text-[#9887A2] font-bold">
                 Temp. Promedio (7d)
               </span>
-              <Thermometer className="w-3.5 h-3.5 text-amber-400" />
+              <Thermometer className="w-3.5 h-3.5 text-[#EB7864]" />
             </div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-xl sm:text-2xl font-mono font-bold text-amber-400">
+              <span className="text-xl sm:text-2xl font-black text-[#29202F]">
                 {stats.avgTemp}
               </span>
-              <span className="text-xs text-zinc-400 font-mono">°C</span>
+              <span className="text-xs text-[#6E5D77]">°C</span>
             </div>
-            <div className="text-[10px] text-zinc-500 font-mono mt-1">
+            <div className="text-[10px] text-[#6E5D77] mt-1">
               Rango: {stats.minTemp}°C — {stats.maxTemp}°C
             </div>
           </div>
 
           {/* Average Humidity */}
-          <div className="bg-zinc-900/80 border border-zinc-800/90 rounded-2xl p-3.5 flex flex-col justify-between">
+          <div className="bg-[#FFFDF7] border border-[#EFE3CF] rounded-2xl p-3.5 flex flex-col justify-between">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">
+              <span className="text-[10px] uppercase tracking-wider text-[#9887A2] font-bold">
                 Humedad Promedio (7d)
               </span>
-              <Droplets className="w-3.5 h-3.5 text-cyan-400" />
+              <Droplets className="w-3.5 h-3.5 text-[#62B95B]" />
             </div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-xl sm:text-2xl font-mono font-bold text-cyan-400">
+              <span className="text-xl sm:text-2xl font-black text-[#29202F]">
                 {stats.avgHum}
               </span>
-              <span className="text-xs text-zinc-400 font-mono">% HR</span>
+              <span className="text-xs text-[#6E5D77]">% HR</span>
             </div>
-            <div className="text-[10px] text-zinc-500 font-mono mt-1">
+            <div className="text-[10px] text-[#6E5D77] mt-1">
               Rango: {stats.minHum}% — {stats.maxHum}%
             </div>
           </div>
 
           {/* Estimated VPD or Stability Status */}
-          <div className="bg-zinc-900/80 border border-zinc-800/90 rounded-2xl p-3.5 flex flex-col justify-between">
+          <div className="bg-[#FFFDF7] border border-[#EFE3CF] rounded-2xl p-3.5 flex flex-col justify-between">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">
+              <span className="text-[10px] uppercase tracking-wider text-[#9887A2] font-bold">
                 Estado Agronómico
               </span>
               {stats.isStable ? (
-                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-[#62B95B]" />
               ) : (
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
+                <AlertTriangle className="w-3.5 h-3.5 text-[#EB7864]" />
               )}
             </div>
             <div className="flex items-baseline gap-1.5">
               <span
-                className={`text-base sm:text-lg font-bold truncate ${
-                  stats.isStable ? 'text-emerald-400' : 'text-amber-400'
+                className={`text-base sm:text-lg font-extrabold truncate ${
+                  stats.isStable ? 'text-[#62B95B]' : 'text-[#EB7864]'
                 }`}
               >
                 {stats.isStable ? 'Ambiente Óptimo' : 'Revisar Clima'}
               </span>
             </div>
-            <div className="text-[10px] text-zinc-400 mt-1 truncate">
+            <div className="text-[10px] text-[#6E5D77] mt-1 truncate">
               {stats.avgVpd ? `VPD prom: ${stats.avgVpd} kPa` : 'Temp/Humedad dentro de rango'}
             </div>
           </div>
 
           {/* Sample count & quick action */}
-          <div className="bg-zinc-900/80 border border-zinc-800/90 rounded-2xl p-3.5 flex flex-col justify-between">
+          <div className="bg-[#FFFDF7] border border-[#EFE3CF] rounded-2xl p-3.5 flex flex-col justify-between">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">
+              <span className="text-[10px] uppercase tracking-wider text-[#9887A2] font-bold">
                 Muestras en Período
               </span>
-              <TrendingUp className="w-3.5 h-3.5 text-zinc-400" />
+              <TrendingUp className="w-3.5 h-3.5 text-[#6C45C7]" />
             </div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-xl sm:text-2xl font-mono font-bold text-white">
+              <span className="text-xl sm:text-2xl font-black text-[#29202F]">
                 {stats.count}
               </span>
-              <span className="text-xs text-zinc-400">lecturas</span>
+              <span className="text-xs text-[#6E5D77]">registros</span>
             </div>
-            {onOpenEnvModal && (
+            {onOpenEnvModal ? (
               <button
                 type="button"
                 onClick={() => onOpenEnvModal(activeCrop || undefined)}
-                className="mt-1 text-[11px] font-bold text-emerald-400 hover:text-emerald-300 transition-colors inline-flex items-center gap-1 cursor-pointer"
+                className="mt-1 text-[11px] font-bold text-[#62B95B] hover:underline transition-colors inline-flex items-center gap-1 cursor-pointer"
               >
                 <Plus className="w-3 h-3 stroke-[2.5]" />
                 <span>Nueva lectura</span>
               </button>
+            ) : (
+              <div className="text-[10px] text-[#6E5D77] mt-1">
+                Frecuencia regular
+              </div>
             )}
           </div>
         </div>
@@ -519,13 +519,13 @@ export const DashboardEnvironmentChart: React.FC<DashboardEnvironmentChartProps>
                 bottom: 0,
               }}
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="#EFE3CF" vertical={false} />
 
               {/* X Axis: Display Date */}
               <XAxis
                 dataKey="displayDate"
-                tick={{ fontSize: 11, fill: '#71717a' }}
-                stroke="#3f3f46"
+                tick={{ fontSize: 11, fill: '#6E5D77' }}
+                stroke="#DECDB3"
                 tickLine={false}
               />
 
@@ -534,8 +534,8 @@ export const DashboardEnvironmentChart: React.FC<DashboardEnvironmentChartProps>
                 yAxisId="tempAxis"
                 orientation="left"
                 domain={['auto', 'auto']}
-                tick={{ fontSize: 11, fill: '#f59e0b' }}
-                stroke="#3f3f46"
+                tick={{ fontSize: 11, fill: '#EB7864' }}
+                stroke="#DECDB3"
                 tickLine={false}
                 unit="°"
                 hide={!showTemp}
@@ -546,8 +546,8 @@ export const DashboardEnvironmentChart: React.FC<DashboardEnvironmentChartProps>
                 yAxisId="humAxis"
                 orientation="right"
                 domain={[0, 100]}
-                tick={{ fontSize: 11, fill: '#06b6d4' }}
-                stroke="#3f3f46"
+                tick={{ fontSize: 11, fill: '#62B95B' }}
+                stroke="#DECDB3"
                 tickLine={false}
                 unit="%"
                 hide={!showHumidity}
@@ -559,8 +559,8 @@ export const DashboardEnvironmentChart: React.FC<DashboardEnvironmentChartProps>
                   yAxisId="vpdAxis"
                   orientation="right"
                   domain={[0, 'auto']}
-                  tick={{ fontSize: 11, fill: '#c084fc' }}
-                  stroke="#3f3f46"
+                  tick={{ fontSize: 11, fill: '#6C45C7' }}
+                  stroke="#DECDB3"
                   tickLine={false}
                   unit="kP"
                 />

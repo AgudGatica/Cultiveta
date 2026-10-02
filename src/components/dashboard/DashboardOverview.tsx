@@ -8,22 +8,25 @@ import {
   Sparkles,
   Calendar,
   Layers,
+  ChevronDown,
   ChevronRight,
   TrendingUp,
-  Award,
-  AlertCircle,
+  AlertTriangle,
   Camera,
-  Activity,
-  Zap,
   Clock,
   FlaskConical,
   RefreshCw,
-  AlertTriangle,
   Bean,
   Leaf,
   Flower2,
   Scissors,
-  BellRing,
+  CheckCircle2,
+  Check,
+  Activity,
+  Flame,
+  Gauge,
+  Sun,
+  BookOpen,
 } from 'lucide-react';
 import { Cultivation, Watering, EnvironmentRecord, PhotoRecord, Genetics, UserProfile } from '../../types';
 import { CultivationCard } from '../cultivations/CultivationCard';
@@ -49,6 +52,7 @@ import {
   getStageIcon,
   STAGE_PRESETS,
 } from '../../utils/growthStageUtils';
+import { cultivationService } from '../../services/cultivationService';
 
 interface DashboardOverviewProps {
   cultivations: Cultivation[];
@@ -135,54 +139,14 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 }) => {
   const [weeklySummary, setWeeklySummary] = useState<string | null>(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
-  const [tasksVersion, setTasksVersion] = useState(0);
-  const [isScrolled, setIsScrolled] = useState(false);
-  const [notifPermission, setNotifPermission] = useState<NotificationPermission>('default');
+  const [selectedCropId, setSelectedCropId] = useState<string | null>(null);
 
-  React.useEffect(() => {
-    if (browserNotificationService.isSupported()) {
-      setNotifPermission(browserNotificationService.getPermission());
-    }
-  }, []);
-
-  // Detect scroll to trigger text-glow & light gradient on selected dashboard h1
-  React.useEffect(() => {
-    const handleScroll = () => {
-      const scrollY = window.scrollY || document.documentElement.scrollTop || 0;
-      setIsScrolled(scrollY > 20);
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-    };
-  }, []);
-
-  // Listen for local task update events to ensure real-time reactive border contrasts
-  React.useEffect(() => {
-    const handleTaskUpdated = () => {
-      setTasksVersion((v) => v + 1);
-    };
-    window.addEventListener('cultiveta_task_updated', handleTaskUpdated);
-    return () => {
-      window.removeEventListener('cultiveta_task_updated', handleTaskUpdated);
-    };
-  }, []);
-
-  // Only show skeleton on true initial load when NO data is available yet
-  const isInitialLoading = Boolean(
-    isLoading &&
-    cultivations.length === 0 &&
-    waterings.length === 0 &&
-    envRecords.length === 0
-  );
-
-  const handleManualRefresh = () => {
-    if (onRefreshData && !isSyncing) {
-      onRefreshData();
-    }
-  };
+  // Progressive Disclosure Expanders
+  const [showEnvDetails, setShowEnvDetails] = useState(false);
+  const [showWateringDetails, setShowWateringDetails] = useState(false);
+  const [showFullClimateChart, setShowFullClimateChart] = useState(false);
+  const [showLifecycleSection, setShowLifecycleSection] = useState(false);
+  const [showFloweringSection, setShowFloweringSection] = useState(false);
 
   // Top Date Range / Single Day Filter State
   const [dateFilter, setDateFilter] = useState<DateFilterState>({
@@ -193,7 +157,41 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
   const isDateFilterActive = dateFilter.preset !== 'all';
 
-  // Filtered Waterings according to date range
+  // Active Crops
+  const activeCrops = useMemo(() => cultivations.filter((c) => !c.isFinished), [cultivations]);
+  const totalPlants = activeCrops.reduce((acc, c) => acc + (c.plantCount || 1), 0);
+
+  // Default selected main crop
+  useEffect(() => {
+    if (activeCrops.length > 0) {
+      if (!selectedCropId || !activeCrops.some((c) => c.id === selectedCropId)) {
+        setSelectedCropId(activeCrops[0].id);
+      }
+    } else {
+      setSelectedCropId(null);
+    }
+  }, [activeCrops, selectedCropId]);
+
+  const primaryCrop = useMemo(() => {
+    if (!selectedCropId) return activeCrops[0] || null;
+    return activeCrops.find((c) => c.id === selectedCropId) || activeCrops[0] || null;
+  }, [activeCrops, selectedCropId]);
+
+  // Greetings logic in Argentine Spanish
+  const greetingData = useMemo(() => {
+    const rawName = userProfile?.displayName || userProfile?.name || 'Cultivador';
+    const firstName = rawName.split(' ')[0] || 'Cultivador';
+    const hour = new Date().getHours();
+    let timeGreeting = 'Buen día';
+    if (hour >= 13 && hour < 20) {
+      timeGreeting = 'Buenas tardes';
+    } else if (hour >= 20 || hour < 6) {
+      timeGreeting = 'Buenas noches';
+    }
+    return { firstName, timeGreeting };
+  }, [userProfile]);
+
+  // Filtered lists according to date filter
   const filteredWaterings = useMemo(() => {
     if (!isDateFilterActive) return waterings;
     return waterings.filter((w) => {
@@ -204,7 +202,6 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     });
   }, [waterings, isDateFilterActive, dateFilter.startDate, dateFilter.endDate]);
 
-  // Filtered Environment Records according to date range
   const filteredEnvRecords = useMemo(() => {
     if (!isDateFilterActive) return envRecords;
     return envRecords.filter((e) => {
@@ -215,7 +212,6 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     });
   }, [envRecords, isDateFilterActive, dateFilter.startDate, dateFilter.endDate]);
 
-  // Filtered Photos according to date range
   const filteredPhotos = useMemo(() => {
     if (!isDateFilterActive) return photos;
     return photos.filter((p) => {
@@ -228,11 +224,199 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
   const totalFilteredEvents = filteredWaterings.length + filteredEnvRecords.length + filteredPhotos.length;
 
-  const activeCrops = cultivations.filter((c) => !c.isFinished);
-  const totalPlants = activeCrops.reduce((acc, c) => acc + (c.plantCount || 1), 0);
+  // Latest records for primary crop
+  const latestWateringForPrimary = useMemo(() => {
+    if (!primaryCrop) return null;
+    return (
+      waterings
+        .filter((w) => w.cultivationId === primaryCrop.id)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] || null
+    );
+  }, [waterings, primaryCrop]);
 
-  // Active Cultivations Lifecycle Progress metrics:
-  // Calculates average elapsed days vs projected days across all active crops
+  const latestEnvForPrimary = useMemo(() => {
+    if (!primaryCrop) return null;
+    return (
+      envRecords
+        .filter((e) => e.cultivationId === primaryCrop.id)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] || null
+    );
+  }, [envRecords, primaryCrop]);
+
+  const latestPhotoForPrimary = useMemo(() => {
+    if (!primaryCrop) return null;
+    return (
+      photos
+        .filter((p) => p.cultivationId === primaryCrop.id)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] || null
+    );
+  }, [photos, primaryCrop]);
+
+  // Days calculations
+  const primaryCropDays = useMemo(() => {
+    if (!primaryCrop) return 0;
+    return cultivationService.calculateDays(primaryCrop.startDate);
+  }, [primaryCrop]);
+
+  // Waterings in last 7 days
+  const now = new Date();
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(now.getDate() - 7);
+  const recentWateringsCount = waterings.filter((w) => new Date(w.date) >= sevenDaysAgo).length;
+
+  // Overdue watering detection
+  const isWateringAlertsEnabled = userProfile?.preferences?.alertTypes?.wateringAlerts ?? true;
+  const overdueCultivationsList = useMemo(() => {
+    if (!isWateringAlertsEnabled) return [];
+    return getOverdueCultivations(cultivations, waterings);
+  }, [cultivations, waterings, isWateringAlertsEnabled]);
+
+  const primaryCropOverdueInfo = useMemo(() => {
+    if (!primaryCrop) return null;
+    return overdueCultivationsList.find((o) => o.cultivation.id === primaryCrop.id) || null;
+  }, [primaryCrop, overdueCultivationsList]);
+
+  // Days since watering formatted in Argentine Spanish
+  const wateringTimeAgo = useMemo(() => {
+    if (!latestWateringForPrimary) return 'Sin registros';
+    const dateStr = latestWateringForPrimary.date.split('T')[0];
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const y = parseInt(parts[0], 10);
+      const m = parseInt(parts[1], 10) - 1;
+      const d = parseInt(parts[2], 10);
+      const waterDate = new Date(y, m, d);
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const diffDays = Math.floor((today.getTime() - waterDate.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays === 0) return 'Hoy';
+      if (diffDays === 1) return 'Ayer';
+      return `Hace ${diffDays} días`;
+    }
+    return formatDateDisplay(dateStr);
+  }, [latestWateringForPrimary, now]);
+
+  // Environment status calculation (Está joya vs Hay algo para mirar)
+  const envCondition = useMemo(() => {
+    if (!latestEnvForPrimary) {
+      return {
+        label: 'Sin mediciones',
+        isGood: true,
+        shortDesc: 'Anotá temperatura y humedad para ver el estado',
+        alertMsg: null,
+      };
+    }
+    const temp = latestEnvForPrimary.temperature ?? latestEnvForPrimary.temperatureC ?? 24;
+    const hum = latestEnvForPrimary.humidity ?? latestEnvForPrimary.humidityPct ?? 55;
+    const isFlower =
+      primaryCrop?.currentStage?.toLowerCase().includes('flor') ||
+      primaryCrop?.currentStage?.toLowerCase().includes('madur');
+
+    if (isFlower && hum > 68) {
+      return {
+        label: 'Humedad alta en floración',
+        isGood: false,
+        shortDesc: `${temp} °C · ${hum} %`,
+        alertMsg: 'Humedad alta en floración. Conviene revisarla ahora para prevenir hongos.',
+      };
+    }
+    if (temp > 31) {
+      return {
+        label: 'Temperatura elevada',
+        isGood: false,
+        shortDesc: `${temp} °C · ${hum} %`,
+        alertMsg: `Temperatura en ${temp} °C. Conviene mejorar la extracción de aire.`,
+      };
+    }
+    if (temp < 17) {
+      return {
+        label: 'Temperatura baja',
+        isGood: false,
+        shortDesc: `${temp} °C · ${hum} %`,
+        alertMsg: `Temperatura en ${temp} °C. Muy baja para desarrollo óptimo.`,
+      };
+    }
+    return {
+      label: 'Está joya',
+      isGood: true,
+      shortDesc: `${temp} °C · ${hum} %`,
+      alertMsg: null,
+    };
+  }, [latestEnvForPrimary, primaryCrop]);
+
+  // Overall crop state: 3-second glance test!
+  const cropOverallState = useMemo(() => {
+    if (!primaryCrop) {
+      return {
+        title: 'Todavía no tenés cultivos activos',
+        subtitle: 'Creá tu primera carpa para comenzar el seguimiento.',
+        isAlert: false,
+        alertType: 'none',
+      };
+    }
+    if (primaryCropOverdueInfo) {
+      return {
+        title: 'Hay algo para mirar',
+        subtitle: `Riego atrasado (+${primaryCropOverdueInfo.analysis.daysOverdue}d). Conviene regar hoy.`,
+        isAlert: true,
+        alertType: 'watering',
+      };
+    }
+    if (!envCondition.isGood && envCondition.alertMsg) {
+      return {
+        title: 'Hay algo para mirar',
+        subtitle: envCondition.alertMsg,
+        isAlert: true,
+        alertType: 'env',
+      };
+    }
+    return {
+      title: 'Todo tranqui por acá',
+      subtitle: 'No hay nada urgente para revisar.',
+      isAlert: false,
+      alertType: 'none',
+    };
+  }, [primaryCrop, primaryCropOverdueInfo, envCondition]);
+
+  // Quick tasks for today
+  const todayTasksList = useMemo(() => {
+    const list: Array<{ id: string; text: string; action: () => void; isUrgent?: boolean }> = [];
+    if (!primaryCrop) return list;
+
+    if (primaryCropOverdueInfo) {
+      list.push({
+        id: 'task-water',
+        text: `Revisar riego (+${primaryCropOverdueInfo.analysis.daysOverdue}d)`,
+        action: () => onOpenWateringModal(primaryCrop),
+        isUrgent: true,
+      });
+    }
+
+    // Weekly photo reminder
+    let daysSincePhoto = 999;
+    if (latestPhotoForPrimary?.date) {
+      const pDate = new Date(latestPhotoForPrimary.date).getTime();
+      daysSincePhoto = Math.floor((Date.now() - pDate) / (1000 * 60 * 60 * 24));
+    }
+    if (daysSincePhoto >= 7) {
+      list.push({
+        id: 'task-photo',
+        text: 'Sacar foto semanal de seguimiento',
+        action: () => onOpenPhotoModal(primaryCrop),
+      });
+    }
+
+    if (list.length === 0) {
+      list.push({
+        id: 'task-check',
+        text: 'Revisar parámetros y salud general',
+        action: () => onOpenEnvModal(primaryCrop),
+      });
+    }
+
+    return list;
+  }, [primaryCrop, primaryCropOverdueInfo, latestPhotoForPrimary, onOpenWateringModal, onOpenPhotoModal, onOpenEnvModal]);
+
+  // Lifecycle statistics calculation for active crops
   const activeLifecycleStats = useMemo(() => {
     if (activeCrops.length === 0) {
       return {
@@ -274,9 +458,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
     const avgElapsed = Math.round(sumElapsed / activeCrops.length);
     const avgProjected = Math.round(sumProjected / activeCrops.length);
-    const totalProgressPct = avgProjected > 0
-      ? Math.min(100, Math.max(0, Math.round((sumElapsed / sumProjected) * 100)))
-      : 0;
+    const totalProgressPct =
+      avgProjected > 0 ? Math.min(100, Math.max(0, Math.round((sumElapsed / sumProjected) * 100))) : 0;
 
     return {
       hasActive: true,
@@ -288,45 +471,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     };
   }, [activeCrops]);
 
-  // Smooth filling animation for progress counter when dashboard loads
-  const [animatedProgressPct, setAnimatedProgressPct] = useState(0);
-
-  useEffect(() => {
-    const target = activeLifecycleStats.totalProgressPct;
-    if (target === 0) {
-      setAnimatedProgressPct(0);
-      return;
-    }
-
-    let startTimestamp: number | null = null;
-    const duration = 1200; // ms to match smooth bar fill
-    let animFrameId: number;
-
-    const step = (timestamp: number) => {
-      if (!startTimestamp) startTimestamp = timestamp;
-      const elapsed = timestamp - startTimestamp;
-      const progress = Math.min(elapsed / duration, 1);
-      // Smooth cubic ease-out curve
-      const easeOut = 1 - Math.pow(1 - progress, 3);
-      setAnimatedProgressPct(Math.round(easeOut * target));
-
-      if (progress < 1) {
-        animFrameId = requestAnimationFrame(step);
-      }
-    };
-
-    const timeoutId = setTimeout(() => {
-      animFrameId = requestAnimationFrame(step);
-    }, 100);
-
-    return () => {
-      clearTimeout(timeoutId);
-      if (animFrameId) cancelAnimationFrame(animFrameId);
-    };
-  }, [activeLifecycleStats.totalProgressPct]);
-
-  // Stage Milestones calculation for the lifecycle progress bar:
-  // Computes exact milestone positions (percentage of total duration), icons, and stage details
+  // Stage Milestones
   const stageMilestones = useMemo(() => {
     let lifecycleStages: Array<{
       id?: string;
@@ -334,8 +479,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
       expectedDurationDays: number;
     }> = [];
 
-    if (activeCrops.length > 0) {
-      const fullStages = getStagesForCultivation(activeCrops[0]);
+    if (primaryCrop) {
+      const fullStages = getStagesForCultivation(primaryCrop);
       let harvestIdx = fullStages.findIndex(
         (s) => s.name === 'Cosecha' || s.name === 'Secado' || s.name === 'Finalizado'
       );
@@ -358,14 +503,12 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
       }));
     }
 
-    const totalCycleDays = lifecycleStages.reduce(
-      (acc, s) => acc + (s.expectedDurationDays || 0),
-      0
-    ) || 90;
+    const totalCycleDays =
+      lifecycleStages.reduce((acc, s) => acc + (s.expectedDurationDays || 0), 0) || 90;
 
     let cumulativeDays = 0;
     const currentProgress = activeLifecycleStats.totalProgressPct;
-    const activeStageName = (activeCrops[0]?.currentStage || '').toLowerCase();
+    const activeStageName = (primaryCrop?.currentStage || '').toLowerCase();
 
     const milestones = lifecycleStages.map((st, idx) => {
       const duration = st.expectedDurationDays || 1;
@@ -409,452 +552,96 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
       };
     });
 
-    return {
-      milestones,
-      totalCycleDays,
-    };
-  }, [activeCrops, activeLifecycleStats.totalProgressPct]);
+    return { milestones, totalCycleDays };
+  }, [primaryCrop, activeLifecycleStats.totalProgressPct]);
 
-  const getLatestWateringForCrop = (cropId: string): Watering | null => {
-    const list = isDateFilterActive ? filteredWaterings : waterings;
-    return (
-      list
-        .filter((w) => w.cultivationId === cropId)
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] || null
-    );
-  };
-
-  const getLatestEnvForCrop = (cropId: string): EnvironmentRecord | null => {
-    const list = isDateFilterActive ? filteredEnvRecords : envRecords;
-    return (
-      list
-        .filter((e) => e.cultivationId === cropId)
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] || null
-    );
-  };
-
-  // Waterings in last 7 days for summary prompt
-  const now = new Date();
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(now.getDate() - 7);
-  const recentWateringsCount = waterings.filter((w) => new Date(w.date) >= sevenDaysAgo).length;
-
-  // Environmental summary in active period
-  const envAverages = useMemo(() => {
-    if (filteredEnvRecords.length === 0) return null;
-    const avgTemp = (
-      filteredEnvRecords.reduce((acc, r) => acc + (r.temperatureC || 0), 0) / filteredEnvRecords.length
-    ).toFixed(1);
-    const avgHum = Math.round(
-      filteredEnvRecords.reduce((acc, r) => acc + (r.humidityPct || 0), 0) / filteredEnvRecords.length
-    );
-    return { avgTemp, avgHum };
-  }, [filteredEnvRecords]);
-
+  // AI Weekly Summary
   const handleGenerateWeeklySummary = async () => {
     try {
       setLoadingSummary(true);
-      const summary = await aiService.getWeeklySummary({
+      const res = await aiService.getWeeklySummary({
         cultivations: activeCrops.map((c) => ({
           name: c.name,
           stage: c.currentStage,
-          genetics: c.geneticsName,
+          genetics: c.genetics,
         })),
-        wateringsCount: isDateFilterActive ? filteredWaterings.length : recentWateringsCount,
+        wateringsCount: waterings.length,
         recentEnvAvg: {
-          tempC: envAverages ? parseFloat(envAverages.avgTemp) : 24.2,
-          humidityPct: envAverages ? envAverages.avgHum : 56,
+          tempC: latestEnvForPrimary?.temperature ?? latestEnvForPrimary?.temperatureC ?? 24,
+          humidityPct: latestEnvForPrimary?.humidity ?? latestEnvForPrimary?.humidityPct ?? 58,
         },
       });
-      setWeeklySummary(summary);
-    } catch (err) {
-      console.error('Error generating weekly summary', err);
-      setWeeklySummary('Resumen agronómico: Tus cultivos se encuentran con parámetros estables. Mantén el monitoreo de humedad en floración.');
+      setWeeklySummary(res);
+    } catch (err: any) {
+      console.error('Error generating summary:', err);
+      setWeeklySummary('No pudimos generar el resumen botánico en este momento. Reintentá en un ratito.');
     } finally {
       setLoadingSummary(false);
     }
   };
 
-  // Dynamic subtitle for range
-  const getFilterSubtitle = (singular: string, plural: string) => {
-    if (!isDateFilterActive) return plural;
-    if (dateFilter.preset === 'today') return 'Registrados hoy';
-    if (dateFilter.preset === 'single') return `En ${formatDateDisplay(dateFilter.startDate)}`;
-    return 'En período filtrado';
-  };
-
-  // 1. Critical Stage Detection:
-  // Detect active cultivations in critical phenological phases (Floración, Maduración, Cosecha, Secado, Prefloración, Germinación)
-  // or marked with attention needed in health status
-  const criticalStageKeywords = [
-    'floración',
-    'floracion',
-    'maduración',
-    'maduracion',
-    'cosecha',
-    'secado',
-    'prefloración',
-    'prefloracion',
-    'germinación',
-    'germinacion',
-  ];
-
-  const cropsInCriticalStage = useMemo(() => {
-    return activeCrops.filter((crop) => {
-      const stageLower = (crop.currentStage || '').toLowerCase();
-      const isCriticalStageName = criticalStageKeywords.some((kw) => stageLower.includes(kw));
-      const isAlertStatus = crop.status === 'ATENCION' || crop.status === 'REVISAR';
-      return isCriticalStageName || isAlertStatus;
-    });
-  }, [activeCrops]);
-
-  const hasCriticalStage = cropsInCriticalStage.length > 0;
-
-  // 2. Overdue Watering Detection using Stage-Specific Periods:
-  const isWateringAlertsEnabled = userProfile?.preferences?.alertTypes?.wateringAlerts ?? true;
-
-  const overdueCultivationsList = useMemo(() => {
-    if (!isWateringAlertsEnabled) return [];
-    return getOverdueCultivations(cultivations, waterings);
-  }, [cultivations, waterings, isWateringAlertsEnabled]);
-
-  const cropsWithOverdueWatering = useMemo(() => {
-    const ids = new Set(overdueCultivationsList.map((o) => o.cultivation.id));
-    return activeCrops.filter((c) => ids.has(c.id));
-  }, [activeCrops, overdueCultivationsList]);
-
-  const hasOverdueWatering = cropsWithOverdueWatering.length > 0;
-  const hasAlertCondition = hasCriticalStage || hasOverdueWatering;
-
-  const summaryCards = [
-    {
-      id: 'stat-active-crops',
-      label: 'Cultivos Activos',
-      value: activeCrops.length,
-      subtitle: hasCriticalStage
-        ? `${cropsInCriticalStage.length} en etapa crítica (${cropsInCriticalStage.map((c) => c.currentStage).slice(0, 2).join(', ')})`
-        : 'En seguimiento diario',
-      icon: <Sprout className="w-4 h-4" />,
-      iconStyle: hasCriticalStage
-        ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
-        : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-      valueColor: hasCriticalStage ? 'text-amber-300' : 'text-white',
-      borderClass: hasCriticalStage
-        ? 'summary-card-critical-border border-2 border-amber-400/90 shadow-[0_0_24px_-2px_rgba(251,191,36,0.3)]'
-        : hasAlertCondition
-        ? 'summary-card-elevated-contrast border border-zinc-700/80 hover:border-zinc-500'
-        : 'border border-zinc-800 hover:border-zinc-700',
-      alertBadge: hasCriticalStage ? (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/40 text-[10px] font-mono text-amber-300 font-bold uppercase tracking-wider">
-          <Sparkles className="w-3 h-3 text-amber-400" />
-          Fase Crítica
-        </span>
-      ) : null,
-    },
-    {
-      id: 'stat-total-plants',
-      label: 'Total Plantas',
-      value: totalPlants,
-      subtitle: 'Iluminación controlada',
-      icon: <Layers className="w-4 h-4" />,
-      iconStyle: 'bg-zinc-800 text-zinc-300 border-zinc-700',
-      valueColor: 'text-white',
-      borderClass: hasAlertCondition
-        ? 'summary-card-elevated-contrast border border-zinc-700/80 hover:border-zinc-500'
-        : 'border border-zinc-800 hover:border-zinc-700',
-      alertBadge: null,
-    },
-    {
-      id: 'stat-recent-waterings',
-      label: isDateFilterActive ? 'Riegos (Período)' : 'Riegos (7 días)',
-      value: isDateFilterActive ? filteredWaterings.length : recentWateringsCount,
-      subtitle: hasOverdueWatering
-        ? `⚠️ ${cropsWithOverdueWatering.length} cultivo(s) atrasados +24h`
-        : getFilterSubtitle('Riego en fecha', 'Eventos nutricionales'),
-      icon: <Droplets className="w-4 h-4" />,
-      iconStyle: hasOverdueWatering
-        ? 'bg-rose-500/20 text-rose-300 border-rose-500/50'
-        : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
-      valueColor: hasOverdueWatering ? 'text-rose-400' : 'text-cyan-400',
-      borderClass: hasOverdueWatering
-        ? 'summary-card-overdue-border border-2 border-rose-500/90 shadow-[0_0_24px_-2px_rgba(244,63,94,0.35)]'
-        : hasAlertCondition
-        ? 'summary-card-elevated-contrast border border-zinc-700/80 hover:border-zinc-500'
-        : 'border border-zinc-800 hover:border-zinc-700',
-      alertBadge: hasOverdueWatering ? (
-        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-rose-500/20 border border-rose-500/50 text-[10px] font-mono text-rose-300 font-bold uppercase tracking-wider animate-pulse">
-          <AlertTriangle className="w-3 h-3 text-rose-400" />
-          Riego +24h
-        </span>
-      ) : null,
-    },
-    {
-      id: 'stat-diary-photos',
-      label: isDateFilterActive ? 'Fotos (Período)' : 'Fotos Bitácora',
-      value: isDateFilterActive ? filteredPhotos.length : photos.length,
-      subtitle: getFilterSubtitle('Foto en fecha', 'Historial cronológico'),
-      icon: <Camera className="w-4 h-4" />,
-      iconStyle: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-      valueColor: 'text-white',
-      borderClass: hasAlertCondition
-        ? 'summary-card-elevated-contrast border border-zinc-700/80 hover:border-zinc-500'
-        : 'border border-zinc-800 hover:border-zinc-700',
-      alertBadge: null,
-    },
-  ];
+  const isInitialLoading = Boolean(
+    isLoading &&
+    cultivations.length === 0 &&
+    waterings.length === 0 &&
+    envRecords.length === 0
+  );
 
   return (
     <div id="dashboard-overview" className="space-y-6 sm:space-y-8 dashboard-overview">
-      {/* Top Bento Hero Banner */}
-      <div className="relative overflow-hidden bg-[#0F0F0F] rounded-[32px] p-6 sm:p-8 lg:p-10 border border-zinc-800 shadow-2xl">
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_0%_0%,#10b981_0%,transparent_60%)] pointer-events-none"></div>
-        <div className="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-emerald-500/5 blur-3xl pointer-events-none"></div>
+      {/* 1. Header con Saludo Cercano y Acciones Rápidas */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-1">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#29202F] tracking-tight">
+            {greetingData.timeGreeting}, {greetingData.firstName} 🌱
+          </h1>
+          <p className="text-sm font-semibold text-[#6C45C7] mt-0.5">
+            ¿Cómo viene el cultivo?
+          </p>
+        </div>
 
-        <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="space-y-2">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-zinc-900 border border-zinc-800 text-[10px] font-mono font-bold uppercase tracking-[0.25em] text-emerald-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              Panel de Control Botánico
-            </div>
-            <h1
-              id="dashboard-hero-title"
-              className={`text-2xl sm:text-4xl font-extrabold tracking-tight transition-all duration-700 ease-out select-none dashboard-hero-h1 cursor-default inline-flex items-center gap-2.5 sm:gap-3 flex-wrap ${
-                isScrolled
-                  ? 'dashboard-h1-scrolled text-transparent bg-clip-text bg-gradient-to-r from-white via-emerald-200 to-emerald-400 drop-shadow-[0_0_18px_rgba(52,211,153,0.45)]'
-                  : 'text-white'
-              }`}
-            >
-              <span>Bienvenido a Cultiveta</span>
-              <span
-                id="dashboard-hero-plant-icon"
-                className="dashboard-plant-icon inline-flex items-center justify-center p-1 sm:p-1.5 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/25 transition-all duration-500 ease-out"
-                title="Cultiveta Botánica"
-              >
-                <Sprout className="w-6 h-6 sm:w-8 sm:h-8 stroke-[2.2] text-emerald-500 transition-colors duration-500" />
-              </span>
-            </h1>
-            <p className="text-xs sm:text-sm text-zinc-400 max-w-xl leading-relaxed">
-              Monitoreo continuo de parámetros agronómicos, riegos con pH/EC, fotoperiodo y salud de tus plantas.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
+        {/* Botones de acción directos */}
+        <div className="flex items-center gap-2.5 self-stretch sm:self-auto shrink-0 flex-wrap">
+          {onRefreshData && (
             <button
               type="button"
               id="refresh-dashboard-btn"
-              onClick={handleManualRefresh}
+              onClick={onRefreshData}
               disabled={isSyncing}
-              className="px-4 py-3 rounded-2xl bg-zinc-900/90 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm disabled:opacity-50"
-              title="Sincronizar datos y verificar cola offline"
+              className="p-3 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#EFE3CF] text-[#6E5D77] hover:text-[#29202F] transition-all cursor-pointer shadow-xs disabled:opacity-50"
+              title="Sincronizar datos"
             >
-              <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin text-emerald-400' : 'text-zinc-400'}`} />
-              <span className="hidden sm:inline">{isSyncing ? 'Sincronizando...' : 'Sincronizar'}</span>
+              <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin text-[#62B95B]' : ''}`} />
             </button>
+          )}
 
-            <button
-              type="button"
-              id="quick-ai-btn"
-              onClick={onOpenAIAssistant}
-              className="px-5 py-3 rounded-2xl bg-violet-500/10 hover:bg-violet-500/20 text-violet-300 border border-violet-500/30 text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-lg shadow-violet-950/20"
-            >
-              <Sparkles className="w-4 h-4 text-violet-400" />
-              <span>Consultar IA</span>
-            </button>
+          <button
+            type="button"
+            id="quick-ai-btn"
+            onClick={() => onOpenAIAssistant(primaryCrop || undefined)}
+            className="flex-1 sm:flex-initial px-4 py-3 rounded-2xl bg-[#6C45C7]/10 hover:bg-[#6C45C7]/20 text-[#6C45C7] border border-[#6C45C7]/25 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Preguntale a Cultiveta</span>
+          </button>
 
-            <button
-              type="button"
-              id="create-crop-hero-btn"
-              onClick={onCreateCultivationClick}
-              className="px-6 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black text-xs font-bold transition-all shadow-lg shadow-emerald-500/20 flex items-center gap-2 cursor-pointer"
-            >
-              <Plus className="w-4 h-4 text-black stroke-[2.5]" />
-              <span>Nuevo Cultivo</span>
-            </button>
-          </div>
+          <button
+            type="button"
+            id="create-crop-hero-btn"
+            onClick={onCreateCultivationClick}
+            className="flex-1 sm:flex-initial px-4 py-3 rounded-2xl bg-[#62B95B] hover:bg-[#52A54C] text-white text-xs font-bold transition-all shadow-md shadow-[#62B95B]/20 flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Plus className="w-4 h-4 stroke-[2.5]" />
+            <span>Nuevo Cultivo</span>
+          </button>
         </div>
-      </div>
-
-      {/* Active Cultivations Lifecycle Progress Bar */}
-      <div
-        id="dashboard-lifecycle-progress"
-        className="dashboard-lifecycle-progress bg-[#0F0F0F] rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-zinc-800 shadow-xl relative overflow-hidden transition-all duration-300"
-      >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs sm:text-sm font-bold text-white tracking-tight">
-                  Ciclo de Vida de Cultivos Activos
-                </span>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold bg-zinc-900 text-emerald-400 border border-emerald-500/25">
-                  {activeLifecycleStats.totalActive} {activeLifecycleStats.totalActive === 1 ? 'activo' : 'activos'}
-                </span>
-              </div>
-              <p className="text-[11px] text-zinc-400 mt-0.5">
-                {activeLifecycleStats.hasActive ? (
-                  <>
-                    Promedio de{' '}
-                    <span className="text-zinc-200 font-mono font-semibold">{activeLifecycleStats.avgElapsedDays} días</span> transcurridos de{' '}
-                    <span className="text-zinc-200 font-mono font-semibold">{activeLifecycleStats.avgProjectedDays} días</span> proyectados
-                  </>
-                ) : (
-                  'No hay cultivos activos en curso para calcular el ciclo de vida'
-                )}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-baseline gap-1.5 self-end sm:self-auto shrink-0">
-            <span className="text-xs text-zinc-400 font-medium">Completado:</span>
-            <span className="text-xl sm:text-2xl font-black font-mono text-emerald-400 tracking-tight">
-              {animatedProgressPct}%
-            </span>
-          </div>
-        </div>
-
-        {/* Progress Track and Bar */}
-        <div className="relative w-full h-7 sm:h-8 bg-zinc-900/90 rounded-full p-0.5 border border-zinc-800 shadow-inner group/track">
-          {/* Inner clip container for progress fill */}
-          <div className="absolute inset-0 rounded-full overflow-hidden">
-            <motion.div
-              id="lifecycle-progress-fill"
-              className="h-full rounded-full bg-gradient-to-r from-emerald-600 via-emerald-400 to-teal-300 relative shadow-[0_0_14px_rgba(52,211,153,0.45)]"
-              initial={{ width: '0%' }}
-              animate={{ width: `${Math.max(activeLifecycleStats.hasActive ? 2 : 0, activeLifecycleStats.totalProgressPct)}%` }}
-              transition={{
-                duration: 1.2,
-                ease: [0.16, 1, 0.3, 1],
-                delay: 0.1,
-              }}
-            >
-              <div className="absolute inset-0 bg-white/20 animate-pulse rounded-full pointer-events-none" />
-            </motion.div>
-          </div>
-
-          {/* Interactive Milestone Botanical Markers positioned inside the bar */}
-          <div className="absolute inset-0 pointer-events-none">
-            {stageMilestones.milestones.map((m) => {
-              const isStart = m.percent <= 2;
-              const isEnd = m.percent >= 97;
-              const leftStyle = isStart
-                ? '6px'
-                : isEnd
-                ? 'calc(100% - 6px)'
-                : `${m.percent}%`;
-              const transformStyle = isStart
-                ? 'translateY(-50%)'
-                : isEnd
-                ? 'translate(-100%, -50%)'
-                : 'translate(-50%, -50%)';
-
-              return (
-                <div
-                  key={`node-${m.id}`}
-                  style={{
-                    left: leftStyle,
-                    top: '50%',
-                    transform: transformStyle,
-                  }}
-                  className={`absolute z-20 pointer-events-auto flex items-center justify-center cursor-pointer group/milestone ${
-                    m.isKeyMilestone ? 'flex' : 'hidden sm:flex'
-                  }`}
-                  title={`${m.name} (${m.percent}% del ciclo)`}
-                >
-                  {/* Milestone Icon Chip inside bar */}
-                  <div
-                    className={`w-5.5 h-5.5 sm:w-6.5 sm:h-6.5 rounded-full flex items-center justify-center transition-all duration-300 select-none shadow-md ${
-                      m.isCurrent
-                        ? 'bg-emerald-400 text-zinc-950 ring-2 ring-emerald-300 ring-offset-1 ring-offset-zinc-950 font-bold scale-110 shadow-[0_0_12px_rgba(52,211,153,0.8)]'
-                        : m.isReached
-                        ? 'bg-emerald-950/95 text-emerald-300 border border-emerald-400/60 hover:scale-125 hover:border-emerald-300 shadow-[0_0_8px_rgba(16,185,129,0.35)]'
-                        : 'bg-zinc-850/90 text-zinc-400 border border-zinc-700/80 hover:scale-125 hover:text-zinc-200 hover:border-zinc-500'
-                    }`}
-                  >
-                    {renderStageMilestoneIcon(m.name, 'w-3 h-3 sm:w-3.5 sm:h-3.5')}
-                  </div>
-
-                  {/* Tooltip on hover */}
-                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 opacity-0 group-hover/milestone:opacity-100 pointer-events-none transition-all duration-200 z-40 whitespace-nowrap">
-                    <div className="bg-zinc-950 text-white text-[11px] py-1.5 px-2.5 rounded-xl border border-zinc-700 shadow-xl flex flex-col items-center">
-                      <div className="flex items-center gap-1.5 font-bold">
-                        <span className="text-emerald-400">{renderStageMilestoneIcon(m.name, 'w-3.5 h-3.5')}</span>
-                        <span className="text-zinc-100">{m.name}</span>
-                        <span className="text-emerald-400 font-mono text-[10px] font-extrabold">({m.percent}%)</span>
-                      </div>
-                      <span className="text-[10px] text-zinc-300 mt-0.5">
-                        {getStageMilestoneDescription(m.name)}
-                      </span>
-                      <span className="text-[10px] text-zinc-500">
-                        {m.percent === 0 ? 'Día 0 • Inicio' : `Día ${m.startDay} • Duración: ~${m.durationDays}d`}
-                      </span>
-                      {m.isCurrent && (
-                        <span className="mt-1 px-1.5 py-0.2 rounded-md bg-emerald-500/25 text-emerald-300 text-[9px] font-bold border border-emerald-500/40">
-                          Etapa en curso
-                        </span>
-                      )}
-                      <div className="w-1.5 h-1.5 bg-zinc-950 border-b border-r border-zinc-700 transform rotate-45 -mb-1 mt-0.5" />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Milestone Stage Labels / Ruler below the bar */}
-        <div className="mt-2.5 flex items-center justify-between text-[10px] sm:text-[11px] text-zinc-400 px-1 select-none">
-          {stageMilestones.milestones
-            .filter((m) => m.isKeyMilestone)
-            .map((m) => (
-              <div
-                key={`legend-${m.id}`}
-                className={`flex items-center gap-1.5 transition-colors ${
-                  m.isCurrent
-                    ? 'text-emerald-400 font-bold'
-                    : m.isReached
-                    ? 'text-zinc-300 font-medium'
-                    : 'text-zinc-500'
-                }`}
-              >
-                <span className={m.isCurrent ? 'text-emerald-400' : m.isReached ? 'text-emerald-300' : 'text-zinc-500'}>
-                  {renderStageMilestoneIcon(m.name, 'w-3 h-3')}
-                </span>
-                <span className="hidden sm:inline">{m.shortName}</span>
-                <span className="font-mono text-[9px] text-zinc-500">({m.percent}%)</span>
-              </div>
-            ))}
-        </div>
-
-        {/* Breakdown chips for active cultivations */}
-        {activeLifecycleStats.cropsDetails.length > 0 && (
-          <div className="mt-3 pt-2.5 border-t border-zinc-800/60 flex items-center gap-2 overflow-x-auto no-scrollbar text-[11px]">
-            <span className="shrink-0 text-zinc-500 font-medium text-[10px] uppercase tracking-wider">Desglose:</span>
-            {activeLifecycleStats.cropsDetails.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => onSelectCultivation(c.crop)}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-zinc-900/80 border border-zinc-800/90 shrink-0 hover:border-emerald-500/40 hover:bg-zinc-850 transition-all cursor-pointer text-left group"
-                title={`${c.name} (${c.stage}): ${c.elapsedDays} días transcurridos / ${c.projectedDays} días proyectados (${c.progressPct}% completado) - Clic para ver detalles`}
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 group-hover:scale-125 transition-transform" />
-                <span className="text-zinc-300 group-hover:text-white font-medium">{c.name}</span>
-                <span className="text-zinc-500 font-mono text-[10px]">{c.elapsedDays}/{c.projectedDays}d</span>
-                <span className="text-emerald-400 font-mono font-bold text-[10px]">({c.progressPct}%)</span>
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Sync Error Banner if any */}
       {syncError && (
-        <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between gap-3 shadow-md">
+        <div className="p-3.5 rounded-2xl bg-[#EB7864]/10 border border-[#EB7864]/30 text-[#29202F] text-xs flex items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+            <AlertTriangle className="w-4 h-4 text-[#EB7864] shrink-0" />
             <span>{syncError}</span>
           </div>
           {onRefreshData && (
@@ -862,7 +649,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               type="button"
               onClick={onRefreshData}
               disabled={isSyncing}
-              className="px-3 py-1.5 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 font-semibold cursor-pointer text-xs transition-colors shrink-0 disabled:opacity-50"
+              className="px-3 py-1.5 rounded-xl bg-[#EB7864] hover:bg-[#d96551] text-white font-bold cursor-pointer text-xs transition-colors shrink-0 disabled:opacity-50"
             >
               Reintentar
             </button>
@@ -874,479 +661,668 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         <DashboardSkeleton />
       ) : (
         <>
-          {/* Top Date Range / Single Day Filter Selector */}
-      <DashboardDateFilter
-        filter={dateFilter}
-        onChangeFilter={setDateFilter}
-        wateringsCount={filteredWaterings.length}
-        envCount={filteredEnvRecords.length}
-        photosCount={filteredPhotos.length}
-        totalRecordsCount={totalFilteredEvents}
-      />
-
-      {/* Browser Notification Activation Prompt Bar if permission is default */}
-      {notifPermission === 'default' && (
-        <div
-          id="browser-notification-permission-prompt"
-          className="p-3.5 sm:p-4 rounded-2xl bg-zinc-900/90 border border-emerald-500/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs shadow-md animate-fade-in-up"
-        >
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">
-              <BellRing className="w-4 h-4 animate-bounce" />
-            </div>
-            <div>
-              <span className="font-bold text-white block">
-                Activa las Notificaciones de Navegador para Alertas Climáticas
-              </span>
-              <span className="text-zinc-400">
-                Recibe avisos inmediatos del cron job (&apos;env_alert&apos;) cuando se detecten temperaturas o humedades críticas, incluso con la aplicación en segundo plano.
-              </span>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={async () => {
-              const res = await browserNotificationService.requestPermission();
-              setNotifPermission(res);
-            }}
-            className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs shadow-sm shadow-emerald-500/20 cursor-pointer shrink-0 transition-colors"
-          >
-            Activar Avisos
-          </button>
-        </div>
-      )}
-
-      {/* Watering Overdue Notification Center / Banner */}
-      {overdueCultivationsList.length > 0 && (
-        <div
-          id="watering-overdue-global-alert"
-          className="bg-gradient-to-r from-rose-950/70 via-[#18080c] to-[#0F0F0F] rounded-[28px] p-5 sm:p-6 border border-rose-500/50 shadow-2xl shadow-rose-950/30 relative overflow-hidden animate-fade-in-up"
-        >
-          <div className="absolute top-0 right-0 w-64 h-64 bg-rose-500/10 rounded-full blur-3xl pointer-events-none -mr-16 -mt-16"></div>
-          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-rose-900/40">
-            <div className="flex items-center gap-3.5">
-              <div className="w-11 h-11 rounded-2xl bg-rose-500/20 text-rose-400 border border-rose-500/40 flex items-center justify-center shrink-0 shadow-sm shadow-rose-950/60">
-                <AlertTriangle className="w-6 h-6 stroke-[2.2] animate-bounce" />
+          {/* 2. Tarjeta Cultivo Principal (Responde: ¿Cómo está mi cultivo? ¿Qué tengo que hacer hoy? ¿Hay algo que mirar?) */}
+          {activeCrops.length === 0 ? (
+            <div className="bg-white rounded-[32px] p-8 sm:p-12 border border-[#EFE3CF] text-center space-y-4 shadow-xs">
+              <div className="w-16 h-16 rounded-2xl bg-[#FAF2E1] border border-[#EFE3CF] text-[#62B95B] flex items-center justify-center mx-auto">
+                <Sprout className="w-8 h-8" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white font-mono font-bold text-[10px] tracking-wider uppercase">
-                    OVERDUE
-                  </span>
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-rose-400">
-                    Alerta de Riego Agronómico
-                  </span>
-                </div>
-                <h3 className="text-base sm:text-lg font-bold text-white mt-0.5">
-                  {overdueCultivationsList.length === 1
-                    ? `Riego atrasado en "${overdueCultivationsList[0].cultivation.name}"`
-                    : `${overdueCultivationsList.length} cultivos superan el período de riego recomendado`}
-                </h3>
-                <p className="text-xs text-rose-200/80 mt-0.5">
-                  El sistema analizó la fecha del último riego y detectó que supera el intervalo sugerido para la etapa fenológica actual.
+                <h3 className="font-extrabold text-[#29202F] text-lg">Todavía no anotaste ningún cultivo 🌱</h3>
+                <p className="text-xs text-[#6E5D77] max-w-sm mx-auto mt-1">
+                  Creá tu primera carpa o planta para empezar a registrar riegos, parámetros ambientales y fotos.
                 </p>
               </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <span className="text-xs font-mono font-semibold text-rose-300 bg-rose-950/80 px-3 py-1.5 rounded-xl border border-rose-800/60">
-                ⚠️ Acción Inmediata Requerida
-              </span>
-            </div>
-          </div>
-
-          {/* Overdue crops list */}
-          <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-4">
-            {overdueCultivationsList.map(({ cultivation: crop, analysis }) => (
-              <div
-                key={crop.id}
-                className="p-3.5 rounded-2xl bg-zinc-950/80 border border-rose-500/30 hover:border-rose-500/60 transition-colors flex flex-col justify-between gap-3 shadow-xs"
+              <button
+                type="button"
+                onClick={onCreateCultivationClick}
+                className="px-6 py-3 rounded-2xl bg-[#62B95B] hover:bg-[#52A54C] text-white font-bold text-xs transition-all shadow-md shadow-[#62B95B]/20 cursor-pointer inline-flex items-center gap-2"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <h4 className="font-bold text-sm text-white">{crop.name}</h4>
-                    <p className="text-[11px] text-zinc-400">
-                      {crop.currentStage} · {crop.geneticsName || 'Genética s/d'}
-                    </p>
-                  </div>
-                  <span className="px-2 py-0.5 rounded-md bg-rose-500/25 text-rose-300 border border-rose-500/50 font-mono font-bold text-[10px] tracking-wider">
-                    +{analysis.daysOverdue}d Atraso
-                  </span>
-                </div>
-
-                <div className="text-[11px] space-y-1 bg-rose-950/30 p-2.5 rounded-xl border border-rose-900/30 text-rose-200">
-                  <div className="flex justify-between">
-                    <span className="text-zinc-400">Último riego:</span>
-                    <span className="font-mono font-semibold text-rose-300">
-                      {analysis.daysSinceWatering === null ? 'Sin registros' : `Hace ${analysis.daysSinceWatering} días`}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-zinc-400">Ciclo recomendado:</span>
-                    <span className="font-mono font-semibold text-zinc-200">Cada {analysis.recommendedIntervalDays} días ({crop.currentStage})</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => onOpenWateringModal(crop)}
-                    className="flex-1 py-2 px-3 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-bold text-xs transition-colors shadow-sm shadow-rose-500/25 flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Droplets className="w-3.5 h-3.5" />
-                    <span>Regar Ahora</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onSelectCultivation(crop)}
-                    className="py-2 px-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 text-xs font-semibold transition-colors cursor-pointer"
-                  >
-                    Ver Carpa
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Dynamic Next Watering / Critical Task Widget */}
-      <UpcomingTaskWidget
-        cultivations={cultivations}
-        waterings={filteredWaterings}
-        envRecords={filteredEnvRecords}
-        userId={userId}
-        onSelectCultivation={onSelectCultivation}
-        onOpenWateringModal={onOpenWateringModal}
-        onWateringAdded={onWateringAdded}
-        onTaskCompletedFeedback={onTaskCompletedFeedback}
-      />
-
-      {/* Bento Stats Matrix with Progressive Fade-In-Up Animation & Dynamic Contrast Borders */}
-      <div className="space-y-3">
-        {hasAlertCondition && (
-          <div
-            id="summary-cards-alert-bar"
-            className="p-3.5 sm:p-4 rounded-2xl bg-zinc-900/90 border border-amber-500/30 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs animate-fade-in-up"
-          >
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-400 shrink-0">
-                <AlertTriangle className="w-4 h-4" />
-              </div>
-              <div>
-                <span className="font-semibold text-zinc-200">
-                  Modo de Contraste Agronómico Activado:
-                </span>{' '}
-                <span className="text-zinc-300">
-                  {hasOverdueWatering && (
-                    <span className="text-rose-400 font-medium">
-                      {cropsWithOverdueWatering.length} cultivo{cropsWithOverdueWatering.length > 1 ? 's' : ''} con riego Overdue ({cropsWithOverdueWatering.map((c) => c.name).join(', ')})
-                    </span>
-                  )}
-                  {hasOverdueWatering && hasCriticalStage && <span className="text-zinc-500"> • </span>}
-                  {hasCriticalStage && (
-                    <span className="text-amber-300 font-medium">
-                      {cropsInCriticalStage.length} cultivo{cropsInCriticalStage.length > 1 ? 's' : ''} en etapa crítica ({cropsInCriticalStage.map((c) => `${c.name} [${c.currentStage}]`).join(', ')})
-                    </span>
-                  )}
-                </span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0 font-mono text-[10px] text-zinc-400 bg-zinc-950/70 px-2.5 py-1 rounded-full border border-zinc-800">
-              <span className={`w-2 h-2 rounded-full ${hasOverdueWatering ? 'bg-rose-500' : 'bg-amber-400'} animate-ping`}></span>
-              <span className="font-bold tracking-wider uppercase">BORDES DE ALTO CONTRASTE</span>
-            </div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {summaryCards.map((stat, idx) => (
-            <div
-              key={stat.id}
-              id={stat.id}
-              style={{
-                animationDelay: `${idx * 100}ms`,
-              }}
-              className={`animate-fade-in-up bg-[#0F0F0F] rounded-[28px] p-5 sm:p-6 transition-all relative overflow-hidden flex flex-col justify-between ${stat.borderClass}`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-zinc-500">
-                  {stat.label}
-                </span>
-                <div className={`p-2 rounded-xl border ${stat.iconStyle}`}>
-                  {stat.icon}
-                </div>
-              </div>
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-1">
-                  <div className={`text-3xl sm:text-4xl font-mono font-bold ${stat.valueColor}`}>
-                    {stat.value}
-                  </div>
-                  {stat.alertBadge}
-                </div>
-                <span className="text-[11px] text-zinc-400">{stat.subtitle}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Flowering Stage Progress Hub: Estimated Flowering Progress vs Typical Genetics Duration */}
-      <FloweringProgressSection
-        cultivations={cultivations}
-        geneticsList={geneticsList}
-        onSelectCultivation={onSelectCultivation}
-        onOpenWateringModal={onOpenWateringModal}
-        onOpenPhotoModal={onOpenPhotoModal}
-        onOpenAIAssistant={onOpenAIAssistant}
-      />
-
-      {/* Harvest Projection Hub: Estimated Harvest Date Adjusted by Recorded Stage Changes */}
-      <HarvestProjectionSection
-        cultivations={cultivations}
-        geneticsList={geneticsList}
-        onSelectCultivation={onSelectCultivation}
-        onOpenCalendarModal={onOpenCalendarModal}
-      />
-
-      {/* Filtered Environmental Micro-Averages Pill when records exist */}
-      {isDateFilterActive && envAverages && (
-        <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2 text-zinc-300">
-            <Thermometer className="w-4 h-4 text-emerald-400" />
-            <span>
-              Promedios ambientales registrados en el período:{' '}
-              <strong className="text-white font-mono">{envAverages.avgTemp} °C</strong> temp |{' '}
-              <strong className="text-white font-mono">{envAverages.avgHum}%</strong> humedad relativa
-            </span>
-          </div>
-          <span className="text-[11px] text-zinc-500 font-mono">
-            {filteredEnvRecords.length} muestra{filteredEnvRecords.length === 1 ? '' : 's'} tomadas
-          </span>
-        </div>
-      )}
-
-      {/* Environmental Progress Historical Line Chart (recharts) */}
-      <DashboardEnvironmentChart
-        activeCultivations={activeCrops}
-        envRecords={envRecords}
-        onOpenEnvModal={onOpenEnvModal}
-      />
-
-      {/* Filtered Events Drawer / Activity Log when Date Filter is Active */}
-      {isDateFilterActive && (
-        <div id="filtered-events-section" className="bg-[#0F0F0F] rounded-[28px] p-5 sm:p-6 border border-zinc-800 shadow-xl space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-zinc-800/80">
-            <div>
-              <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-emerald-400 block mb-0.5">
-                Inspección Temporal de Eventos
-              </span>
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                Eventos en la Fecha ({totalFilteredEvents})
-              </h3>
-            </div>
-            <span className="text-xs text-zinc-400 font-mono">
-              {dateFilter.startDate === dateFilter.endDate
-                ? formatDateDisplay(dateFilter.startDate)
-                : `${formatDateDisplay(dateFilter.startDate)} — ${formatDateDisplay(dateFilter.endDate)}`}
-            </span>
-          </div>
-
-          {totalFilteredEvents === 0 ? (
-            <div className="text-center py-8 px-4 bg-zinc-900/40 rounded-2xl border border-zinc-800/50 space-y-1">
-              <Clock className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
-              <p className="text-sm font-medium text-zinc-300">No hay registros de riegos, mediciones o fotos en este período.</p>
-              <p className="text-xs text-zinc-500">
-                Selecciona otra fecha en el filtro superior o añade un registro rápido con el botón (+).
-              </p>
+                <Plus className="w-4 h-4 stroke-[2.5]" />
+                Crear Nuevo Cultivo
+              </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-              {/* Filtered Waterings */}
-              {filteredWaterings.map((w) => {
-                const crop = cultivations.find((c) => c.id === w.cultivationId);
-                return (
-                  <div
-                    key={w.id}
-                    className="p-3.5 rounded-2xl bg-zinc-900/80 border border-cyan-500/20 hover:border-cyan-500/40 transition-colors flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-bold text-white truncate">{crop?.name || 'Cultivo'}</span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
-                          Riego
-                        </span>
-                      </div>
-                      <div className="text-xs text-zinc-300 space-y-1">
-                        <div>
-                          Volumen: <span className="font-mono text-cyan-300 font-bold">{w.volumeLiters} L</span>
-                        </div>
-                        {(w.phIn !== undefined || w.ecIn !== undefined) && (
-                          <div className="text-[11px] text-zinc-400 font-mono">
-                            {w.phIn !== undefined && `pH: ${w.phIn}`} {w.ecIn !== undefined && `| EC: ${w.ecIn} mS`}
-                          </div>
-                        )}
-                        {w.observations && (
-                          <div className="text-[11px] text-zinc-400 italic line-clamp-1">"{w.observations}"</div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-[10px] text-zinc-500 mt-3 font-mono pt-2 border-t border-zinc-800/80">
-                      {formatDateDisplay(w.date)} {w.time || ''}
+            primaryCrop && (
+              <div
+                id="main-crop-hero-card"
+                className="bg-white rounded-[32px] p-6 sm:p-8 border border-[#EFE3CF] shadow-xs relative overflow-hidden space-y-6"
+              >
+                {/* Selector rápido entre carpas activas (si hay más de 1) */}
+                {activeCrops.length > 1 && (
+                  <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+                    <span className="text-[11px] font-bold text-[#9887A2] uppercase tracking-wider shrink-0 mr-1">
+                      Cultivos:
+                    </span>
+                    {activeCrops.map((crop) => (
+                      <button
+                        key={crop.id}
+                        type="button"
+                        onClick={() => setSelectedCropId(crop.id)}
+                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                          crop.id === primaryCrop.id
+                            ? 'bg-[#6C45C7] text-white shadow-xs'
+                            : 'bg-[#FAF2E1] text-[#6E5D77] hover:bg-[#EFE3CF]'
+                        }`}
+                      >
+                        {crop.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Cabecera del Cultivo: Nombre, Día, Etapa */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#EFE3CF]">
+                  <div>
+                    <h2
+                      onClick={() => onSelectCultivation(primaryCrop)}
+                      className="text-2xl sm:text-3xl font-black text-[#29202F] tracking-tight hover:text-[#6C45C7] transition-colors cursor-pointer inline-flex items-center gap-2"
+                      title="Ver detalle del cultivo"
+                    >
+                      <span>{primaryCrop.name}</span>
+                      <ChevronRight className="w-5 h-5 text-[#9887A2]" />
+                    </h2>
+                    {/* Metadatos sin cajas píldora */}
+                    <div className="flex items-center gap-2 text-xs text-[#6E5D77] mt-1 flex-wrap">
+                      <span className="font-bold text-[#29202F]">Día {primaryCropDays}</span>
+                      <span aria-hidden="true" className="text-[#DECDB3]">·</span>
+                      <span className="font-semibold text-[#6C45C7]">{primaryCrop.currentStage || 'Vegetativo'}</span>
+                      {primaryCrop.geneticsName && (
+                        <>
+                          <span aria-hidden="true" className="text-[#DECDB3]">·</span>
+                          <span>{primaryCrop.geneticsName}</span>
+                        </>
+                      )}
                     </div>
                   </div>
-                );
-              })}
 
-              {/* Filtered Env Records */}
-              {filteredEnvRecords.map((e) => {
-                const crop = cultivations.find((c) => c.id === e.cultivationId);
-                return (
+                  {/* Estado global comprensible en 3 segundos */}
                   <div
-                    key={e.id}
-                    className="p-3.5 rounded-2xl bg-zinc-900/80 border border-amber-500/20 hover:border-amber-500/40 transition-colors flex flex-col justify-between"
+                    className={`px-4 py-2.5 rounded-2xl flex items-center gap-3 shrink-0 ${
+                      cropOverallState.isAlert
+                        ? 'bg-[#EB7864]/10 border border-[#EB7864]/30'
+                        : 'bg-[#62B95B]/10 border border-[#62B95B]/25'
+                    }`}
                   >
+                    <div
+                      className={`w-3.5 h-3.5 rounded-full shrink-0 ${
+                        cropOverallState.isAlert ? 'bg-[#EB7864] animate-pulse' : 'bg-[#62B95B]'
+                      }`}
+                    />
                     <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-xs font-bold text-white truncate">{crop?.name || 'Ambiente'}</span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                      <span
+                        className={`text-sm font-extrabold block leading-tight ${
+                          cropOverallState.isAlert ? 'text-[#EB7864]' : 'text-[#62B95B]'
+                        }`}
+                      >
+                        &quot;{cropOverallState.title}&quot;
+                      </span>
+                      <span className="text-[11px] text-[#6E5D77] block mt-0.5">
+                        {cropOverallState.subtitle}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Grid de 3 Capas: Hoy, Ambiente, Último Riego */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Columna 1: Hoy */}
+                  <div className="p-4 sm:p-5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] flex flex-col justify-between space-y-3">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-[#9887A2]">
+                          Hoy
+                        </span>
+                        <Calendar className="w-4 h-4 text-[#6C45C7]" />
+                      </div>
+
+                      <div className="space-y-2">
+                        {todayTasksList.map((task) => (
+                          <div
+                            key={task.id}
+                            className="flex items-start gap-2 text-xs font-semibold text-[#29202F]"
+                          >
+                            <span className="text-[#62B95B] mt-0.5">•</span>
+                            <span className="flex-1">{task.text}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-2 border-t border-[#EFE3CF]">
+                      <button
+                        type="button"
+                        onClick={() => onOpenWateringModal(primaryCrop)}
+                        className="flex-1 py-2 px-2.5 rounded-xl bg-white hover:bg-[#FAF2E1] border border-[#EFE3CF] text-[#29202F] font-bold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <Droplets className="w-3.5 h-3.5 text-[#62B95B]" />
+                        <span>Regar</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onOpenPhotoModal(primaryCrop)}
+                        className="flex-1 py-2 px-2.5 rounded-xl bg-white hover:bg-[#FAF2E1] border border-[#EFE3CF] text-[#29202F] font-bold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <Camera className="w-3.5 h-3.5 text-[#6C45C7]" />
+                        <span>Foto</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Columna 2: Ambiente (Progressive Disclosure) */}
+                  <div className="p-4 sm:p-5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] flex flex-col justify-between space-y-3">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-[#9887A2]">
                           Ambiente
                         </span>
+                        <Thermometer className="w-4 h-4 text-[#EB7864]" />
                       </div>
-                      <div className="text-xs text-zinc-300 space-y-1">
-                        <div>
-                          Temp: <span className="font-mono text-amber-300 font-bold">{e.temperatureC}°C</span> | Hum:{' '}
-                          <span className="font-mono text-amber-300 font-bold">{e.humidityPct}%</span>
-                        </div>
-                        {e.vpdKPa !== undefined && (
-                          <div className="text-[11px] text-zinc-400 font-mono">VPD: {e.vpdKPa} kPa</div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="text-[10px] text-zinc-500 mt-3 font-mono pt-2 border-t border-zinc-800/80">
-                      {formatDateDisplay(e.date)} {e.time || ''}
-                    </div>
-                  </div>
-                );
-              })}
 
-              {/* Filtered Photos */}
-              {filteredPhotos.map((p) => {
-                const crop = cultivations.find((c) => c.id === p.cultivationId);
-                return (
-                  <div
-                    key={p.id}
-                    className="p-3.5 rounded-2xl bg-zinc-900/80 border border-blue-500/20 hover:border-blue-500/40 transition-colors flex items-center gap-3"
-                  >
-                    <img
-                      src={p.photoUrl}
-                      alt="Foto bitácora"
-                      className="w-14 h-14 rounded-xl object-cover bg-zinc-800 border border-zinc-700 shrink-0"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between mb-0.5">
-                        <span className="text-xs font-bold text-white truncate">{crop?.name || 'Foto'}</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                          Foto
+                      <div className="space-y-1">
+                        <span
+                          className={`text-sm font-extrabold block ${
+                            envCondition.isGood ? 'text-[#62B95B]' : 'text-[#EB7864]'
+                          }`}
+                        >
+                          &quot;{envCondition.label}&quot;
+                        </span>
+                        <span className="text-lg font-black text-[#29202F] block">
+                          {envCondition.shortDesc}
                         </span>
                       </div>
-                      <div className="text-[11px] text-zinc-400 truncate capitalize">{p.category || 'Bitácora'}</div>
-                      <div className="text-[10px] text-zinc-500 font-mono mt-1">{formatDateDisplay(p.date)}</div>
+                    </div>
+
+                    <div className="pt-2 border-t border-[#EFE3CF]">
+                      <button
+                        type="button"
+                        onClick={() => setShowEnvDetails((prev) => !prev)}
+                        className="w-full py-2 px-2.5 rounded-xl bg-white hover:bg-[#FAF2E1] border border-[#EFE3CF] text-[#6C45C7] font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <span>{showEnvDetails ? 'Ocultar detalles' : 'Ver detalles de ambiente'}</span>
+                        <ChevronDown
+                          className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                            showEnvDetails ? 'rotate-180' : ''
+                          }`}
+                        />
+                      </button>
                     </div>
                   </div>
-                );
-              })}
+
+                  {/* Columna 3: Último Riego (Progressive Disclosure) */}
+                  <div className="p-4 sm:p-5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] flex flex-col justify-between space-y-3">
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-[#9887A2]">
+                          Último Riego
+                        </span>
+                        <Droplets className="w-4 h-4 text-[#62B95B]" />
+                      </div>
+
+                      <div className="space-y-1">
+                        <span className="text-sm font-extrabold text-[#29202F] block">
+                          {wateringTimeAgo}
+                        </span>
+                        <span className="text-lg font-black text-[#29202F] block">
+                          {latestWateringForPrimary
+                            ? `${latestWateringForPrimary.volumeLiters || 1.5} L`
+                            : 'Anotá tu primer riego'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-[#EFE3CF]">
+                      <button
+                        type="button"
+                        onClick={() => setShowWateringDetails((prev) => !prev)}
+                        className="w-full py-2 px-2.5 rounded-xl bg-white hover:bg-[#FAF2E1] border border-[#EFE3CF] text-[#6C45C7] font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <span>{showWateringDetails ? 'Ocultar' : 'Ver pH, EC y productos'}</span>
+                        <ChevronDown
+                          className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                            showWateringDetails ? 'rotate-180' : ''
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Detalles Expandidos de Ambiente */}
+                {showEnvDetails && (
+                  <div className="p-5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] space-y-4 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#EFE3CF]">
+                      <h4 className="text-sm font-extrabold text-[#29202F]">
+                        Parámetros Ambientales Detallados
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => onOpenEnvModal(primaryCrop)}
+                        className="text-xs font-bold text-[#6C45C7] hover:underline cursor-pointer"
+                      >
+                        + Medir ahora
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                      <div className="p-3 rounded-xl bg-white border border-[#EFE3CF]">
+                        <span className="text-[10px] text-[#9887A2] block">Temperatura</span>
+                        <span className="text-base font-black text-[#29202F] block mt-0.5">
+                          {latestEnvForPrimary?.temperature ?? latestEnvForPrimary?.temperatureC ?? '--'} °C
+                        </span>
+                        <span className="text-[10px] text-[#6E5D77] block mt-0.5">Óptimo: 20-27 °C</span>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-white border border-[#EFE3CF]">
+                        <span className="text-[10px] text-[#9887A2] block">Humedad Relativa</span>
+                        <span className="text-base font-black text-[#29202F] block mt-0.5">
+                          {latestEnvForPrimary?.humidity ?? latestEnvForPrimary?.humidityPct ?? '--'} %
+                        </span>
+                        <span className="text-[10px] text-[#6E5D77] block mt-0.5">Óptimo: 45-65 %</span>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-white border border-[#EFE3CF]">
+                        <span className="text-[10px] text-[#9887A2] block">VPD Estimado</span>
+                        <span className="text-base font-black text-[#6C45C7] block mt-0.5">
+                          {latestEnvForPrimary?.vpdKPa ?? latestEnvForPrimary?.vpd ?? '--'} kPa
+                        </span>
+                        <span className="text-[10px] text-[#6E5D77] block mt-0.5">Déficit de presión</span>
+                      </div>
+
+                      <div className="p-3 rounded-xl bg-white border border-[#EFE3CF]">
+                        <span className="text-[10px] text-[#9887A2] block">Luz / PPFD</span>
+                        <span className="text-base font-black text-[#29202F] block mt-0.5">
+                          {latestEnvForPrimary?.ppfdUmols ?? '--'} µmol
+                        </span>
+                        <span className="text-[10px] text-[#6E5D77] block mt-0.5">Intensidad lumínica</span>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setShowFullClimateChart((prev) => !prev)}
+                        className="text-xs font-bold text-[#6C45C7] hover:underline cursor-pointer inline-flex items-center gap-1"
+                      >
+                        <span>{showFullClimateChart ? 'Ocultar gráfico climático' : 'Ver curvas y gráficos completos'}</span>
+                        <ChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Detalles Expandidos de Último Riego */}
+                {showWateringDetails && (
+                  <div className="p-5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] space-y-4 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#EFE3CF]">
+                      <h4 className="text-sm font-extrabold text-[#29202F]">
+                        Detalle del Último Riego
+                      </h4>
+                      <button
+                        type="button"
+                        onClick={() => onOpenWateringModal(primaryCrop)}
+                        className="text-xs font-bold text-[#62B95B] hover:underline cursor-pointer"
+                      >
+                        + Nuevo riego
+                      </button>
+                    </div>
+
+                    {latestWateringForPrimary ? (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                        <div className="p-3 rounded-xl bg-white border border-[#EFE3CF]">
+                          <span className="text-[10px] text-[#9887A2] block">Volumen</span>
+                          <span className="text-base font-black text-[#29202F] block mt-0.5">
+                            {latestWateringForPrimary.volumeLiters} L
+                          </span>
+                        </div>
+                        <div className="p-3 rounded-xl bg-white border border-[#EFE3CF]">
+                          <span className="text-[10px] text-[#9887A2] block">pH Entrada</span>
+                          <span className="text-base font-black text-[#6C45C7] block mt-0.5">
+                            {latestWateringForPrimary.phIn || 's/d'}
+                          </span>
+                        </div>
+                        <div className="p-3 rounded-xl bg-white border border-[#EFE3CF]">
+                          <span className="text-[10px] text-[#9887A2] block">EC Entrada</span>
+                          <span className="text-base font-black text-[#62B95B] block mt-0.5">
+                            {latestWateringForPrimary.ecIn ? `${latestWateringForPrimary.ecIn} mS` : 's/d'}
+                          </span>
+                        </div>
+                        <div className="p-3 rounded-xl bg-white border border-[#EFE3CF]">
+                          <span className="text-[10px] text-[#9887A2] block">Fertilizantes</span>
+                          <span className="text-xs font-semibold text-[#29202F] block mt-0.5 truncate">
+                            {latestWateringForPrimary.products && latestWateringForPrimary.products.length > 0
+                              ? latestWateringForPrimary.products.map((p) => p.productName).join(', ')
+                              : 'Solo agua regulada'}
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-[#6E5D77]">
+                        Aún no anotaste ningún riego para este cultivo. Tocá &quot;+ Nuevo riego&quot; para registrar el primero.
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )
+          )}
+
+          {/* 3. Tareas Críticas del Cultivo (UpcomingTaskWidget con estilo cálido) */}
+          <UpcomingTaskWidget
+            cultivations={cultivations}
+            waterings={filteredWaterings}
+            envRecords={filteredEnvRecords}
+            userId={userId}
+            onSelectCultivation={onSelectCultivation}
+            onOpenWateringModal={onOpenWateringModal}
+            onWateringAdded={onWateringAdded}
+            onTaskCompletedFeedback={onTaskCompletedFeedback}
+          />
+
+          {/* 4. Curvas Climáticas Históricas (DashboardEnvironmentChart desplegable) */}
+          {showFullClimateChart && (
+            <div className="animate-in fade-in duration-200">
+              <DashboardEnvironmentChart
+                activeCultivations={activeCrops}
+                envRecords={envRecords}
+                onOpenEnvModal={onOpenEnvModal}
+              />
             </div>
           )}
-        </div>
-      )}
 
-      {/* Bento AI Agronomic Assistant Box */}
-      <div className="bg-[#0F0F0F] text-white rounded-[32px] p-6 sm:p-8 border border-zinc-800 relative overflow-hidden space-y-4 shadow-xl">
-        <div className="absolute inset-0 opacity-10 bg-[radial-gradient(circle_at_100%_0%,#8b5cf6_0%,transparent_60%)] pointer-events-none"></div>
-
-        <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="p-3.5 rounded-2xl bg-violet-500/10 text-violet-400 border border-violet-500/20">
-              <Sparkles className="w-6 h-6" />
-            </div>
-            <div>
-              <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-violet-400 block mb-0.5">Gemini 2.5 Intelligence</span>
-              <h3 className="font-bold text-base sm:text-lg text-white">Resumen Agronómico Semanal</h3>
-              <p className="text-xs text-zinc-400">
-                Análisis predictivo de salud, VPD y recomendaciones de riego
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            id="generate-summary-btn"
-            onClick={handleGenerateWeeklySummary}
-            disabled={loadingSummary}
-            className="px-5 py-2.5 rounded-2xl bg-white hover:bg-zinc-200 text-black font-bold text-xs transition-colors shadow-md cursor-pointer disabled:opacity-50 shrink-0"
+          {/* 5. Ciclo de Vida Botánico (DashboardLifecycleProgress con estilo cálido) */}
+          <div
+            id="dashboard-lifecycle-progress"
+            className="bg-white rounded-[32px] p-5 sm:p-7 border border-[#EFE3CF] shadow-xs space-y-4"
           >
-            {loadingSummary ? 'Generando análisis...' : 'Generar Resumen'}
-          </button>
-        </div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#EFE3CF]">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-2xl bg-[#62B95B]/15 text-[#62B95B] border border-[#62B95B]/20">
+                  <TrendingUp className="w-5 h-5 stroke-[2.2]" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-extrabold text-[#29202F]">
+                      Ciclo de Vida del Cultivo
+                    </h3>
+                    <span className="text-xs font-bold text-[#62B95B]">
+                      {activeLifecycleStats.totalProgressPct}%
+                    </span>
+                  </div>
+                  <p className="text-xs text-[#6E5D77] mt-0.5">
+                    {activeLifecycleStats.hasActive ? (
+                      <>
+                        <strong className="text-[#29202F]">{activeLifecycleStats.avgElapsedDays} días</strong> transcurridos de{' '}
+                        <strong className="text-[#29202F]">{activeLifecycleStats.avgProjectedDays} días</strong> proyectados
+                      </>
+                    ) : (
+                      'Iniciá un cultivo para ver el avance del ciclo'
+                    )}
+                  </p>
+                </div>
+              </div>
 
-        {weeklySummary && (
-          <div className="relative z-10 p-5 rounded-2xl bg-zinc-900/90 border border-zinc-800 text-xs sm:text-sm leading-relaxed text-zinc-200">
-            {weeklySummary}
-          </div>
-        )}
-      </div>
-
-      {/* Active Crops Bento Grid */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between px-1">
-          <h2 className="text-lg font-bold text-white flex items-center gap-2.5">
-            <div className="w-2.5 h-2.5 rounded-full bg-emerald-400"></div>
-            Cultivos en Curso ({activeCrops.length})
-          </h2>
-        </div>
-
-        {activeCrops.length === 0 ? (
-          <div className="bg-[#0F0F0F] rounded-[32px] p-12 border border-zinc-800 text-center space-y-4">
-            <div className="w-16 h-16 rounded-2xl bg-zinc-900 border border-zinc-800 text-emerald-400 flex items-center justify-center mx-auto">
-              <Sprout className="w-8 h-8" />
+              <button
+                type="button"
+                onClick={() => setShowLifecycleSection((prev) => !prev)}
+                className="text-xs font-bold text-[#6C45C7] hover:underline cursor-pointer self-start sm:self-auto"
+              >
+                {showLifecycleSection ? 'Ocultar desglose' : 'Ver desglose por etapas'}
+              </button>
             </div>
-            <div>
-              <h3 className="font-bold text-white text-base">No tienes cultivos activos</h3>
-              <p className="text-xs text-zinc-400 max-w-sm mx-auto mt-1">
-                Comienza registrando tu primera carpa o carga datos de demostración para explorar la plataforma.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onCreateCultivationClick}
-              className="px-6 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition-all shadow-lg shadow-emerald-500/20 cursor-pointer inline-flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4 stroke-[2.5]" />
-              Crear Nuevo Cultivo
-            </button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {activeCrops.map((crop) => (
-              <CultivationCard
-                key={crop.id}
-                cultivation={crop}
-                latestWatering={getLatestWateringForCrop(crop.id)}
-                latestEnv={getLatestEnvForCrop(crop.id)}
-                onClick={() => onSelectCultivation(crop)}
-                onQuickWater={() => onOpenWateringModal(crop)}
-                onQuickPhoto={() => onOpenPhotoModal(crop)}
-                onQuickAI={() => onOpenAIAssistant(crop)}
-                onQuickCalendar={onOpenCalendarModal ? () => onOpenCalendarModal(crop) : undefined}
+
+            {/* Barra de progreso visual orgánica */}
+            <div className="relative w-full h-4 bg-[#FAF2E1] rounded-full overflow-hidden border border-[#EFE3CF]">
+              <motion.div
+                className="h-full bg-gradient-to-r from-[#62B95B] via-[#F3C843] to-[#6C45C7] rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: `${activeLifecycleStats.totalProgressPct}%` }}
+                transition={{ duration: 1, ease: 'easeOut' }}
               />
-            ))}
+            </div>
+
+            {/* Hitos botánicos resumidos */}
+            <div className="flex items-center justify-between text-[11px] text-[#6E5D77] pt-1">
+              <span>Siembra</span>
+              <span>Vegetativo</span>
+              <span>Floración</span>
+              <span>Cosecha</span>
+            </div>
+
+            {/* Desglose ampliable de etapas */}
+            {showLifecycleSection && (
+              <div className="pt-3 border-t border-[#EFE3CF] grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
+                {stageMilestones.milestones.map((m) => (
+                  <div
+                    key={m.id}
+                    className={`p-3 rounded-xl border ${
+                      m.isCurrent
+                        ? 'bg-[#62B95B]/10 border-[#62B95B]/40 text-[#29202F] font-bold'
+                        : m.isReached
+                        ? 'bg-[#FAF2E1] border-[#EFE3CF] text-[#29202F]'
+                        : 'bg-white border-[#EFE3CF] text-[#9887A2]'
+                    }`}
+                  >
+                    <span className="text-[10px] text-[#9887A2] block">Etapa</span>
+                    <span className="block mt-0.5">{m.shortName}</span>
+                    <span className="text-[10px] text-[#6E5D77] block mt-0.5">Día ~{m.startDay}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
+
+          {/* 6. Estadísticas Resumidas (Bento Cards Reutilizables con IDs requeridos) */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Cultivos Activos */}
+            <div
+              id="stat-active-crops"
+              className="bg-white rounded-[28px] p-5 border border-[#EFE3CF] shadow-xs flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#9887A2]">
+                  Cultivos Activos
+                </span>
+                <div className="p-2 rounded-xl bg-[#62B95B]/15 text-[#62B95B]">
+                  <Sprout className="w-4 h-4" />
+                </div>
+              </div>
+              <div>
+                <span className="text-3xl sm:text-4xl font-black text-[#29202F] block">
+                  {activeCrops.length}
+                </span>
+                <span className="text-xs text-[#6E5D77] block mt-0.5">En seguimiento diario</span>
+              </div>
+            </div>
+
+            {/* Total Plantas */}
+            <div
+              id="stat-total-plants"
+              className="bg-white rounded-[28px] p-5 border border-[#EFE3CF] shadow-xs flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#9887A2]">
+                  Total Plantas
+                </span>
+                <div className="p-2 rounded-xl bg-[#FAF2E1] text-[#29202F]">
+                  <Layers className="w-4 h-4" />
+                </div>
+              </div>
+              <div>
+                <span className="text-3xl sm:text-4xl font-black text-[#29202F] block">
+                  {totalPlants}
+                </span>
+                <span className="text-xs text-[#6E5D77] block mt-0.5">Iluminación controlada</span>
+              </div>
+            </div>
+
+            {/* Riegos */}
+            <div
+              id="stat-recent-waterings"
+              className="bg-white rounded-[28px] p-5 border border-[#EFE3CF] shadow-xs flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#9887A2]">
+                  {isDateFilterActive ? 'Riegos (Filtro)' : 'Riegos (7 días)'}
+                </span>
+                <div className="p-2 rounded-xl bg-[#6C45C7]/15 text-[#6C45C7]">
+                  <Droplets className="w-4 h-4" />
+                </div>
+              </div>
+              <div>
+                <span className="text-3xl sm:text-4xl font-black text-[#6C45C7] block">
+                  {isDateFilterActive ? filteredWaterings.length : recentWateringsCount}
+                </span>
+                <span className="text-xs text-[#6E5D77] block mt-0.5">Nutrición y agua</span>
+              </div>
+            </div>
+
+            {/* Fotos Bitácora */}
+            <div
+              id="stat-diary-photos"
+              className="bg-white rounded-[28px] p-5 border border-[#EFE3CF] shadow-xs flex flex-col justify-between"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#9887A2]">
+                  {isDateFilterActive ? 'Fotos (Filtro)' : 'Fotos Bitácora'}
+                </span>
+                <div className="p-2 rounded-xl bg-[#F3C843]/25 text-[#29202F]">
+                  <Camera className="w-4 h-4" />
+                </div>
+              </div>
+              <div>
+                <span className="text-3xl sm:text-4xl font-black text-[#29202F] block">
+                  {isDateFilterActive ? filteredPhotos.length : photos.length}
+                </span>
+                <span className="text-xs text-[#6E5D77] block mt-0.5">Registro visual</span>
+              </div>
+            </div>
+          </div>
+
+          {/* 7. Floración y Proyecciones de Cosecha */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-bold text-[#6E5D77] uppercase tracking-wider">
+                Floración y Cosechas
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowFloweringSection((prev) => !prev)}
+                className="text-xs font-bold text-[#6C45C7] hover:underline cursor-pointer"
+              >
+                {showFloweringSection ? 'Ocultar proyecciones' : 'Ver semanas y corte'}
+              </button>
+            </div>
+
+            {showFloweringSection && (
+              <div className="space-y-6 animate-in fade-in duration-200">
+                <FloweringProgressSection
+                  cultivations={cultivations}
+                  geneticsList={geneticsList}
+                  onSelectCultivation={onSelectCultivation}
+                  onOpenWateringModal={onOpenWateringModal}
+                  onOpenPhotoModal={onOpenPhotoModal}
+                  onOpenAIAssistant={onOpenAIAssistant}
+                />
+                <HarvestProjectionSection
+                  cultivations={cultivations}
+                  geneticsList={geneticsList}
+                  onSelectCultivation={onSelectCultivation}
+                  onOpenCalendarModal={onOpenCalendarModal}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* 8. Filtro Temporal de Bitácora */}
+          <DashboardDateFilter
+            filter={dateFilter}
+            onChangeFilter={setDateFilter}
+            wateringsCount={filteredWaterings.length}
+            envCount={filteredEnvRecords.length}
+            photosCount={filteredPhotos.length}
+            totalRecordsCount={totalFilteredEvents}
+          />
+
+          {/* 9. Asistente Botánico: Preguntale a Cultiveta */}
+          <div className="bg-white rounded-[32px] p-6 sm:p-8 border border-[#EFE3CF] shadow-xs relative overflow-hidden space-y-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="p-3.5 rounded-2xl bg-[#6C45C7]/15 text-[#6C45C7]">
+                  <Sparkles className="w-6 h-6 stroke-[2.2]" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-extrabold text-[#29202F]">
+                    Preguntale a Cultiveta ✨
+                  </h3>
+                  <p className="text-xs text-[#6E5D77]">
+                    Análisis botánico inteligente de tu cultivo, salud foliar y recomendaciones
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                id="generate-summary-btn"
+                onClick={handleGenerateWeeklySummary}
+                disabled={loadingSummary}
+                className="px-5 py-2.5 rounded-2xl bg-[#6C45C7] hover:bg-[#5835ab] text-white font-bold text-xs transition-colors shadow-md shadow-[#6C45C7]/20 cursor-pointer disabled:opacity-50 shrink-0"
+              >
+                {loadingSummary ? 'Consultando a Cultiveta...' : 'Generar Resumen Semanal'}
+              </button>
+            </div>
+
+            {weeklySummary && (
+              <div className="p-5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs sm:text-sm leading-relaxed text-[#29202F]">
+                {weeklySummary}
+              </div>
+            )}
+          </div>
+
+          {/* 10. Listado de Cultivos en Curso */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between px-1">
+              <h2 className="text-lg font-extrabold text-[#29202F] flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#62B95B]" />
+                <span>Cultivos en Curso ({activeCrops.length})</span>
+              </h2>
+
+              <button
+                type="button"
+                onClick={onCreateCultivationClick}
+                className="text-xs font-bold text-[#62B95B] hover:underline cursor-pointer flex items-center gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Sumar cultivo</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {activeCrops.map((crop) => (
+                <CultivationCard
+                  key={crop.id}
+                  cultivation={crop}
+                  latestWatering={
+                    waterings
+                      .filter((w) => w.cultivationId === crop.id)
+                      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] || null
+                  }
+                  latestEnv={
+                    envRecords
+                      .filter((e) => e.cultivationId === crop.id)
+                      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] || null
+                  }
+                  onClick={() => onSelectCultivation(crop)}
+                  onQuickWater={() => onOpenWateringModal(crop)}
+                  onQuickPhoto={() => onOpenPhotoModal(crop)}
+                  onQuickAI={() => onOpenAIAssistant(crop)}
+                  onQuickCalendar={onOpenCalendarModal ? () => onOpenCalendarModal(crop) : undefined}
+                />
+              ))}
+            </div>
+          </div>
         </>
       )}
     </div>
   );
 };
-
