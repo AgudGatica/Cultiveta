@@ -430,12 +430,13 @@ export default function App() {
   // Authentication Loading Screen
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#050505] flex items-center justify-center p-4">
-        <div className="flex flex-col items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-emerald-500 text-black flex items-center justify-center text-3xl shadow-lg shadow-emerald-500/20 animate-pulse font-mono font-bold">
+      <div className="min-h-screen bg-[#FFF8E8] flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-16 h-16 rounded-3xl bg-white border border-[#EFE3CF] shadow-md flex items-center justify-center text-3xl transition-transform animate-bounce">
             🌱
           </div>
-          <p className="text-xs font-mono font-bold uppercase tracking-[0.2em] text-zinc-500">Cargando Cultiveta...</p>
+          <span className="text-xl font-black text-[#29202F] tracking-tight">Cultiveta</span>
+          <p className="text-xs font-bold text-[#6E5D77]">Preparando tu cultivo...</p>
         </div>
       </div>
     );

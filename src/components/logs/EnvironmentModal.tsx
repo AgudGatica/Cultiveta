@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Thermometer, Save, SunMedium, Loader2, AlertCircle } from 'lucide-react';
+import { X, Thermometer, Save, SunMedium, Loader2, AlertCircle, ChevronDown, Sparkles } from 'lucide-react';
 import { Cultivation, EnvironmentRecord } from '../../types';
 import { environmentService } from '../../services/environmentService';
 
@@ -27,6 +27,7 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
   );
   const [temperatureC, setTemperatureC] = useState<number | ''>(24.5);
   const [humidityPct, setHumidityPct] = useState<number | ''>(55);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [leafTempC, setLeafTempC] = useState<number | ''>('');
   const [ppfd, setPpfd] = useState<number | ''>('');
   const [co2Ppm, setCo2Ppm] = useState<number | ''>('');
@@ -39,6 +40,14 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
   const [weatherError, setWeatherError] = useState<string | null>(null);
 
   const selectedCultivation = cultivations.find((c) => c.id === cultivationId);
+
+  // Estimación visual rápida de VPD
+  const estimatedVpd = React.useMemo(() => {
+    if (typeof temperatureC !== 'number' || typeof humidityPct !== 'number') return null;
+    const vps = 0.61078 * Math.exp((17.27 * temperatureC) / (temperatureC + 237.3));
+    const vpa = vps * (humidityPct / 100);
+    return Math.max(0, Number((vps - vpa).toFixed(2)));
+  }, [temperatureC, humidityPct]);
 
   const fetchLocalWeather = async () => {
     setWeatherError(null);
@@ -121,7 +130,7 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!cultivationId) {
-      setError('Por favor selecciona un cultivo.');
+      setError('Por favor seleccioná un cultivo.');
       return;
     }
     if (temperatureC === '' || humidityPct === '') {
@@ -162,32 +171,32 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+    <div className="cultiveta-modal-overlay animate-in fade-in">
       <div
         id="environment-modal-box"
-        className="w-full max-w-lg bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-stone-200 my-auto"
+        className="cultiveta-modal-container max-w-lg p-6 sm:p-8 my-auto"
       >
-        <div className="flex items-center justify-between pb-4 border-b border-stone-100 mb-6">
+        <div className="flex items-center justify-between pb-4 border-b border-[#EFE3CF] mb-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-amber-100 text-amber-800">
+            <div className="p-3 rounded-2xl bg-[#F3C843]/20 text-[#EB7864]">
               <Thermometer className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-stone-900">Registro Ambiental 🌡️</h2>
-              <p className="text-xs text-stone-500">Anota temperatura, humedad, VPD y radiación PPFD</p>
+              <h2 className="text-xl font-black text-[#29202F]">¿Cómo está el ambiente? 🌡️</h2>
+              <p className="text-xs text-[#6E5D77]">Anotá temperatura y humedad para cuidar tus plantas</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-stone-400 hover:text-stone-700 rounded-full hover:bg-stone-100 transition-colors cursor-pointer"
+            className="p-2 text-[#9887A2] hover:text-[#29202F] rounded-full hover:bg-[#FAF2E1] transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
+          <div className="mb-4 p-3.5 rounded-2xl bg-[#EB7864]/10 border border-[#EB7864]/30 text-[#EB7864] text-xs font-semibold">
             {error}
           </div>
         )}
@@ -196,13 +205,13 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
           {/* Crop & Date */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-3">
-              <label className="block text-xs font-bold text-stone-700 mb-1">Cultivo *</label>
+              <label className="block text-xs font-bold text-[#29202F] mb-1">Cultivo *</label>
               <select
                 id="env-crop-select"
                 value={cultivationId}
                 onChange={(e) => setCultivationId(e.target.value)}
                 required
-                className="w-full px-3.5 py-2.5 rounded-2xl bg-stone-50 border border-stone-200 text-stone-800 text-sm focus:outline-hidden focus:border-amber-500 focus:bg-white cursor-pointer"
+                className="w-full px-3.5 py-2.5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-[#29202F] text-sm focus:outline-hidden focus:border-[#6C45C7] focus:bg-white cursor-pointer font-medium"
               >
                 {cultivations.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -213,25 +222,25 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1">Fecha</label>
+              <label className="block text-xs font-bold text-[#29202F] mb-1">Fecha</label>
               <input
                 id="env-date-input"
                 type="date"
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-amber-500 focus:bg-white"
+                className="w-full px-3 py-2 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7] focus:bg-white font-medium"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1">Hora</label>
+              <label className="block text-xs font-bold text-[#29202F] mb-1">Hora</label>
               <input
                 id="env-time-input"
                 type="time"
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
-                className="w-full px-3 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-amber-500 focus:bg-white"
+                className="w-full px-3 py-2 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7] focus:bg-white font-medium"
               />
             </div>
           </div>
@@ -244,130 +253,163 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
                 id="env-fetch-local-weather-btn"
                 disabled={isFetchingWeather}
                 onClick={fetchLocalWeather}
-                className="w-full py-2.5 px-4 rounded-2xl bg-sky-50 hover:bg-sky-100 border border-sky-200 text-sky-700 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 shadow-2xs"
+                className="w-full py-2.5 px-4 rounded-2xl bg-[#6C45C7]/10 hover:bg-[#6C45C7]/20 border border-[#6C45C7]/30 text-[#6C45C7] text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 shadow-2xs"
               >
                 {isFetchingWeather ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin text-sky-600" />
+                    <Loader2 className="w-4 h-4 animate-spin text-[#6C45C7]" />
                     <span>Obteniendo clima local...</span>
                   </>
                 ) : (
-                  <span>🌤️ Obtener clima local</span>
+                  <span>🌤️ Obtener clima local de estación</span>
                 )}
               </button>
 
               {weatherError && (
                 <div
                   id="env-weather-error-box"
-                  className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-start gap-2 animate-in fade-in"
+                  className="p-3 rounded-2xl bg-[#EB7864]/10 border border-[#EB7864]/30 text-[#EB7864] text-xs font-medium flex items-start gap-2 animate-in fade-in"
                 >
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-500 mt-0.5" />
+                  <AlertCircle className="w-4 h-4 shrink-0 text-[#EB7864] mt-0.5" />
                   <span>{weatherError}</span>
                 </div>
               )}
             </div>
           )}
 
-          {/* Temp and Humidity */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1">Temperatura (°C) *</label>
-              <input
-                id="env-temp-input"
-                type="number"
-                step="0.1"
-                required
-                placeholder="ej. 24.5"
-                value={temperatureC}
-                onChange={(e) => setTemperatureC(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                className="w-full px-4 py-2.5 rounded-2xl bg-amber-50/40 border border-amber-300 font-bold text-sm text-stone-900 focus:outline-hidden focus:border-amber-500 focus:bg-white"
-              />
+          {/* Primera capa esencial: Temp y Humedad */}
+          <div className="p-4 sm:p-5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-bold text-[#29202F] mb-1">Temperatura (°C) *</label>
+                <div className="relative">
+                  <input
+                    id="env-temp-input"
+                    type="number"
+                    step="0.1"
+                    required
+                    placeholder="ej. 24.5"
+                    value={temperatureC}
+                    onChange={(e) => setTemperatureC(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                    className="w-full px-3.5 py-2.5 rounded-2xl bg-white border border-[#EFE3CF] font-black text-base text-[#29202F] focus:outline-hidden focus:border-[#EB7864] focus:ring-1 focus:ring-[#EB7864]/30 pr-8"
+                  />
+                  <span className="absolute right-3 top-2.5 text-xs font-bold text-[#EB7864]">°C</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#29202F] mb-1">Humedad (% HR) *</label>
+                <div className="relative">
+                  <input
+                    id="env-humidity-input"
+                    type="number"
+                    step="1"
+                    min="0"
+                    max="100"
+                    required
+                    placeholder="ej. 55"
+                    value={humidityPct}
+                    onChange={(e) => setHumidityPct(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                    className="w-full px-3.5 py-2.5 rounded-2xl bg-white border border-[#EFE3CF] font-black text-base text-[#29202F] focus:outline-hidden focus:border-[#6C45C7] focus:ring-1 focus:ring-[#6C45C7]/30 pr-8"
+                  />
+                  <span className="absolute right-3 top-2.5 text-xs font-bold text-[#6C45C7]">%</span>
+                </div>
+              </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1">Humedad Relativa (% HR) *</label>
-              <input
-                id="env-humidity-input"
-                type="number"
-                step="1"
-                min="0"
-                max="100"
-                required
-                placeholder="ej. 55"
-                value={humidityPct}
-                onChange={(e) => setHumidityPct(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                className="w-full px-4 py-2.5 rounded-2xl bg-cyan-50/40 border border-cyan-300 font-bold text-sm text-stone-900 focus:outline-hidden focus:border-cyan-500 focus:bg-white"
-              />
-            </div>
+            {/* Live VPD preview badge */}
+            {estimatedVpd !== null && (
+              <div className="flex items-center justify-between pt-2 border-t border-[#EFE3CF] text-xs">
+                <span className="text-[#6E5D77]">VPD estimado en aire:</span>
+                <span className="font-extrabold text-[#6C45C7] bg-[#6C45C7]/10 px-2.5 py-0.5 rounded-full border border-[#6C45C7]/20">
+                  {estimatedVpd} kPa
+                </span>
+              </div>
+            )}
           </div>
 
-          {/* Advanced / Optional (Leaf temp, PPFD, CO2) */}
-          <div className="p-4 rounded-2xl bg-stone-50/80 border border-stone-200/80 space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-stone-600 flex items-center gap-1.5">
-              <SunMedium className="w-3.5 h-3.5" />
-              Métricas Avanzadas (Opcional)
-            </h3>
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1">Temp Foliar (°C)</label>
-                <input
-                  id="env-leaf-temp-input"
-                  type="number"
-                  step="0.1"
-                  placeholder="ej. 22.8"
-                  value={leafTempC}
-                  onChange={(e) => setLeafTempC(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-amber-500"
-                />
-              </div>
+          {/* Progressive Disclosure: Agregar más datos */}
+          <div className="border border-[#EFE3CF] rounded-2xl overflow-hidden bg-[#FFFDF7]">
+            <button
+              type="button"
+              onClick={() => setShowAdvanced((prev) => !prev)}
+              className="w-full p-4 flex items-center justify-between text-left text-xs font-bold text-[#6C45C7] hover:bg-[#FAF2E1] transition-colors cursor-pointer"
+            >
+              <span className="flex items-center gap-1.5">
+                <SunMedium className="w-4 h-4 text-[#6C45C7]" />
+                <span>{showAdvanced ? 'Ocultar datos avanzados' : 'Agregar más datos (Temp foliar, PPFD, CO₂, notas)'}</span>
+              </span>
+              <ChevronDown
+                className={`w-4 h-4 transition-transform duration-200 ${
+                  showAdvanced ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
 
-              <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1">PPFD (µmol/m²s)</label>
-                <input
-                  id="env-ppfd-input"
-                  type="number"
-                  step="10"
-                  placeholder="ej. 650"
-                  value={ppfd}
-                  onChange={(e) => setPpfd(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-amber-500"
-                />
-              </div>
+            {showAdvanced && (
+              <div className="p-4 pt-0 space-y-4 animate-in fade-in duration-200">
+                <div className="grid grid-cols-3 gap-2.5">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-[#6E5D77] mb-1">Temp Foliar (°C)</label>
+                    <input
+                      id="env-leaf-temp-input"
+                      type="number"
+                      step="0.1"
+                      placeholder="ej. 22.8"
+                      value={leafTempC}
+                      onChange={(e) => setLeafTempC(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                      className="w-full px-3 py-1.5 rounded-xl bg-white border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7]"
+                    />
+                  </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-stone-600 mb-1">CO₂ (ppm)</label>
-                <input
-                  id="env-co2-input"
-                  type="number"
-                  step="50"
-                  placeholder="ej. 450"
-                  value={co2Ppm}
-                  onChange={(e) => setCo2Ppm(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-amber-500"
-                />
-              </div>
-            </div>
-          </div>
+                  <div>
+                    <label className="block text-[11px] font-semibold text-[#6E5D77] mb-1">PPFD (µmol)</label>
+                    <input
+                      id="env-ppfd-input"
+                      type="number"
+                      step="10"
+                      placeholder="ej. 650"
+                      value={ppfd}
+                      onChange={(e) => setPpfd(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                      className="w-full px-3 py-1.5 rounded-xl bg-white border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7]"
+                    />
+                  </div>
 
-          {/* Notes */}
-          <div>
-            <label className="block text-xs font-bold text-stone-700 mb-1">Notas del entorno</label>
-            <textarea
-              id="env-notes-input"
-              rows={2}
-              placeholder="Encendido de ventilador, extracción al 80%, etc."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-amber-500 focus:bg-white"
-            />
+                  <div>
+                    <label className="block text-[11px] font-semibold text-[#6E5D77] mb-1">CO₂ (ppm)</label>
+                    <input
+                      id="env-co2-input"
+                      type="number"
+                      step="50"
+                      placeholder="ej. 450"
+                      value={co2Ppm}
+                      onChange={(e) => setCo2Ppm(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                      className="w-full px-3 py-1.5 rounded-xl bg-white border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7]"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-[#29202F] mb-1">Notas del entorno</label>
+                  <textarea
+                    id="env-notes-input"
+                    rows={2}
+                    placeholder="Encendido de ventilador, extracción al 80%, calor exterior..."
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    className="w-full px-3 py-2 rounded-2xl bg-white border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7]"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Actions */}
-          <div className="pt-3 border-t border-stone-200 flex items-center justify-end gap-3">
+          <div className="pt-3 border-t border-[#EFE3CF] flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2 rounded-full text-xs font-semibold text-stone-600 hover:bg-stone-100 transition-colors cursor-pointer"
+              className="cultiveta-btn-secondary text-xs"
             >
               Cancelar
             </button>
@@ -375,10 +417,10 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
               type="submit"
               id="save-environment-btn"
               disabled={loading}
-              className="px-6 py-2.5 rounded-full text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-md shadow-amber-600/20 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+              className="cultiveta-btn-primary text-xs disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
-              <span>Guardar Ambiente</span>
+              <span>Guardar medición</span>
             </button>
           </div>
         </form>
@@ -386,3 +428,4 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
     </div>
   );
 };
+

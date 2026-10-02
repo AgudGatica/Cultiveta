@@ -123,35 +123,35 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+    <div className="cultiveta-modal-overlay animate-in fade-in">
       <div
         id="associate-fertilization-modal"
-        className="w-full max-w-xl bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-stone-200 my-auto space-y-6"
+        className="cultiveta-modal-container max-w-xl p-6 sm:p-8 my-auto space-y-6"
       >
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-stone-100">
+        <div className="flex items-center justify-between pb-4 border-b border-[#EFE3CF]">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-emerald-100 text-emerald-800">
+            <div className="p-3 rounded-2xl bg-[#62B95B]/15 text-[#62B95B]">
               <Droplets className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-stone-900">Asociar Productos al Riego</h2>
-              <p className="text-xs text-stone-500">
-                Riego del <strong className="text-stone-800">{watering.date}</strong> · {watering.volumeLiters} Litros
+              <h2 className="text-xl font-black text-[#29202F]">Asociar Productos al Riego</h2>
+              <p className="text-xs text-[#29202F]/70">
+                Riego del <strong className="text-[#29202F]">{watering.date}</strong> · {watering.volumeLiters} Litros
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-stone-400 hover:text-stone-700 rounded-full hover:bg-stone-100 transition-colors cursor-pointer"
+            className="p-2 text-[#29202F]/40 hover:text-[#29202F] rounded-full hover:bg-[#FFF8E8] transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2">
+          <div className="p-3.5 rounded-2xl bg-[#EB7864]/10 border border-[#EB7864]/30 text-[#EB7864] text-xs flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -159,13 +159,13 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
 
         {/* Quick Load from Schedule */}
         {schedule && schedule.weeks.length > 0 && (
-          <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-200/80 space-y-2.5">
+          <div className="p-4 rounded-2xl bg-[#FFF8E8] border border-[#EFE3CF] space-y-2.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-emerald-950 flex items-center gap-1.5">
-                <Sparkles className="w-4 h-4 text-emerald-600" />
+              <span className="text-xs font-black text-[#29202F] flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-[#6C45C7]" />
                 Cargar Receta de la Tabla de Fertilización:
               </span>
-              <span className="text-[11px] font-semibold text-emerald-800">
+              <span className="text-[11px] font-bold text-[#6C45C7]">
                 {schedule.brand || schedule.name}
               </span>
             </div>
@@ -178,8 +178,8 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
                   onClick={() => handleApplyWeekFromSchedule(w.weekNumber)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 border ${
                     selectedWeekNum === w.weekNumber && products.length > 0
-                      ? 'bg-emerald-700 text-white border-emerald-800 shadow-2xs'
-                      : 'bg-white text-stone-700 hover:bg-emerald-100/60 border-stone-200'
+                      ? 'bg-[#62B95B] text-white border-[#62B95B] shadow-2xs font-black'
+                      : 'bg-white text-[#29202F] hover:bg-[#FFFDF7] border-[#EFE3CF]'
                   }`}
                 >
                   <span>Semana {w.weekNumber}</span>
@@ -196,16 +196,16 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
           {/* Products List with Dosages and Total ml calculation */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-xs font-bold text-stone-700 uppercase tracking-wider">
+              <label className="text-xs font-bold text-[#29202F]/80 uppercase tracking-wider">
                 Productos Nutricionales ({products.length})
               </label>
-              <span className="text-[11px] text-stone-500">
-                Calculado para <strong>{watering.volumeLiters} L</strong> de solución
+              <span className="text-[11px] text-[#29202F]/60">
+                Calculado para <strong className="text-[#29202F]">{watering.volumeLiters} L</strong> de solución
               </span>
             </div>
 
             {products.length === 0 ? (
-              <div className="p-4 rounded-2xl bg-stone-50 border border-dashed border-stone-200 text-center text-xs text-stone-500">
+              <div className="p-4 rounded-2xl bg-[#FFFDF7] border border-dashed border-[#EFE3CF] text-center text-xs text-[#29202F]/60">
                 No hay productos asignados a este riego (Riego con solo agua).
               </div>
             ) : (
@@ -215,19 +215,19 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
                   return (
                     <div
                       key={idx}
-                      className="flex items-center justify-between p-3 rounded-2xl bg-stone-50 border border-stone-200 text-xs"
+                      className="flex items-center justify-between p-3 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs"
                     >
                       <div className="space-y-0.5">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-stone-900">{p.name}</span>
+                          <span className="font-bold text-[#29202F]">{p.name}</span>
                           {p.brand && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-md bg-stone-200/70 text-stone-600 font-medium">
+                            <span className="text-[10px] px-2 py-0.5 rounded-md bg-[#FFF8E8] border border-[#EFE3CF] text-[#29202F]/70 font-medium">
                               {p.brand}
                             </span>
                           )}
                         </div>
-                        <div className="text-[11px] text-emerald-800 font-semibold">
-                          Total a preparar: <strong className="text-emerald-950">{totalMl} ml</strong>
+                        <div className="text-[11px] text-[#62B95B] font-semibold">
+                          Total a preparar: <strong className="text-[#29202F]">{totalMl} ml</strong>
                         </div>
                       </div>
 
@@ -239,15 +239,15 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
                             min="0.1"
                             value={p.dosageMlPerL || ''}
                             onChange={(e) => handleDosageChange(idx, parseFloat(e.target.value) || 0)}
-                            className="w-16 px-2 py-1 rounded-lg bg-white border border-stone-300 text-xs font-bold text-stone-800 text-center"
+                            className="w-16 px-2 py-1 rounded-lg bg-white border border-[#EFE3CF] text-xs font-bold text-[#29202F] text-center"
                           />
-                          <span className="text-stone-400 text-[11px]">ml/L</span>
+                          <span className="text-[#29202F]/50 text-[11px]">ml/L</span>
                         </div>
 
                         <button
                           type="button"
                           onClick={() => handleRemoveProduct(idx)}
-                          className="p-1.5 rounded-lg text-stone-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg text-[#29202F]/40 hover:text-[#EB7864] hover:bg-[#EB7864]/10 transition-colors cursor-pointer"
                           title="Quitar producto"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -261,22 +261,22 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
           </div>
 
           {/* Add Product Line */}
-          <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200 space-y-2">
-            <span className="text-[11px] font-bold text-stone-600 block">Agregar otro producto específico:</span>
+          <div className="p-3.5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] space-y-2">
+            <span className="text-[11px] font-bold text-[#29202F]/80 block">Agregar otro producto específico:</span>
             <div className="flex flex-col sm:flex-row items-center gap-2">
               <input
                 type="text"
                 placeholder="Nombre (ej. CalMag, Top Max)"
                 value={newProductName}
                 onChange={(e) => setNewProductName(e.target.value)}
-                className="flex-1 w-full sm:w-auto px-3 py-1.5 rounded-xl bg-white border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-emerald-500"
+                className="flex-1 w-full sm:w-auto px-3 py-2 rounded-xl bg-white border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7]"
               />
               <input
                 type="text"
                 placeholder="Marca (opcional)"
                 value={newProductBrand}
                 onChange={(e) => setNewProductBrand(e.target.value)}
-                className="w-full sm:w-28 px-3 py-1.5 rounded-xl bg-white border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-emerald-500"
+                className="w-full sm:w-28 px-3 py-2 rounded-xl bg-white border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7]"
               />
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <input
@@ -286,12 +286,12 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
                   placeholder="ml/L"
                   value={newProductDosage}
                   onChange={(e) => setNewProductDosage(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                  className="w-20 px-3 py-1.5 rounded-xl bg-white border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-emerald-500"
+                  className="w-20 px-3 py-2 rounded-xl bg-white border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7]"
                 />
                 <button
                   type="button"
                   onClick={handleAddManualProduct}
-                  className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white font-bold text-xs hover:bg-emerald-700 transition-colors flex items-center gap-1 cursor-pointer shrink-0"
+                  className="px-3.5 py-2 rounded-xl bg-[#62B95B] text-white font-bold text-xs hover:bg-[#53a44d] transition-colors flex items-center gap-1 cursor-pointer shrink-0"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Añadir</span>
@@ -303,7 +303,7 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
           {/* Target pH / EC and Observations */}
           <div className="grid grid-cols-2 gap-3 pt-2">
             <div>
-              <label className="block text-xs font-semibold text-stone-600 mb-1">pH de Solución</label>
+              <label className="block text-xs font-semibold text-[#29202F]/80 mb-1">pH de Solución</label>
               <input
                 type="number"
                 step="0.05"
@@ -312,12 +312,12 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
                 placeholder="ej. 6.3"
                 value={phIn}
                 onChange={(e) => setPhIn(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-800 font-semibold focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+                className="w-full px-3 py-2 rounded-xl bg-white border border-[#EFE3CF] text-xs text-[#29202F] font-semibold focus:outline-hidden focus:border-[#6C45C7]"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-stone-600 mb-1">EC Solución (mS/cm)</label>
+              <label className="block text-xs font-semibold text-[#29202F]/80 mb-1">EC Solución (mS/cm)</label>
               <input
                 type="number"
                 step="0.05"
@@ -326,35 +326,35 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
                 placeholder="ej. 1.6"
                 value={ecIn}
                 onChange={(e) => setEcIn(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-800 font-semibold focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+                className="w-full px-3 py-2 rounded-xl bg-white border border-[#EFE3CF] text-xs text-[#29202F] font-semibold focus:outline-hidden focus:border-[#6C45C7]"
               />
             </div>
 
             <div className="col-span-2">
-              <label className="block text-xs font-semibold text-stone-600 mb-1">Observaciones de Riego</label>
+              <label className="block text-xs font-semibold text-[#29202F]/80 mb-1">Observaciones de Riego</label>
               <input
                 type="text"
                 placeholder="Reacción foliar, absorción, etc."
                 value={observations}
                 onChange={(e) => setObservations(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+                className="w-full px-3 py-2 rounded-xl bg-white border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7]"
               />
             </div>
           </div>
 
           {/* Actions */}
-          <div className="pt-4 border-t border-stone-100 flex items-center justify-end gap-3">
+          <div className="pt-4 border-t border-[#EFE3CF] flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-full text-xs font-semibold text-stone-600 hover:bg-stone-100 transition-colors cursor-pointer"
+              className="cultiveta-btn-secondary py-2.5 text-xs font-bold"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2.5 rounded-full text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+              className="cultiveta-btn-primary py-2.5 text-xs font-black flex items-center gap-2 disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
               <span>Guardar Nutrición en Riego</span>

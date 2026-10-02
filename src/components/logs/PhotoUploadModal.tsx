@@ -289,34 +289,34 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
   const computedDay = calculateEvidenceDay();
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+    <div className="cultiveta-modal-overlay animate-in fade-in">
       <div
         id="photo-upload-modal-box"
-        className="w-full max-w-lg bg-[#0F0F0F] rounded-3xl p-6 sm:p-8 shadow-2xl border border-zinc-800 text-zinc-100 my-auto"
+        className="cultiveta-modal-container max-w-lg p-6 sm:p-8 my-auto"
       >
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-zinc-800/80 mb-5">
+        <div className="flex items-center justify-between pb-4 border-b border-[#EFE3CF] mb-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              <Camera className="w-5 h-5" />
+            <div className="p-3 rounded-2xl bg-[#6C45C7]/15 text-[#6C45C7]">
+              <Camera className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-zinc-100">Guardar Evidencia Fotográfica 📸</h2>
-              <p className="text-xs text-zinc-400">Registra fotos con fecha comprobable para tu cultivo</p>
+              <h2 className="text-xl font-black text-[#29202F]">Subir foto de seguimiento 📸</h2>
+              <p className="text-xs text-[#6E5D77]">Sacá una foto para ver la evolución de tus cogollos y hojas</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-zinc-400 hover:text-zinc-200 rounded-full hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="p-2 text-[#9887A2] hover:text-[#29202F] rounded-full hover:bg-[#FAF2E1] transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-medium flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+          <div className="mb-4 p-3.5 rounded-2xl bg-[#EB7864]/10 border border-[#EB7864]/30 text-[#EB7864] text-xs font-semibold flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-[#EB7864]" />
             <span>{error}</span>
           </div>
         )}
@@ -325,13 +325,13 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
           {/* Cultivo y Fecha de Evidencia */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-zinc-300 mb-1">Cultivo *</label>
+              <label className="block text-xs font-bold text-[#29202F] mb-1">Cultivo *</label>
               <select
                 id="photo-crop-select"
                 value={cultivationId}
                 onChange={(e) => setCultivationId(e.target.value)}
                 required
-                className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700/80 text-zinc-200 text-xs focus:outline-hidden focus:border-emerald-500 cursor-pointer"
+                className="w-full px-3.5 py-2.5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-[#29202F] text-xs focus:outline-hidden focus:border-[#6C45C7] cursor-pointer font-medium"
               >
                 {cultivations.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -342,8 +342,8 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-zinc-300 mb-1">
-                Fecha de la foto * <span className="text-[11px] text-emerald-400 font-semibold">(Día {computedDay})</span>
+              <label className="block text-xs font-bold text-[#29202F] mb-1">
+                Fecha de la foto * <span className="text-[11px] text-[#62B95B] font-bold">(Día {computedDay})</span>
               </label>
               <div className="relative">
                 <input
@@ -352,30 +352,30 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
                   required
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700/80 text-xs text-zinc-200 focus:outline-hidden focus:border-emerald-500"
+                  className="w-full px-3.5 py-2 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7] font-medium"
                 />
               </div>
             </div>
           </div>
 
           {dateWarning && (
-            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] flex items-start gap-2">
-              <Info className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+            <div className="p-3 rounded-2xl bg-[#F3C843]/20 border border-[#F3C843]/40 text-[#29202F] text-[11px] font-medium flex items-start gap-2">
+              <Info className="w-3.5 h-3.5 text-[#29202F] shrink-0 mt-0.5" />
               <span>{dateWarning}</span>
             </div>
           )}
 
-          {/* Etapa fenológica específica para esta fotografía histórica o actual */}
+          {/* Etapa fenológica específica para esta fotografía */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-zinc-300 mb-1">
+              <label className="block text-xs font-bold text-[#29202F] mb-1">
                 Etapa en esta fecha *
               </label>
               <select
                 id="photo-stage-select"
                 value={stage}
                 onChange={(e) => setStage(e.target.value as CultivationStageName)}
-                className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700/80 text-zinc-200 text-xs focus:outline-hidden focus:border-emerald-500 cursor-pointer"
+                className="w-full px-3.5 py-2 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-[#29202F] text-xs focus:outline-hidden focus:border-[#6C45C7] cursor-pointer font-medium"
               >
                 {STAGES.map((s) => (
                   <option key={s} value={s}>
@@ -386,12 +386,12 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-zinc-300 mb-1">Categoría</label>
+              <label className="block text-xs font-bold text-[#29202F] mb-1">Categoría</label>
               <select
                 id="photo-category-select"
                 value={category}
                 onChange={(e) => setCategory(e.target.value as PhotoCategory)}
-                className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700/80 text-zinc-200 text-xs focus:outline-hidden focus:border-emerald-500 cursor-pointer"
+                className="w-full px-3.5 py-2 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-[#29202F] text-xs focus:outline-hidden focus:border-[#6C45C7] cursor-pointer font-medium"
               >
                 {CATEGORIES.map((cat) => (
                   <option key={cat.value} value={cat.value}>
@@ -404,39 +404,39 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
 
           {/* Dropzone de fotografía con previsualización segura */}
           <div>
-            <label className="block text-xs font-bold text-zinc-300 mb-1">Archivo de Imagen *</label>
+            <label className="block text-xs font-bold text-[#29202F] mb-1">Archivo de imagen *</label>
             <div
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
-              className="border-2 border-dashed border-zinc-700 hover:border-emerald-500 rounded-2xl p-5 text-center transition-all relative overflow-hidden bg-zinc-900/60 cursor-pointer group"
+              className="border-2 border-dashed border-[#DECDB3] hover:border-[#6C45C7] rounded-3xl p-5 text-center transition-all relative overflow-hidden bg-[#FFFDF7] cursor-pointer group"
             >
               {validatingImage ? (
                 <div className="py-8 flex flex-col items-center justify-center gap-2">
-                  <div className="w-8 h-8 rounded-full border-2 border-emerald-500 border-t-transparent animate-spin" />
-                  <p className="text-xs text-zinc-400">Verificando resolución y formato...</p>
+                  <div className="w-8 h-8 rounded-full border-2 border-[#6C45C7] border-t-transparent animate-spin" />
+                  <p className="text-xs text-[#6E5D77]">Verificando resolución y formato...</p>
                 </div>
               ) : previewUrl ? (
                 <div className="flex flex-col items-center gap-2">
                   <img
                     src={previewUrl}
                     alt="Preview"
-                    className="max-h-52 rounded-xl object-contain border border-zinc-700 shadow-md"
+                    className="max-h-52 rounded-2xl object-contain border border-[#EFE3CF] shadow-xs"
                   />
-                  <div className="flex items-center gap-2 text-xs font-medium text-emerald-400">
+                  <div className="flex items-center gap-2 text-xs font-bold text-[#62B95B]">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>{selectedFile?.name} ({(selectedFile ? selectedFile.size / 1024 : 0).toFixed(0)} KB)</span>
                   </div>
-                  <span className="text-[11px] text-zinc-400 group-hover:text-emerald-400 transition-colors">
-                    Hacer clic o arrastrar para cambiar foto
+                  <span className="text-[11px] text-[#6E5D77] group-hover:text-[#6C45C7] transition-colors">
+                    Hacé clic o arrastrá para cambiar la foto
                   </span>
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-2 py-4">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <div className="w-12 h-12 rounded-2xl bg-[#6C45C7]/10 text-[#6C45C7] flex items-center justify-center group-hover:scale-105 transition-transform">
                     <Upload className="w-5 h-5" />
                   </div>
-                  <p className="text-xs font-bold text-zinc-200">Arrastra una fotografía aquí o haz clic para explorar</p>
-                  <p className="text-[11px] text-zinc-500">Formatos soportados: JPG, PNG, WEBP (hasta 15 MB)</p>
+                  <p className="text-xs font-bold text-[#29202F]">Arrastrá una foto acá o hacé clic para explorar</p>
+                  <p className="text-[11px] text-[#9887A2]">Formatos soportados: JPG, PNG, WEBP (hasta 15 MB)</p>
                 </div>
               )}
               <input
@@ -455,25 +455,25 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
 
           {/* Pie de foto / notas */}
           <div>
-            <label className="block text-xs font-bold text-zinc-300 mb-1">Notas o descripción</label>
+            <label className="block text-xs font-bold text-[#29202F] mb-1">Notas o descripción</label>
             <input
               id="photo-caption-input"
               type="text"
               placeholder="ej. Desarrollo foliar homogéneo, pistilos blancos en ramas bajas..."
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl bg-zinc-900 border border-zinc-700/80 text-xs text-zinc-200 focus:outline-hidden focus:border-emerald-500"
+              className="w-full px-3.5 py-2.5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7] font-medium"
             />
           </div>
 
           {/* Checkbox para análisis opcional e independiente con IA */}
-          <div className="p-3.5 rounded-2xl bg-violet-950/20 border border-violet-500/20 flex items-center justify-between">
+          <div className="p-3.5 rounded-2xl bg-[#6C45C7]/10 border border-[#6C45C7]/20 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <Sparkles className="w-4 h-4 text-violet-400 shrink-0" />
+              <Sparkles className="w-4 h-4 text-[#6C45C7] shrink-0" />
               <div>
-                <div className="text-xs font-bold text-violet-200">Analizar con Cultiveta IA</div>
-                <div className="text-[11px] text-violet-400/80">
-                  La foto se conservará segura aunque el análisis con IA falle o se posponga.
+                <div className="text-xs font-bold text-[#29202F]">Diagnóstico con Cultiveta IA</div>
+                <div className="text-[11px] text-[#6E5D77]">
+                  Evaluá la salud de la planta y detectá carencias o plagas automáticamente.
                 </div>
               </div>
             </div>
@@ -482,29 +482,29 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
               type="checkbox"
               checked={analyzeWithAI}
               onChange={(e) => setAnalyzeWithAI(e.target.checked)}
-              className="w-4 h-4 text-emerald-500 rounded-md focus:ring-emerald-500 cursor-pointer accent-emerald-500"
+              className="w-4 h-4 text-[#6C45C7] rounded-md focus:ring-[#6C45C7] cursor-pointer accent-[#6C45C7]"
             />
           </div>
 
           {/* Indicador de red */}
           {!isOnline && (
-            <div className="p-3 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-start gap-2.5">
-              <WifiOff className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div className="p-3 rounded-2xl bg-[#F3C843]/20 border border-[#F3C843]/40 text-[#29202F] text-xs flex items-start gap-2.5">
+              <WifiOff className="w-4 h-4 text-[#29202F] shrink-0 mt-0.5" />
               <div>
                 <span className="font-bold">Sin conexión a internet: </span>
                 <span>
-                  La foto quedará guardada de forma segura en este dispositivo (IndexedDB) y se subirá automáticamente a Firebase Storage al restablecer la red.
+                  La foto quedará guardada de forma segura en este dispositivo y se subirá automáticamente al volver la red.
                 </span>
               </div>
             </div>
           )}
 
           {/* Botones de acción */}
-          <div className="pt-3 border-t border-zinc-800 flex items-center justify-end gap-3">
+          <div className="pt-3 border-t border-[#EFE3CF] flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-semibold text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors cursor-pointer"
+              className="cultiveta-btn-secondary text-xs"
             >
               Cancelar
             </button>
@@ -512,10 +512,10 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
               type="submit"
               id="save-photo-btn"
               disabled={loading || validatingImage || !selectedFile}
-              className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-black shadow-lg shadow-emerald-950/30 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+              className="cultiveta-btn-primary text-xs disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
-              <span>{loading ? 'Guardando...' : 'Guardar Evidencia'}</span>
+              <span>{loading ? 'Guardando...' : 'Guardar foto'}</span>
             </button>
           </div>
         </form>

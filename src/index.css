@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+@theme {
+  --color-warm-bg: #FFF8E8;
+  --color-cultiveta-violet: #6C45C7;
+  --color-cultiveta-green: #62B95B;
+  --color-cultiveta-yellow: #F3C843;
+  --color-cultiveta-coral: #EB7864;
+  --color-cultiveta-ink: #29202F;
+  --color-cultiveta-muted: #6E5D77;
+  --color-cultiveta-subtle: #9887A2;
+  --color-cultiveta-cream: #FFFDF7;
+  --color-cultiveta-border: #EFE3CF;
+  --color-cultiveta-border-strong: #DECDB3;
+}
+
 @layer base {
   :root {
     --bg-warm: #FFF8E8;
@@ -181,4 +195,98 @@
 
 .dashboard-plant-icon:hover {
   animation: plant-sway-vibration 0.85s cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+
+/* Cultiveta Standardized Modal & Component Classes */
+.cultiveta-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background-color: rgba(41, 32, 47, 0.45);
+  backdrop-filter: blur(4px);
+}
+
+.cultiveta-modal-container {
+  background-color: #FFFFFF;
+  border: 1px solid #EFE3CF;
+  border-radius: 28px;
+  box-shadow: 0 16px 40px -8px rgba(41, 32, 47, 0.12), 0 4px 12px -2px rgba(41, 32, 47, 0.04);
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.cultiveta-btn-primary {
+  background-color: #6C45C7;
+  color: #FFFFFF;
+  font-weight: 700;
+  border-radius: 16px;
+  padding: 0.75rem 1.25rem;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(108, 69, 199, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+.cultiveta-btn-primary:hover {
+  background-color: #5835ab;
+}
+
+.cultiveta-btn-green {
+  background-color: #62B95B;
+  color: #FFFFFF;
+  font-weight: 700;
+  border-radius: 16px;
+  padding: 0.75rem 1.25rem;
+  transition: all 0.2s;
+  box-shadow: 0 4px 12px rgba(98, 185, 91, 0.2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+.cultiveta-btn-green:hover {
+  background-color: #4fa149;
+}
+
+.cultiveta-btn-secondary {
+  background-color: #FFFDF7;
+  color: #29202F;
+  border: 1px solid #EFE3CF;
+  font-weight: 700;
+  border-radius: 16px;
+  padding: 0.75rem 1.25rem;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+.cultiveta-btn-secondary:hover {
+  background-color: #FAF2E1;
+}
+
+.cultiveta-btn-danger {
+  background-color: #EB7864;
+  color: #FFFFFF;
+  font-weight: 700;
+  border-radius: 16px;
+  padding: 0.75rem 1.25rem;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+.cultiveta-btn-danger:hover {
+  background-color: #d66450;
 }

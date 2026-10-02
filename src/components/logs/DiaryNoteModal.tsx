@@ -79,32 +79,32 @@ export const DiaryNoteModal: React.FC<DiaryNoteModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+    <div className="cultiveta-modal-overlay animate-in fade-in">
       <div
         id="diary-note-modal-box"
-        className="w-full max-w-lg bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-stone-200 my-auto"
+        className="cultiveta-modal-container max-w-lg p-6 sm:p-8 my-auto"
       >
-        <div className="flex items-center justify-between pb-4 border-b border-stone-100 mb-6">
+        <div className="flex items-center justify-between pb-4 border-b border-[#EFE3CF] mb-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-emerald-100 text-emerald-800">
+            <div className="p-3 rounded-2xl bg-[#6C45C7]/15 text-[#6C45C7]">
               <BookOpen className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-stone-900">Nota de Diario 📝</h2>
-              <p className="text-xs text-stone-500">Registra podas, trasplantes, observaciones o reflexiones</p>
+              <h2 className="text-xl font-black text-[#29202F]">Anotá algo en el diario 📝</h2>
+              <p className="text-xs text-[#6E5D77]">Registrá podas, trasplantes o cómo viste tus plantas</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-stone-400 hover:text-stone-700 rounded-full hover:bg-stone-100 transition-colors cursor-pointer"
+            className="p-2 text-[#9887A2] hover:text-[#29202F] rounded-full hover:bg-[#FAF2E1] transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
+          <div className="mb-4 p-3.5 rounded-2xl bg-[#EB7864]/10 border border-[#EB7864]/30 text-[#EB7864] text-xs font-semibold">
             {error}
           </div>
         )}
@@ -112,13 +112,13 @@ export const DiaryNoteModal: React.FC<DiaryNoteModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1">Cultivo *</label>
+              <label className="block text-xs font-bold text-[#29202F] mb-1">Cultivo *</label>
               <select
                 id="diary-crop-select"
                 value={cultivationId}
                 onChange={(e) => setCultivationId(e.target.value)}
                 required
-                className="w-full px-3 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-stone-800 text-xs focus:outline-hidden focus:border-emerald-500 focus:bg-white cursor-pointer"
+                className="w-full px-3.5 py-2.5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-[#29202F] text-xs focus:outline-hidden focus:border-[#6C45C7] focus:bg-white cursor-pointer font-medium"
               >
                 {cultivations.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -129,58 +129,58 @@ export const DiaryNoteModal: React.FC<DiaryNoteModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1">Fecha</label>
+              <label className="block text-xs font-bold text-[#29202F] mb-1">Fecha</label>
               <input
                 id="diary-date-input"
                 type="date"
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+                className="w-full px-3 py-2 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7] focus:bg-white font-medium"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-stone-700 mb-1">Título de la nota (opcional)</label>
+            <label className="block text-xs font-bold text-[#29202F] mb-1">Título de la nota (opcional)</label>
             <input
               id="diary-title-input"
               type="text"
               placeholder="ej. Poda apical, defoliación de bajos, etc."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+              className="w-full px-3.5 py-2 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7] focus:bg-white font-medium"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-stone-700 mb-1">Detalle de la nota *</label>
+            <label className="block text-xs font-bold text-[#29202F] mb-1">Detalle de la nota *</label>
             <textarea
               id="diary-content-input"
               rows={4}
               required
-              placeholder="Describe lo realizado o observado con el mayor detalle posible..."
+              placeholder="Describí lo realizado o observado con el mayor detalle posible..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-emerald-500 focus:bg-white leading-relaxed"
+              className="w-full px-3.5 py-2.5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7] focus:bg-white leading-relaxed font-medium"
             />
           </div>
 
           {/* Tags */}
-          <div className="space-y-2">
-            <label className="block text-xs font-bold text-stone-700">Etiquetas</label>
+          <div className="space-y-2 p-3.5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF]">
+            <label className="block text-xs font-bold text-[#29202F]">Etiquetas</label>
             <div className="flex flex-wrap gap-1.5 mb-2">
               {tags.map((t) => (
                 <span
                   key={t}
-                  className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 flex items-center gap-1.5"
+                  className="px-2.5 py-1 rounded-full text-xs font-bold bg-[#62B95B]/15 text-[#62B95B] border border-[#62B95B]/30 flex items-center gap-1.5"
                 >
-                  <Tag className="w-3 h-3" />
+                  <Tag className="w-3 h-3 text-[#62B95B]" />
                   {t}
                   <button
                     type="button"
                     onClick={() => handleRemoveTag(t)}
-                    className="hover:text-rose-600 cursor-pointer"
+                    className="hover:text-[#EB7864] cursor-pointer ml-0.5 text-sm leading-none"
                   >
                     ×
                   </button>
@@ -200,12 +200,12 @@ export const DiaryNoteModal: React.FC<DiaryNoteModalProps> = ({
                     handleAddTag();
                   }
                 }}
-                className="flex-1 px-3 py-1.5 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+                className="flex-1 px-3 py-1.5 rounded-xl bg-white border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7]"
               />
               <button
                 type="button"
                 onClick={handleAddTag}
-                className="px-3 py-1.5 rounded-xl bg-stone-200 hover:bg-stone-300 text-xs font-bold text-stone-700 transition-colors cursor-pointer"
+                className="px-3.5 py-1.5 rounded-xl bg-[#FAF2E1] hover:bg-[#ebdcc0] text-xs font-bold text-[#29202F] border border-[#EFE3CF] transition-colors cursor-pointer"
               >
                 Agregar
               </button>
@@ -213,11 +213,11 @@ export const DiaryNoteModal: React.FC<DiaryNoteModalProps> = ({
           </div>
 
           {/* Actions */}
-          <div className="pt-3 border-t border-stone-200 flex items-center justify-end gap-3">
+          <div className="pt-3 border-t border-[#EFE3CF] flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2 rounded-full text-xs font-semibold text-stone-600 hover:bg-stone-100 transition-colors cursor-pointer"
+              className="cultiveta-btn-secondary text-xs"
             >
               Cancelar
             </button>
@@ -225,10 +225,10 @@ export const DiaryNoteModal: React.FC<DiaryNoteModalProps> = ({
               type="submit"
               id="save-diary-note-btn"
               disabled={loading}
-              className="px-6 py-2.5 rounded-full text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+              className="cultiveta-btn-primary text-xs disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
-              <span>Guardar Nota</span>
+              <span>Guardar nota</span>
             </button>
           </div>
         </form>
