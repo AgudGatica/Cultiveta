@@ -932,6 +932,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
         <CultivationTimelineView
           cultivation={cultivation}
           userId={userId}
+          geneticsList={geneticsList}
           onCultivationUpdated={onCultivationUpdated}
           onOpenCalendarModal={() => setIsCalendarModalOpen(true)}
         />
@@ -1141,6 +1142,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
           onClose={() => setIsCalendarModalOpen(false)}
           cultivation={cultivation}
           latestWatering={lastWatering}
+          geneticsList={geneticsList}
         />
       )}
 

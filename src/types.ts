@@ -59,6 +59,8 @@ export interface CultivationGrowthStage {
   name: CultivationStageName;
   startDate: string; // YYYY-MM-DD
   endDate?: string; // YYYY-MM-DD
+  actualStartDate?: string; // YYYY-MM-DD (fecha real registrada)
+  actualEndDate?: string; // YYYY-MM-DD (fecha real registrada)
   expectedDurationDays: number;
   actualDurationDays?: number;
   photoperiodHoursLight?: number;
@@ -449,7 +451,7 @@ export interface CultivationCalendarPlan {
   title: string;
   date: string; // YYYY-MM-DD
   endDate?: string;
-  type: 'watering' | 'stage_change' | 'harvest' | 'defoliation' | 'flush' | 'custom';
+  type: 'watering' | 'stage_change' | 'harvest' | 'post_harvest' | 'defoliation' | 'flush' | 'custom';
   description: string;
   isSynced?: boolean;
   googleEventId?: string;

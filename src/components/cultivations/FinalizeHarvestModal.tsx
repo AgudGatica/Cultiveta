@@ -3,6 +3,7 @@ import { X, CheckCircle2, Award, Scale, Calendar, Star, ChevronDown, ChevronUp }
 import { Cultivation, Harvest } from '../../types';
 import { harvestService } from '../../services/harvestService';
 import { cultivationService } from '../../services/cultivationService';
+import { getLocalTodayDateOnly } from '../../utils/growthStageUtils';
 
 interface FinalizeHarvestModalProps {
   isOpen: boolean;
@@ -26,7 +27,7 @@ export const FinalizeHarvestModal: React.FC<FinalizeHarvestModalProps> = ({
 
   // Fecha final: defecto hoy o fecha guardada previamente
   const [harvestDate, setHarvestDate] = useState(
-    cultivation.harvestDate || cultivation.endDate || new Date().toISOString().split('T')[0]
+    cultivation.harvestDate || cultivation.endDate || getLocalTodayDateOnly()
   );
   // Peso estimado en gramos
   const [estimatedWeight, setEstimatedWeight] = useState<number | ''>(

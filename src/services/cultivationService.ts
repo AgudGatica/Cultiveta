@@ -17,6 +17,7 @@ import { Cultivation, HealthStatus, Watering, EnvironmentRecord } from '../types
 import { cleanFirestoreData } from '../utils/firestoreUtils';
 import { localStore } from './localStore';
 import { subscribeCollection } from './dataSyncHelper';
+import { daysBetween, getLocalTodayDateOnly } from '../utils/growthStageUtils';
 
 export const cultivationService = {
   subscribeCultivations(userId: string, callback: (cultivations: Cultivation[]) => void): Unsubscribe {
@@ -176,10 +177,9 @@ export const cultivationService = {
   // Date and stage calculation helpers
   calculateDays(startDateStr?: string, endDateStr?: string): number {
     if (!startDateStr) return 1;
-    const start = new Date(startDateStr);
-    const end = endDateStr ? new Date(endDateStr) : new Date();
-    const diffTime = Math.abs(end.getTime() - start.getTime());
-    return Math.max(1, Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1);
+    const endStr = endDateStr || getLocalTodayDateOnly();
+    const diff = daysBetween(startDateStr, endStr);
+    return Math.max(1, diff + 1);
   },
 
   calculateStageDays(stageStartDateStr?: string): number {

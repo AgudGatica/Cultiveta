@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { Harvest } from '../../types';
 import { harvestService } from '../../services/harvestService';
+import { getLocalTodayDateOnly } from '../../utils/growthStageUtils';
 
 interface EditHarvestModalProps {
   isOpen: boolean;
@@ -47,7 +48,7 @@ export const EditHarvestModal: React.FC<EditHarvestModalProps> = ({
 
   useEffect(() => {
     if (harvest) {
-      setHarvestDate(harvest.harvestDate || new Date().toISOString().split('T')[0]);
+      setHarvestDate(harvest.harvestDate || getLocalTodayDateOnly());
       setFinalDryWeightGrams(harvest.finalDryWeightGrams ?? '');
       setWetWeightGrams(harvest.wetWeightGrams ?? '');
       setPlantCount(harvest.plantCount || 1);

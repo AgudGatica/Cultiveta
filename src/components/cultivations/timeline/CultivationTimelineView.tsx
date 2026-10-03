@@ -15,7 +15,7 @@ import {
   Check,
   AlertCircle,
 } from 'lucide-react';
-import { Cultivation, CultivationGrowthStage } from '../../../types';
+import { Cultivation, CultivationGrowthStage, Genetics } from '../../../types';
 import {
   getStagesForCultivation,
   getNextStage,
@@ -32,6 +32,7 @@ import { cultivationService } from '../../../services/cultivationService';
 interface CultivationTimelineViewProps {
   cultivation: Cultivation;
   userId: string;
+  geneticsList?: Genetics[];
   onCultivationUpdated?: (updatedCultivation: Cultivation) => void;
   onOpenCalendarModal?: () => void;
 }
@@ -39,6 +40,7 @@ interface CultivationTimelineViewProps {
 export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = ({
   cultivation,
   userId,
+  geneticsList = [],
   onCultivationUpdated,
   onOpenCalendarModal,
 }) => {
@@ -47,9 +49,9 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
   const [isTransitionModalOpen, setIsTransitionModalOpen] = useState(false);
 
   const stages = getStagesForCultivation(cultivation);
-  const metrics = calculateTimelineMetrics(cultivation, stages);
+  const metrics = calculateTimelineMetrics(cultivation, stages, geneticsList);
   const nextStage = getNextStage(cultivation, stages);
-  const schedule = buildCultivationStageSchedule(cultivation);
+  const schedule = buildCultivationStageSchedule(cultivation, geneticsList);
 
   const handleOpenTransition = (targetStage?: CultivationGrowthStage | null) => {
     setStageForTransition(targetStage || nextStage || stages[0]);
@@ -302,7 +304,7 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
                     {schedItem && (
                       <span className="text-[9px] font-mono text-stone-400 block">
                         {formatFriendlyDate(schedItem.startDate, {
-                          isProjected: schedItem.status === 'upcoming',
+                          isProjected: !schedItem.startIsReal,
                           includeYear: false,
                         })}
                       </span>
@@ -350,12 +352,15 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
                 schedItem.name === 'Secado' ||
                 schedItem.name === 'Finalizado';
 
+              const isStartProjected = !schedItem.startIsReal;
+              const isEndProjected = !schedItem.endIsReal;
+
               if (isHarvestLike) {
-                dateDisplay = formatFriendlyDate(schedItem.startDate, { isProjected: schedItem.isProjected });
+                dateDisplay = formatFriendlyDate(schedItem.startDate, { isProjected: isStartProjected });
               } else if (schedItem.status === 'completed') {
-                dateDisplay = `${formatFriendlyDate(schedItem.startDate)} → ${formatFriendlyDate(schedItem.endDate)}`;
+                dateDisplay = `${formatFriendlyDate(schedItem.startDate, { isProjected: isStartProjected })} → ${formatFriendlyDate(schedItem.endDate, { isProjected: isEndProjected })}`;
               } else if (schedItem.status === 'active') {
-                dateDisplay = `${formatFriendlyDate(schedItem.startDate)} → ${formatFriendlyDate(schedItem.endDate, { isProjected: true })}`;
+                dateDisplay = `${formatFriendlyDate(schedItem.startDate, { isProjected: isStartProjected })} → ${formatFriendlyDate(schedItem.endDate, { isProjected: true })}`;
               } else {
                 dateDisplay = `${formatFriendlyDate(schedItem.startDate, { isProjected: true })} → ${formatFriendlyDate(schedItem.endDate, { isProjected: true })}`;
               }
@@ -405,7 +410,7 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
                           {schedItem && (
                             <span
                               className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md ${
-                                schedItem.status === 'completed'
+                                schedItem.status === 'completed' && schedItem.isActual
                                   ? 'bg-emerald-100 text-emerald-800'
                                   : schedItem.status === 'active'
                                   ? 'bg-amber-100 text-amber-800'
@@ -413,7 +418,7 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
                               }`}
                             >
                               {schedItem.status === 'completed'
-                                ? 'Real'
+                                ? (schedItem.isActual ? 'Real' : 'Proyectado')
                                 : schedItem.status === 'active'
                                 ? 'En curso'
                                 : 'Proyectado'}

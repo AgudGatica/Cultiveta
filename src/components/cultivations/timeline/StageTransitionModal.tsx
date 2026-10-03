@@ -17,7 +17,12 @@ import {
   Minus,
 } from 'lucide-react';
 import { Cultivation, CultivationGrowthStage } from '../../../types';
-import { getStageIcon } from '../../../utils/growthStageUtils';
+import {
+  getStageIcon,
+  getLocalTodayDateOnly,
+  isFloweringStage,
+  isPreFloweringStage,
+} from '../../../utils/growthStageUtils';
 import { cultivationService } from '../../../services/cultivationService';
 
 interface StageTransitionModalProps {
@@ -39,7 +44,7 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
   userId,
   onStageChanged,
 }) => {
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getLocalTodayDateOnly();
 
   const determineDefaultStage = (): string => {
     if (initialSelectedStage?.name) return initialSelectedStage.name;
@@ -53,8 +58,9 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
   };
 
   const getDefaultHoursForStage = (stageName: string): number => {
-    const isFlor = stageName.toLowerCase().includes('flor');
-    if (isFlor) return 12;
+    if (isFloweringStage(stageName) || isPreFloweringStage(stageName)) {
+      return 12;
+    }
 
     const match = stages.find((s) => s.name.toLowerCase().trim() === stageName.toLowerCase().trim());
     if (match && match.photoperiodHoursLight !== undefined) {
@@ -86,7 +92,7 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
       const stageName = initialSelectedStage?.name || determineDefaultStage();
       setSelectedStageName(stageName);
       setCustomLightHours(getDefaultHoursForStage(stageName));
-      setEffectiveDate(todayStr);
+      setEffectiveDate(getLocalTodayDateOnly());
       setUpdatePhotoperiod(true);
       setError(null);
     }
@@ -102,10 +108,10 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
     (cultivation.currentStage || '').toLowerCase().trim() === selectedStageName.toLowerCase().trim();
 
   const isTransitionToFlowering =
-    selectedStageName.toLowerCase().includes('flor') &&
-    !(cultivation.currentStage || '').toLowerCase().includes('flor');
+    isFloweringStage(selectedStageName) &&
+    !isFloweringStage(cultivation.currentStage);
 
-  const isFloweringStage = selectedStageName.toLowerCase().includes('flor');
+  const isEnteringFlowering = isFloweringStage(selectedStageName);
 
   const handleStageSelect = (stageName: string) => {
     setSelectedStageName(stageName);
@@ -123,17 +129,43 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
       setSaving(true);
       setError(null);
 
+      const currIdx = stages.findIndex(
+        (s) => s.name.toLowerCase().trim() === (cultivation.currentStage || '').toLowerCase().trim()
+      );
       const targetIdx = stages.findIndex(
         (s) => s.name.toLowerCase().trim() === selectedStageName.toLowerCase().trim()
       );
 
-      // Re-map stages: mark stages before target as completed
-      const updatedStages = stages.map((st, idx) => ({
-        ...st,
-        isCompleted: targetIdx !== -1 && idx < targetIdx,
-        photoperiodHoursLight:
-          idx === targetIdx && updatePhotoperiod ? customLightHours : st.photoperiodHoursLight,
-      }));
+      // Re-map stages:
+      // - cerrar la etapa anterior con actualEndDate = effectiveDate
+      // - iniciar la nueva etapa con actualStartDate = effectiveDate
+      const updatedStages = stages.map((st, idx) => {
+        const isTarget = idx === targetIdx;
+        const isPastTarget = targetIdx !== -1 && idx < targetIdx;
+        const isPreviousActive = idx === currIdx;
+
+        let actualStart = st.actualStartDate;
+        let actualEnd = st.actualEndDate;
+
+        if (isTarget) {
+          actualStart = effectiveDate;
+        }
+
+        if (isPastTarget && isPreviousActive) {
+          actualEnd = effectiveDate;
+        } else if (isPastTarget && idx === targetIdx - 1 && !actualEnd) {
+          actualEnd = effectiveDate;
+        }
+
+        return {
+          ...st,
+          isCompleted: isPastTarget,
+          actualStartDate: actualStart,
+          actualEndDate: actualEnd,
+          photoperiodHoursLight:
+            isTarget && updatePhotoperiod ? customLightHours : st.photoperiodHoursLight,
+        };
+      });
 
       const updates: Partial<Cultivation> = {
         currentStage: selectedStageName,
@@ -141,8 +173,8 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
         stagesTimeline: updatedStages,
       };
 
-      // Handle flowering date
-      if (isFloweringStage) {
+      // Set floweringStartDate ONLY when entering Floración (NOT Prefloración!)
+      if (isEnteringFlowering) {
         updates.floweringStartDate = effectiveDate;
       }
 

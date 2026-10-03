@@ -15,6 +15,7 @@ import {
   buildCultivationStageSchedule,
   formatFriendlyDate,
   daysBetween,
+  getLocalTodayDateOnly,
 } from '../../utils/growthStageUtils';
 
 export interface FloweringProgressSectionProps {
@@ -42,10 +43,10 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
   // 2. Flowering stage specifics
   const analysis = useMemo(() => {
     const florStage = schedule.floweringStage;
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const todayStr = getLocalTodayDateOnly();
 
     const startDateStr = florStage ? florStage.startDate : (cultivation.floweringStartDate || cultivation.startDate);
+    const startIsReal = Boolean(cultivation.floweringStartDate || florStage?.startIsReal);
     const floweringDaysElapsed = Math.max(1, daysBetween(startDateStr, todayStr));
     const typicalFloweringDays = schedule.floweringDaysGenetics || 56;
     const typicalFloweringWeeks = schedule.floweringWeeksGenetics || 8;
@@ -170,6 +171,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
       subPhase,
       milestones,
       estimatedHarvestDate: schedule.estimatedHarvestDate,
+      startIsReal,
     };
   }, [schedule, cultivation, geneticsList]);
 
@@ -202,9 +204,11 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
         {/* Fechas de inicio y corte estimado en primera capa */}
         <div className="flex items-center gap-4 text-xs font-semibold self-stretch sm:self-auto justify-between sm:justify-start pt-2 sm:pt-0 border-t sm:border-t-0 border-[#EFE3CF]">
           <div>
-            <span className="text-[10px] text-[#9887A2] block uppercase tracking-wider">Inicio real</span>
+            <span className="text-[10px] text-[#9887A2] block uppercase tracking-wider">
+              {analysis.startIsReal ? 'Inicio real' : 'Inicio estimado'}
+            </span>
             <span className="font-bold text-[#29202F] block">
-              {formatFriendlyDate(analysis.startDateStr)}
+              {formatFriendlyDate(analysis.startDateStr, { isProjected: !analysis.startIsReal })}
             </span>
           </div>
           <span className="text-[#DECDB3]">→</span>

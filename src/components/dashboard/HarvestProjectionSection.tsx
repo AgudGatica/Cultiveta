@@ -186,18 +186,22 @@ export const HarvestProjectionSection: React.FC<HarvestProjectionSectionProps> =
                       className={`text-[9px] uppercase font-bold px-1.5 py-0.2 rounded-full ${
                         st.status === 'active'
                           ? 'bg-[#62B95B] text-white'
-                          : st.status === 'completed'
+                          : st.status === 'completed' && st.isActual
                           ? 'bg-[#FAF2E1] text-[#29202F]'
                           : 'bg-stone-100 text-[#9887A2]'
                       }`}
                     >
-                      {st.status === 'active' ? 'Actual' : st.status === 'completed' ? 'Real' : 'Proyectada'}
+                      {st.status === 'active'
+                        ? 'Actual'
+                        : st.status === 'completed' && st.isActual
+                        ? 'Real'
+                        : 'Proyectada'}
                     </span>
                   </div>
                   <div className="text-[11px] text-[#6E5D77] space-y-0.5">
                     <div>
-                      {formatFriendlyDate(st.startDate, { isProjected: !st.isActual })} →{' '}
-                      {formatFriendlyDate(st.endDate, { isProjected: st.isProjected })}
+                      {formatFriendlyDate(st.startDate, { isProjected: !st.startIsReal })} →{' '}
+                      {formatFriendlyDate(st.endDate, { isProjected: !st.endIsReal })}
                     </div>
                     <div className="text-[10px] text-[#9887A2]">
                       {st.expectedDurationDays} días {st.status === 'completed' ? 'duración' : 'estimados'}

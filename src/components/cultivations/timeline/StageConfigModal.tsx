@@ -21,6 +21,8 @@ import {
   addDays,
   formatFriendlyDate,
   getStageIcon,
+  getLocalTodayDateOnly,
+  isFloweringStage,
 } from '../../../utils/growthStageUtils';
 import { cultivationService } from '../../../services/cultivationService';
 
@@ -59,7 +61,7 @@ export const StageConfigModal: React.FC<StageConfigModalProps> = ({
   });
   const [activeStageName, setActiveStageName] = useState<string>(cultivation.currentStage);
   const [activeStageStartDate, setActiveStageStartDate] = useState<string>(
-    cultivation.stageStartDate || cultivation.startDate || new Date().toISOString().split('T')[0]
+    cultivation.stageStartDate || cultivation.startDate || getLocalTodayDateOnly()
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +87,7 @@ export const StageConfigModal: React.FC<StageConfigModalProps> = ({
     const preset = STAGE_PRESETS.find((p) => p.id === presetId);
     if (!preset) return;
 
-    let curr = cultivation.startDate || new Date().toISOString().split('T')[0];
+    let curr = cultivation.startDate || getLocalTodayDateOnly();
     const newStages: CultivationGrowthStage[] = preset.stages.map((item, idx) => {
       let duration = item.expectedDurationDays;
       if (item.name === 'Floración' && cultivation.declaredFloweringWeeks) {
@@ -189,13 +191,10 @@ export const StageConfigModal: React.FC<StageConfigModalProps> = ({
         isCompleted: activeIdx !== -1 && idx < activeIdx,
       }));
 
-      // Determine flowering start date if entering or in flowering
+      // Determine flowering start date if entering or in flowering (NOT Prefloración!)
       let floweringStartDate = cultivation.floweringStartDate;
-      if (
-        (finalActiveStageName === 'Floración' || finalActiveStageName.toLowerCase().includes('flor')) &&
-        !floweringStartDate
-      ) {
-        floweringStartDate = activeStageStartDate || new Date().toISOString().split('T')[0];
+      if (isFloweringStage(finalActiveStageName) && !floweringStartDate) {
+        floweringStartDate = activeStageStartDate || getLocalTodayDateOnly();
       }
 
       const updates: Partial<Cultivation> = {

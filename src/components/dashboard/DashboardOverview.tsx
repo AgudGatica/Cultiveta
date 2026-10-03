@@ -371,7 +371,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     if (!primaryCrop) return null;
     const schedule = buildCultivationStageSchedule(primaryCrop, geneticsList);
     const stages = getStagesForCultivation(primaryCrop);
-    const metrics = calculateTimelineMetrics(primaryCrop, stages);
+    const metrics = calculateTimelineMetrics(primaryCrop, stages, geneticsList);
 
     let harvestIdx = schedule.stages.findIndex(
       (s) => s.name === 'Cosecha' || s.name === 'Secado' || s.name === 'Finalizado'

@@ -1,8 +1,9 @@
-import { Cultivation, GoogleCalendarEvent, CultivationCalendarPlan, Watering } from '../types';
+import { Cultivation, GoogleCalendarEvent, CultivationCalendarPlan, Watering, Genetics } from '../types';
 import {
   buildCultivationStageSchedule,
   addDays,
   formatDateOnly,
+  getLocalTodayDateOnly,
 } from '../utils/growthStageUtils';
 
 const CALENDAR_API_BASE = 'https://www.googleapis.com/calendar/v3';
@@ -182,15 +183,15 @@ export const calendarService = {
 
   /**
    * Calculate smart cultivation roadmap and calendar events.
-   * Strictly uses buildCultivationStageSchedule(cultivation) as source of truth.
+   * Strictly uses buildCultivationStageSchedule(cultivation, geneticsList) as source of truth.
    */
   generateSuggestedPlans(
     cultivation: Cultivation,
-    latestWatering?: Watering | null
+    latestWatering?: Watering | null,
+    geneticsList: Genetics[] = []
   ): CultivationCalendarPlan[] {
     const plans: CultivationCalendarPlan[] = [];
-    const now = new Date();
-    const todayStr = formatDateOnly(now.getFullYear(), now.getMonth() + 1, now.getDate());
+    const todayStr = getLocalTodayDateOnly();
 
     // 1. Next watering recommendation
     let nextWateringDateStr = addDays(todayStr, 1);
@@ -211,32 +212,43 @@ export const calendarService = {
     });
 
     // 2. Stage schedule roadmap events strictly derived from buildCultivationStageSchedule
-    const schedule = buildCultivationStageSchedule(cultivation);
+    const schedule = buildCultivationStageSchedule(cultivation, geneticsList);
 
-    for (let i = 0; i < schedule.stages.length; i++) {
+    // Identify single true harvest stage (Cosecha/Corte) strictly
+    const harvestStageIdx = schedule.stages.findIndex(
+      (s) => s.name.toLowerCase().includes('cosech') || s.name.toLowerCase().includes('corte')
+    );
+
+    for (let i = 1; i < schedule.stages.length; i++) {
+      const prevSt = schedule.stages[i - 1];
       const st = schedule.stages[i];
 
-      // For stage transitions (i > 0), the transition occurs at st.startDate
-      if (i > 0) {
-        const prevSt = schedule.stages[i - 1];
-        const isHarvest = st.name === 'Cosecha' || st.name === 'Secado' || st.name === 'Finalizado';
+      const isTrueHarvest = harvestStageIdx !== -1 && i === harvestStageIdx;
+      const isPostHarvest = harvestStageIdx !== -1 && i > harvestStageIdx;
 
-        const stageTitle = isHarvest
-          ? 'Floración → Cosecha (Corte estimado)'
-          : `${prevSt.name} → ${st.name}`;
+      let planType: CultivationCalendarPlan['type'] = 'stage_change';
+      let stageTitle = `${prevSt.name} → ${st.name}`;
+      let description = `Transición estimada de ${prevSt.name} a ${st.name} en ${cultivation.name}. Revisar fotoperiodo, nutrientes y parámetros ambientales según corresponda.`;
 
-        if (st.startDate >= todayStr) {
-          plans.push({
-            id: `suggested_stage_${cultivation.id}_${st.id}`,
-            stageId: st.id,
-            title: stageTitle,
-            date: st.startDate,
-            type: isHarvest ? 'harvest' : 'stage_change',
-            description: isHarvest
-              ? `Ventana estimada de cosecha para ${cultivation.name}. Monitorear tricomas en cálices medios (70-80% lechosos, 15-20% ámbar). Preparar secadero a 18-20°C y 55-60% HR.`
-              : `Transición estimada de ${prevSt.name} a ${st.name} en ${cultivation.name}. Revisar cambio de fotoperiodo, nutrientes y parámetros ambientales según corresponda.`,
-          });
-        }
+      if (isTrueHarvest) {
+        planType = 'harvest';
+        stageTitle = 'Cosecha estimada';
+        description = `Ventana estimada de corte y cosecha para ${cultivation.name}. Monitorear tricomas en cálices medios (70-80% lechosos, 15-20% ámbar). Preparar secadero a 18-20°C y 55-60% HR.`;
+      } else if (isPostHarvest) {
+        planType = 'post_harvest';
+        stageTitle = `${prevSt.name} → ${st.name}`;
+        description = `Transición a ${st.name} para ${cultivation.name}. Mantener parámetros de secado y curado controlados.`;
+      }
+
+      if (st.startDate >= todayStr) {
+        plans.push({
+          id: `suggested_stage_${cultivation.id}_${st.id}`,
+          stageId: st.id,
+          title: stageTitle,
+          date: st.startDate,
+          type: planType,
+          description,
+        });
       }
     }
 

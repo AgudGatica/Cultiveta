@@ -30,6 +30,7 @@ import { cultivationService } from '../../services/cultivationService';
 import { photoService } from '../../services/photoService';
 import { auth } from '../../firebase/config';
 import { GENETICS_DATABASE } from '../../data/predefinedGenetics';
+import { getLocalTodayDateOnly, isFloweringStage } from '../../utils/growthStageUtils';
 
 const parseFloweringWeeks = (daysStr: string) => {
   const match = daysStr.match(/(\d+)/g);
@@ -86,7 +87,7 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
   onSaved,
 }) => {
   const [name, setName] = useState('');
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState(getLocalTodayDateOnly());
   const [type, setType] = useState<CultivationType>('Indoor');
   const [plantCount, setPlantCount] = useState(1);
   const [geneticsEntries, setGeneticsEntries] = useState<FormGeneticsEntry[]>([]);
@@ -212,7 +213,7 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
             : 75
         );
       } else {
-        const isFlora = (cultivationToEdit.currentStage || '').toLowerCase().includes('flor');
+        const isFlora = isFloweringStage(cultivationToEdit.currentStage);
         setEnableCustomThresholds(false);
         setTempMinThreshold(11);
         setTempMaxThreshold(35);
@@ -221,7 +222,7 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
       }
     } else {
       setName('');
-      setStartDate(new Date().toISOString().split('T')[0]);
+      setStartDate(getLocalTodayDateOnly());
       setType('Indoor');
       setPlantCount(1);
 
@@ -436,7 +437,7 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
         : 8;
 
       const isStageChanged = cultivationToEdit && cultivationToEdit.currentStage !== currentStage;
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = getLocalTodayDateOnly();
       const stageStartDate = isStageChanged
         ? todayStr
         : (cultivationToEdit?.stageStartDate || startDate || todayStr);
@@ -517,7 +518,7 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
         cultivationPayload.geneticsList = cleanGeneticsList;
       }
 
-      if (currentStage === 'Floración' || currentStage.toLowerCase().includes('flor')) {
+      if (isFloweringStage(currentStage)) {
         cultivationPayload.floweringStartDate =
           cultivationToEdit?.floweringStartDate || (isStageChanged ? todayStr : startDate);
       }
