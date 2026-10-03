@@ -101,9 +101,18 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
   const phVal = (latestWatering as any)?.phIn ?? (latestWatering as any)?.ph ?? null;
   const ecVal = (latestWatering as any)?.ecIn ?? (latestWatering as any)?.ec ?? null;
 
+  // Detección de cultivo finalizado o cosechado
+  const isFinished = Boolean(
+    cultivation.isFinished === true ||
+    cultivation.status?.toLowerCase() === 'cosechado' ||
+    cultivation.status?.toLowerCase() === 'finalizado' ||
+    cultivation.currentStage?.toLowerCase() === 'cosechado'
+  );
+
   // Análisis de estado único comprensible
-  const isWateringUrgent = daysSinceWatering !== null && daysSinceWatering >= (isFlowering ? 3 : 4);
+  const isWateringUrgent = !isFinished && daysSinceWatering !== null && daysSinceWatering >= (isFlowering ? 3 : 4);
   const isEnvAlert =
+    !isFinished &&
     tempVal !== null &&
     (tempVal < 17 || tempVal > 31 || (humVal !== null && (humVal < 35 || humVal > 75)));
 
@@ -121,7 +130,16 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
     textColor: 'text-[#62B95B]',
   };
 
-  if (isWateringUrgent) {
+  if (isFinished) {
+    const isHarvest = cultivation.status?.toLowerCase() === 'cosechado' || cultivation.currentStage?.toLowerCase() === 'cosechado';
+    overallStatus = {
+      label: isHarvest ? 'Cosechado ✂️' : 'Finalizado',
+      isHealthy: true,
+      hint: cultivation.harvestDate ? `Cosechado el ${cultivation.harvestDate.split('T')[0]}` : 'Ciclo completado',
+      badgeBg: 'bg-[#6C45C7]/15',
+      textColor: 'text-[#6C45C7]',
+    };
+  } else if (isWateringUrgent) {
     overallStatus = {
       label: 'Conviene regar 💧',
       isHealthy: false,
@@ -167,10 +185,10 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
               <span>{cultivation.genetics || 'Genética variada'}</span>
               <span aria-hidden="true" className="text-[#DECDB3]">·</span>
               <span className="font-semibold text-[#29202F]">
-                Día {totalDays}
+                {isFinished ? `${totalDays} días totales` : `Día ${totalDays}`}
               </span>
               <span aria-hidden="true" className="text-[#DECDB3]">·</span>
-              <span>{cultivation.currentStage || 'Vegetativo'}</span>
+              <span>{isFinished ? (cultivation.status?.toLowerCase() === 'cosechado' || cultivation.currentStage?.toLowerCase() === 'cosechado' ? 'Cosechado' : 'Finalizado') : (cultivation.currentStage || 'Vegetativo')}</span>
             </div>
           </div>
 
@@ -191,7 +209,7 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
         {/* Estado comprensible en 3 segundos (Un único estado claro) */}
         <div className="my-3.5 p-3 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] flex items-center justify-between gap-2">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className={`w-3 h-3 rounded-full shrink-0 ${overallStatus.isHealthy ? 'bg-[#62B95B]' : 'bg-[#EB7864] animate-pulse'}`} />
+            <div className={`w-3 h-3 rounded-full shrink-0 ${isFinished ? 'bg-[#6C45C7]' : overallStatus.isHealthy ? 'bg-[#62B95B]' : 'bg-[#EB7864] animate-pulse'}`} />
             <div className="min-w-0">
               <span className={`text-xs font-bold block ${overallStatus.textColor}`}>
                 {overallStatus.label}

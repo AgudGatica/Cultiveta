@@ -34,13 +34,6 @@ import { DashboardEnvironmentChart } from './DashboardEnvironmentChart';
 import { UpcomingTaskWidget } from './UpcomingTaskWidget';
 import { FloweringProgressSection } from './FloweringProgressSection';
 import { HarvestProjectionSection } from './HarvestProjectionSection';
-import {
-  DashboardDateFilter,
-  DateFilterState,
-  normalizeDate,
-  formatDateDisplay,
-  getTodayString,
-} from './DashboardDateFilter';
 import { DashboardSkeleton } from './DashboardSkeleton';
 import { aiService } from '../../services/aiService';
 import { taskService } from '../../services/taskService';
@@ -145,17 +138,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const [showEnvDetails, setShowEnvDetails] = useState(false);
   const [showWateringDetails, setShowWateringDetails] = useState(false);
   const [showFullClimateChart, setShowFullClimateChart] = useState(false);
-  const [showLifecycleSection, setShowLifecycleSection] = useState(false);
+  const [showLifecycleDetails, setShowLifecycleDetails] = useState(false);
   const [showFloweringSection, setShowFloweringSection] = useState(false);
-
-  // Top Date Range / Single Day Filter State
-  const [dateFilter, setDateFilter] = useState<DateFilterState>({
-    preset: 'all',
-    startDate: '',
-    endDate: '',
-  });
-
-  const isDateFilterActive = dateFilter.preset !== 'all';
 
   // Active Crops
   const activeCrops = useMemo(() => cultivations.filter((c) => !c.isFinished), [cultivations]);
@@ -190,39 +174,6 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     }
     return { firstName, timeGreeting };
   }, [userProfile]);
-
-  // Filtered lists according to date filter
-  const filteredWaterings = useMemo(() => {
-    if (!isDateFilterActive) return waterings;
-    return waterings.filter((w) => {
-      const d = normalizeDate(w.date);
-      if (dateFilter.startDate && d < dateFilter.startDate) return false;
-      if (dateFilter.endDate && d > dateFilter.endDate) return false;
-      return true;
-    });
-  }, [waterings, isDateFilterActive, dateFilter.startDate, dateFilter.endDate]);
-
-  const filteredEnvRecords = useMemo(() => {
-    if (!isDateFilterActive) return envRecords;
-    return envRecords.filter((e) => {
-      const d = normalizeDate(e.date);
-      if (dateFilter.startDate && d < dateFilter.startDate) return false;
-      if (dateFilter.endDate && d > dateFilter.endDate) return false;
-      return true;
-    });
-  }, [envRecords, isDateFilterActive, dateFilter.startDate, dateFilter.endDate]);
-
-  const filteredPhotos = useMemo(() => {
-    if (!isDateFilterActive) return photos;
-    return photos.filter((p) => {
-      const d = normalizeDate(p.date);
-      if (dateFilter.startDate && d < dateFilter.startDate) return false;
-      if (dateFilter.endDate && d > dateFilter.endDate) return false;
-      return true;
-    });
-  }, [photos, isDateFilterActive, dateFilter.startDate, dateFilter.endDate]);
-
-  const totalFilteredEvents = filteredWaterings.length + filteredEnvRecords.length + filteredPhotos.length;
 
   // Latest records for primary crop
   const latestWateringForPrimary = useMemo(() => {
@@ -292,7 +243,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
       if (diffDays === 1) return 'Ayer';
       return `Hace ${diffDays} días`;
     }
-    return formatDateDisplay(dateStr);
+    return dateStr;
   }, [latestWateringForPrimary, now]);
 
   // Environment status calculation (Está joya vs Hay algo para mirar)
@@ -416,144 +367,49 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     return list;
   }, [primaryCrop, primaryCropOverdueInfo, latestPhotoForPrimary, onOpenWateringModal, onOpenPhotoModal, onOpenEnvModal]);
 
-  // Lifecycle statistics calculation for active crops
-  const activeLifecycleStats = useMemo(() => {
-    if (activeCrops.length === 0) {
-      return {
-        hasActive: false,
-        totalActive: 0,
-        avgElapsedDays: 0,
-        avgProjectedDays: 0,
-        totalProgressPct: 0,
-        cropsDetails: [] as Array<{
-          crop: Cultivation;
-          id: string;
-          name: string;
-          stage: string;
-          elapsedDays: number;
-          projectedDays: number;
-          progressPct: number;
-        }>,
-      };
-    }
+  // Timeline and Lifecycle calculations EXCLUSIVELY for primaryCrop
+  const primaryCropTimeline = useMemo(() => {
+    if (!primaryCrop) return null;
+    const stages = getStagesForCultivation(primaryCrop);
+    const metrics = calculateTimelineMetrics(primaryCrop, stages);
 
-    let sumElapsed = 0;
-    let sumProjected = 0;
-
-    const details = activeCrops.map((crop) => {
-      const stages = getStagesForCultivation(crop);
-      const metrics = calculateTimelineMetrics(crop, stages);
-      sumElapsed += metrics.totalElapsedDays;
-      sumProjected += metrics.totalCycleDays;
-      return {
-        crop,
-        id: crop.id,
-        name: crop.name,
-        stage: crop.currentStage,
-        elapsedDays: metrics.totalElapsedDays,
-        projectedDays: metrics.totalCycleDays,
-        progressPct: metrics.overallProgressPct,
-      };
-    });
-
-    const avgElapsed = Math.round(sumElapsed / activeCrops.length);
-    const avgProjected = Math.round(sumProjected / activeCrops.length);
-    const totalProgressPct =
-      avgProjected > 0 ? Math.min(100, Math.max(0, Math.round((sumElapsed / sumProjected) * 100))) : 0;
-
-    return {
-      hasActive: true,
-      totalActive: activeCrops.length,
-      avgElapsedDays: avgElapsed,
-      avgProjectedDays: avgProjected,
-      totalProgressPct,
-      cropsDetails: details,
-    };
-  }, [activeCrops]);
-
-  // Stage Milestones
-  const stageMilestones = useMemo(() => {
-    let lifecycleStages: Array<{
-      id?: string;
-      name: string;
-      expectedDurationDays: number;
-    }> = [];
-
-    if (primaryCrop) {
-      const fullStages = getStagesForCultivation(primaryCrop);
-      let harvestIdx = fullStages.findIndex(
-        (s) => s.name === 'Cosecha' || s.name === 'Secado' || s.name === 'Finalizado'
-      );
-      if (harvestIdx === -1) harvestIdx = fullStages.length - 1;
-      lifecycleStages = fullStages.slice(0, harvestIdx + 1).map((s) => ({
-        id: s.id,
-        name: s.name,
-        expectedDurationDays: s.expectedDurationDays || 1,
-      }));
-    } else {
-      const preset = STAGE_PRESETS[0];
-      let harvestIdx = preset.stages.findIndex(
-        (s) => s.name === 'Cosecha' || s.name === 'Secado' || s.name === 'Finalizado'
-      );
-      if (harvestIdx === -1) harvestIdx = preset.stages.length - 1;
-      lifecycleStages = preset.stages.slice(0, harvestIdx + 1).map((s, idx) => ({
-        id: `preset_stage_${idx}`,
-        name: s.name,
-        expectedDurationDays: s.expectedDurationDays || 1,
-      }));
-    }
-
-    const totalCycleDays =
-      lifecycleStages.reduce((acc, s) => acc + (s.expectedDurationDays || 0), 0) || 90;
+    let harvestIdx = stages.findIndex(
+      (s) => s.name === 'Cosecha' || s.name === 'Secado' || s.name === 'Finalizado'
+    );
+    if (harvestIdx === -1) harvestIdx = stages.length - 1;
+    const lifecycleStages = stages.slice(0, harvestIdx + 1);
 
     let cumulativeDays = 0;
-    const currentProgress = activeLifecycleStats.totalProgressPct;
-    const activeStageName = (primaryCrop?.currentStage || '').toLowerCase();
-
     const milestones = lifecycleStages.map((st, idx) => {
       const duration = st.expectedDurationDays || 1;
       const startDay = cumulativeDays;
-      const pct = Math.min(100, Math.max(0, Math.round((startDay / totalCycleDays) * 100)));
-      const isReached = currentProgress >= pct;
-      const isCurrent =
-        activeStageName.length > 0 &&
-        (activeStageName.includes(st.name.toLowerCase()) ||
-          st.name.toLowerCase().includes(activeStageName));
-
-      const lower = st.name.toLowerCase();
-      let shortName = st.name;
-      if (lower.includes('vege')) shortName = 'Vegetación';
-      else if (lower.includes('germin')) shortName = 'Germ.';
-      else if (lower.includes('plánt')) shortName = 'Plántula';
-      else if (lower.includes('flor')) shortName = 'Floración';
-      else if (lower.includes('madur')) shortName = 'Maduración';
-      else if (lower.includes('cosech')) shortName = 'Cosecha';
-
-      const isKeyMilestone =
-        idx === 0 ||
-        idx === lifecycleStages.length - 1 ||
-        lower.includes('vege') ||
-        lower.includes('flor') ||
-        lower.includes('cosech');
-
+      const pct = Math.min(100, Math.max(0, Math.round((startDay / (metrics.totalCycleDays || 1)) * 100)));
+      const isReached = metrics.overallProgressPct >= pct;
+      const isCurrent = idx === metrics.activeStageIndex;
       cumulativeDays += duration;
 
       return {
-        id: st.id || `milestone_${idx}`,
+        id: st.id || `stage_${idx}`,
         name: st.name,
-        shortName,
         icon: getStageIcon(st.name),
         startDay,
         durationDays: duration,
         percent: pct,
         isReached,
         isCurrent,
-        isKeyMilestone,
       };
     });
 
-    return { milestones, totalCycleDays };
-  }, [primaryCrop, activeLifecycleStats.totalProgressPct]);
+    return {
+      stages,
+      metrics,
+      milestones,
+      progressPct: metrics.overallProgressPct,
+      elapsedDays: metrics.totalElapsedDays,
+      totalCycleDays: metrics.totalCycleDays,
+      currentStageName: primaryCrop.currentStage || metrics.activeStage?.name || 'Vegetativo',
+    };
+  }, [primaryCrop]);
 
   // AI Weekly Summary
   const handleGenerateWeeklySummary = async () => {
@@ -1003,6 +859,90 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                     )}
                   </div>
                 )}
+
+                {/* 4ta Capa: Ciclo del Cultivo del primaryCrop seleccionado */}
+                {primaryCropTimeline && (
+                  <div id="crop-lifecycle-card-section" className="pt-5 border-t border-[#EFE3CF] space-y-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-sm font-extrabold text-[#29202F]">
+                          Ciclo del cultivo
+                        </h3>
+                        <span className="text-xs font-bold text-[#62B95B]">
+                          {primaryCropTimeline.progressPct}% del ciclo estimado
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs text-[#6E5D77] font-semibold">
+                          Día {primaryCropTimeline.elapsedDays} de ~{primaryCropTimeline.totalCycleDays}
+                        </span>
+                        <button
+                          type="button"
+                          id="toggle-lifecycle-details-btn"
+                          onClick={() => setShowLifecycleDetails((prev) => !prev)}
+                          className="text-xs font-bold text-[#6C45C7] hover:underline cursor-pointer flex items-center gap-1"
+                        >
+                          <span>{showLifecycleDetails ? 'Ocultar etapas' : 'Ver etapas'}</span>
+                          <ChevronDown
+                            className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                              showLifecycleDetails ? 'rotate-180' : ''
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Barra de progreso visual orgánica */}
+                    <div className="relative w-full h-3 bg-[#FAF2E1] rounded-full overflow-hidden border border-[#EFE3CF]">
+                      <motion.div
+                        key={`cycle-progress-bar-${primaryCrop.id}`}
+                        id="cycle-progress-bar-fill"
+                        className="h-full bg-gradient-to-r from-[#62B95B] via-[#F3C843] to-[#6C45C7] rounded-full"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${primaryCropTimeline.progressPct}%` }}
+                        transition={{ duration: 0.8, ease: 'easeOut' }}
+                      />
+                    </div>
+
+                    {/* Hitos botánicos principales: Siembra, Vegetativo, Floración, Cosecha */}
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-[#6E5D77] pt-0.5 px-0.5">
+                      <span>Siembra</span>
+                      <span>Vegetativo</span>
+                      <span>Floración</span>
+                      <span>Cosecha</span>
+                    </div>
+
+                    {/* Progressive disclosure: Desglose detallado de etapas configuradas para primaryCrop */}
+                    {showLifecycleDetails && (
+                      <div id="crop-lifecycle-stage-breakdown" className="pt-3 border-t border-[#EFE3CF] grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs animate-in fade-in duration-200">
+                        {primaryCropTimeline.milestones.map((m) => (
+                          <div
+                            key={m.id}
+                            className={`p-3 rounded-xl border transition-all ${
+                              m.isCurrent
+                                ? 'bg-[#62B95B]/10 border-[#62B95B]/40 text-[#29202F] font-bold shadow-2xs'
+                                : m.isReached
+                                ? 'bg-[#FAF2E1] border-[#EFE3CF] text-[#29202F]'
+                                : 'bg-white border-[#EFE3CF] text-[#9887A2]'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-[10px] text-[#9887A2] uppercase tracking-wider block">Etapa</span>
+                              {m.isCurrent && (
+                                <span className="w-2 h-2 rounded-full bg-[#62B95B] animate-pulse" title="Etapa actual" />
+                              )}
+                            </div>
+                            <span className="block font-bold truncate">{m.name}</span>
+                            <span className="text-[10px] text-[#6E5D77] block mt-0.5">
+                              Día ~{m.startDay} ({m.durationDays}d)
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )
           )}
@@ -1010,8 +950,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           {/* 3. Tareas Críticas del Cultivo (UpcomingTaskWidget con estilo cálido) */}
           <UpcomingTaskWidget
             cultivations={cultivations}
-            waterings={filteredWaterings}
-            envRecords={filteredEnvRecords}
+            waterings={waterings}
+            envRecords={envRecords}
             userId={userId}
             onSelectCultivation={onSelectCultivation}
             onOpenWateringModal={onOpenWateringModal}
@@ -1030,89 +970,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             </div>
           )}
 
-          {/* 5. Ciclo de Vida Botánico (DashboardLifecycleProgress con estilo cálido) */}
-          <div
-            id="dashboard-lifecycle-progress"
-            className="bg-white rounded-[32px] p-5 sm:p-7 border border-[#EFE3CF] shadow-xs space-y-4"
-          >
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#EFE3CF]">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-2xl bg-[#62B95B]/15 text-[#62B95B] border border-[#62B95B]/20">
-                  <TrendingUp className="w-5 h-5 stroke-[2.2]" />
-                </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="text-base font-extrabold text-[#29202F]">
-                      Ciclo de Vida del Cultivo
-                    </h3>
-                    <span className="text-xs font-bold text-[#62B95B]">
-                      {activeLifecycleStats.totalProgressPct}%
-                    </span>
-                  </div>
-                  <p className="text-xs text-[#6E5D77] mt-0.5">
-                    {activeLifecycleStats.hasActive ? (
-                      <>
-                        <strong className="text-[#29202F]">{activeLifecycleStats.avgElapsedDays} días</strong> transcurridos de{' '}
-                        <strong className="text-[#29202F]">{activeLifecycleStats.avgProjectedDays} días</strong> proyectados
-                      </>
-                    ) : (
-                      'Iniciá un cultivo para ver el avance del ciclo'
-                    )}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setShowLifecycleSection((prev) => !prev)}
-                className="text-xs font-bold text-[#6C45C7] hover:underline cursor-pointer self-start sm:self-auto"
-              >
-                {showLifecycleSection ? 'Ocultar desglose' : 'Ver desglose por etapas'}
-              </button>
-            </div>
-
-            {/* Barra de progreso visual orgánica */}
-            <div className="relative w-full h-4 bg-[#FAF2E1] rounded-full overflow-hidden border border-[#EFE3CF]">
-              <motion.div
-                className="h-full bg-gradient-to-r from-[#62B95B] via-[#F3C843] to-[#6C45C7] rounded-full"
-                initial={{ width: 0 }}
-                animate={{ width: `${activeLifecycleStats.totalProgressPct}%` }}
-                transition={{ duration: 1, ease: 'easeOut' }}
-              />
-            </div>
-
-            {/* Hitos botánicos resumidos */}
-            <div className="flex items-center justify-between text-[11px] text-[#6E5D77] pt-1">
-              <span>Siembra</span>
-              <span>Vegetativo</span>
-              <span>Floración</span>
-              <span>Cosecha</span>
-            </div>
-
-            {/* Desglose ampliable de etapas */}
-            {showLifecycleSection && (
-              <div className="pt-3 border-t border-[#EFE3CF] grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs">
-                {stageMilestones.milestones.map((m) => (
-                  <div
-                    key={m.id}
-                    className={`p-3 rounded-xl border ${
-                      m.isCurrent
-                        ? 'bg-[#62B95B]/10 border-[#62B95B]/40 text-[#29202F] font-bold'
-                        : m.isReached
-                        ? 'bg-[#FAF2E1] border-[#EFE3CF] text-[#29202F]'
-                        : 'bg-white border-[#EFE3CF] text-[#9887A2]'
-                    }`}
-                  >
-                    <span className="text-[10px] text-[#9887A2] block">Etapa</span>
-                    <span className="block mt-0.5">{m.shortName}</span>
-                    <span className="text-[10px] text-[#6E5D77] block mt-0.5">Día ~{m.startDay}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* 6. Estadísticas Resumidas (Bento Cards Reutilizables con IDs requeridos) */}
+          {/* 5. Estadísticas Resumidas (Bento Cards Reutilizables con IDs requeridos) */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {/* Cultivos Activos */}
             <div
@@ -1163,7 +1021,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#9887A2]">
-                  {isDateFilterActive ? 'Riegos (Filtro)' : 'Riegos (7 días)'}
+                  Riegos (7 días)
                 </span>
                 <div className="p-2 rounded-xl bg-[#6C45C7]/15 text-[#6C45C7]">
                   <Droplets className="w-4 h-4" />
@@ -1171,7 +1029,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               </div>
               <div>
                 <span className="text-3xl sm:text-4xl font-black text-[#6C45C7] block">
-                  {isDateFilterActive ? filteredWaterings.length : recentWateringsCount}
+                  {recentWateringsCount}
                 </span>
                 <span className="text-xs text-[#6E5D77] block mt-0.5">Nutrición y agua</span>
               </div>
@@ -1184,7 +1042,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-[#9887A2]">
-                  {isDateFilterActive ? 'Fotos (Filtro)' : 'Fotos Bitácora'}
+                  Fotos Bitácora
                 </span>
                 <div className="p-2 rounded-xl bg-[#F3C843]/25 text-[#29202F]">
                   <Camera className="w-4 h-4" />
@@ -1192,14 +1050,14 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               </div>
               <div>
                 <span className="text-3xl sm:text-4xl font-black text-[#29202F] block">
-                  {isDateFilterActive ? filteredPhotos.length : photos.length}
+                  {photos.length}
                 </span>
                 <span className="text-xs text-[#6E5D77] block mt-0.5">Registro visual</span>
               </div>
             </div>
           </div>
 
-          {/* 7. Floración y Proyecciones de Cosecha */}
+          {/* 6. Floración y Proyecciones de Cosecha */}
           <div className="space-y-3">
             <div className="flex items-center justify-between px-1">
               <span className="text-xs font-bold text-[#6E5D77] uppercase tracking-wider">
@@ -1233,16 +1091,6 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               </div>
             )}
           </div>
-
-          {/* 8. Filtro Temporal de Bitácora */}
-          <DashboardDateFilter
-            filter={dateFilter}
-            onChangeFilter={setDateFilter}
-            wateringsCount={filteredWaterings.length}
-            envCount={filteredEnvRecords.length}
-            photosCount={filteredPhotos.length}
-            totalRecordsCount={totalFilteredEvents}
-          />
 
           {/* 9. Asistente Botánico: Preguntale a Cultiveta */}
           <div className="bg-white rounded-[32px] p-6 sm:p-8 border border-[#EFE3CF] shadow-xs relative overflow-hidden space-y-4">

@@ -386,7 +386,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                   />
 
                   {/* Day Badge */}
-                  <div className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full bg-white/90 backdrop-blur-xs text-[#29202F] text-[11px] font-bold shadow-xs border border-[#EFE3CF]">
+                  <div className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full bg-black/80 bg-white/90 backdrop-blur-xs text-[#29202F] text-[11px] font-bold shadow-xs border border-[#EFE3CF]">
                     Día {photo.dayOfCultivation}
                   </div>
 
@@ -417,7 +417,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                       className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-[#62B95B]/20 backdrop-blur-xs text-[#62B95B] border border-[#62B95B]/30 text-[10px] font-bold flex items-center gap-1 shadow-2xs"
                     >
                       <Loader2 className="w-3 h-3 text-[#62B95B] animate-spin" />
-                      <span>Confirmando...</span>
+                      <span>Pendiente de confirmación</span>
                     </div>
                   )}
 

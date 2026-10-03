@@ -34,7 +34,13 @@ import { DashboardOverview } from './components/dashboard/DashboardOverview';
 import { CultivationDetailView } from './components/cultivations/CultivationDetailView';
 import { CultivationFormModal } from './components/cultivations/CultivationFormModal';
 import { CultivationCard } from './components/cultivations/CultivationCard';
-import { CultivationsFilterBar, StageFilterCategory, matchesStageFilter } from './components/cultivations/CultivationsFilterBar';
+import {
+  CultivationsFilterBar,
+  StageFilterCategory,
+  CultivationStatusFilter,
+  matchesStageFilter,
+  isCropFinished,
+} from './components/cultivations/CultivationsFilterBar';
 import { WateringModal } from './components/logs/WateringModal';
 import { EnvironmentModal } from './components/logs/EnvironmentModal';
 import { PhotoUploadModal } from './components/logs/PhotoUploadModal';
@@ -108,30 +114,52 @@ export default function App() {
   const [syncError, setSyncError] = useState<string | null>(null);
 
   // Cultivations List Stage Filter & Search State
+  const [cultivationStatusFilter, setCultivationStatusFilter] = useState<CultivationStatusFilter>('active');
   const [stageFilter, setStageFilter] = useState<StageFilterCategory>('all');
   const [cultivationSearchQuery, setCultivationSearchQuery] = useState('');
 
   const filteredCultivations = useMemo(() => {
-    return cultivations.filter((crop) => {
-      // Stage filter
-      if (!matchesStageFilter(crop, stageFilter)) {
-        return false;
-      }
-
-      // Search query filter
-      if (cultivationSearchQuery.trim()) {
-        const q = cultivationSearchQuery.toLowerCase();
-        const nameMatch = crop.name.toLowerCase().includes(q);
-        const geneticsMatch = crop.geneticsName?.toLowerCase().includes(q);
-        const stageMatch = crop.currentStage?.toLowerCase().includes(q);
-        const typeMatch = crop.type?.toLowerCase().includes(q);
-        if (!nameMatch && !geneticsMatch && !stageMatch && !typeMatch) {
+    return cultivations
+      .filter((crop) => {
+        const finished = isCropFinished(crop);
+        // Status filter: active / finished / all
+        if (cultivationStatusFilter === 'active' && finished) {
           return false;
         }
-      }
-      return true;
-    });
-  }, [cultivations, stageFilter, cultivationSearchQuery]);
+        if (cultivationStatusFilter === 'finished' && !finished) {
+          return false;
+        }
+
+        // Stage filter (only applied in 'active' mode)
+        if (cultivationStatusFilter === 'active' && !matchesStageFilter(crop, stageFilter)) {
+          return false;
+        }
+
+        // Search query filter
+        if (cultivationSearchQuery.trim()) {
+          const q = cultivationSearchQuery.toLowerCase();
+          const nameMatch = crop.name.toLowerCase().includes(q);
+          const geneticsMatch =
+            crop.geneticsName?.toLowerCase().includes(q) ||
+            (crop.genetics && crop.genetics.toLowerCase().includes(q));
+          const stageMatch = crop.currentStage?.toLowerCase().includes(q);
+          const typeMatch = crop.type?.toLowerCase().includes(q);
+          if (!nameMatch && !geneticsMatch && !stageMatch && !typeMatch) {
+            return false;
+          }
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        // If showing finished crops, sort newest terminal date first
+        if (cultivationStatusFilter === 'finished') {
+          const dateA = new Date(a.harvestDate || a.endDate || a.floweringStartDate || a.startDate || 0).getTime();
+          const dateB = new Date(b.harvestDate || b.endDate || b.floweringStartDate || b.startDate || 0).getTime();
+          return dateB - dateA;
+        }
+        return 0;
+      });
+  }, [cultivations, cultivationStatusFilter, stageFilter, cultivationSearchQuery]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -594,6 +622,8 @@ export default function App() {
 
               {cultivations.length > 0 && (
                 <CultivationsFilterBar
+                  statusFilter={cultivationStatusFilter}
+                  onStatusFilterChange={setCultivationStatusFilter}
                   activeFilter={stageFilter}
                   onFilterChange={setStageFilter}
                   searchQuery={cultivationSearchQuery}
@@ -609,9 +639,9 @@ export default function App() {
                     <Sprout className="w-8 h-8" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-[#29202F] text-base">Todavía no anotaste ningún cultivo</h3>
+                    <h3 className="font-bold text-[#29202F] text-base">Todavía no anotaste ningún cultivo.</h3>
                     <p className="text-xs text-[#6E5D77] max-w-sm mx-auto mt-1">
-                      Crea tu primer cultivo para empezar a registrar riegos, parámetros y fotografías.
+                      Creá tu primer cultivo para empezar a registrar riegos, parámetros y fotografías.
                     </p>
                   </div>
                   <button
@@ -623,30 +653,74 @@ export default function App() {
                     className="px-6 py-3 rounded-2xl bg-[#62B95B] hover:bg-[#52A54C] text-white font-bold text-xs transition-all shadow-lg shadow-[#62B95B]/20 cursor-pointer inline-flex items-center gap-2"
                   >
                     <Plus className="w-4 h-4 stroke-[2.5]" />
-                    Crear Primer Cultivo
+                    Crear cultivo
                   </button>
                 </div>
               ) : filteredCultivations.length === 0 ? (
-                <div className="bg-white rounded-[32px] p-10 border border-[#EFE3CF] text-center space-y-3 shadow-xs">
+                <div className="bg-white rounded-[32px] p-10 border border-[#EFE3CF] text-center space-y-4 shadow-xs">
                   <div className="w-12 h-12 rounded-2xl bg-[#FAF2E1] border border-[#EFE3CF] text-[#9887A2] flex items-center justify-center mx-auto">
                     <SlidersHorizontal className="w-6 h-6" />
                   </div>
-                  <h3 className="font-bold text-[#29202F] text-base">No hay cultivos que coincidan</h3>
-                  <p className="text-xs text-[#6E5D77] max-w-sm mx-auto">
-                    No encontramos plantas activas con el filtro seleccionado
-                    {stageFilter !== 'all' && <> (etapa: <strong className="text-[#29202F] capitalize">{stageFilter}</strong>)</>}
-                    {cultivationSearchQuery && <> y término &quot;<strong className="text-[#29202F]">{cultivationSearchQuery}</strong>&quot;</>}.
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setStageFilter('all');
-                      setCultivationSearchQuery('');
-                    }}
-                    className="px-4 py-2 rounded-xl bg-[#FAF2E1] hover:bg-[#EFE3CF] text-[#29202F] font-semibold text-xs transition-colors cursor-pointer inline-flex items-center gap-2"
-                  >
-                    Mostrar todos los cultivos
-                  </button>
+                  <div>
+                    {cultivationSearchQuery.trim() ? (
+                      <>
+                        <h3 className="font-bold text-[#29202F] text-base">No hay cultivos que coincidan</h3>
+                        <p className="text-xs text-[#6E5D77] max-w-sm mx-auto mt-1">
+                          No encontramos plantas con el término &quot;<strong className="text-[#29202F]">{cultivationSearchQuery}</strong>&quot;.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setCultivationSearchQuery('')}
+                          className="mt-3 px-4 py-2 rounded-xl bg-[#FAF2E1] hover:bg-[#EFE3CF] text-[#29202F] font-semibold text-xs transition-colors cursor-pointer inline-flex items-center gap-2"
+                        >
+                          Limpiar búsqueda
+                        </button>
+                      </>
+                    ) : cultivationStatusFilter === 'active' ? (
+                      <>
+                        <h3 className="font-bold text-[#29202F] text-base">No tenés cultivos activos ahora.</h3>
+                        <p className="text-xs text-[#6E5D77] max-w-sm mx-auto mt-1">
+                          Podés iniciar una nueva carpa o revisar tus cultivos finalizados.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCultivationToEdit(null);
+                            setIsCultivationFormOpen(true);
+                          }}
+                          className="mt-3 px-5 py-2.5 rounded-2xl bg-[#62B95B] hover:bg-[#52A54C] text-white font-bold text-xs transition-all shadow-md shadow-[#62B95B]/20 cursor-pointer inline-flex items-center gap-2"
+                        >
+                          <Plus className="w-4 h-4 stroke-[2.5]" />
+                          Crear cultivo
+                        </button>
+                      </>
+                    ) : cultivationStatusFilter === 'finished' ? (
+                      <>
+                        <h3 className="font-bold text-[#29202F] text-base">Todavía no terminaste ningún cultivo.</h3>
+                        <p className="text-xs text-[#6E5D77] max-w-sm mx-auto mt-1">
+                          Cuando coseches un cultivo activo, aparecerá registrado aquí con su historial.
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <h3 className="font-bold text-[#29202F] text-base">Todavía no anotaste ningún cultivo.</h3>
+                        <p className="text-xs text-[#6E5D77] max-w-sm mx-auto mt-1">
+                          Iniciá tu primer cultivo para comenzar el seguimiento.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCultivationToEdit(null);
+                            setIsCultivationFormOpen(true);
+                          }}
+                          className="mt-3 px-5 py-2.5 rounded-2xl bg-[#62B95B] hover:bg-[#52A54C] text-white font-bold text-xs transition-all shadow-md shadow-[#62B95B]/20 cursor-pointer inline-flex items-center gap-2"
+                        >
+                          <Plus className="w-4 h-4 stroke-[2.5]" />
+                          Crear cultivo
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
