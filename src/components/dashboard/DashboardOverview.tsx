@@ -32,8 +32,6 @@ import { Cultivation, Watering, EnvironmentRecord, PhotoRecord, Genetics, UserPr
 import { CultivationCard } from '../cultivations/CultivationCard';
 import { DashboardEnvironmentChart } from './DashboardEnvironmentChart';
 import { UpcomingTaskWidget } from './UpcomingTaskWidget';
-import { FloweringProgressSection } from './FloweringProgressSection';
-import { HarvestProjectionSection } from './HarvestProjectionSection';
 import { DashboardSkeleton } from './DashboardSkeleton';
 import { aiService } from '../../services/aiService';
 import { taskService } from '../../services/taskService';
@@ -44,6 +42,8 @@ import {
   calculateTimelineMetrics,
   getStageIcon,
   STAGE_PRESETS,
+  buildCultivationStageSchedule,
+  formatFriendlyDate,
 } from '../../utils/growthStageUtils';
 import { cultivationService } from '../../services/cultivationService';
 
@@ -139,7 +139,6 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const [showWateringDetails, setShowWateringDetails] = useState(false);
   const [showFullClimateChart, setShowFullClimateChart] = useState(false);
   const [showLifecycleDetails, setShowLifecycleDetails] = useState(false);
-  const [showFloweringSection, setShowFloweringSection] = useState(false);
 
   // Active Crops
   const activeCrops = useMemo(() => cultivations.filter((c) => !c.isFinished), [cultivations]);
@@ -370,22 +369,23 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   // Timeline and Lifecycle calculations EXCLUSIVELY for primaryCrop
   const primaryCropTimeline = useMemo(() => {
     if (!primaryCrop) return null;
+    const schedule = buildCultivationStageSchedule(primaryCrop, geneticsList);
     const stages = getStagesForCultivation(primaryCrop);
     const metrics = calculateTimelineMetrics(primaryCrop, stages);
 
-    let harvestIdx = stages.findIndex(
+    let harvestIdx = schedule.stages.findIndex(
       (s) => s.name === 'Cosecha' || s.name === 'Secado' || s.name === 'Finalizado'
     );
-    if (harvestIdx === -1) harvestIdx = stages.length - 1;
-    const lifecycleStages = stages.slice(0, harvestIdx + 1);
+    if (harvestIdx === -1) harvestIdx = schedule.stages.length - 1;
+    const lifecycleStages = schedule.stages.slice(0, harvestIdx + 1);
 
     let cumulativeDays = 0;
     const milestones = lifecycleStages.map((st, idx) => {
       const duration = st.expectedDurationDays || 1;
       const startDay = cumulativeDays;
-      const pct = Math.min(100, Math.max(0, Math.round((startDay / (metrics.totalCycleDays || 1)) * 100)));
-      const isReached = metrics.overallProgressPct >= pct;
-      const isCurrent = idx === metrics.activeStageIndex;
+      const pct = Math.min(100, Math.max(0, Math.round((startDay / (schedule.totalCycleDays || 1)) * 100)));
+      const isReached = schedule.overallProgressPct >= pct;
+      const isCurrent = idx === schedule.activeStageIndex;
       cumulativeDays += duration;
 
       return {
@@ -397,19 +397,35 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         percent: pct,
         isReached,
         isCurrent,
+        startDate: st.startDate,
+        endDate: st.endDate,
+        isActual: st.isActual,
+        isProjected: st.isProjected,
       };
     });
 
+    const vegeStage = schedule.stages.find((s) => s.name.toLowerCase().includes('vege'));
+    const floraStage = schedule.stages.find((s) => s.name.toLowerCase().includes('flor'));
+
     return {
+      schedule,
       stages,
       metrics,
       milestones,
-      progressPct: metrics.overallProgressPct,
-      elapsedDays: metrics.totalElapsedDays,
-      totalCycleDays: metrics.totalCycleDays,
-      currentStageName: primaryCrop.currentStage || metrics.activeStage?.name || 'Vegetativo',
+      progressPct: schedule.overallProgressPct,
+      elapsedDays: schedule.totalElapsedDays,
+      totalCycleDays: schedule.totalCycleDays,
+      currentStageName: primaryCrop.currentStage || schedule.activeStage?.name || 'Vegetativo',
+      vegeDates: vegeStage
+        ? `${formatFriendlyDate(vegeStage.startDate)} → ${formatFriendlyDate(vegeStage.endDate, { isProjected: vegeStage.isProjected })}`
+        : null,
+      floraDates: floraStage
+        ? `${formatFriendlyDate(floraStage.startDate, { isProjected: !floraStage.isActual })} → ${formatFriendlyDate(floraStage.endDate, { isProjected: true })}`
+        : null,
+      harvestDate: formatFriendlyDate(schedule.estimatedHarvestDate, { isProjected: true }),
+      startDateFormatted: formatFriendlyDate(schedule.cropStartDate),
     };
-  }, [primaryCrop]);
+  }, [primaryCrop, geneticsList]);
 
   // AI Weekly Summary
   const handleGenerateWeeklySummary = async () => {
@@ -906,11 +922,35 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                     </div>
 
                     {/* Hitos botánicos principales: Siembra, Vegetativo, Floración, Cosecha */}
-                    <div className="flex items-center justify-between text-[11px] font-semibold text-[#6E5D77] pt-0.5 px-0.5">
-                      <span>Siembra</span>
-                      <span>Vegetativo</span>
-                      <span>Floración</span>
-                      <span>Cosecha</span>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-semibold text-[#6E5D77] pt-1 px-0.5">
+                      <div className="text-left">
+                        <span className="block font-bold text-[#29202F]">Siembra</span>
+                        <span className="text-[10px] text-[#9887A2] block mt-0.5">
+                          {primaryCropTimeline.startDateFormatted}
+                        </span>
+                      </div>
+                      <div className="text-left sm:text-center">
+                        <span className="block font-bold text-[#29202F]">Vegetativo</span>
+                        {primaryCropTimeline.vegeDates && (
+                          <span className="text-[10px] text-[#9887A2] block mt-0.5 truncate">
+                            {primaryCropTimeline.vegeDates}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-left sm:text-center">
+                        <span className="block font-bold text-[#29202F]">Floración</span>
+                        {primaryCropTimeline.floraDates && (
+                          <span className="text-[10px] text-[#9887A2] block mt-0.5 truncate">
+                            {primaryCropTimeline.floraDates}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-left sm:text-right">
+                        <span className="block font-bold text-[#29202F]">Cosecha</span>
+                        <span className="text-[10px] text-[#9887A2] block mt-0.5">
+                          {primaryCropTimeline.harvestDate}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Progressive disclosure: Desglose detallado de etapas configuradas para primaryCrop */}
@@ -928,14 +968,19 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                             }`}
                           >
                             <div className="flex items-center justify-between mb-1">
-                              <span className="text-[10px] text-[#9887A2] uppercase tracking-wider block">Etapa</span>
+                              <span className="text-[10px] text-[#9887A2] uppercase tracking-wider block">
+                                {m.isCurrent ? 'Actual' : m.isReached ? 'Completada' : 'Estimada'}
+                              </span>
                               {m.isCurrent && (
                                 <span className="w-2 h-2 rounded-full bg-[#62B95B] animate-pulse" title="Etapa actual" />
                               )}
                             </div>
                             <span className="block font-bold truncate">{m.name}</span>
                             <span className="text-[10px] text-[#6E5D77] block mt-0.5">
-                              Día ~{m.startDay} ({m.durationDays}d)
+                              {formatFriendlyDate(m.startDate, { isProjected: !m.isActual })} → {formatFriendlyDate(m.endDate, { isProjected: m.isProjected })}
+                            </span>
+                            <span className="text-[10px] text-[#9887A2] block mt-0.5">
+                              {m.durationDays} días
                             </span>
                           </div>
                         ))}
@@ -1055,41 +1100,6 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 <span className="text-xs text-[#6E5D77] block mt-0.5">Registro visual</span>
               </div>
             </div>
-          </div>
-
-          {/* 6. Floración y Proyecciones de Cosecha */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between px-1">
-              <span className="text-xs font-bold text-[#6E5D77] uppercase tracking-wider">
-                Floración y Cosechas
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowFloweringSection((prev) => !prev)}
-                className="text-xs font-bold text-[#6C45C7] hover:underline cursor-pointer"
-              >
-                {showFloweringSection ? 'Ocultar proyecciones' : 'Ver semanas y corte'}
-              </button>
-            </div>
-
-            {showFloweringSection && (
-              <div className="space-y-6 animate-in fade-in duration-200">
-                <FloweringProgressSection
-                  cultivations={cultivations}
-                  geneticsList={geneticsList}
-                  onSelectCultivation={onSelectCultivation}
-                  onOpenWateringModal={onOpenWateringModal}
-                  onOpenPhotoModal={onOpenPhotoModal}
-                  onOpenAIAssistant={onOpenAIAssistant}
-                />
-                <HarvestProjectionSection
-                  cultivations={cultivations}
-                  geneticsList={geneticsList}
-                  onSelectCultivation={onSelectCultivation}
-                  onOpenCalendarModal={onOpenCalendarModal}
-                />
-              </div>
-            )}
           </div>
 
           {/* 9. Asistente Botánico: Preguntale a Cultiveta */}

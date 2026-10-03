@@ -28,6 +28,7 @@ import {
   AIPhotoAnalysisResult,
   Harvest,
   WateringProductItem,
+  Genetics,
 } from '../../types';
 import { StatusPill } from '../common/StatusPill';
 import { cultivationService } from '../../services/cultivationService';
@@ -41,6 +42,8 @@ import { FinalizeHarvestModal } from './FinalizeHarvestModal';
 import { PhotoDiagnosisModal } from '../ai/PhotoDiagnosisModal';
 import { GoogleCalendarModal } from '../calendar/GoogleCalendarModal';
 import { FertilizationSectionView } from './FertilizationSectionView';
+import { FloweringProgressSection } from '../dashboard/FloweringProgressSection';
+import { HarvestProjectionSection } from '../dashboard/HarvestProjectionSection';
 import { FlaskConical, Clock, Settings2, ChevronRight, ChevronDown, PlayCircle } from 'lucide-react';
 import { CultivationTimelineView } from './timeline/CultivationTimelineView';
 import { StageConfigModal } from './timeline/StageConfigModal';
@@ -61,6 +64,7 @@ interface CultivationDetailViewProps {
   envRecords: EnvironmentRecord[];
   photos: PhotoRecord[];
   diaryEntries: DiaryEntry[];
+  geneticsList?: Genetics[];
   onBack: () => void;
   onEditCultivation: (cultivation: Cultivation) => void;
   onDeleteCultivation: (cultivationId: string) => void;
@@ -82,6 +86,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
   envRecords,
   photos,
   diaryEntries,
+  geneticsList = [],
   onBack,
   onEditCultivation,
   onDeleteCultivation,
@@ -888,6 +893,32 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
             </div>
           </div>
 
+          {/* Sección de Floración (solo si Prefloración, Floración, Maduración o tiene floweringStartDate) */}
+          {(() => {
+            const stageLower = (cultivation.currentStage || '').toLowerCase();
+            const isFlora =
+              stageLower.includes('flor') ||
+              stageLower.includes('preflor') ||
+              stageLower.includes('madur') ||
+              Boolean(cultivation.floweringStartDate);
+
+            return isFlora ? (
+              <FloweringProgressSection
+                cultivation={cultivation}
+                geneticsList={geneticsList}
+                onOpenWateringModal={onOpenWateringModal}
+                onOpenPhotoModal={onOpenPhotoModal}
+              />
+            ) : null;
+          })()}
+
+          {/* Proyección del Ciclo y Cosecha */}
+          <HarvestProjectionSection
+            cultivation={cultivation}
+            geneticsList={geneticsList}
+            onOpenCalendarModal={() => setIsCalendarModalOpen(true)}
+          />
+
           {/* Charts Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <EnvironmentChart cultivation={cultivation} envRecords={cropEnv} />
@@ -902,6 +933,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
           cultivation={cultivation}
           userId={userId}
           onCultivationUpdated={onCultivationUpdated}
+          onOpenCalendarModal={() => setIsCalendarModalOpen(true)}
         />
       )}
 

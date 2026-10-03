@@ -1,4 +1,9 @@
 import { Cultivation, GoogleCalendarEvent, CultivationCalendarPlan, Watering } from '../types';
+import {
+  buildCultivationStageSchedule,
+  addDays,
+  formatDateOnly,
+} from '../utils/growthStageUtils';
 
 const CALENDAR_API_BASE = 'https://www.googleapis.com/calendar/v3';
 
@@ -61,9 +66,7 @@ export const calendarService = {
     // Add end date for all day events (+1 day standard RFC3339 for Google Calendar all-day)
     let endDate = plan.endDate || plan.date;
     if (isAllDay) {
-      const nextDay = new Date(plan.date);
-      nextDay.setDate(nextDay.getDate() + 1);
-      endDate = nextDay.toISOString().split('T')[0];
+      endDate = addDays(plan.date, 1);
     }
 
     const payload: Record<string, any> = {
@@ -74,14 +77,15 @@ export const calendarService = {
       reminders: {
         useDefault: false,
         overrides: [
-          { method: 'popup', minutes: 540 }, // 9:00 AM on the day
-          { method: 'email', minutes: 1440 }, // 1 day before
+          { method: 'popup', minutes: 1440 }, // Recordatorio 1 día antes (1440 min)
+          { method: 'email', minutes: 1440 }, // Email 1 día antes
         ],
       },
       extendedProperties: {
         private: {
           cultivationId: cultivation.id,
           cropEventCategory: plan.type,
+          stageId: plan.stageId || '',
           cultivetaApp: 'true',
         },
       },
@@ -116,9 +120,7 @@ export const calendarService = {
     const isAllDay = !plan.date.includes('T');
     let endDate = plan.endDate || plan.date;
     if (isAllDay) {
-      const nextDay = new Date(plan.date);
-      nextDay.setDate(nextDay.getDate() + 1);
-      endDate = nextDay.toISOString().split('T')[0];
+      endDate = addDays(plan.date, 1);
     }
 
     const payload: Record<string, any> = {
@@ -126,10 +128,18 @@ export const calendarService = {
       description: `${plan.description}\n\n━━━━━━━━━━━━━━━━━━━━\nCultivo: ${cultivation.name} (${cultivation.geneticsName || 'Genética s/d'})\nEtapa actual: ${cultivation.currentStage}\nID: ${cultivation.id}\nSincronizado desde Cultiveta OS.`,
       start: isAllDay ? { date: plan.date } : { dateTime: new Date(plan.date).toISOString() },
       end: isAllDay ? { date: endDate } : { dateTime: new Date(endDate).toISOString() },
+      reminders: {
+        useDefault: false,
+        overrides: [
+          { method: 'popup', minutes: 1440 }, // Recordatorio 1 día antes (1440 min)
+          { method: 'email', minutes: 1440 },
+        ],
+      },
       extendedProperties: {
         private: {
           cultivationId: cultivation.id,
           cropEventCategory: plan.type,
+          stageId: plan.stageId || '',
           cultivetaApp: 'true',
         },
       },
@@ -171,134 +181,90 @@ export const calendarService = {
   },
 
   /**
-   * Calculate smart cultivation roadmap and calendar events
+   * Calculate smart cultivation roadmap and calendar events.
+   * Strictly uses buildCultivationStageSchedule(cultivation) as source of truth.
    */
   generateSuggestedPlans(
     cultivation: Cultivation,
     latestWatering?: Watering | null
   ): CultivationCalendarPlan[] {
     const plans: CultivationCalendarPlan[] = [];
-    const today = new Date();
+    const now = new Date();
+    const todayStr = formatDateOnly(now.getFullYear(), now.getMonth() + 1, now.getDate());
 
     // 1. Next watering recommendation
-    let nextWateringDate = new Date();
+    let nextWateringDateStr = addDays(todayStr, 1);
     if (latestWatering?.date) {
-      const lastW = new Date(latestWatering.date);
-      // Typically water every 2-3 days
-      nextWateringDate = new Date(lastW);
-      nextWateringDate.setDate(nextWateringDate.getDate() + 3);
-      if (nextWateringDate < today) {
-        // overdue - schedule for today or tomorrow morning
-        nextWateringDate = new Date(today);
-        nextWateringDate.setDate(nextWateringDate.getDate() + 1);
+      const cleanWaterDate = latestWatering.date.split('T')[0];
+      nextWateringDateStr = addDays(cleanWaterDate, 3);
+      if (nextWateringDateStr < todayStr) {
+        nextWateringDateStr = addDays(todayStr, 1);
       }
-    } else {
-      nextWateringDate.setDate(today.getDate() + 1);
     }
 
     plans.push({
       id: `suggested_water_${cultivation.id}`,
       title: 'Recordatorio de Riego y Nutrición',
-      date: nextWateringDate.toISOString().split('T')[0],
+      date: nextWateringDateStr,
       type: 'watering',
-      description: `Comprobar peso de la maceta y humedad del sustrato. Preparar solución nutritiva con pH calibrado (6.0 - 6.5) y EC recomendada para etapa de ${cultivation.currentStage}.`,
+      description: `Comprobar peso de la maceta y humedad del sustrato. Preparar solución nutritiva con pH calibrado (6.0 - 6.5) y EC recomendada para etapa de ${cultivation.currentStage || 'Vegetativo'}.`,
     });
 
-    // 2. Stage-based milestones
-    const startDate = new Date(cultivation.startDate);
-    const floweringWeeks = cultivation.declaredFloweringWeeks || 9;
-    const isAuto = cultivation.photoperiodType === 'Automática';
+    // 2. Stage schedule roadmap events strictly derived from buildCultivationStageSchedule
+    const schedule = buildCultivationStageSchedule(cultivation);
 
-    if (isAuto) {
-      // Autos typically flower around day 25-30 and finish around day 70-85
-      const estimatedFlowerDate = new Date(startDate);
-      estimatedFlowerDate.setDate(estimatedFlowerDate.getDate() + 28);
-      if (estimatedFlowerDate >= today) {
+    for (let i = 0; i < schedule.stages.length; i++) {
+      const st = schedule.stages[i];
+
+      // For stage transitions (i > 0), the transition occurs at st.startDate
+      if (i > 0) {
+        const prevSt = schedule.stages[i - 1];
+        const isHarvest = st.name === 'Cosecha' || st.name === 'Secado' || st.name === 'Finalizado';
+
+        const stageTitle = isHarvest
+          ? 'Floración → Cosecha (Corte estimado)'
+          : `${prevSt.name} → ${st.name}`;
+
+        if (st.startDate >= todayStr) {
+          plans.push({
+            id: `suggested_stage_${cultivation.id}_${st.id}`,
+            stageId: st.id,
+            title: stageTitle,
+            date: st.startDate,
+            type: isHarvest ? 'harvest' : 'stage_change',
+            description: isHarvest
+              ? `Ventana estimada de cosecha para ${cultivation.name}. Monitorear tricomas en cálices medios (70-80% lechosos, 15-20% ámbar). Preparar secadero a 18-20°C y 55-60% HR.`
+              : `Transición estimada de ${prevSt.name} a ${st.name} en ${cultivation.name}. Revisar cambio de fotoperiodo, nutrientes y parámetros ambientales según corresponda.`,
+          });
+        }
+      }
+    }
+
+    // 3. Agronomic milestones derived from schedule
+    const flowStage = schedule.floweringStage;
+    if (flowStage) {
+      // Defoliation at week 3 (day 21 of flower)
+      const defolDate = addDays(flowStage.startDate, 21);
+      if (defolDate >= todayStr && defolDate < schedule.estimatedHarvestDate) {
         plans.push({
-          id: `suggested_preflower_${cultivation.id}`,
-          title: 'Inicio estimado de Floración (Auto)',
-          date: estimatedFlowerDate.toISOString().split('T')[0],
-          type: 'stage_change',
-          description: `Las plantas automáticas inician su floración. Cambiar fertilizante base a booster de prefloración y verificar altura de luminaria.`,
+          id: `suggested_defol_${cultivation.id}`,
+          title: 'Desfoliación y Limpieza de Bajos (Semana 3)',
+          date: defolDate,
+          type: 'defoliation',
+          description: `Retirar hojas tapadas y brotes bajos sin potencial en ${cultivation.name} para maximizar el paso de luz y ventilación en las flores principales.`,
         });
       }
 
-      const estimatedHarvestDate = new Date(startDate);
-      estimatedHarvestDate.setDate(estimatedHarvestDate.getDate() + (floweringWeeks * 7 + 21));
-      if (estimatedHarvestDate >= today) {
-        const flushDate = new Date(estimatedHarvestDate);
-        flushDate.setDate(flushDate.getDate() - 12);
-        if (flushDate >= today) {
-          plans.push({
-            id: `suggested_flush_${cultivation.id}`,
-            title: 'Lavado de Raíces (Flush)',
-            date: flushDate.toISOString().split('T')[0],
-            type: 'flush',
-            description: `Comenzar riego exclusivo con agua osmotizada/desclorada sin nutrientes para limpiar sales residuales antes de la cosecha.`,
-          });
-        }
-
+      // Flush 12 days before harvest
+      const flushDate = addDays(schedule.estimatedHarvestDate, -12);
+      if (flushDate >= todayStr && flushDate > flowStage.startDate) {
         plans.push({
-          id: `suggested_harvest_${cultivation.id}`,
-          title: 'Ventana Estimada de Cosecha',
-          date: estimatedHarvestDate.toISOString().split('T')[0],
-          type: 'harvest',
-          description: `Inspección de tricomas con lupa o microscopio 60x (buscar 70-80% lechosos y 15-20% ámbar). Preparar espacio de secado a 18-20°C y 55-60% HR.`,
+          id: `suggested_flush_${cultivation.id}`,
+          title: 'Lavado de Raíces (Flush)',
+          date: flushDate,
+          type: 'flush',
+          description: `Comenzar riego exclusivo con agua osmotizada/desclorada sin nutrientes para limpiar sales residuales antes de la cosecha en ${cultivation.name}.`,
         });
-      }
-    } else {
-      // Photoperiodic
-      if (cultivation.floweringStartDate) {
-        const flowStart = new Date(cultivation.floweringStartDate);
-        // Defoliation / Poda de bajos at day 21 of flower
-        const defoliationDate = new Date(flowStart);
-        defoliationDate.setDate(defoliationDate.getDate() + 21);
-        if (defoliationDate >= today) {
-          plans.push({
-            id: `suggested_defol_${cultivation.id}`,
-            title: 'Desfoliación y Limpieza de Bajos (Semana 3)',
-            date: defoliationDate.toISOString().split('T')[0],
-            type: 'defoliation',
-            description: `Retirar hojas tapadas y brotes bajos sin potencial para maximizar el paso de luz y ventilación en las flores principales.`,
-          });
-        }
-
-        const estimatedHarvestDate = new Date(flowStart);
-        estimatedHarvestDate.setDate(estimatedHarvestDate.getDate() + floweringWeeks * 7);
-        if (estimatedHarvestDate >= today) {
-          const flushDate = new Date(estimatedHarvestDate);
-          flushDate.setDate(flushDate.getDate() - 14);
-          if (flushDate >= today) {
-            plans.push({
-              id: `suggested_flush_${cultivation.id}`,
-              title: 'Lavado de Raíces (Flush)',
-              date: flushDate.toISOString().split('T')[0],
-              type: 'flush',
-              description: `Comenzar lavado de sales con agua sola. Dejar secar el sustrato adecuadamente entre aplicaciones.`,
-            });
-          }
-
-          plans.push({
-            id: `suggested_harvest_${cultivation.id}`,
-            title: 'Ventana Estimada de Cosecha',
-            date: estimatedHarvestDate.toISOString().split('T')[0],
-            type: 'harvest',
-            description: `Monitorear tricomas en cálices medios. Planificar corte de plantas por la mañana antes del encendido del foco.`,
-          });
-        }
-      } else {
-        // Still in vegetative - suggest switch date if older than 30 days
-        const switchDate = new Date(startDate);
-        switchDate.setDate(switchDate.getDate() + 35);
-        if (switchDate >= today) {
-          plans.push({
-            id: `suggested_switch_${cultivation.id}`,
-            title: 'Revisión para Cambio a 12/12 (Floración)',
-            date: switchDate.toISOString().split('T')[0],
-            type: 'stage_change',
-            description: `Evaluar si la canopia ha cubierto el 70-80% del espacio de cultivo para cambiar el fotoperiodo a 12 horas de luz y 12 de oscuridad.`,
-          });
-        }
       }
     }
 

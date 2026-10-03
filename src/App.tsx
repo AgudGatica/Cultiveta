@@ -770,6 +770,7 @@ export default function App() {
             selectedCultivation ? (
               <CultivationDetailView
                 cultivation={selectedCultivation}
+                geneticsList={geneticsList}
                 userId={currentUser.uid}
                 waterings={waterings}
                 envRecords={envRecords}

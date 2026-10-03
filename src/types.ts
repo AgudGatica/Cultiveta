@@ -160,6 +160,7 @@ export interface Genetics {
   photoperiodType: PhotoperiodType;
   dominance?: DominanceType;
   declaredFloweringDays?: number;
+  declaredFloweringWeeks?: number;
   sativaIndicaRatio?: string; // e.g. "70% Sativa / 30% Indica"
   thcPercentage?: number;
   cbdPercentage?: number;
@@ -437,6 +438,8 @@ export interface GoogleCalendarEvent {
     private?: {
       cultivationId?: string;
       cropEventCategory?: string;
+      stageId?: string;
+      cultivetaApp?: string;
     };
   };
 }
@@ -451,6 +454,7 @@ export interface CultivationCalendarPlan {
   isSynced?: boolean;
   googleEventId?: string;
   htmlLink?: string;
+  stageId?: string;
 }
 
 export type TaskUrgency = 'overdue' | 'today' | 'tomorrow' | 'upcoming';

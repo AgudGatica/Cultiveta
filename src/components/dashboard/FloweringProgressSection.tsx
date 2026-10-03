@@ -1,241 +1,139 @@
 import React, { useState, useMemo } from 'react';
 import {
   Flower2,
-  Sparkles,
-  Calendar,
   Clock,
-  Scissors,
+  ChevronDown,
   Droplets,
   Camera,
-  ChevronRight,
+  Sparkles,
   Info,
-  Layers,
-  Timer,
+  Calendar,
   CheckCircle2,
-  AlertTriangle,
-  ArrowUpRight,
 } from 'lucide-react';
 import { Cultivation, Genetics } from '../../types';
-import { cultivationService } from '../../services/cultivationService';
+import {
+  buildCultivationStageSchedule,
+  formatFriendlyDate,
+  daysBetween,
+} from '../../utils/growthStageUtils';
 
 export interface FloweringProgressSectionProps {
-  cultivations: Cultivation[];
-  geneticsList?: Genetics[];
-  onSelectCultivation: (cultivation: Cultivation) => void;
-  onOpenWateringModal?: (cultivation?: Cultivation) => void;
-  onOpenPhotoModal?: (cultivation?: Cultivation) => void;
-  onOpenAIAssistant?: (cultivation?: Cultivation) => void;
-}
-
-export interface FloweringAnalysisResult {
   cultivation: Cultivation;
-  matchedGenetics: Genetics | null;
-  geneticsName: string;
-  seedBank: string;
-  floweringDaysElapsed: number;
-  floweringWeeksElapsed: number;
-  currentDayInWeek: number;
-  typicalFloweringDays: number;
-  typicalFloweringWeeks: number;
-  progressPercentage: number;
-  daysRemaining: number;
-  weeksRemaining: number;
-  estimatedHarvestDate: Date;
-  estimatedHarvestDateStr: string;
-  floweringStartDateStr: string;
-  currentWeekNumber: number;
-  subPhase: {
-    title: string;
-    stageName: string;
-    description: string;
-    advice: string;
-    badgeColor: string;
-    barColor: string;
-  };
-  milestones: Array<{
-    week: number;
-    pct: number;
-    title: string;
-    subtitle: string;
-    isPassed: boolean;
-    isCurrent: boolean;
-  }>;
+  geneticsList?: Genetics[];
+  onOpenWateringModal?: () => void;
+  onOpenPhotoModal?: () => void;
+  onOpenAIAssistant?: () => void;
 }
 
 export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> = ({
-  cultivations,
+  cultivation,
   geneticsList = [],
-  onSelectCultivation,
   onOpenWateringModal,
   onOpenPhotoModal,
   onOpenAIAssistant,
 }) => {
-  // 1. Filtrar cultivos activos que estén en fase de floración o prefloración
-  const floweringCrops = useMemo(() => {
-    return cultivations.filter((c) => {
-      if (c.isFinished || c.status?.toLowerCase() === 'cosechado') return false;
-      const stageLower = (c.currentStage || '').toLowerCase();
-      return (
-        stageLower.includes('flor') ||
-        stageLower.includes('madur') ||
-        stageLower.includes('preflor') ||
-        Boolean(c.floweringStartDate)
-      );
-    });
-  }, [cultivations]);
+  const [showDetails, setShowDetails] = useState(false);
 
-  // Selección de cultivo actual a visualizar (permite alternar si hay múltiples)
-  const [selectedCropId, setSelectedCropId] = useState<string>('');
+  // 1. Single source of truth calculation using centralized schedule builder
+  const schedule = useMemo(() => {
+    return buildCultivationStageSchedule(cultivation, geneticsList);
+  }, [cultivation, geneticsList]);
 
-  // Sincronizar el cultivo seleccionado por defecto
-  const activeCrop = useMemo(() => {
-    if (floweringCrops.length === 0) return null;
-    const found = floweringCrops.find((c) => c.id === selectedCropId);
-    return found || floweringCrops[0];
-  }, [floweringCrops, selectedCropId]);
+  // 2. Flowering stage specifics
+  const analysis = useMemo(() => {
+    const florStage = schedule.floweringStage;
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-  // 2. Cálculo detallado de días transcurridos vs duración típica de la genética
-  const analysis: FloweringAnalysisResult | null = useMemo(() => {
-    if (!activeCrop) return null;
+    const startDateStr = florStage ? florStage.startDate : (cultivation.floweringStartDate || cultivation.startDate);
+    const floweringDaysElapsed = Math.max(1, daysBetween(startDateStr, todayStr));
+    const typicalFloweringDays = schedule.floweringDaysGenetics || 56;
+    const typicalFloweringWeeks = schedule.floweringWeeksGenetics || 8;
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const progressPercentage = Math.min(
+      100,
+      Math.max(1, Math.round((floweringDaysElapsed / typicalFloweringDays) * 100))
+    );
 
-    // Días transcurridos en floración:
-    let floweringStartDateStr = activeCrop.floweringStartDate;
-    if (!floweringStartDateStr && activeCrop.currentStage === 'Floración') {
-      floweringStartDateStr = activeCrop.stageStartDate || activeCrop.startDate;
-    }
-    if (!floweringStartDateStr) {
-      floweringStartDateStr = activeCrop.startDate;
-    }
-
-    const fStartDate = new Date(floweringStartDateStr);
-    fStartDate.setHours(0, 0, 0, 0);
-
-    // Diferencia exacta en días
-    const diffMs = Math.max(0, today.getTime() - fStartDate.getTime());
-    const floweringDaysElapsed = Math.max(1, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
-    const floweringWeeksElapsed = Math.floor(floweringDaysElapsed / 7);
-    const currentDayInWeek = (floweringDaysElapsed % 7) || 7;
+    const daysRemaining = Math.max(0, typicalFloweringDays - floweringDaysElapsed);
+    const weeksRemaining = Math.ceil(daysRemaining / 7);
     const currentWeekNumber = Math.max(1, Math.ceil(floweringDaysElapsed / 7));
+    const currentDayInWeek = ((floweringDaysElapsed - 1) % 7) + 1;
 
-    // Búsqueda de la genética seleccionada
+    // Matched genetics info
     const matchedGenetics =
       geneticsList.find(
         (g) =>
-          g.id === activeCrop.geneticsId ||
-          (g.name && activeCrop.geneticsName && g.name.toLowerCase().trim() === activeCrop.geneticsName.toLowerCase().trim())
+          g.id === cultivation.geneticsId ||
+          (g.name &&
+            cultivation.geneticsName &&
+            g.name.toLowerCase().trim() === cultivation.geneticsName.toLowerCase().trim())
       ) || null;
 
-    const geneticsName = matchedGenetics?.name || activeCrop.geneticsName || 'Genética híbrida';
-    const seedBank = matchedGenetics?.seedBank || activeCrop.seedBank || 'Banco seleccionado';
+    const geneticsName = matchedGenetics?.name || cultivation.geneticsName || 'Genética híbrida';
+    const seedBank = matchedGenetics?.seedBank || cultivation.seedBank || '';
 
-    // Determinar la duración típica de floración según la genética
-    let typicalFloweringDays = 56; // 8 semanas por defecto
-
-    if (matchedGenetics?.declaredFloweringDays && matchedGenetics.declaredFloweringDays > 0) {
-      typicalFloweringDays = matchedGenetics.declaredFloweringDays;
-    } else if (activeCrop.declaredFloweringWeeks && activeCrop.declaredFloweringWeeks > 0) {
-      typicalFloweringDays = activeCrop.declaredFloweringWeeks * 7;
-    } else if (matchedGenetics?.declaredFloweringWeeks && matchedGenetics.declaredFloweringWeeks > 0) {
-      typicalFloweringDays = matchedGenetics.declaredFloweringWeeks * 7;
-    } else if (activeCrop.stagesTimeline && activeCrop.stagesTimeline.length > 0) {
-      const florStage = activeCrop.stagesTimeline.find((s) => s.name?.toLowerCase().includes('flor'));
-      if (florStage?.expectedDurationDays && florStage.expectedDurationDays > 0) {
-        typicalFloweringDays = florStage.expectedDurationDays;
-      }
-    }
-
-    const typicalFloweringWeeks = Math.round((typicalFloweringDays / 7) * 10) / 10;
-
-    // Cálculo del porcentaje de avance (0% a 100%+)
-    const rawProgress = (floweringDaysElapsed / typicalFloweringDays) * 100;
-    const progressPercentage = Math.min(100, Math.max(1, Math.round(rawProgress)));
-
-    // Días y semanas restantes
-    const daysRemaining = Math.max(0, typicalFloweringDays - floweringDaysElapsed);
-    const weeksRemaining = Math.ceil(daysRemaining / 7);
-
-    // Fecha estimada de cosecha
-    const estimatedHarvestDate = new Date(fStartDate);
-    estimatedHarvestDate.setDate(estimatedHarvestDate.getDate() + typicalFloweringDays);
-
-    const estimatedHarvestDateStr = estimatedHarvestDate.toLocaleDateString('es-ES', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
-
-    // Sub-fases fenológicas de floración
+    // Sub-fases fenológicas
     let subPhase = {
       title: 'Fase 1: Transición & Estiramiento (Stretch)',
       stageName: 'Floración Inicial (Sem. 1-2)',
       description: 'Aparición de primeros pistilos blancos y estiramiento vertical acelerado de ramas.',
-      advice: 'Mantener fósforo y nitrógeno balanceado, ajustar distancia de luminarias para evitar espigado excesivo.',
-      badgeColor: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-      barColor: 'from-emerald-500 to-teal-400',
+      advice: 'Mantener balance nutricional, regular altura de luces para evitar espigado excesivo.',
+      badgeColor: 'bg-[#62B95B]/15 text-[#2d6b28] border-[#62B95B]/30',
     };
 
     if (progressPercentage >= 25 && progressPercentage < 55) {
       subPhase = {
         title: 'Fase 2: Formación y Engorde de Cálices',
         stageName: 'Floración Media (Sem. 3-5)',
-        description: 'Detención del crecimiento vertical. Desarrollo masivo de cálices florales y primeros tricomas glandulares.',
-        advice: 'Pico de nutrición PK (Fósforo y Potasio), controlar humedad relativa (<55% HR) y realizar defoliación estratégica.',
-        badgeColor: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-        barColor: 'from-amber-500 to-orange-400',
+        description: 'Detención del crecimiento vertical. Desarrollo masivo de flores y primeros tricomas.',
+        advice: 'Pico de nutrición PK (Fósforo y Potasio), controlar humedad relativa (<55% HR) y realizar defoliación si corresponde.',
+        badgeColor: 'bg-[#F3C843]/25 text-[#735308] border-[#F3C843]/40',
       };
     } else if (progressPercentage >= 55 && progressPercentage < 80) {
       subPhase = {
         title: 'Fase 3: Compactación y Densidad de Resina',
         stageName: 'Floración Avanzada (Sem. 6-7)',
-        description: 'Engorde final, engrosamiento de cogollos y proliferación máxima de terpenos. Tricomas volviéndose lechosos.',
-        advice: 'Reducir nitrógeno drásticamente, evitar mojar flores y asegurar ventilación continua para prevenir botrytis.',
-        badgeColor: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
-        barColor: 'from-purple-500 to-pink-500',
+        description: 'Engorde final, proliferación de terpenos y tricomas volviéndose lechosos.',
+        advice: 'Reducir nitrógeno, evitar mojar cogollos y asegurar ventilación continua para prevenir botrytis.',
+        badgeColor: 'bg-[#6C45C7]/15 text-[#6C45C7] border-[#6C45C7]/30',
       };
     } else if (progressPercentage >= 80 && progressPercentage < 100) {
       subPhase = {
         title: 'Fase 4: Maduración Final & Lavado de Raíces',
         stageName: 'Maduración (Sem. 8+)',
-        description: 'Pistilos en su mayoría oxidados (anaranjados/marrones). Consumo de reservas de clorofila de las hojas.',
-        advice: 'Regar únicamente con agua osmotizada o reposada para limpiar sales del sustrato y mejorar ceniza y aroma.',
-        badgeColor: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
-        barColor: 'from-pink-500 via-rose-500 to-amber-400',
+        description: 'Pistilos oxidados en su mayoría. Consumo de reservas foliares.',
+        advice: 'Regar con agua sola reposada/desclorada para limpiar sales acumuladas del sustrato.',
+        badgeColor: 'bg-[#EB7864]/15 text-[#EB7864] border-[#EB7864]/30',
       };
-    } else if (progressPercentage >= 100) {
+    } else {
       subPhase = {
-        title: 'Fase 5: Ventana Óptima de Cosecha Alcanzada',
+        title: 'Fase 5: Ventana Óptima de Cosecha',
         stageName: 'Lista para Cosechar (100%)',
-        description: 'La genética completó el tiempo teórico declarado. Tricomas en estado lechoso con 10-20% ámbar.',
-        advice: 'Examinar cabezas de tricomas con lupa 60x. Realizar corte en periodo de oscuridad para conservar terpenos.',
-        badgeColor: 'bg-amber-400 text-black border-amber-300 font-bold',
-        barColor: 'from-amber-400 via-yellow-300 to-emerald-400',
+        description: 'Genética cumplió su tiempo teórico. Monitorear tricomas con lupa o microscopio.',
+        advice: 'Buscar 70-80% tricomas lechosos y 15-20% ámbar antes de cortar.',
+        badgeColor: 'bg-[#62B95B] text-white border-[#62B95B]',
       };
     }
 
-    // Hitos para la barra visual (0%, 25%, 50%, 75%, 100%)
+    // Milestones
     const milestones = [
       {
         week: 1,
-        pct: 0,
-        title: 'Cambio 12/12',
-        subtitle: 'Inicio de floración',
+        title: 'Inicio 12/12',
+        subtitle: 'Primeros pistilos',
         isPassed: floweringDaysElapsed >= 1,
         isCurrent: progressPercentage < 25,
       },
       {
         week: 2,
-        pct: 25,
         title: 'Fin Stretch',
-        subtitle: 'Pistilos formados',
+        subtitle: 'Canopia formada',
         isPassed: progressPercentage >= 25,
         isCurrent: progressPercentage >= 25 && progressPercentage < 50,
       },
       {
         week: 4,
-        pct: 50,
         title: 'Pico Engorde',
         subtitle: 'Nutrición PK máx',
         isPassed: progressPercentage >= 50,
@@ -243,390 +141,215 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
       },
       {
         week: 7,
-        pct: 75,
         title: 'Tricomas Lechosos',
-        subtitle: 'Inicio de lavado',
+        subtitle: 'Lavado de raíces',
         isPassed: progressPercentage >= 75,
         isCurrent: progressPercentage >= 75 && progressPercentage < 100,
       },
       {
         week: Math.ceil(typicalFloweringWeeks),
-        pct: 100,
-        title: 'Cosecha Estimada',
-        subtitle: `${typicalFloweringDays} días teóricos`,
+        title: 'Corte Estimado',
+        subtitle: `~${typicalFloweringDays} días`,
         isPassed: progressPercentage >= 100,
         isCurrent: progressPercentage >= 100,
       },
     ];
 
     return {
-      cultivation: activeCrop,
-      matchedGenetics,
-      geneticsName,
-      seedBank,
+      startDateStr,
       floweringDaysElapsed,
-      floweringWeeksElapsed,
-      currentDayInWeek,
       typicalFloweringDays,
       typicalFloweringWeeks,
       progressPercentage,
       daysRemaining,
       weeksRemaining,
-      estimatedHarvestDate,
-      estimatedHarvestDateStr,
-      floweringStartDateStr,
       currentWeekNumber,
+      currentDayInWeek,
+      geneticsName,
+      seedBank,
       subPhase,
       milestones,
+      estimatedHarvestDate: schedule.estimatedHarvestDate,
     };
-  }, [activeCrop, geneticsList]);
-
-  // Si no hay cultivos en floración activa, mostrar un estado amigable e informativo
-  if (floweringCrops.length === 0 || !analysis || !activeCrop) {
-    const nextVegetativeCrop = cultivations.find(
-      (c) => !c.isFinished && (c.currentStage === 'Vegetativo' || c.currentStage === 'Plántula')
-    );
-
-    return (
-      <div
-        id="flowering-progress-empty-section"
-        className="bg-white rounded-[32px] p-6 sm:p-7 border border-[#EFE3CF] shadow-xs relative overflow-hidden space-y-4"
-      >
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-[#EB7864]/15 text-[#EB7864] border border-[#EB7864]/30 flex items-center justify-center shrink-0">
-              <Flower2 className="w-6 h-6 stroke-[2]" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#EB7864]">
-                  Fenología Reproductiva
-                </span>
-                <span className="px-2 py-0.5 rounded-full bg-[#FAF2E1] text-[#6E5D77] text-[10px] font-semibold">
-                  0 en Floración
-                </span>
-              </div>
-              <h3 className="text-base sm:text-lg font-extrabold text-[#29202F] mt-0.5">
-                Avance Estimado de la Etapa de Floración
-              </h3>
-              <p className="text-xs text-[#6E5D77] mt-0.5">
-                Calcula el progreso porcentual comparando los días transcurridos contra la duración típica de la genética.
-              </p>
-            </div>
-          </div>
-
-          {nextVegetativeCrop && (
-            <button
-              type="button"
-              onClick={() => onSelectCultivation(nextVegetativeCrop)}
-              className="px-4 py-2 rounded-2xl bg-[#FFFDF7] hover:bg-[#FAF2E1] text-[#29202F] border border-[#EFE3CF] text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer shrink-0"
-            >
-              <span>Ver {nextVegetativeCrop.name} ({nextVegetativeCrop.currentStage})</span>
-              <ChevronRight className="w-4 h-4 text-[#9887A2]" />
-            </button>
-          )}
-        </div>
-
-        <div className="p-5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#6E5D77] flex items-start gap-3.5">
-          <Info className="w-5 h-5 text-[#F3C843] shrink-0 mt-0.5" />
-          <div className="space-y-1">
-            <p className="text-[#29202F] font-bold">
-              Actualmente no tienes carpas en etapa de <strong>Floración</strong> o <strong>Prefloración</strong>.
-            </p>
-            <p className="text-[#6E5D77] leading-relaxed">
-              En cuanto cambies el fotoperiodo a 12/12 o tu cultivo pase a floración, este módulo calculará en tiempo real
-              el porcentaje de avance de cogollos, la semana floral actual y la proyección exacta de cosecha de acuerdo a los días declarados por el banco de semillas de tu genética.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  }, [schedule, cultivation, geneticsList]);
 
   return (
     <div
       id="flowering-progress-section"
-      className="bg-white rounded-[32px] p-6 sm:p-8 border border-[#EFE3CF] shadow-xs relative overflow-hidden space-y-6 animate-fade-in-up text-[#29202F]"
+      className="bg-white rounded-[32px] p-6 sm:p-8 border border-[#EFE3CF] shadow-xs relative overflow-hidden space-y-5 text-[#29202F]"
     >
-      {/* Header superior: Título, insignias y selector de cultivo si hay más de 1 en flora */}
-      <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 pb-4 border-b border-[#EFE3CF]">
+      {/* Primera Capa: Resumen Inmediato y Progreso Visual */}
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
           <div className="w-12 h-12 rounded-2xl bg-[#EB7864]/15 text-[#EB7864] border border-[#EB7864]/30 flex items-center justify-center shrink-0">
             <Flower2 className="w-6 h-6 stroke-[2.2]" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#EB7864]">
-                Monitoreo Fenológico Floral
-              </span>
-              <span className="px-2 py-0.5 rounded-full bg-[#EB7864]/15 text-[#EB7864] border border-[#EB7864]/30 text-[10px] font-bold">
-                {analysis.currentWeekNumber}ª SEMANA
+            <div className="flex items-center gap-2 flex-wrap">
+              <h3 className="text-lg sm:text-xl font-black text-[#29202F]">
+                Floración 🌸
+              </h3>
+              <span className="px-2.5 py-0.5 rounded-full bg-[#EB7864]/15 text-[#EB7864] border border-[#EB7864]/30 text-xs font-bold">
+                Semana {analysis.currentWeekNumber} de ~{analysis.typicalFloweringWeeks}
               </span>
             </div>
-            <h2 className="text-lg sm:text-xl font-extrabold text-[#29202F] mt-0.5 flex items-center gap-2">
-              <span>Avance Estimado de Floración</span>
-            </h2>
             <p className="text-xs text-[#6E5D77] mt-0.5">
-              Comparativa de días transcurridos vs duración típica de la genética seleccionada
+              {analysis.geneticsName} {analysis.seedBank ? `· ${analysis.seedBank}` : ''}
             </p>
           </div>
         </div>
 
-        {/* Selector de carpas en floración (si hay múltiples cultivos florando) */}
-        {floweringCrops.length > 1 ? (
-          <div className="flex items-center gap-1.5 bg-[#FFFDF7] p-1 rounded-2xl border border-[#EFE3CF] shrink-0">
-            <span className="text-[10px] font-semibold text-[#6E5D77] px-2">Carpa:</span>
-            {floweringCrops.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => setSelectedCropId(c.id)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                  activeCrop.id === c.id
-                    ? 'bg-[#EB7864] text-white shadow-xs font-bold'
-                    : 'text-[#6E5D77] hover:text-[#29202F] hover:bg-[#FAF2E1]'
-                }`}
-              >
-                {c.name}
-              </button>
-            ))}
+        {/* Fechas de inicio y corte estimado en primera capa */}
+        <div className="flex items-center gap-4 text-xs font-semibold self-stretch sm:self-auto justify-between sm:justify-start pt-2 sm:pt-0 border-t sm:border-t-0 border-[#EFE3CF]">
+          <div>
+            <span className="text-[10px] text-[#9887A2] block uppercase tracking-wider">Inicio real</span>
+            <span className="font-bold text-[#29202F] block">
+              {formatFriendlyDate(analysis.startDateStr)}
+            </span>
           </div>
-        ) : (
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => onSelectCultivation(activeCrop)}
-              className="px-3.5 py-2 rounded-2xl bg-[#FFFDF7] hover:bg-[#FAF2E1] text-[#29202F] border border-[#EFE3CF] text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
-            >
-              <span>Ver Carpa</span>
-              <ArrowUpRight className="w-3.5 h-3.5 text-[#9887A2]" />
-            </button>
+          <span className="text-[#DECDB3]">→</span>
+          <div>
+            <span className="text-[10px] text-[#9887A2] block uppercase tracking-wider">Corte estimado</span>
+            <span className="font-bold text-[#6C45C7] block">
+              {formatFriendlyDate(analysis.estimatedHarvestDate, { isProjected: true })}
+            </span>
           </div>
-        )}
+          <div className="text-right pl-2 sm:border-l sm:border-[#EFE3CF]">
+            <span className="text-[10px] text-[#9887A2] block uppercase tracking-wider">Faltan aprox.</span>
+            <span className="font-extrabold text-[#EB7864] block">
+              {analysis.daysRemaining === 0 ? '¡Listo para cosechar!' : `${analysis.daysRemaining} días`}
+            </span>
+          </div>
+        </div>
       </div>
 
-      {/* Hero Card de Avance: Visual Progress Bar + Porcentaje + Hitos */}
-      <div className="relative z-10 p-6 rounded-3xl bg-[#FFFDF7] border border-[#EFE3CF] space-y-6 shadow-xs">
-        {/* Cabecera del Hero con datos clave del cultivo y porcentaje */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-xl sm:text-2xl font-black text-[#29202F] tracking-tight">
-                {activeCrop.name}
-              </h3>
-              <span className="text-xs text-[#EB7864] font-semibold px-2 py-0.5 rounded-md bg-[#EB7864]/10 border border-[#EB7864]/20">
-                {analysis.geneticsName}
-              </span>
-              {analysis.seedBank && (
-                <span className="text-xs text-[#6E5D77] font-medium">
-                  · {analysis.seedBank}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-3 text-xs text-[#6E5D77] mt-1">
-              <span className="flex items-center gap-1 text-[#29202F] font-semibold">
-                <Clock className="w-3.5 h-3.5 text-[#EB7864]" />
-                Día {analysis.floweringDaysElapsed} de floración (Día {analysis.currentDayInWeek} de Sem. {analysis.currentWeekNumber})
-              </span>
-              <span>•</span>
-              <span className="text-[#6E5D77]">
-                Objetivo genético: {analysis.typicalFloweringDays} días (~{analysis.typicalFloweringWeeks} semanas)
-              </span>
-            </div>
-          </div>
-
-          {/* Gran Callout Numérico de Porcentaje */}
-          <div className="flex items-baseline gap-2 shrink-0 bg-white px-4 py-2.5 rounded-2xl border border-[#EFE3CF] shadow-xs">
-            <span className="text-3xl sm:text-4xl font-mono font-black text-[#EB7864] tracking-tight">
-              {analysis.progressPercentage}%
-            </span>
-            <div className="flex flex-col">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-[#9887A2]">
-                Avance
-              </span>
-              <span className="text-[10px] text-[#6E5D77] font-medium">
-                {analysis.daysRemaining === 0 ? 'Completado' : `Faltan ~${analysis.daysRemaining}d`}
-              </span>
-            </div>
-          </div>
+      {/* Barra visual de progreso */}
+      <div className="space-y-1.5 pt-1">
+        <div className="flex justify-between items-baseline text-xs font-bold">
+          <span className="text-[#6E5D77]">
+            Día {analysis.floweringDaysElapsed} de ~{analysis.typicalFloweringDays} días florales
+          </span>
+          <span className="text-sm font-black text-[#EB7864]">
+            {analysis.progressPercentage}%
+          </span>
         </div>
-
-        {/* BARRA DE PROGRESO VISUAL PRINCIPAL */}
-        <div className="space-y-2.5">
-          <div className="flex items-center justify-between text-xs font-mono">
-            <span className="text-zinc-400 flex items-center gap-1.5">
-              <span>Progreso fenológico:</span>
-              <span className="text-white font-bold">{analysis.floweringDaysElapsed} / {analysis.typicalFloweringDays} días</span>
-            </span>
-            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${analysis.subPhase.badgeColor}`}>
-              {analysis.subPhase.stageName}
-            </span>
-          </div>
-
-          {/* Track contenedor con glow */}
-          <div className="relative w-full h-5 sm:h-6 rounded-full bg-zinc-900/90 border border-zinc-800 p-0.5 overflow-hidden shadow-inner flex items-center">
-            {/* Relleno con gradiente dinámico */}
-            <div
-              role="progressbar"
-              aria-valuenow={analysis.progressPercentage}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              style={{ width: `${Math.min(100, Math.max(2, analysis.progressPercentage))}%` }}
-              className={`h-full rounded-full bg-gradient-to-r ${analysis.subPhase.barColor} transition-all duration-1000 ease-out relative shadow-[0_0_16px_rgba(244,63,94,0.4)] flex items-center justify-end pr-2`}
-            >
-              {/* Brillo interno */}
-              <div className="absolute inset-0 bg-white/10 rounded-full"></div>
-              {analysis.progressPercentage >= 15 && (
-                <span className="relative z-10 text-[10px] font-mono font-black text-black drop-shadow-xs select-none">
-                  {analysis.progressPercentage}%
-                </span>
-              )}
-            </div>
-
-            {/* Marcadores de porcentaje discretos (25%, 50%, 75%) */}
-            <div className="absolute inset-0 pointer-events-none flex justify-between px-1 items-center">
-              <span className="w-px h-2.5 bg-zinc-700/60 ml-[25%]"></span>
-              <span className="w-px h-3.5 bg-zinc-600 ml-[25%]"></span>
-              <span className="w-px h-2.5 bg-zinc-700/60 ml-[25%]"></span>
-            </div>
-          </div>
-
-          {/* Marcadores / Hitos debajo de la barra */}
-          <div className="grid grid-cols-5 text-center gap-1 pt-1">
-            {analysis.milestones.map((m, idx) => (
-              <div
-                key={idx}
-                className={`flex flex-col items-center text-[10px] transition-colors ${
-                  m.isCurrent
-                    ? 'text-rose-400 font-bold'
-                    : m.isPassed
-                    ? 'text-zinc-300 font-medium'
-                    : 'text-zinc-600'
-                }`}
-              >
-                <div className="flex items-center gap-1">
-                  {m.isPassed ? (
-                    <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0" />
-                  ) : (
-                    <span className="w-1.5 h-1.5 rounded-full bg-zinc-700"></span>
-                  )}
-                  <span className="font-mono">{m.pct}%</span>
-                </div>
-                <span className="truncate max-w-full font-semibold mt-0.5">{m.title}</span>
-                <span className="hidden sm:inline text-[9px] text-zinc-500 truncate max-w-full">{m.subtitle}</span>
-              </div>
-            ))}
-          </div>
+        <div className="w-full h-3 rounded-full bg-[#FAF2E1] border border-[#EFE3CF] overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-[#62B95B] via-[#F3C843] to-[#EB7864] rounded-full transition-all duration-700"
+            style={{ width: `${analysis.progressPercentage}%` }}
+          />
         </div>
+      </div>
 
-        {/* Sub-fase actual y recomendaciones agronómicas */}
-        <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-rose-400 shrink-0" />
-              <span className="font-bold text-white">{analysis.subPhase.title}</span>
+      {/* Botón de Progressive Disclosure: Ver detalle de floración */}
+      <div className="pt-2 flex justify-between items-center border-t border-[#EFE3CF]">
+        <span className="text-xs font-semibold text-[#6E5D77]">
+          {analysis.subPhase.title}
+        </span>
+        <button
+          type="button"
+          id="toggle-flowering-details-btn"
+          onClick={() => setShowDetails((prev) => !prev)}
+          className="text-xs font-bold text-[#6C45C7] hover:underline cursor-pointer inline-flex items-center gap-1.5 py-1 px-2.5 rounded-xl hover:bg-[#6C45C7]/10 transition-colors"
+        >
+          <span>{showDetails ? 'Ocultar detalle' : 'Ver detalle de floración'}</span>
+          <ChevronDown
+            className={`w-3.5 h-3.5 transition-transform duration-200 ${
+              showDetails ? 'rotate-180' : ''
+            }`}
+          />
+        </button>
+      </div>
+
+      {/* Capa de Detalles de Floración Expandible */}
+      {showDetails && (
+        <div className="pt-3 space-y-4 animate-in fade-in duration-200 border-t border-[#EFE3CF]">
+          {/* Subfase actual y consejo botánico */}
+          <div className="p-4 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] space-y-2">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${analysis.subPhase.badgeColor}`}>
+                {analysis.subPhase.stageName}
+              </span>
+              <span className="text-xs text-[#9887A2] font-semibold">
+                Día {analysis.currentDayInWeek} de la semana floral {analysis.currentWeekNumber}
+              </span>
             </div>
-            <p className="text-zinc-400 leading-relaxed">
+            <p className="text-xs text-[#29202F] leading-relaxed">
               {analysis.subPhase.description}
             </p>
-            <p className="text-zinc-300 text-[11px] pt-0.5">
-              <strong className="text-rose-400 font-medium">Recomendación agronómica:</strong> {analysis.subPhase.advice}
-            </p>
+            <div className="p-3 rounded-xl bg-white border border-[#EFE3CF] text-xs text-[#6E5D77] flex items-start gap-2 mt-1">
+              <Info className="w-4 h-4 text-[#F3C843] shrink-0 mt-0.5" />
+              <span><strong>Consejo botánico:</strong> {analysis.subPhase.advice}</span>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+          {/* Hitos semanales de floración */}
+          <div className="space-y-2">
+            <span className="text-xs font-extrabold text-[#29202F] uppercase tracking-wider block">
+              Hitos de la Floración
+            </span>
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
+              {analysis.milestones.map((m, idx) => (
+                <div
+                  key={idx}
+                  className={`p-3 rounded-2xl border transition-all ${
+                    m.isCurrent
+                      ? 'bg-[#EB7864]/10 border-[#EB7864]/40 text-[#29202F] font-bold shadow-2xs'
+                      : m.isPassed
+                      ? 'bg-[#FAF2E1] border-[#EFE3CF] text-[#29202F]'
+                      : 'bg-white border-[#EFE3CF] text-[#9887A2]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] uppercase font-bold text-[#9887A2]">
+                      Sem. {m.week}
+                    </span>
+                    {m.isPassed && <CheckCircle2 className="w-3.5 h-3.5 text-[#62B95B]" />}
+                  </div>
+                  <span className="block font-bold text-xs truncate">{m.title}</span>
+                  <span className="text-[10px] text-[#6E5D77] block mt-0.5">{m.subtitle}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Acciones Rápidas */}
+          <div className="pt-2 flex flex-wrap items-center gap-2 justify-end">
             {onOpenWateringModal && (
               <button
                 type="button"
-                onClick={() => onOpenWateringModal(activeCrop)}
-                className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
-                title="Registrar solución nutritiva de floración"
+                onClick={onOpenWateringModal}
+                className="px-3.5 py-2 rounded-xl bg-white hover:bg-[#FAF2E1] border border-[#EFE3CF] text-xs font-bold text-[#29202F] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
-                <Droplets className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Riego Floral</span>
+                <Droplets className="w-3.5 h-3.5 text-[#62B95B]" />
+                <span>Riego de Flora</span>
               </button>
             )}
+
             {onOpenPhotoModal && (
               <button
                 type="button"
-                onClick={() => onOpenPhotoModal(activeCrop)}
-                className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
-                title="Fotografiar desarrollo de cogollos y tricomas"
+                onClick={onOpenPhotoModal}
+                className="px-3.5 py-2 rounded-xl bg-white hover:bg-[#FAF2E1] border border-[#EFE3CF] text-xs font-bold text-[#29202F] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
-                <Camera className="w-3.5 h-3.5 text-blue-400" />
-                <span>Foto Flores</span>
+                <Camera className="w-3.5 h-3.5 text-[#6C45C7]" />
+                <span>Foto de Cogollos</span>
+              </button>
+            )}
+
+            {onOpenAIAssistant && (
+              <button
+                type="button"
+                onClick={onOpenAIAssistant}
+                className="px-3.5 py-2 rounded-xl bg-[#6C45C7]/10 hover:bg-[#6C45C7]/20 text-[#6C45C7] text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Consultar por Tricomas</span>
               </button>
             )}
           </div>
         </div>
-      </div>
-
-      {/* Grid de 4 Métricas Comparativas Clave */}
-      <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-3.5">
-        {/* Métrica 1: Días Transcurridos */}
-        <div className="p-4 rounded-2xl bg-zinc-950/70 border border-zinc-800 flex flex-col justify-between space-y-2">
-          <div className="flex items-center justify-between text-zinc-400 text-xs">
-            <span className="font-mono uppercase tracking-wider text-[10px]">Días Transcurridos</span>
-            <Calendar className="w-4 h-4 text-emerald-400" />
-          </div>
-          <div>
-            <div className="text-2xl sm:text-3xl font-mono font-bold text-white">
-              Día {analysis.floweringDaysElapsed}
-            </div>
-            <p className="text-[11px] text-zinc-400 mt-0.5">
-              Semana {analysis.currentWeekNumber} · Desde {analysis.floweringStartDateStr}
-            </p>
-          </div>
-        </div>
-
-        {/* Métrica 2: Duración Típica de la Genética */}
-        <div className="p-4 rounded-2xl bg-zinc-950/70 border border-zinc-800 flex flex-col justify-between space-y-2">
-          <div className="flex items-center justify-between text-zinc-400 text-xs">
-            <span className="font-mono uppercase tracking-wider text-[10px]">Duración Genética</span>
-            <Layers className="w-4 h-4 text-purple-400" />
-          </div>
-          <div>
-            <div className="text-2xl sm:text-3xl font-mono font-bold text-purple-300">
-              {analysis.typicalFloweringDays} días
-            </div>
-            <p className="text-[11px] text-zinc-400 mt-0.5 truncate">
-              {analysis.typicalFloweringWeeks} semanas · {analysis.geneticsName}
-            </p>
-          </div>
-        </div>
-
-        {/* Métrica 3: Días Restantes Estimados */}
-        <div className="p-4 rounded-2xl bg-zinc-950/70 border border-zinc-800 flex flex-col justify-between space-y-2">
-          <div className="flex items-center justify-between text-zinc-400 text-xs">
-            <span className="font-mono uppercase tracking-wider text-[10px]">Tiempo Restante</span>
-            <Timer className="w-4 h-4 text-amber-400" />
-          </div>
-          <div>
-            <div className="text-2xl sm:text-3xl font-mono font-bold text-amber-300">
-              {analysis.daysRemaining === 0 ? '0 días' : `~${analysis.daysRemaining} días`}
-            </div>
-            <p className="text-[11px] text-zinc-400 mt-0.5">
-              {analysis.daysRemaining === 0 ? 'Fase de cosecha activa' : `~${analysis.weeksRemaining} sem. para corte`}
-            </p>
-          </div>
-        </div>
-
-        {/* Métrica 4: Proyección de Cosecha */}
-        <div className="p-4 rounded-2xl bg-zinc-950/70 border border-zinc-800 flex flex-col justify-between space-y-2">
-          <div className="flex items-center justify-between text-zinc-400 text-xs">
-            <span className="font-mono uppercase tracking-wider text-[10px]">Cosecha Estimada</span>
-            <Scissors className="w-4 h-4 text-rose-400" />
-          </div>
-          <div>
-            <div className="text-lg sm:text-xl font-mono font-bold text-rose-300 truncate">
-              {analysis.estimatedHarvestDateStr}
-            </div>
-            <p className="text-[11px] text-zinc-400 mt-0.5 flex items-center gap-1">
-              <span>{analysis.progressPercentage >= 100 ? '¡Lista para corte!' : 'Punto de tricomas'}</span>
-            </p>
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

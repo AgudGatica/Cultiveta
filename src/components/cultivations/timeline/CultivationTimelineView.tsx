@@ -22,6 +22,7 @@ import {
   calculateTimelineMetrics,
   getStageIcon,
   formatFriendlyDate,
+  buildCultivationStageSchedule,
   addDays,
 } from '../../../utils/growthStageUtils';
 import { StageConfigModal } from './StageConfigModal';
@@ -32,12 +33,14 @@ interface CultivationTimelineViewProps {
   cultivation: Cultivation;
   userId: string;
   onCultivationUpdated?: (updatedCultivation: Cultivation) => void;
+  onOpenCalendarModal?: () => void;
 }
 
 export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = ({
   cultivation,
   userId,
   onCultivationUpdated,
+  onOpenCalendarModal,
 }) => {
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
   const [stageForTransition, setStageForTransition] = useState<CultivationGrowthStage | null>(null);
@@ -46,6 +49,7 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
   const stages = getStagesForCultivation(cultivation);
   const metrics = calculateTimelineMetrics(cultivation, stages);
   const nextStage = getNextStage(cultivation, stages);
+  const schedule = buildCultivationStageSchedule(cultivation);
 
   const handleOpenTransition = (targetStage?: CultivationGrowthStage | null) => {
     setStageForTransition(targetStage || nextStage || stages[0]);
@@ -86,6 +90,20 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
               </button>
             )}
 
+            {onOpenCalendarModal && (
+              <button
+                type="button"
+                id="timeline-open-calendar-btn"
+                onClick={onOpenCalendarModal}
+                className="px-3.5 py-2.5 rounded-2xl bg-white border border-stone-200 hover:bg-stone-50 text-stone-800 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+                title="Sincronizar etapas con Google Calendar"
+              >
+                <Calendar className="w-4 h-4 text-emerald-600" />
+                <span className="hidden sm:inline">Google</span>
+                <span>Calendar</span>
+              </button>
+            )}
+
             <button
               type="button"
               id="timeline-change-stage-btn"
@@ -115,26 +133,26 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
             <div className="flex items-center gap-2">
               <span className="font-extrabold text-stone-900 text-sm">
-                Día {metrics.totalElapsedDays}
+                Día {schedule.totalElapsedDays}
               </span>
-              <span className="text-stone-400">de {metrics.totalCycleDays} días estimados</span>
+              <span className="text-stone-400">de ~{schedule.totalCycleDays} días estimados</span>
               <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-[11px]">
-                {metrics.overallProgressPct}% ciclo total
+                {schedule.overallProgressPct}% ciclo total
               </span>
             </div>
 
             <div className="flex items-center gap-4 text-stone-600 font-medium text-[11px] sm:text-xs">
               <span className="flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-stone-400" />
-                Inicio: <strong>{formatFriendlyDate(cultivation.startDate)}</strong>
+                Inicio: <strong>{formatFriendlyDate(schedule.cropStartDate)}</strong>
               </span>
               <span className="flex items-center gap-1 text-amber-800 font-bold">
                 <Flag className="w-3.5 h-3.5 text-amber-600" />
                 Cosecha estimada:{' '}
-                <strong>{formatFriendlyDate(metrics.projectedHarvestDate)}</strong>
+                <strong>{formatFriendlyDate(schedule.estimatedHarvestDate, { isProjected: true })}</strong>
               </span>
               <span className="px-2 py-0.5 rounded-md bg-stone-200 text-stone-700 font-bold text-[10px]">
-                {metrics.daysUntilHarvest} días restantes
+                {schedule.daysUntilHarvest} días restantes
               </span>
             </div>
           </div>
@@ -142,7 +160,7 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
           <div className="w-full h-3 rounded-full bg-stone-200 overflow-hidden relative">
             <div
               className="h-full bg-emerald-600 rounded-full transition-all duration-700"
-              style={{ width: `${metrics.overallProgressPct}%` }}
+              style={{ width: `${schedule.overallProgressPct}%` }}
             />
           </div>
         </div>
@@ -227,8 +245,12 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
             <div className="absolute top-9 left-8 right-8 h-1 bg-stone-200 -z-0" />
 
             {stages.map((st, index) => {
-              const isActive = st.name === cultivation.currentStage;
-              const isCompleted = st.isCompleted || index < metrics.activeStageIndex;
+              const schedItem =
+                schedule.stages[index] ||
+                schedule.stages.find((s) => s.name.toLowerCase() === st.name.toLowerCase());
+
+              const isActive = schedItem ? schedItem.status === 'active' : st.name === cultivation.currentStage;
+              const isCompleted = schedItem ? schedItem.status === 'completed' : (st.isCompleted || index < metrics.activeStageIndex);
               const isFuture = !isActive && !isCompleted;
               const icon = getStageIcon(st.name);
 
@@ -277,6 +299,15 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
                       )}
                     </span>
 
+                    {schedItem && (
+                      <span className="text-[9px] font-mono text-stone-400 block">
+                        {formatFriendlyDate(schedItem.startDate, {
+                          isProjected: schedItem.status === 'upcoming',
+                          includeYear: false,
+                        })}
+                      </span>
+                    )}
+
                     {isActive && (
                       <span className="inline-block px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-extrabold uppercase tracking-wider mt-0.5">
                         Activa
@@ -303,9 +334,34 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
           {stages.map((st, index) => {
-            const isActive = st.name === cultivation.currentStage;
-            const isCompleted = st.isCompleted || index < metrics.activeStageIndex;
+            const schedItem =
+              schedule.stages[index] ||
+              schedule.stages.find((s) => s.name.toLowerCase() === st.name.toLowerCase());
+
+            const isActive = schedItem ? schedItem.status === 'active' : st.name === cultivation.currentStage;
+            const isCompleted = schedItem ? schedItem.status === 'completed' : (st.isCompleted || index < metrics.activeStageIndex);
             const icon = getStageIcon(st.name);
+
+            // Reconciled calendar date presentation
+            let dateDisplay = '—';
+            if (schedItem) {
+              const isHarvestLike =
+                schedItem.name === 'Cosecha' ||
+                schedItem.name === 'Secado' ||
+                schedItem.name === 'Finalizado';
+
+              if (isHarvestLike) {
+                dateDisplay = formatFriendlyDate(schedItem.startDate, { isProjected: schedItem.isProjected });
+              } else if (schedItem.status === 'completed') {
+                dateDisplay = `${formatFriendlyDate(schedItem.startDate)} → ${formatFriendlyDate(schedItem.endDate)}`;
+              } else if (schedItem.status === 'active') {
+                dateDisplay = `${formatFriendlyDate(schedItem.startDate)} → ${formatFriendlyDate(schedItem.endDate, { isProjected: true })}`;
+              } else {
+                dateDisplay = `${formatFriendlyDate(schedItem.startDate, { isProjected: true })} → ${formatFriendlyDate(schedItem.endDate, { isProjected: true })}`;
+              }
+            } else {
+              dateDisplay = `${formatFriendlyDate(st.startDate)} → ${formatFriendlyDate(st.endDate)}`;
+            }
 
             return (
               <div
@@ -340,9 +396,30 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
                             </span>
                           )}
                         </div>
-                        <span className="text-xs text-stone-500">
-                          {formatFriendlyDate(st.startDate)} → {formatFriendlyDate(st.endDate)}
-                        </span>
+
+                        {/* Fechas calendario reales y proyectadas */}
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <span className="text-xs text-stone-600 font-medium">
+                            {dateDisplay}
+                          </span>
+                          {schedItem && (
+                            <span
+                              className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md ${
+                                schedItem.status === 'completed'
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : schedItem.status === 'active'
+                                  ? 'bg-amber-100 text-amber-800'
+                                  : 'bg-purple-100 text-purple-800'
+                              }`}
+                            >
+                              {schedItem.status === 'completed'
+                                ? 'Real'
+                                : schedItem.status === 'active'
+                                ? 'En curso'
+                                : 'Proyectado'}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
