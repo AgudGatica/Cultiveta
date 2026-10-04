@@ -441,7 +441,17 @@ Responde estrictamente en formato JSON válido con las siguientes claves:
 // 3. Contextual Chat for Cultivation
 app.post('/api/ai/chat', async (req, res) => {
   try {
-    const { message, history, cultivation, recentWaterings, recentEnv, recentPhotos, recentNotes, condensedSummary } = req.body;
+    const {
+      message,
+      history,
+      cultivation,
+      recentWaterings,
+      recentEnv,
+      recentPhotos,
+      recentNotes,
+      condensedSummary,
+      intelligenceContext,
+    } = req.body;
 
     if (!message) {
       return res.status(400).json({ error: 'Mensaje vacío' });
@@ -449,52 +459,87 @@ app.post('/api/ai/chat', async (req, res) => {
 
     const ai = getAIClient();
 
+    const cropName = intelligenceContext?.identity?.name || cultivation?.name || 'Cultivo';
+
     const systemInstruction = `
 Eres Cultiveta IA, el compañero experto y botánico de la aplicación Cultiveta.
-Estás conversando con el cultivador sobre su cultivo actual: "${cultivation?.name || 'Cultivo'}".
+Estás conversando con el cultivador sobre su cultivo: "${cropName}".
 
-INFORMACIÓN REGISTRADA REAL DEL CULTIVO:
+PRINCIPIO CENTRAL DE CULTIVETA:
+DATOS REALES → CÁLCULOS DETERMINISTAS → ESTIMACIONES CON INCERTIDUMBRE → IA QUE INTERPRETA Y EXPLICA
+Tú NO inventas cálculos matemáticos de secado ni fechas de riego; interpretas el motor determinista.
+
+${intelligenceContext ? `
+=== CONTEXTO AGRONÓMICO DE ALTA PRECISIÓN (PRECALCULADO DETERMINISTA) ===
+1. IDENTIDAD DEL CULTIVO:
+- Nombre: ${intelligenceContext.identity.name}
+- Genética: ${intelligenceContext.identity.geneticsName || 'Sin especificar'} (Banco: ${intelligenceContext.identity.seedBank || 'N/A'})
+- Tipo: ${intelligenceContext.identity.type} | Plantas: ${intelligenceContext.identity.plantCount}
+- Sustrato: ${intelligenceContext.identity.substrateType || 'No registrado'} (${intelligenceContext.identity.potVolumeLiters ? `${intelligenceContext.identity.potVolumeLiters}L` : 'Volumen no registrado'}${intelligenceContext.identity.potType ? `, maceta ${intelligenceContext.identity.potType}` : ''})
+- Iluminación: ${intelligenceContext.identity.lightingType || 'N/A'} (${intelligenceContext.identity.lightingWatts ? `${intelligenceContext.identity.lightingWatts}W` : 'potencia s/d'}) | Fotoperiodo: ${intelligenceContext.identity.photoperiodHoursLight || 18}h luz / ${intelligenceContext.identity.photoperiodHoursDark || 6}h oscuridad
+
+2. CRONOLOGÍA Y ETAPAS:
+- Fecha de inicio: ${intelligenceContext.chronology.startDate} (Día real transcurrido: ${intelligenceContext.chronology.realDaysElapsed})
+- Etapa actual: ${intelligenceContext.chronology.currentStage} (Días en etapa actual: ${intelligenceContext.chronology.daysInActiveStage})
+- Fecha estimada de corte/cosecha: ${intelligenceContext.chronology.estimatedHarvestDate} (${intelligenceContext.chronology.hasStageAdjustments ? `ajuste de ${intelligenceContext.chronology.adjustmentDeltaDays} días respecto a proyección inicial` : 'cronograma alineado'})
+- Historial de etapas completadas: ${JSON.stringify(intelligenceContext.chronology.completedStages, null, 2)}
+
+3. MOTOR DE INTELIGENCIA HÍDRICA (IRRIGATION FORECAST DETERMINISTA):
+- Último riego: ${intelligenceContext.irrigation.lastWatering ? `${intelligenceContext.irrigation.lastWatering.volumeLiters} L el ${intelligenceContext.irrigation.lastWatering.date} ${intelligenceContext.irrigation.lastWatering.time || ''} (hace ~${intelligenceContext.irrigation.forecast.hoursSinceLastWatering ?? '?'} h)` : 'Sin riegos registrados'}
+- Drenaje/Runoff último riego: ${intelligenceContext.irrigation.lastWatering?.runoffVolumeLiters !== undefined ? `${intelligenceContext.irrigation.lastWatering.runoffVolumeLiters} L` : 'No registrado'}
+- Ventana estimada para REVISAR el próximo riego: ${intelligenceContext.irrigation.forecast.wateringWindowStart ? `${intelligenceContext.irrigation.forecast.wateringWindowStart} a ${intelligenceContext.irrigation.forecast.wateringWindowEnd}` : 'Pendiente de datos'}
+- Nivel de confianza del motor: ${intelligenceContext.irrigation.forecast.confidence.toUpperCase()}
+- Factores agronómicos deterministas:
+${intelligenceContext.irrigation.forecast.factors.map((f: string) => `  • ${f}`).join('\n')}
+- Señales faltantes: ${intelligenceContext.irrigation.forecast.missingSignals.join(', ') || 'Ninguna'}
+- Mediana histórica de intervalo entre riegos: ${intelligenceContext.irrigation.statistics.medianIntervalHours ? `${intelligenceContext.irrigation.statistics.medianIntervalHours} h` : 'N/A'} (Promedio: ${intelligenceContext.irrigation.statistics.averageIntervalHours ? `${intelligenceContext.irrigation.statistics.averageIntervalHours} h` : 'N/A'})
+- Mediana histórica de volumen aplicado: ${intelligenceContext.irrigation.statistics.medianVolumeLiters ? `${intelligenceContext.irrigation.statistics.medianVolumeLiters} L` : 'N/A'}
+${intelligenceContext.irrigation.statistics.intervalByVpdLevel ? `- Relación ambiente ↔ riego (por VPD): Low VPD (<1.0 kPa): ${intelligenceContext.irrigation.statistics.intervalByVpdLevel.lowVpdAvgHours ?? 's/d'} h | Med VPD (1.0-1.4 kPa): ${intelligenceContext.irrigation.statistics.intervalByVpdLevel.mediumVpdAvgHours ?? 's/d'} h | High VPD (>1.4 kPa): ${intelligenceContext.irrigation.statistics.intervalByVpdLevel.highVpdAvgHours ?? 's/d'} h (muestra: ${intelligenceContext.irrigation.statistics.intervalByVpdLevel.sampleSize} episodios)` : ''}
+
+4. AMBIENTE AGREGADO:
+- Última medición: ${JSON.stringify(intelligenceContext.environment.latest || 'N/A')}
+- Promedio desde último riego: Temp ${intelligenceContext.environment.avgSinceLastWatering.tempC ?? 's/d'}°C (Max ${intelligenceContext.environment.avgSinceLastWatering.maxTempC ?? 's/d'}°C), Humedad ${intelligenceContext.environment.avgSinceLastWatering.humidityPct ?? 's/d'}%, VPD ${intelligenceContext.environment.avgSinceLastWatering.vpdKPa ?? 's/d'} kPa (Max ${intelligenceContext.environment.avgSinceLastWatering.maxVpdKPa ?? 's/d'} kPa), DLI ~${intelligenceContext.environment.avgSinceLastWatering.estimatedDli ?? 's/d'} mol/m²/d
+=============================================================================
+` : `
+INFORMACIÓN BÁSICA DEL CULTIVO:
 - Etapa actual: ${cultivation?.currentStage || 'No especificada'}
 - Tipo: ${cultivation?.type || 'Indoor'}
 - Genética: ${cultivation?.geneticsName || 'Sin especificar'} (Banco: ${cultivation?.seedBank || 'N/A'})
-- Cantidad de plantas: ${cultivation?.plantCount || 1}
-- Sustrato: ${cultivation?.substrate?.type || 'No especificado'} (${cultivation?.substrate?.potVolumeLiters || 'N/A'}L)
-- Iluminación: ${cultivation?.lighting?.type || 'N/A'} (${cultivation?.lighting?.usedWatts || 'N/A'}W)
+- Cantidad de plantas: ${cultivation?.plantCount ?? 'No especificada'}
+- Sustrato: ${cultivation?.substrate?.type || 'No especificado'} (${cultivation?.substrate?.potVolumeLiters ? `${cultivation?.substrate?.potVolumeLiters}L` : 'Volumen no registrado'})
+- Iluminación: ${cultivation?.lighting?.type || 'N/A'}
+`}
 
 ${condensedSummary && Array.isArray(condensedSummary) && condensedSummary.length > 0 ? `
 === MODO RESUMEN ACTIVADO POR EL CULTIVADOR ===
-Los registros de ambiente y riegos han sido condensados en los siguientes puntos clave antes de consultar:
+Puntos clave condensados:
 ${condensedSummary.map((point: string) => `• ${point}`).join('\n')}
-
-INSTRUCCIÓN ESPECÍFICA PARA MODO RESUMEN:
-- Basa tu razonamiento prioritariamente en estos puntos clave condensados.
-- Responde de forma sintética, accionable y estructurada, destacando si hay parámetros fuera de rango (como pH, EC o VPD) o si la frecuencia hídrica es adecuada.
 ==============================================
 ` : ''}
 
-REGISTROS RECIENTES DE RIEGO:
-${JSON.stringify(recentWaterings || [], null, 2)}
+REGISTROS RECIENTES:
+- Riegos recientes: ${JSON.stringify(recentWaterings || [], null, 2)}
+- Ambiente reciente: ${JSON.stringify(recentEnv || [], null, 2)}
+- Fotos recientes: ${JSON.stringify(recentPhotos || [], null, 2)}
+- Notas del diario: ${JSON.stringify(recentNotes || [], null, 2)}
 
-REGISTROS RECIENTES DE AMBIENTE:
-${JSON.stringify(recentEnv || [], null, 2)}
-
-FOTOS RECIENTES REGISTRADAS:
-${JSON.stringify(recentPhotos || [], null, 2)}
-
-NOTAS RECIENTES DEL DIARIO:
-${JSON.stringify(recentNotes || [], null, 2)}
-
-REGLAS DE RESPUESTA:
-1. Responde en español amigable, cercano y con conocimiento botánico.
-2. Basate SIEMPRE en los datos reales registrados arriba. Si el usuario te pregunta algo sobre lo que no hay registros (por ejemplo "cómo está mi EC" cuando no hay registros de EC), indícalo amablemente ("No tenés registros de EC cargados aún").
-3. Si el usuario pide un resumen o análisis, cita las fechas o valores reales que fundamentan tu respuesta.
-4. No uses lenguaje médico excesivo.
-5. Devuelve la respuesta en formato JSON con la siguiente estructura:
+REGLAS ESTRICTAS DE RESPUESTA:
+1. DIFERENCIAR CLARAMENTE:
+   - DATO REAL: Lo que el usuario registró explícitamente ("Regaste 1.5 L el 2 de octubre").
+   - CÁLCULO: Estadística o valor matemático derivado ("La mediana de tus últimos riegos es 63 h").
+   - ESTIMACIÓN CON INCERTIDUMBRE: Proyección ("La ventana estimada para revisar la maceta es entre mañana 15:00 y 21:00").
+2. PRÓXIMO RIEGO:
+   - Si el usuario pregunta "¿Cuándo riego?" o sobre el secado de la maceta: NUNCA inventes una hora o fecha diferente a la del motor matemático. Usa la ventana de revisión provista en el Irrigation Forecast, explica los factores reales (volumen, VPD, temperatura, mediana histórica) y recomienda REVISAR la maceta (peso/humedad), no ordenar un riego a ciegas.
+3. DATOS FALTANTES:
+   - NUNCA inventes variables ausentes (ej. si no hay tamaño de maceta registrado, NO digas "tu maceta es de 10L"; di que no está registrado).
+4. HISTORIAL DE ETAPAS:
+   - Responde preguntas sobre duración de etapas pasadas utilizando las fechas y días de completedStages.
+5. Devuelve la respuesta en formato JSON:
 {
   "reply": "Texto de tu respuesta en formato Markdown claro y bien formateado",
   "evidence": {
     "recordsReferenced": ["Lista breve de registros o eventos que usaste para contestar"],
-    "metricsReferenced": ["Métricas citadas como 24°C, pH 6.2, etc."],
+    "metricsReferenced": ["Métricas citadas como 24°C, pH 6.2, 63 h, etc."],
     "datesReferenced": ["Fechas citadas"]
   }
 }

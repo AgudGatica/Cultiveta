@@ -218,6 +218,12 @@ export interface Watering {
   observations?: string;
   isDemo?: boolean;
   createdAt: string;
+  // Backward-compatible optional technical fields for precision dryback estimation
+  runoffVolumeLiters?: number;
+  potWeightBeforeWateringKg?: number;
+  potWeightAfterWateringKg?: number;
+  substrateMoistureBeforePct?: number;
+  substrateMoistureAfterPct?: number;
 }
 
 export interface FertilizationProductDosage {
@@ -480,5 +486,146 @@ export interface CultivationTask {
   createdAt?: string;
   categoryLabel: string;
   actionHint?: string;
+}
+
+export interface IrrigationForecast {
+  lastWateringAt: string | null;
+  hoursSinceLastWatering: number | null;
+  appliedWaterLiters: number | null;
+  netWaterLiters: number | null;
+
+  avgTempSinceWatering: number | null;
+  maxTempSinceWatering: number | null;
+
+  avgHumiditySinceWatering: number | null;
+
+  avgVpdSinceWatering: number | null;
+  maxVpdSinceWatering: number | null;
+
+  avgPpfdSinceWatering: number | null;
+  estimatedDli: number | null;
+
+  historicalMedianIntervalHours: number | null;
+  historicalAverageVolumeLiters: number | null;
+  historicalMedianVolumeLiters: number | null;
+
+  demandIndex: number;
+
+  estimatedDrybackRateLitersPerDay: number | null;
+  estimatedRemainingAvailableWaterLiters: number | null;
+
+  estimatedNextWateringAt: string | null;
+  wateringWindowStart: string | null;
+  wateringWindowEnd: string | null;
+
+  confidence: 'low' | 'medium' | 'high';
+
+  factors: string[];
+  missingSignals: string[];
+
+  modelVersion: string;
+}
+
+export interface CultivationIntelligenceContext {
+  identity: {
+    cultivationId: string;
+    name: string;
+    geneticsName?: string;
+    seedBank?: string;
+    type: string;
+    plantCount: number;
+    substrateType?: string;
+    potVolumeLiters?: number;
+    potType?: string;
+    lightingType?: string;
+    lightingWatts?: number;
+    photoperiodHoursLight?: number;
+    photoperiodHoursDark?: number;
+  };
+  chronology: {
+    startDate: string;
+    realDaysElapsed: number;
+    currentStage: string;
+    stageStartDate?: string;
+    daysInActiveStage: number;
+    actualStartDate?: string;
+    actualEndDate?: string;
+    completedStages: Array<{
+      name: string;
+      actualDurationDays?: number;
+      actualStartDate?: string;
+      actualEndDate?: string;
+      expectedDurationDays: number;
+    }>;
+    projectedHarvestDate: string;
+    estimatedHarvestDate: string;
+    adjustmentDeltaDays: number;
+    hasStageAdjustments: boolean;
+  };
+  irrigation: {
+    lastWatering: {
+      date: string;
+      time?: string;
+      volumeLiters: number;
+      phIn?: number;
+      ecIn?: number;
+      phRunoff?: number;
+      ecRunoff?: number;
+      waterTempC?: number;
+      productsSummary?: string[];
+      runoffVolumeLiters?: number;
+    } | null;
+    recentWaterings: Array<{
+      date: string;
+      volumeL: number;
+      phIn?: number;
+      ecIn?: number;
+      hoursSincePrevious?: number;
+    }>;
+    statistics: {
+      medianIntervalHours: number | null;
+      averageIntervalHours: number | null;
+      medianVolumeLiters: number | null;
+      totalRecordedWaterings: number;
+      intervalByVpdLevel?: {
+        lowVpdAvgHours?: number | null;
+        mediumVpdAvgHours?: number | null;
+        highVpdAvgHours?: number | null;
+        sampleSize: number;
+      };
+    };
+    forecast: IrrigationForecast;
+  };
+  environment: {
+    latest: {
+      date: string;
+      time?: string;
+      tempC?: number;
+      humidityPct?: number;
+      vpdKPa?: number;
+      ppfd?: number;
+    } | null;
+    avgSinceLastWatering: {
+      tempC?: number;
+      minTempC?: number;
+      maxTempC?: number;
+      humidityPct?: number;
+      vpdKPa?: number;
+      maxVpdKPa?: number;
+      ppfd?: number;
+      estimatedDli?: number;
+    };
+    recordsCount: number;
+  };
+  notesAndPhotos: {
+    recentNotesCount: number;
+    recentPhotosCount: number;
+    recentNoteSnippets: string[];
+    recentPhotoCategories: string[];
+  };
+  harvestsSummary?: {
+    pastHarvestsCount: number;
+    recentHarvestWeightGrams?: number;
+  };
 }
 

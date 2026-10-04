@@ -17,6 +17,7 @@ import {
 import { Cultivation, Watering, EnvironmentRecord, AIChatMessage } from '../../types';
 import { aiService } from '../../services/aiService';
 import { condenseRecordsToKeyPoints } from '../../utils/condenseRecords';
+import { buildCultivationIntelligenceContext } from '../../services/cultivationIntelligenceService';
 
 interface AIAssistantViewProps {
   cultivations: Cultivation[];
@@ -64,10 +65,12 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
   }, [messages, loading]);
 
   const standardQuestions = [
+    '¿Cuándo tendría que revisar el próximo riego?',
+    '¿Cuánto está tardando en secarse este cultivo?',
+    '¿Cómo cambió el consumo de agua con el calor?',
+    '¿Cuánto me duró cada etapa?',
     '¿Cómo preparo la nutrición para esta etapa?',
     '¿Qué rango de VPD y temperatura es ideal ahora?',
-    '¿Es momento de hacer defoliación o poda?',
-    '¿Mis valores recientes de pH y EC son adecuados?',
   ];
 
   const summaryModeQuestions = [
@@ -100,8 +103,16 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
 
     try {
       // Build real-time context
-      const cropWaterings = recentWaterings.filter((w) => w.cultivationId === selectedCropId).slice(0, 5);
-      const cropEnv = recentEnvRecords.filter((e) => e.cultivationId === selectedCropId).slice(0, 5);
+      const cropWaterings = recentWaterings.filter((w) => w.cultivationId === selectedCropId);
+      const cropEnv = recentEnvRecords.filter((e) => e.cultivationId === selectedCropId);
+
+      const intelligenceContext = selectedCrop
+        ? buildCultivationIntelligenceContext({
+            cultivation: selectedCrop,
+            waterings: cropWaterings,
+            envRecords: cropEnv,
+          })
+        : undefined;
 
       const contextPayload = selectedCrop
         ? {
@@ -111,13 +122,13 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
             photoperiod: selectedCrop.photoperiodType,
             substrate: selectedCrop.substrate?.type,
             lighting: selectedCrop.lighting?.type,
-            recentWaterings: cropWaterings.map((w) => ({
+            recentWaterings: cropWaterings.slice(0, 5).map((w) => ({
               date: w.date,
               volumeL: w.volumeLiters,
               phIn: w.phIn,
               ecIn: w.ecIn,
             })),
-            recentEnv: cropEnv.map((e) => ({
+            recentEnv: cropEnv.slice(0, 5).map((e) => ({
               date: e.date,
               tempC: e.temperatureC,
               humidityPct: e.humidityPct,
@@ -128,6 +139,8 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
 
       const aiReply = await aiService.askAssistant({
         question: userMsg.text,
+        cultivation: selectedCrop,
+        intelligenceContext,
         cultivationContext: contextPayload,
         condensedSummary: pointsToInclude,
         chatHistory: messages.slice(-6).map((m) => ({

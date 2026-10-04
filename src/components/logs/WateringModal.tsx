@@ -41,6 +41,11 @@ export const WateringModal: React.FC<WateringModalProps> = ({
   const [ecIn, setEcIn] = useState<number | ''>(initialEc ?? 1.6);
   const [phRunoff, setPhRunoff] = useState<number | ''>('');
   const [ecRunoff, setEcRunoff] = useState<number | ''>('');
+  const [runoffVolumeLiters, setRunoffVolumeLiters] = useState<number | ''>('');
+  const [potWeightBeforeWateringKg, setPotWeightBeforeWateringKg] = useState<number | ''>('');
+  const [potWeightAfterWateringKg, setPotWeightAfterWateringKg] = useState<number | ''>('');
+  const [substrateMoistureBeforePct, setSubstrateMoistureBeforePct] = useState<number | ''>('');
+  const [substrateMoistureAfterPct, setSubstrateMoistureAfterPct] = useState<number | ''>('');
   const [waterTempC, setWaterTempC] = useState<number | ''>('');
   const [products, setProducts] = useState<WateringProductItem[]>(initialProducts || []);
   const [fertilizationWeekNumber, setFertilizationWeekNumber] = useState<number | undefined>(initialWeekNumber);
@@ -155,6 +160,11 @@ export const WateringModal: React.FC<WateringModalProps> = ({
         ecIn: ecIn !== '' ? Number(ecIn) : undefined,
         phRunoff: phRunoff !== '' ? Number(phRunoff) : undefined,
         ecRunoff: ecRunoff !== '' ? Number(ecRunoff) : undefined,
+        runoffVolumeLiters: runoffVolumeLiters !== '' ? Number(runoffVolumeLiters) : undefined,
+        potWeightBeforeWateringKg: potWeightBeforeWateringKg !== '' ? Number(potWeightBeforeWateringKg) : undefined,
+        potWeightAfterWateringKg: potWeightAfterWateringKg !== '' ? Number(potWeightAfterWateringKg) : undefined,
+        substrateMoistureBeforePct: substrateMoistureBeforePct !== '' ? Number(substrateMoistureBeforePct) : undefined,
+        substrateMoistureAfterPct: substrateMoistureAfterPct !== '' ? Number(substrateMoistureAfterPct) : undefined,
         waterTempC: waterTempC !== '' ? Number(waterTempC) : undefined,
         productsUsed: finalProducts.length > 0 ? finalProducts : undefined,
         fertilizationWeekNumber: usedNutrients ? fertilizationWeekNumber : undefined,
@@ -494,6 +504,94 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                         placeholder="ej. 1.9"
                         value={ecRunoff}
                         onChange={(e) => setEcRunoff(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                        className="w-full px-3 py-1.5 rounded-xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#62B95B]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-[#EFE3CF]/60">
+                    <label className="block text-[11px] font-semibold text-[#6E5D77] mb-1">Volumen de Drenaje / Runoff (L)</label>
+                    <input
+                      id="watering-runoff-volume-input"
+                      type="number"
+                      step="0.05"
+                      min="0"
+                      max="50"
+                      placeholder="ej. 0.3 L recolectados"
+                      value={runoffVolumeLiters}
+                      onChange={(e) => setRunoffVolumeLiters(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                      className="w-full px-3 py-1.5 rounded-xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#62B95B]"
+                    />
+                  </div>
+                </div>
+
+                {/* Dryback precision indicators: Pot weight & substrate moisture */}
+                <div className="p-3.5 rounded-xl bg-white border border-[#EFE3CF] space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-[#6E5D77]">Mejorar precisión del próximo riego</h4>
+                    <span className="text-[10px] text-[#9887A2] font-semibold">Opcional</span>
+                  </div>
+                  <p className="text-[11px] text-[#6E5D77] leading-relaxed">
+                    Estos datos ayudan a Cultiveta a aprender cuánto tarda tu maceta en secarse.
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#6E5D77] mb-1">Peso antes de regar (kg)</label>
+                      <input
+                        id="watering-pot-weight-before-input"
+                        type="number"
+                        step="0.05"
+                        min="0"
+                        placeholder="ej. 4.2"
+                        value={potWeightBeforeWateringKg}
+                        onChange={(e) => setPotWeightBeforeWateringKg(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                        className="w-full px-3 py-1.5 rounded-xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#62B95B]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#6E5D77] mb-1">Peso después de regar (kg)</label>
+                      <input
+                        id="watering-pot-weight-after-input"
+                        type="number"
+                        step="0.05"
+                        min="0"
+                        placeholder="ej. 5.8"
+                        value={potWeightAfterWateringKg}
+                        onChange={(e) => setPotWeightAfterWateringKg(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                        className="w-full px-3 py-1.5 rounded-xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#62B95B]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2.5 pt-1">
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#6E5D77] mb-1">Humedad sustrato antes (%)</label>
+                      <input
+                        id="watering-moisture-before-input"
+                        type="number"
+                        step="1"
+                        min="0"
+                        max="100"
+                        placeholder="ej. 20%"
+                        value={substrateMoistureBeforePct}
+                        onChange={(e) => setSubstrateMoistureBeforePct(e.target.value === '' ? '' : parseFloat(e.target.value))}
+                        className="w-full px-3 py-1.5 rounded-xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#62B95B]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[#6E5D77] mb-1">Humedad sustrato después (%)</label>
+                      <input
+                        id="watering-moisture-after-input"
+                        type="number"
+                        step="1"
+                        min="0"
+                        max="100"
+                        placeholder="ej. 85%"
+                        value={substrateMoistureAfterPct}
+                        onChange={(e) => setSubstrateMoistureAfterPct(e.target.value === '' ? '' : parseFloat(e.target.value))}
                         className="w-full px-3 py-1.5 rounded-xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#62B95B]"
                       />
                     </div>

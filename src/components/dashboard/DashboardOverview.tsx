@@ -44,7 +44,10 @@ import {
   STAGE_PRESETS,
   buildCultivationStageSchedule,
   formatFriendlyDate,
+  isFloweringStage,
+  isPreFloweringStage,
 } from '../../utils/growthStageUtils';
+import { calculateIrrigationForecast } from '../../services/irrigationForecastService';
 import { cultivationService } from '../../services/cultivationService';
 
 interface DashboardOverviewProps {
@@ -81,10 +84,10 @@ export const renderStageMilestoneIcon = (stageName: string, className = 'w-3 h-3
   if (lower.includes('vege') || lower.includes('crecim')) {
     return <Leaf className={className} />;
   }
-  if (lower.includes('preflor') || lower.includes('transic')) {
+  if (isPreFloweringStage(stageName) || lower.includes('transic')) {
     return <Sparkles className={className} />;
   }
-  if (lower.includes('flor')) {
+  if (isFloweringStage(stageName)) {
     return <Flower2 className={className} />;
   }
   if (lower.includes('madur') || lower.includes('lavad')) {
@@ -101,8 +104,8 @@ export const getStageMilestoneDescription = (stageName: string) => {
   if (lower.includes('germin') || lower.includes('semill')) return 'Semilla en germinación';
   if (lower.includes('plánt') || lower.includes('plant')) return 'Plántula y brote inicial';
   if (lower.includes('vege') || lower.includes('crecim')) return 'Hojas y crecimiento vegetativo';
-  if (lower.includes('preflor') || lower.includes('transic')) return 'Prefloración y estiramiento';
-  if (lower.includes('flor')) return 'Floración y formación de cogollos';
+  if (isPreFloweringStage(stageName) || lower.includes('transic')) return 'Prefloración y estiramiento';
+  if (isFloweringStage(stageName)) return 'Floración y formación de cogollos';
   if (lower.includes('madur') || lower.includes('lavad')) return 'Maduración de resina y lavado';
   if (lower.includes('cosech') || lower.includes('corte')) return 'Corte y cosecha final';
   return stageName;
@@ -139,6 +142,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const [showWateringDetails, setShowWateringDetails] = useState(false);
   const [showFullClimateChart, setShowFullClimateChart] = useState(false);
   const [showLifecycleDetails, setShowLifecycleDetails] = useState(false);
+  const [showWhyForecast, setShowWhyForecast] = useState(false);
 
   // Active Crops
   const activeCrops = useMemo(() => cultivations.filter((c) => !c.isFinished), [cultivations]);
@@ -258,7 +262,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     const temp = latestEnvForPrimary.temperature ?? latestEnvForPrimary.temperatureC ?? 24;
     const hum = latestEnvForPrimary.humidity ?? latestEnvForPrimary.humidityPct ?? 55;
     const isFlower =
-      primaryCrop?.currentStage?.toLowerCase().includes('flor') ||
+      isFloweringStage(primaryCrop?.currentStage) ||
       primaryCrop?.currentStage?.toLowerCase().includes('madur');
 
     if (isFlower && hum > 68) {
@@ -405,7 +409,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     });
 
     const vegeStage = schedule.stages.find((s) => s.name.toLowerCase().includes('vege'));
-    const floraStage = schedule.stages.find((s) => s.name.toLowerCase().includes('flor'));
+    const floraStage = schedule.floweringStage || schedule.stages.find((s) => isFloweringStage(s.name));
 
     return {
       schedule,
@@ -426,6 +430,44 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
       startDateFormatted: formatFriendlyDate(schedule.cropStartDate),
     };
   }, [primaryCrop, geneticsList]);
+
+  // Deterministic Irrigation Forecast for primary crop
+  const primaryCropIrrigationForecast = useMemo(() => {
+    if (!primaryCrop) return null;
+    return calculateIrrigationForecast(primaryCrop, waterings, envRecords);
+  }, [primaryCrop, waterings, envRecords]);
+
+  const forecastDisplay = useMemo(() => {
+    if (!primaryCropIrrigationForecast) return null;
+    const f = primaryCropIrrigationForecast;
+    if (f.confidence === 'low') {
+      if (!f.lastWateringAt) {
+        return {
+          title: 'Estimación inicial',
+          text: 'Registrá un primer riego para activar el aprendizaje.',
+          isLowConfidence: true,
+        };
+      }
+      return {
+        title: 'Estimación por etapa',
+        text: 'Registrá algunos riegos más para personalizar la ventana.',
+        isLowConfidence: true,
+      };
+    }
+
+    const startPart = f.wateringWindowStart ? f.wateringWindowStart.split('T')[0] : '';
+    const endPart = f.wateringWindowEnd ? f.wateringWindowEnd.split('T')[0] : '';
+    const startTime = f.wateringWindowStart && f.wateringWindowStart.includes('T') ? f.wateringWindowStart.split('T')[1] : '';
+    const endTime = f.wateringWindowEnd && f.wateringWindowEnd.includes('T') ? f.wateringWindowEnd.split('T')[1] : '';
+
+    return {
+      title: 'Ventana de revisión',
+      text: startPart === endPart
+        ? `Revisá la maceta el ${formatFriendlyDate(startPart)}${startTime ? ` (${startTime}–${endTime} hs)` : ''}`
+        : `Revisá la maceta entre ${formatFriendlyDate(startPart)} y ${formatFriendlyDate(endPart)}`,
+      isLowConfidence: false,
+    };
+  }, [primaryCropIrrigationForecast]);
 
   // AI Weekly Summary
   const handleGenerateWeeklySummary = async () => {
@@ -560,6 +602,77 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 id="main-crop-hero-card"
                 className="bg-white rounded-[32px] p-6 sm:p-8 border border-[#EFE3CF] shadow-xs relative overflow-hidden space-y-6"
               >
+                {/* 4 Mini-Stats en la parte superior izquierda, antes del selector Cultivos */}
+                <div className="grid grid-cols-2 sm:flex sm:flex-row sm:items-center gap-2">
+                  <div
+                    id="stat-active-crops"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[#FAF2E1]/70 border border-[#EFE3CF]"
+                  >
+                    <div className="p-1.5 rounded-xl bg-[#62B95B]/15 text-[#62B95B] shrink-0">
+                      <Sprout className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="text-lg sm:text-xl font-black text-[#29202F] leading-none block">
+                        {activeCrops.length}
+                      </span>
+                      <span className="text-[10px] font-bold text-[#6E5D77] uppercase tracking-wider block mt-0.5">
+                        Cultivos
+                      </span>
+                    </div>
+                  </div>
+
+                  <div
+                    id="stat-total-plants"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[#FAF2E1]/70 border border-[#EFE3CF]"
+                  >
+                    <div className="p-1.5 rounded-xl bg-[#FAF2E1] text-[#29202F] shrink-0">
+                      <Layers className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="text-lg sm:text-xl font-black text-[#29202F] leading-none block">
+                        {totalPlants}
+                      </span>
+                      <span className="text-[10px] font-bold text-[#6E5D77] uppercase tracking-wider block mt-0.5">
+                        Plantas
+                      </span>
+                    </div>
+                  </div>
+
+                  <div
+                    id="stat-recent-waterings"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[#FAF2E1]/70 border border-[#EFE3CF]"
+                  >
+                    <div className="p-1.5 rounded-xl bg-[#6C45C7]/15 text-[#6C45C7] shrink-0">
+                      <Droplets className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="text-lg sm:text-xl font-black text-[#6C45C7] leading-none block">
+                        {recentWateringsCount}
+                      </span>
+                      <span className="text-[10px] font-bold text-[#6E5D77] uppercase tracking-wider block mt-0.5">
+                        Riegos (7d)
+                      </span>
+                    </div>
+                  </div>
+
+                  <div
+                    id="stat-diary-photos"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[#FAF2E1]/70 border border-[#EFE3CF]"
+                  >
+                    <div className="p-1.5 rounded-xl bg-[#F3C843]/25 text-[#29202F] shrink-0">
+                      <Camera className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <span className="text-lg sm:text-xl font-black text-[#29202F] leading-none block">
+                        {photos.length}
+                      </span>
+                      <span className="text-[10px] font-bold text-[#6E5D77] uppercase tracking-wider block mt-0.5">
+                        Fotos
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Selector rápido entre carpas activas (si hay más de 1) */}
                 {activeCrops.length > 1 && (
                   <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
@@ -659,6 +772,48 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                           </div>
                         ))}
                       </div>
+
+                      {/* Próximo Riego Forecast (Discreto en bloque Hoy) */}
+                      {forecastDisplay && (
+                        <div className="pt-2 border-t border-[#EFE3CF]/60 space-y-1">
+                          <div className="flex items-center justify-between text-[11px]">
+                            <span className="font-bold text-[#6E5D77] flex items-center gap-1">
+                              <Droplets className="w-3 h-3 text-[#62B95B]" />
+                              <span>{forecastDisplay.title}</span>
+                            </span>
+                            {!forecastDisplay.isLowConfidence && (
+                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[#62B95B]/15 text-[#2D6B28]">
+                                {primaryCropIrrigationForecast?.confidence === 'high' ? 'Alta conf.' : 'Media conf.'}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs font-bold text-[#29202F]">
+                            {forecastDisplay.text}
+                          </p>
+                          {showWhyForecast ? (
+                            <div className="p-2 rounded-xl bg-[#FAF2E1] border border-[#EFE3CF] text-[10px] text-[#6E5D77] space-y-1">
+                              {primaryCropIrrigationForecast?.factors.slice(0, 3).map((f, i) => (
+                                <p key={i}>• {f}</p>
+                              ))}
+                              <button
+                                type="button"
+                                onClick={() => setShowWhyForecast(false)}
+                                className="text-[#6C45C7] font-bold hover:underline cursor-pointer pt-0.5 block"
+                              >
+                                Cerrar
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => setShowWhyForecast(true)}
+                              className="text-[10px] text-[#6C45C7] hover:underline font-semibold cursor-pointer inline-flex items-center gap-0.5"
+                            >
+                              <span>¿Por qué?</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-2 pt-2 border-t border-[#EFE3CF]">
@@ -1014,93 +1169,6 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               />
             </div>
           )}
-
-          {/* 5. Estadísticas Resumidas (Bento Cards Reutilizables con IDs requeridos) */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Cultivos Activos */}
-            <div
-              id="stat-active-crops"
-              className="bg-white rounded-[28px] p-5 border border-[#EFE3CF] shadow-xs flex flex-col justify-between"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#9887A2]">
-                  Cultivos Activos
-                </span>
-                <div className="p-2 rounded-xl bg-[#62B95B]/15 text-[#62B95B]">
-                  <Sprout className="w-4 h-4" />
-                </div>
-              </div>
-              <div>
-                <span className="text-3xl sm:text-4xl font-black text-[#29202F] block">
-                  {activeCrops.length}
-                </span>
-                <span className="text-xs text-[#6E5D77] block mt-0.5">En seguimiento diario</span>
-              </div>
-            </div>
-
-            {/* Total Plantas */}
-            <div
-              id="stat-total-plants"
-              className="bg-white rounded-[28px] p-5 border border-[#EFE3CF] shadow-xs flex flex-col justify-between"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#9887A2]">
-                  Total Plantas
-                </span>
-                <div className="p-2 rounded-xl bg-[#FAF2E1] text-[#29202F]">
-                  <Layers className="w-4 h-4" />
-                </div>
-              </div>
-              <div>
-                <span className="text-3xl sm:text-4xl font-black text-[#29202F] block">
-                  {totalPlants}
-                </span>
-                <span className="text-xs text-[#6E5D77] block mt-0.5">Iluminación controlada</span>
-              </div>
-            </div>
-
-            {/* Riegos */}
-            <div
-              id="stat-recent-waterings"
-              className="bg-white rounded-[28px] p-5 border border-[#EFE3CF] shadow-xs flex flex-col justify-between"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#9887A2]">
-                  Riegos (7 días)
-                </span>
-                <div className="p-2 rounded-xl bg-[#6C45C7]/15 text-[#6C45C7]">
-                  <Droplets className="w-4 h-4" />
-                </div>
-              </div>
-              <div>
-                <span className="text-3xl sm:text-4xl font-black text-[#6C45C7] block">
-                  {recentWateringsCount}
-                </span>
-                <span className="text-xs text-[#6E5D77] block mt-0.5">Nutrición y agua</span>
-              </div>
-            </div>
-
-            {/* Fotos Bitácora */}
-            <div
-              id="stat-diary-photos"
-              className="bg-white rounded-[28px] p-5 border border-[#EFE3CF] shadow-xs flex flex-col justify-between"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-[#9887A2]">
-                  Fotos Bitácora
-                </span>
-                <div className="p-2 rounded-xl bg-[#F3C843]/25 text-[#29202F]">
-                  <Camera className="w-4 h-4" />
-                </div>
-              </div>
-              <div>
-                <span className="text-3xl sm:text-4xl font-black text-[#29202F] block">
-                  {photos.length}
-                </span>
-                <span className="text-xs text-[#6E5D77] block mt-0.5">Registro visual</span>
-              </div>
-            </div>
-          </div>
 
           {/* 9. Asistente Botánico: Preguntale a Cultiveta */}
           <div className="bg-white rounded-[32px] p-6 sm:p-8 border border-[#EFE3CF] shadow-xs relative overflow-hidden space-y-4">

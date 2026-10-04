@@ -15,7 +15,8 @@ import {
   Watering,
   EnvironmentRecord,
   DiaryEntry,
-  PhotoRecord
+  PhotoRecord,
+  CultivationIntelligenceContext,
 } from '../types';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
 
@@ -151,18 +152,28 @@ export const aiService = {
     cultivationContext?: CultivationAnalysisContext;
     chatHistory?: { role: string; content: string }[];
     condensedSummary?: string[];
+    intelligenceContext?: CultivationIntelligenceContext;
+    cultivation?: Cultivation;
+    waterings?: Watering[];
+    envRecords?: EnvironmentRecord[];
+    photos?: PhotoRecord[];
+    diaryEntries?: DiaryEntry[];
   }): Promise<string> {
-    const dummyCultivation: Cultivation = {
+    const targetCultivation: Cultivation = params.cultivation || {
       id: params.cultivationContext?.id || 'temp',
       userId: 'user',
       name: params.cultivationContext?.cropName || params.cultivationContext?.name || 'Cultivo',
       startDate: new Date().toISOString(),
-      type: 'Indoor',
+      type: (params.cultivationContext?.type as any) || 'Indoor',
       plantCount: 1,
-      currentStage: (params.cultivationContext?.stage as any) || 'Vegetativo',
+      currentStage: (params.cultivationContext?.stage as any) || (params.cultivationContext?.currentStage as any) || 'Vegetativo',
       stageStartDate: new Date().toISOString(),
-      substrate: { type: 'Tierra', potVolumeLiters: 10, potType: 'Geotextil' },
-      status: 'Óptimo',
+      substrate: {
+        type: 'No especificado',
+        potVolumeLiters: 0,
+        potType: 'Otro',
+      },
+      status: 'ESTABLE',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -175,12 +186,13 @@ export const aiService = {
         text: h.content,
         timestamp: '',
       })),
-      cultivation: dummyCultivation,
-      recentWaterings: params.cultivationContext?.recentWaterings || [],
-      recentEnv: params.cultivationContext?.recentEnv || [],
-      recentPhotos: [],
-      recentNotes: [],
+      cultivation: targetCultivation,
+      recentWaterings: params.waterings || params.cultivationContext?.recentWaterings || [],
+      recentEnv: params.envRecords || params.cultivationContext?.recentEnv || [],
+      recentPhotos: params.photos || [],
+      recentNotes: params.diaryEntries || [],
       condensedSummary: params.condensedSummary,
+      intelligenceContext: params.intelligenceContext,
     });
 
     return res.reply;
@@ -234,6 +246,7 @@ export const aiService = {
     recentPhotos: PhotoRecord[];
     recentNotes: DiaryEntry[];
     condensedSummary?: string[];
+    intelligenceContext?: CultivationIntelligenceContext;
   }): Promise<{
     reply: string;
     evidence?: {
@@ -302,8 +315,12 @@ export const aiService = {
       plantCount: params.cultivations.length,
       currentStage: (params.cultivations[0]?.stage as any) || 'Vegetativo',
       stageStartDate: new Date().toISOString(),
-      substrate: { type: 'Tierra', potVolumeLiters: 10, potType: 'Geotextil' },
-      status: 'Óptimo',
+      substrate: {
+        type: 'No especificado',
+        potVolumeLiters: 0,
+        potType: 'Otro',
+      },
+      status: 'ESTABLE',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

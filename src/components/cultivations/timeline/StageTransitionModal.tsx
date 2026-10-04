@@ -22,6 +22,7 @@ import {
   getLocalTodayDateOnly,
   isFloweringStage,
   isPreFloweringStage,
+  computeStageTransition,
 } from '../../../utils/growthStageUtils';
 import { cultivationService } from '../../../services/cultivationService';
 
@@ -107,11 +108,9 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
   const isCurrentActive =
     (cultivation.currentStage || '').toLowerCase().trim() === selectedStageName.toLowerCase().trim();
 
-  const isTransitionToFlowering =
+  const isEnteringFlowering =
     isFloweringStage(selectedStageName) &&
     !isFloweringStage(cultivation.currentStage);
-
-  const isEnteringFlowering = isFloweringStage(selectedStageName);
 
   const handleStageSelect = (stageName: string) => {
     setSelectedStageName(stageName);
@@ -129,63 +128,16 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
       setSaving(true);
       setError(null);
 
-      const currIdx = stages.findIndex(
-        (s) => s.name.toLowerCase().trim() === (cultivation.currentStage || '').toLowerCase().trim()
-      );
-      const targetIdx = stages.findIndex(
-        (s) => s.name.toLowerCase().trim() === selectedStageName.toLowerCase().trim()
-      );
-
-      // Re-map stages:
-      // - cerrar la etapa anterior con actualEndDate = effectiveDate
-      // - iniciar la nueva etapa con actualStartDate = effectiveDate
-      const updatedStages = stages.map((st, idx) => {
-        const isTarget = idx === targetIdx;
-        const isPastTarget = targetIdx !== -1 && idx < targetIdx;
-        const isPreviousActive = idx === currIdx;
-
-        let actualStart = st.actualStartDate;
-        let actualEnd = st.actualEndDate;
-
-        if (isTarget) {
-          actualStart = effectiveDate;
+      const { updatedStages, updates } = computeStageTransition(
+        cultivation,
+        stages,
+        selectedStageName,
+        effectiveDate,
+        {
+          updatePhotoperiod,
+          customLightHours,
         }
-
-        if (isPastTarget && isPreviousActive) {
-          actualEnd = effectiveDate;
-        } else if (isPastTarget && idx === targetIdx - 1 && !actualEnd) {
-          actualEnd = effectiveDate;
-        }
-
-        return {
-          ...st,
-          isCompleted: isPastTarget,
-          actualStartDate: actualStart,
-          actualEndDate: actualEnd,
-          photoperiodHoursLight:
-            isTarget && updatePhotoperiod ? customLightHours : st.photoperiodHoursLight,
-        };
-      });
-
-      const updates: Partial<Cultivation> = {
-        currentStage: selectedStageName,
-        stageStartDate: effectiveDate,
-        stagesTimeline: updatedStages,
-      };
-
-      // Set floweringStartDate ONLY when entering Floración (NOT Prefloración!)
-      if (isEnteringFlowering) {
-        updates.floweringStartDate = effectiveDate;
-      }
-
-      // Handle photoperiod sync if requested
-      if (updatePhotoperiod && cultivation.type !== 'Outdoor') {
-        updates.lighting = {
-          ...(cultivation.lighting || { type: 'LED Quantum Board', usedWatts: 240 }),
-          photoperiodHoursLight: customLightHours,
-          photoperiodHoursDark: darkHours,
-        };
-      }
+      );
 
       // Handle harvest or finished
       if (selectedStageName === 'Cosecha' || selectedStageName === 'Finalizado') {
@@ -599,7 +551,7 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
             </div>
           )}
 
-          {isTransitionToFlowering && (
+          {isEnteringFlowering && (
             <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200/90 text-xs text-emerald-900 flex items-start gap-2">
               <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
               <div>

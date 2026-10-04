@@ -366,6 +366,114 @@ export function isFlowerRelatedStage(name?: string): boolean {
   return isFloweringStage(clean) || isPreFloweringStage(clean) || clean.includes('madur') || clean.includes('lavad');
 }
 
+export interface StageTransitionResult {
+  updatedStages: CultivationGrowthStage[];
+  updates: Partial<Cultivation>;
+}
+
+/**
+ * Computes deterministic stage transition updates:
+ * - Closes previous active stage with actualEndDate = effectiveDate
+ * - Opens target stage with actualStartDate = effectiveDate
+ * - Updates cultivation.stageStartDate = effectiveDate
+ * - Sets floweringStartDate ONLY when entering Floración (never Prefloración)
+ */
+export function computeStageTransition(
+  cultivation: Cultivation,
+  stages: CultivationGrowthStage[],
+  selectedStageName: string,
+  effectiveDate: string,
+  options?: {
+    updatePhotoperiod?: boolean;
+    customLightHours?: number;
+  }
+): StageTransitionResult {
+  const currIdx = stages.findIndex(
+    (s) => s.name.toLowerCase().trim() === (cultivation.currentStage || '').toLowerCase().trim()
+  );
+  const targetIdx = stages.findIndex(
+    (s) => s.name.toLowerCase().trim() === selectedStageName.toLowerCase().trim()
+  );
+
+  const isRegressing = currIdx !== -1 && targetIdx !== -1 && targetIdx < currIdx;
+  const isEnteringFlowering =
+    isFloweringStage(selectedStageName) &&
+    !isFloweringStage(cultivation.currentStage);
+
+  const updatedStages = stages.map((st, idx) => {
+    const isTarget = idx === targetIdx;
+    const isPastTarget = targetIdx !== -1 && idx < targetIdx;
+    const isFutureOfTarget = targetIdx !== -1 && idx > targetIdx;
+    const isPreviousActive = idx === currIdx;
+
+    let actualStart = st.actualStartDate;
+    let actualEnd = st.actualEndDate;
+    let notes = st.notes;
+
+    if (isRegressing) {
+      if (isTarget) {
+        actualStart = effectiveDate;
+        actualEnd = undefined;
+      } else if (isFutureOfTarget) {
+        if (st.actualStartDate && !notes?.includes('[Historial previo]')) {
+          const histNote = `[Historial previo: ${st.actualStartDate}${st.actualEndDate ? ` al ${st.actualEndDate}` : ''}]`;
+          notes = notes ? `${notes} ${histNote}` : histNote;
+        }
+        actualStart = undefined;
+        actualEnd = undefined;
+      }
+    } else {
+      if (isTarget) {
+        actualStart = effectiveDate;
+        actualEnd = undefined;
+      }
+
+      if (isPastTarget && isPreviousActive) {
+        actualEnd = effectiveDate;
+      } else if (isPastTarget && idx === targetIdx - 1 && !actualEnd) {
+        actualEnd = effectiveDate;
+      }
+    }
+
+    return {
+      ...st,
+      isCompleted: isPastTarget,
+      actualStartDate: actualStart,
+      actualEndDate: actualEnd,
+      notes,
+      photoperiodHoursLight:
+        isTarget && options?.updatePhotoperiod && options?.customLightHours !== undefined
+          ? options.customLightHours
+          : st.photoperiodHoursLight,
+    };
+  });
+
+  const updates: Partial<Cultivation> = {
+    currentStage: selectedStageName,
+    stageStartDate: effectiveDate,
+    stagesTimeline: updatedStages,
+  };
+
+  if (isEnteringFlowering) {
+    updates.floweringStartDate = effectiveDate;
+  } else if (isRegressing) {
+    const florStageIndex = stages.findIndex((s) => isFloweringStage(s.name));
+    if (florStageIndex !== -1 && targetIdx < florStageIndex) {
+      updates.floweringStartDate = '';
+    }
+  }
+
+  if (options?.updatePhotoperiod && cultivation.type !== 'Outdoor' && options.customLightHours !== undefined) {
+    updates.lighting = {
+      ...(cultivation.lighting || { type: 'LED Quantum Board', usedWatts: 240 }),
+      photoperiodHoursLight: options.customLightHours,
+      photoperiodHoursDark: Math.max(0, 24 - options.customLightHours),
+    };
+  }
+
+  return { updatedStages, updates };
+}
+
 // Helper to add days to a date string YYYY-MM-DD safely without timezone shifts
 export function addDays(dateStr: string, days: number): string {
   const parsed = parseDateOnly(dateStr);
@@ -504,11 +612,15 @@ export function buildCultivationStageSchedule(
   }
 
   // 4. Real dates priority
-  const realFloraStartDate =
-    cultivation.floweringStartDate ||
-    (isFloweringStage(baseStages[activeStageIndex]?.name)
-      ? cultivation.stageStartDate || null
-      : null);
+  const florIdx = baseStages.findIndex((s) => isFloweringStage(s.name));
+  const isFlorActiveOrPassed = florIdx !== -1 && activeStageIndex >= florIdx;
+
+  const realFloraStartDate = isFlorActiveOrPassed
+    ? (cultivation.floweringStartDate ||
+       (isFloweringStage(baseStages[activeStageIndex]?.name)
+         ? cultivation.stageStartDate || null
+         : null))
+    : null;
 
   const realActiveStageStart = cultivation.stageStartDate || null;
 
@@ -823,6 +935,7 @@ export interface TimelineMetrics {
   daysInActiveStage: number;
   activeStageProgressPct: number;
   projectedHarvestDate: string;
+  estimatedHarvestDate: string;
   daysUntilHarvest: number;
   isHarvestCompleted: boolean;
 }
@@ -882,6 +995,7 @@ export function calculateTimelineMetrics(
     daysInActiveStage,
     activeStageProgressPct,
     projectedHarvestDate: schedule.estimatedHarvestDate,
+    estimatedHarvestDate: schedule.estimatedHarvestDate,
     daysUntilHarvest: schedule.daysUntilHarvest,
     isHarvestCompleted,
   };
