@@ -16,6 +16,7 @@ import {
   BellRing,
   ShieldAlert,
   Sparkles,
+  ChevronDown,
 } from 'lucide-react';
 import {
   Cultivation,
@@ -101,6 +102,12 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
   const [locationCoordinates, setLocationCoordinates] = useState<{ lat: number; lon: number } | undefined>(undefined);
   const [notes, setNotes] = useState('');
   const [coverPhotoUrl, setCoverPhotoUrl] = useState('');
+  const [showPreviousHistory, setShowPreviousHistory] = useState(false);
+  const [priorDates, setPriorDates] = useState<{
+    germinacion?: string;
+    plantula?: string;
+    vegetativo?: string;
+  }>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -442,6 +449,28 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
         ? todayStr
         : (cultivationToEdit?.stageStartDate || startDate || todayStr);
 
+      const isStartFromGermination = currentStage === 'Germinación';
+      const hasExplicitPriorHistory = Boolean(
+        priorDates.germinacion || priorDates.plantula || priorDates.vegetativo
+      );
+
+      const timelineHistoryMode: 'known_from_start' | 'unknown_before_current_stage' =
+        cultivationToEdit?.timelineHistoryMode ||
+        (isStartFromGermination || hasExplicitPriorHistory
+          ? 'known_from_start'
+          : 'unknown_before_current_stage');
+
+      const cycleStartKnown =
+        cultivationToEdit?.cycleStartKnown !== undefined
+          ? cultivationToEdit.cycleStartKnown
+          : isStartFromGermination
+          ? true
+          : Boolean(priorDates.germinacion);
+
+      const resolvedStartDate = isStartFromGermination
+        ? stageStartDate
+        : (priorDates.germinacion || cultivationToEdit?.startDate || stageStartDate);
+
       const isOutdoorOrGreenhouse = type === 'Outdoor' || type === 'Invernadero';
       let finalLightingType = lightingType.trim();
       let finalUsedWatts: number | undefined = undefined;
@@ -488,13 +517,15 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
       const cultivationPayload: any = {
         userId: activeUserId,
         name: name.trim(),
-        startDate: startDate || todayStr,
+        startDate: resolvedStartDate,
         type: type || 'Indoor',
         plantCount: Math.max(1, Number(plantCount) || totalPlantsFromGenetics || 1),
         photoperiodType: primaryGen?.photoperiodType || 'Fotoperiódica',
         declaredFloweringWeeks: calculatedFloweringWeeks,
         currentStage: currentStage || 'Vegetativo',
         stageStartDate,
+        timelineHistoryMode,
+        cycleStartKnown,
         substrate: {
           type: substrateType || 'Turba / Perlita / Humus',
           potVolumeLiters: Number(potVolumeLiters) || 11,
@@ -520,7 +551,7 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
 
       if (isFloweringStage(currentStage)) {
         cultivationPayload.floweringStartDate =
-          cultivationToEdit?.floweringStartDate || (isStageChanged ? todayStr : startDate);
+          cultivationToEdit?.floweringStartDate || (isStageChanged ? todayStr : stageStartDate);
       }
 
       // Sync stagesTimeline if present on edit
@@ -650,13 +681,71 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">Fecha de inicio *</label>
+                <label className="block text-xs font-bold text-stone-700 mb-1">Etapa actual *</label>
+                <select
+                  id="crop-stage-select"
+                  value={currentStage}
+                  onChange={(e) => {
+                    const newStage = e.target.value;
+                    setCurrentStage(newStage);
+                    if (newStage.toLowerCase().includes('flor')) {
+                      setLightHours(12);
+                    } else if (
+                      newStage.toLowerCase().includes('veg') ||
+                      newStage.toLowerCase().includes('plánt') ||
+                      newStage.toLowerCase().includes('germin')
+                    ) {
+                      if (lightHours === 12) setLightHours(18);
+                    }
+                  }}
+                  className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-stone-800 text-sm focus:outline-hidden focus:border-emerald-500 focus:bg-white cursor-pointer"
+                >
+                  <option value="Germinación">🌱 Germinación</option>
+                  <option value="Plántula">🌿 Plántula</option>
+                  <option value="Vegetativo">🌳 Vegetativo (18/6)</option>
+                  <option value="Floración">🌸 Floración (12/12)</option>
+                  <option value="Lavado / Secado">🍂 Lavado / Cosecha</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1" id="crop-stage-start-date-label">
+                  {currentStage === 'Germinación'
+                    ? '¿Cuándo empezó el cultivo? *'
+                    : currentStage === 'Plántula'
+                    ? '¿Cuándo empezó Plántula? *'
+                    : currentStage === 'Vegetativo'
+                    ? '¿Cuándo empezó Vegetativo? *'
+                    : currentStage === 'Floración'
+                    ? '¿Cuándo empezó Floración? *'
+                    : `¿Cuándo empezó ${currentStage}? *`}
+                </label>
                 <input
                   id="crop-start-date-input"
                   type="date"
                   required
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-stone-800 text-sm focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-stone-700 mb-1">
+                  Cantidad total de plantas
+                  {geneticsEntries.length > 1 && (
+                    <span className="text-[11px] font-normal text-emerald-700 ml-1.5">
+                      (Suma de genéticas: {geneticsEntries.reduce((s, g) => s + (Number(g.plantCount) || 1), 0)})
+                    </span>
+                  )}
+                </label>
+                <input
+                  id="crop-plant-count-input"
+                  type="number"
+                  min="1"
+                  max="100"
+                  value={plantCount}
+                  onChange={(e) => setPlantCount(parseInt(e.target.value) || 1)}
                   className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-stone-800 text-sm focus:outline-hidden focus:border-emerald-500 focus:bg-white"
                 />
               </div>
@@ -707,55 +796,75 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                   </div>
                 )}
               </div>
-
-              <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">
-                  Cantidad total de plantas
-                  {geneticsEntries.length > 1 && (
-                    <span className="text-[11px] font-normal text-emerald-700 ml-1.5">
-                      (Suma de genéticas: {geneticsEntries.reduce((s, g) => s + (Number(g.plantCount) || 1), 0)})
-                    </span>
-                  )}
-                </label>
-                <input
-                  id="crop-plant-count-input"
-                  type="number"
-                  min="1"
-                  max="100"
-                  value={plantCount}
-                  onChange={(e) => setPlantCount(parseInt(e.target.value) || 1)}
-                  className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-stone-800 text-sm focus:outline-hidden focus:border-emerald-500 focus:bg-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">Etapa actual / inicial</label>
-                <select
-                  id="crop-stage-select"
-                  value={currentStage}
-                  onChange={(e) => {
-                    const newStage = e.target.value;
-                    setCurrentStage(newStage);
-                    if (newStage.toLowerCase().includes('flor')) {
-                      setLightHours(12);
-                    } else if (
-                      newStage.toLowerCase().includes('veg') ||
-                      newStage.toLowerCase().includes('plánt') ||
-                      newStage.toLowerCase().includes('germin')
-                    ) {
-                      if (lightHours === 12) setLightHours(18);
-                    }
-                  }}
-                  className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-stone-800 text-sm focus:outline-hidden focus:border-emerald-500 focus:bg-white cursor-pointer"
-                >
-                  <option value="Germinación">🌱 Germinación</option>
-                  <option value="Plántula">🌿 Plántula</option>
-                  <option value="Vegetativo">🌳 Vegetativo (18/6)</option>
-                  <option value="Floración">🌸 Floración (12/12)</option>
-                  <option value="Lavado / Secado">🍂 Lavado / Cosecha</option>
-                </select>
-              </div>
             </div>
+
+            {/* Progressive disclosure: Fechas anteriores opcionales */}
+            {currentStage !== 'Germinación' && (
+              <div className="pt-2 border-t border-stone-200/60">
+                <button
+                  type="button"
+                  id="toggle-prior-history-btn"
+                  onClick={() => setShowPreviousHistory(!showPreviousHistory)}
+                  className="text-xs font-semibold text-emerald-800 hover:text-emerald-900 flex items-center gap-1.5 cursor-pointer py-1"
+                >
+                  <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showPreviousHistory ? 'rotate-180' : ''}`} />
+                  Agregar fechas anteriores (opcional)
+                </button>
+
+                {showPreviousHistory && (
+                  <div className="mt-2.5 p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
+                    <p className="text-[11px] text-stone-500 leading-relaxed">
+                      Si conoces las fechas reales de inicio de etapas previas, puedes registrarlas aquí. Si no las recuerdas, déjalas vacías y Cultiveta marcará el historial anterior como desconocido sin proyectar fechas hacia atrás.
+                    </p>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                          ¿Cuándo empezó Germinación? (opcional)
+                        </label>
+                        <input
+                          id="prior-stage-germinacion-input"
+                          type="date"
+                          value={priorDates.germinacion || ''}
+                          onChange={(e) => setPriorDates((p) => ({ ...p, germinacion: e.target.value }))}
+                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-emerald-500"
+                        />
+                      </div>
+
+                      {(currentStage === 'Vegetativo' || currentStage === 'Floración' || currentStage === 'Lavado / Secado') && (
+                        <div>
+                          <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                            ¿Cuándo empezó Plántula? (opcional)
+                          </label>
+                          <input
+                            id="prior-stage-plantula-input"
+                            type="date"
+                            value={priorDates.plantula || ''}
+                            onChange={(e) => setPriorDates((p) => ({ ...p, plantula: e.target.value }))}
+                            className="w-full px-3 py-1.5 rounded-xl bg-white border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-emerald-500"
+                          />
+                        </div>
+                      )}
+
+                      {(currentStage === 'Floración' || currentStage === 'Lavado / Secado') && (
+                        <div>
+                          <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                            ¿Cuándo empezó Vegetativo? (opcional)
+                          </label>
+                          <input
+                            id="prior-stage-vegetativo-input"
+                            type="date"
+                            value={priorDates.vegetativo || ''}
+                            onChange={(e) => setPriorDates((p) => ({ ...p, vegetativo: e.target.value }))}
+                            className="w-full px-3 py-1.5 rounded-xl bg-white border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-emerald-500"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Section 2: Genetics */}

@@ -236,9 +236,15 @@ export const taskService = {
         }
 
         // Milestone C: Trichome Inspection / Harvest
-        if (flowDays >= totalFlowDaysExpected - 3) {
+        // Aparece solamente cuando schedule.daysUntilHarvest >= 0 && schedule.daysUntilHarvest <= 2
+        if (
+          schedule.daysUntilHarvest !== undefined &&
+          schedule.daysUntilHarvest >= 0 &&
+          schedule.daysUntilHarvest <= 2
+        ) {
           const harvestCheckTaskId = `harvest_check_${crop.id}`;
           const isHarvestCheckCompleted = !!completedMap[harvestCheckTaskId];
+          const estimatedHarvest = schedule.estimatedHarvestDate || todayStr;
           tasks.push({
             id: harvestCheckTaskId,
             cultivationId: crop.id,
@@ -247,8 +253,8 @@ export const taskService = {
             stage: crop.currentStage,
             type: 'harvest',
             title: `Inspección de Tricomas (Cosecha Próxima)`,
-            description: `Día ${flowDays} de flora (${floweringWeeks} semanas cumplidas). Observar glándulas de resina con lupa 60x: buscar 70-80% lechosos y 10-20% ámbar.`,
-            dueDate: todayStr,
+            description: `Día ${flowDays} de flora (${floweringWeeks} semanas cumplidas). Cosecha estimada: ${estimatedHarvest} (${schedule.daysUntilHarvest === 0 ? 'hoy' : `en ${schedule.daysUntilHarvest} día(s)`}). Observar glándulas de resina con lupa 60x: buscar 70-80% lechosos y 10-20% ámbar.`,
+            dueDate: estimatedHarvest,
             urgency: 'today',
             priority: 'critical',
             isCompleted: isHarvestCheckCompleted,

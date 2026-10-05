@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Droplets, Plus, Trash2, Save, Sparkles, FlaskConical, ChevronDown } from 'lucide-react';
-import { Cultivation, Watering, WateringProductItem, FertilizationSchedule } from '../../types';
+import { Cultivation, Watering, WateringProductItem, FertilizationSchedule, PotLiftFeeling } from '../../types';
 import { wateringService } from '../../services/wateringService';
 import { fertilizationService } from '../../services/fertilizationService';
 
@@ -42,8 +42,7 @@ export const WateringModal: React.FC<WateringModalProps> = ({
   const [phRunoff, setPhRunoff] = useState<number | ''>('');
   const [ecRunoff, setEcRunoff] = useState<number | ''>('');
   const [runoffVolumeLiters, setRunoffVolumeLiters] = useState<number | ''>('');
-  const [potWeightBeforeWateringKg, setPotWeightBeforeWateringKg] = useState<number | ''>('');
-  const [potWeightAfterWateringKg, setPotWeightAfterWateringKg] = useState<number | ''>('');
+  const [potLiftBeforeWatering, setPotLiftBeforeWatering] = useState<PotLiftFeeling | undefined>(undefined);
   const [substrateMoistureBeforePct, setSubstrateMoistureBeforePct] = useState<number | ''>('');
   const [substrateMoistureAfterPct, setSubstrateMoistureAfterPct] = useState<number | ''>('');
   const [waterTempC, setWaterTempC] = useState<number | ''>('');
@@ -161,8 +160,9 @@ export const WateringModal: React.FC<WateringModalProps> = ({
         phRunoff: phRunoff !== '' ? Number(phRunoff) : undefined,
         ecRunoff: ecRunoff !== '' ? Number(ecRunoff) : undefined,
         runoffVolumeLiters: runoffVolumeLiters !== '' ? Number(runoffVolumeLiters) : undefined,
-        potWeightBeforeWateringKg: potWeightBeforeWateringKg !== '' ? Number(potWeightBeforeWateringKg) : undefined,
-        potWeightAfterWateringKg: potWeightAfterWateringKg !== '' ? Number(potWeightAfterWateringKg) : undefined,
+        potLiftBeforeWatering: potLiftBeforeWatering || undefined,
+        potWeightBeforeWateringKg: undefined,
+        potWeightAfterWateringKg: undefined,
         substrateMoistureBeforePct: substrateMoistureBeforePct !== '' ? Number(substrateMoistureBeforePct) : undefined,
         substrateMoistureAfterPct: substrateMoistureAfterPct !== '' ? Number(substrateMoistureAfterPct) : undefined,
         waterTempC: waterTempC !== '' ? Number(waterTempC) : undefined,
@@ -408,6 +408,89 @@ export const WateringModal: React.FC<WateringModalProps> = ({
             )}
           </div>
 
+          {/* Percepción de peso al levantar la maceta a mano (sin balanza) */}
+          <div className="p-4 rounded-2xl bg-white border border-[#EFE3CF] space-y-2.5">
+            <div className="flex items-center justify-between">
+              <h4 className="text-[11px] font-bold uppercase tracking-wider text-[#6E5D77]">
+                Antes de regar, levantá la maceta
+              </h4>
+              <span className="text-[10px] text-[#9887A2] font-semibold">Opcional</span>
+            </div>
+            <p className="text-xs font-semibold text-[#29202F]">
+              ¿Cómo la sentís?
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" id="pot-lift-options-group">
+              <button
+                type="button"
+                data-testid="pot-lift-heavy"
+                onClick={() => setPotLiftBeforeWatering(potLiftBeforeWatering === 'heavy' ? undefined : 'heavy')}
+                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                  potLiftBeforeWatering === 'heavy'
+                    ? 'bg-[#EBF7EB] border-[#62B95B] text-[#29202F] shadow-xs ring-1 ring-[#62B95B]'
+                    : 'bg-[#FFFDF7] border-[#EFE3CF] text-[#6E5D77] hover:border-[#62B95B]/50'
+                }`}
+              >
+                <div className="text-xs font-bold text-[#29202F]">PESADA</div>
+                <div className="text-[11px] text-[#6E5D77] mt-0.5 leading-tight">
+                  Todavía parece conservar bastante agua.
+                </div>
+              </button>
+
+              <button
+                type="button"
+                data-testid="pot-lift-medium"
+                onClick={() => setPotLiftBeforeWatering(potLiftBeforeWatering === 'medium' ? undefined : 'medium')}
+                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                  potLiftBeforeWatering === 'medium'
+                    ? 'bg-[#EBF7EB] border-[#62B95B] text-[#29202F] shadow-xs ring-1 ring-[#62B95B]'
+                    : 'bg-[#FFFDF7] border-[#EFE3CF] text-[#6E5D77] hover:border-[#62B95B]/50'
+                }`}
+              >
+                <div className="text-xs font-bold text-[#29202F]">INTERMEDIA</div>
+                <div className="text-[11px] text-[#6E5D77] mt-0.5 leading-tight">
+                  Ya perdió parte del agua, pero todavía tiene peso.
+                </div>
+              </button>
+
+              <button
+                type="button"
+                data-testid="pot-lift-light"
+                onClick={() => setPotLiftBeforeWatering(potLiftBeforeWatering === 'light' ? undefined : 'light')}
+                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                  potLiftBeforeWatering === 'light'
+                    ? 'bg-[#EBF7EB] border-[#62B95B] text-[#29202F] shadow-xs ring-1 ring-[#62B95B]'
+                    : 'bg-[#FFFDF7] border-[#EFE3CF] text-[#6E5D77] hover:border-[#62B95B]/50'
+                }`}
+              >
+                <div className="text-xs font-bold text-[#29202F]">LIVIANA</div>
+                <div className="text-[11px] text-[#6E5D77] mt-0.5 leading-tight">
+                  Ya perdió buena parte del agua.
+                </div>
+              </button>
+
+              <button
+                type="button"
+                data-testid="pot-lift-very-light"
+                onClick={() => setPotLiftBeforeWatering(potLiftBeforeWatering === 'very_light' ? undefined : 'very_light')}
+                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                  potLiftBeforeWatering === 'very_light'
+                    ? 'bg-[#EBF7EB] border-[#62B95B] text-[#29202F] shadow-xs ring-1 ring-[#62B95B]'
+                    : 'bg-[#FFFDF7] border-[#EFE3CF] text-[#6E5D77] hover:border-[#62B95B]/50'
+                }`}
+              >
+                <div className="text-xs font-bold text-[#29202F]">MUY LIVIANA</div>
+                <div className="text-[11px] text-[#6E5D77] mt-0.5 leading-tight">
+                  El sustrato parece bastante seco.
+                </div>
+              </button>
+            </div>
+
+            <p className="text-[11px] text-[#9887A2] italic pt-0.5">
+              No hace falta usar una balanza. Comparala con cómo se siente recién regada.
+            </p>
+          </div>
+
           {/* Progressive Disclosure: Agregar datos técnicos */}
           <div className="border border-[#EFE3CF] rounded-2xl overflow-hidden bg-[#FFFDF7]">
             <button
@@ -525,46 +608,12 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                   </div>
                 </div>
 
-                {/* Dryback precision indicators: Pot weight & substrate moisture */}
+                {/* Sensores opcionales de humedad de sustrato */}
                 <div className="p-3.5 rounded-xl bg-white border border-[#EFE3CF] space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-[#6E5D77]">Mejorar precisión del próximo riego</h4>
+                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-[#6E5D77]">Sensor de Humedad en Sustrato</h4>
                     <span className="text-[10px] text-[#9887A2] font-semibold">Opcional</span>
                   </div>
-                  <p className="text-[11px] text-[#6E5D77] leading-relaxed">
-                    Estos datos ayudan a Cultiveta a aprender cuánto tarda tu maceta en secarse.
-                  </p>
-
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-[#6E5D77] mb-1">Peso antes de regar (kg)</label>
-                      <input
-                        id="watering-pot-weight-before-input"
-                        type="number"
-                        step="0.05"
-                        min="0"
-                        placeholder="ej. 4.2"
-                        value={potWeightBeforeWateringKg}
-                        onChange={(e) => setPotWeightBeforeWateringKg(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                        className="w-full px-3 py-1.5 rounded-xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#62B95B]"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-semibold text-[#6E5D77] mb-1">Peso después de regar (kg)</label>
-                      <input
-                        id="watering-pot-weight-after-input"
-                        type="number"
-                        step="0.05"
-                        min="0"
-                        placeholder="ej. 5.8"
-                        value={potWeightAfterWateringKg}
-                        onChange={(e) => setPotWeightAfterWateringKg(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                        className="w-full px-3 py-1.5 rounded-xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#62B95B]"
-                      />
-                    </div>
-                  </div>
-
                   <div className="grid grid-cols-2 gap-2.5 pt-1">
                     <div>
                       <label className="block text-[11px] font-semibold text-[#6E5D77] mb-1">Humedad sustrato antes (%)</label>

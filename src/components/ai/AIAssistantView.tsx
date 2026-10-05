@@ -14,16 +14,29 @@ import {
   AlertTriangle,
   Zap,
 } from 'lucide-react';
-import { Cultivation, Watering, EnvironmentRecord, AIChatMessage } from '../../types';
+import {
+  Cultivation,
+  Watering,
+  EnvironmentRecord,
+  AIChatMessage,
+  Genetics,
+  PhotoRecord,
+  DiaryEntry,
+  Harvest,
+} from '../../types';
 import { aiService } from '../../services/aiService';
 import { condenseRecordsToKeyPoints } from '../../utils/condenseRecords';
 import { buildCultivationIntelligenceContext } from '../../services/cultivationIntelligenceService';
 
-interface AIAssistantViewProps {
+export interface AIAssistantViewProps {
   cultivations: Cultivation[];
   activeCultivation?: Cultivation | null;
   recentWaterings: Watering[];
   recentEnvRecords: EnvironmentRecord[];
+  geneticsList?: Genetics[];
+  photos?: PhotoRecord[];
+  diaryEntries?: DiaryEntry[];
+  harvests?: Harvest[];
 }
 
 export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
@@ -31,6 +44,10 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
   activeCultivation,
   recentWaterings,
   recentEnvRecords,
+  geneticsList = [],
+  photos = [],
+  diaryEntries = [],
+  harvests = [],
 }) => {
   const [selectedCropId, setSelectedCropId] = useState<string>(
     activeCultivation?.id || cultivations[0]?.id || ''
@@ -106,11 +123,29 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
       const cropWaterings = recentWaterings.filter((w) => w.cultivationId === selectedCropId);
       const cropEnv = recentEnvRecords.filter((e) => e.cultivationId === selectedCropId);
 
+      // Sanitize photo records to only include useful metadata without image binary/payloads
+      const photoMetadata: PhotoRecord[] = photos.map((p) => ({
+        id: p.id,
+        userId: p.userId,
+        cultivationId: p.cultivationId,
+        date: p.date,
+        dayOfCultivation: p.dayOfCultivation,
+        stage: p.stage,
+        category: p.category,
+        caption: p.caption,
+        url: '', // strip image binary / storage URL
+        createdAt: p.createdAt,
+      }));
+
       const intelligenceContext = selectedCrop
         ? buildCultivationIntelligenceContext({
             cultivation: selectedCrop,
             waterings: cropWaterings,
             envRecords: cropEnv,
+            photos: photoMetadata,
+            diaryEntries,
+            geneticsList,
+            harvests,
           })
         : undefined;
 
@@ -143,8 +178,12 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
         intelligenceContext,
         cultivationContext: contextPayload,
         condensedSummary: pointsToInclude,
-        chatHistory: messages.slice(-6).map((m) => ({
-          role: m.sender === 'user' ? 'user' : 'model',
+        photos: photoMetadata,
+        diaryEntries,
+        waterings: cropWaterings,
+        envRecords: cropEnv,
+        chatHistory: messages.slice(-10).map((m) => ({
+          role: m.sender === 'user' ? 'user' : 'assistant',
           content: m.text,
         })),
       });

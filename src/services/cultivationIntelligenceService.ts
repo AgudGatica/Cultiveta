@@ -55,8 +55,12 @@ export function buildCultivationIntelligenceContext(params: {
     potType: cultivation.substrate?.potType || undefined,
     lightingType: cultivation.lighting?.type || undefined,
     lightingWatts: cultivation.lighting?.usedWatts || cultivation.lighting?.nominalWatts || undefined,
-    photoperiodHoursLight: cultivation.lighting?.photoperiodHoursLight || (isFloweringStage(cultivation.currentStage) ? 12 : 18),
-    photoperiodHoursDark: cultivation.lighting?.photoperiodHoursDark || (isFloweringStage(cultivation.currentStage) ? 12 : 6),
+    photoperiodHoursLight: cultivation.lighting?.photoperiodHoursLight !== undefined && cultivation.lighting?.photoperiodHoursLight !== null
+      ? cultivation.lighting.photoperiodHoursLight
+      : undefined,
+    photoperiodHoursDark: cultivation.lighting?.photoperiodHoursDark !== undefined && cultivation.lighting?.photoperiodHoursDark !== null
+      ? cultivation.lighting.photoperiodHoursDark
+      : undefined,
   };
 
   // 2. Chronological context strictly derived from buildCultivationStageSchedule

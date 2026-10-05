@@ -896,6 +896,10 @@ export default function App() {
               activeCultivation={selectedCultivation}
               recentWaterings={waterings}
               recentEnvRecords={envRecords}
+              geneticsList={geneticsList}
+              photos={photos}
+              diaryEntries={diaryEntries}
+              harvests={harvests}
             />
           )}
 

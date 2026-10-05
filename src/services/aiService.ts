@@ -159,24 +159,7 @@ export const aiService = {
     photos?: PhotoRecord[];
     diaryEntries?: DiaryEntry[];
   }): Promise<string> {
-    const targetCultivation: Cultivation = params.cultivation || {
-      id: params.cultivationContext?.id || 'temp',
-      userId: 'user',
-      name: params.cultivationContext?.cropName || params.cultivationContext?.name || 'Cultivo',
-      startDate: new Date().toISOString(),
-      type: (params.cultivationContext?.type as any) || 'Indoor',
-      plantCount: 1,
-      currentStage: (params.cultivationContext?.stage as any) || (params.cultivationContext?.currentStage as any) || 'Vegetativo',
-      stageStartDate: new Date().toISOString(),
-      substrate: {
-        type: 'No especificado',
-        potVolumeLiters: 0,
-        potType: 'Otro',
-      },
-      status: 'ESTABLE',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    const targetCultivation: Cultivation | undefined = params.cultivation;
 
     const res = await this.chatWithCropContext({
       message: params.question,
@@ -240,11 +223,11 @@ export const aiService = {
   async chatWithCropContext(params: {
     message: string;
     history: AIConversationMessage[];
-    cultivation: Cultivation;
-    recentWaterings: Watering[];
-    recentEnv: EnvironmentRecord[];
-    recentPhotos: PhotoRecord[];
-    recentNotes: DiaryEntry[];
+    cultivation?: Cultivation;
+    recentWaterings?: Watering[];
+    recentEnv?: EnvironmentRecord[];
+    recentPhotos?: PhotoRecord[];
+    recentNotes?: DiaryEntry[];
     condensedSummary?: string[];
     intelligenceContext?: CultivationIntelligenceContext;
   }): Promise<{

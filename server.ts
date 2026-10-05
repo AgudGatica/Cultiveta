@@ -459,11 +459,11 @@ app.post('/api/ai/chat', async (req, res) => {
 
     const ai = getAIClient();
 
-    const cropName = intelligenceContext?.identity?.name || cultivation?.name || 'Cultivo';
+    const cropName = intelligenceContext?.identity?.name || cultivation?.name;
 
     const systemInstruction = `
 Eres Cultiveta IA, el compañero experto y botánico de la aplicación Cultiveta.
-Estás conversando con el cultivador sobre su cultivo: "${cropName}".
+${cropName ? `Estás conversando con el cultivador sobre su cultivo: "${cropName}".` : `Estás conversando con el cultivador sobre botánica y cultivo general (sin cultivo específico seleccionado).`}
 
 PRINCIPIO CENTRAL DE CULTIVETA:
 DATOS REALES → CÁLCULOS DETERMINISTAS → ESTIMACIONES CON INCERTIDUMBRE → IA QUE INTERPRETA Y EXPLICA
@@ -476,7 +476,7 @@ ${intelligenceContext ? `
 - Genética: ${intelligenceContext.identity.geneticsName || 'Sin especificar'} (Banco: ${intelligenceContext.identity.seedBank || 'N/A'})
 - Tipo: ${intelligenceContext.identity.type} | Plantas: ${intelligenceContext.identity.plantCount}
 - Sustrato: ${intelligenceContext.identity.substrateType || 'No registrado'} (${intelligenceContext.identity.potVolumeLiters ? `${intelligenceContext.identity.potVolumeLiters}L` : 'Volumen no registrado'}${intelligenceContext.identity.potType ? `, maceta ${intelligenceContext.identity.potType}` : ''})
-- Iluminación: ${intelligenceContext.identity.lightingType || 'N/A'} (${intelligenceContext.identity.lightingWatts ? `${intelligenceContext.identity.lightingWatts}W` : 'potencia s/d'}) | Fotoperiodo: ${intelligenceContext.identity.photoperiodHoursLight || 18}h luz / ${intelligenceContext.identity.photoperiodHoursDark || 6}h oscuridad
+- Iluminación: ${intelligenceContext.identity.lightingType || 'N/A'} (${intelligenceContext.identity.lightingWatts ? `${intelligenceContext.identity.lightingWatts}W` : 'potencia s/d'}) | Fotoperiodo: ${intelligenceContext.identity.photoperiodHoursLight !== undefined && intelligenceContext.identity.photoperiodHoursDark !== undefined ? `${intelligenceContext.identity.photoperiodHoursLight}h luz / ${intelligenceContext.identity.photoperiodHoursDark}h oscuridad` : 'No registrado'}
 
 2. CRONOLOGÍA Y ETAPAS:
 - Fecha de inicio: ${intelligenceContext.chronology.startDate} (Día real transcurrido: ${intelligenceContext.chronology.realDaysElapsed})
@@ -499,15 +499,23 @@ ${intelligenceContext.irrigation.statistics.intervalByVpdLevel ? `- Relación am
 4. AMBIENTE AGREGADO:
 - Última medición: ${JSON.stringify(intelligenceContext.environment.latest || 'N/A')}
 - Promedio desde último riego: Temp ${intelligenceContext.environment.avgSinceLastWatering.tempC ?? 's/d'}°C (Max ${intelligenceContext.environment.avgSinceLastWatering.maxTempC ?? 's/d'}°C), Humedad ${intelligenceContext.environment.avgSinceLastWatering.humidityPct ?? 's/d'}%, VPD ${intelligenceContext.environment.avgSinceLastWatering.vpdKPa ?? 's/d'} kPa (Max ${intelligenceContext.environment.avgSinceLastWatering.maxVpdKPa ?? 's/d'} kPa), DLI ~${intelligenceContext.environment.avgSinceLastWatering.estimatedDli ?? 's/d'} mol/m²/d
+
+5. METADATA DE FOTOS, NOTAS Y COSECHAS:
+- Notas registradas: ${intelligenceContext.notesAndPhotos?.recentNotesCount ?? 0}
+- Fotos registradas: ${intelligenceContext.notesAndPhotos?.recentPhotosCount ?? 0}
+- Cosechas registradas del cultivador: ${intelligenceContext.harvestsSummary?.pastHarvestsCount ?? 0}
 =============================================================================
-` : `
+` : cultivation ? `
 INFORMACIÓN BÁSICA DEL CULTIVO:
-- Etapa actual: ${cultivation?.currentStage || 'No especificada'}
-- Tipo: ${cultivation?.type || 'Indoor'}
-- Genética: ${cultivation?.geneticsName || 'Sin especificar'} (Banco: ${cultivation?.seedBank || 'N/A'})
-- Cantidad de plantas: ${cultivation?.plantCount ?? 'No especificada'}
-- Sustrato: ${cultivation?.substrate?.type || 'No especificado'} (${cultivation?.substrate?.potVolumeLiters ? `${cultivation?.substrate?.potVolumeLiters}L` : 'Volumen no registrado'})
-- Iluminación: ${cultivation?.lighting?.type || 'N/A'}
+- Etapa actual: ${cultivation.currentStage || 'No especificada'}
+- Tipo: ${cultivation.type || 'No especificado'}
+- Genética: ${cultivation.geneticsName || 'Sin especificar'} (Banco: ${cultivation.seedBank || 'N/A'})
+- Cantidad de plantas: ${cultivation.plantCount ?? 'No especificada'}
+- Sustrato: ${cultivation.substrate?.type || 'No especificado'} (${cultivation.substrate?.potVolumeLiters ? `${cultivation.substrate?.potVolumeLiters}L` : 'Volumen no registrado'})
+- Iluminación: ${cultivation.lighting?.type || 'N/A'}
+` : `
+CONSULTA GENERAL:
+El usuario no ha seleccionado un cultivo específico. Responde a sus dudas agronómicas o botánicas generales sin asumir tipo de ambiente, genéticas ni cantidades de plantas inventadas.
 `}
 
 ${condensedSummary && Array.isArray(condensedSummary) && condensedSummary.length > 0 ? `

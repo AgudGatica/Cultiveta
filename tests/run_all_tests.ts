@@ -72,6 +72,13 @@ const suites: SuiteConfig[] = [
     expectedTests: 17,
   },
   {
+    id: 'timeline_unknown_history_and_pot_lift',
+    name: 'Cronología Historial Desconocido, Pot Lift & IA: 20 Pruebas Específicas',
+    category: 'mocks',
+    file: 'tests/timeline_unknown_history_and_pot_lift.test.ts',
+    expectedTests: 20,
+  },
+  {
     id: 'irrigation_forecast',
     name: 'Inteligencia Hídrica: 18 Pruebas Matemáticas Deterministas de Riego',
     category: 'mocks',
