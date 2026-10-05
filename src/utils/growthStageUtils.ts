@@ -1,4 +1,4 @@
-import { Cultivation, CultivationGrowthStage, CultivationStageName, Genetics } from '../types';
+import { Cultivation, CultivationGrowthStage, CultivationStageName, Genetics, StageDateKnowledge } from '../types';
 
 export interface StagePreset {
   id: string;
@@ -494,9 +494,9 @@ export function daysBetween(dateStrA: string, dateStrB: string): number {
 
 export function formatFriendlyDate(
   dateStr?: string,
-  options?: { includeYear?: boolean; isProjected?: boolean }
+  options?: { includeYear?: boolean; isProjected?: boolean; isUnknown?: boolean }
 ): string {
-  if (!dateStr) return '—';
+  if (!dateStr || options?.isUnknown || dateStr === 'Sin fecha registrada') return 'Sin fecha registrada';
   const parsed = parseDateOnly(dateStr);
   if (!parsed) return dateStr;
   const monthNames = [
@@ -517,11 +517,13 @@ export interface StageScheduleItem {
   name: string;
   expectedDurationDays: number;
   actualDurationDays?: number;
-  startDate: string; // YYYY-MM-DD
-  endDate: string; // YYYY-MM-DD
+  startDate?: string; // YYYY-MM-DD
+  endDate?: string; // YYYY-MM-DD
   status: 'completed' | 'active' | 'upcoming';
+  dateKnowledge: StageDateKnowledge;
   isProjected: boolean;
   isActual: boolean;
+  isUnknown?: boolean;
   startIsReal?: boolean;
   endIsReal?: boolean;
   actualStartDate?: string;
@@ -540,13 +542,15 @@ export interface CultivationScheduleSummary {
   activeStageIndex: number;
   activeStage: StageScheduleItem;
   cropStartDate: string;
+  isCycleStartKnown: boolean;
+  activeStageElapsedDays: number;
   baselineHarvestDate: string;
   estimatedHarvestDate: string;
   daysUntilHarvest: number;
   weeksUntilHarvest: number;
-  totalCycleDays: number;
-  totalElapsedDays: number;
-  overallProgressPct: number;
+  totalCycleDays: number | null;
+  totalElapsedDays: number | null;
+  overallProgressPct: number | null;
   adjustmentDeltaDays: number;
   hasStageAdjustments: boolean;
   adjustmentReason: string;
@@ -560,7 +564,7 @@ export interface CultivationScheduleSummary {
  * Single source of truth for cultivation stage dates and calendar schedule.
  * Reconciles theoretical presets with actual user recorded milestones
  * (floweringStartDate, stageStartDate, actualStartDate/actualEndDate) and propagates
- * forward real dates.
+ * forward real dates. NEVER projects backwards or invents past stage dates.
  */
 export function buildCultivationStageSchedule(
   cultivation: Cultivation,
@@ -611,6 +615,40 @@ export function buildCultivationStageSchedule(
     }
   }
 
+  const isFirstStage = activeStageIndex === 0;
+
+  // Check if historical dates prior to active stage are known
+  let historyKnownBeforeActive = isFirstStage;
+  if (!isFirstStage) {
+    if (cultivation.timelineHistoryMode === 'unknown_before_current_stage') {
+      historyKnownBeforeActive = false;
+    } else if (cultivation.timelineHistoryMode === 'known_from_start') {
+      historyKnownBeforeActive = true;
+    } else if (cultivation.cycleStartKnown === true) {
+      historyKnownBeforeActive = true;
+    } else {
+      // Conservative inference for legacy records:
+      // If no stage prior to activeStage has actualStartDate:
+      // and cultivation.startDate is identical to stageStartDate or floweringStartDate:
+      // Tracking began at currentStage! Earlier stages are unknown!
+      const hasPriorActualDate = baseStages.slice(0, activeStageIndex).some((s) => Boolean(s.actualStartDate));
+      const startMatchesCurrentStage = Boolean(
+        cultivation.startDate &&
+        (cultivation.startDate === cultivation.stageStartDate ||
+         (cultivation.floweringStartDate && cultivation.startDate === cultivation.floweringStartDate))
+      );
+      if (!hasPriorActualDate && startMatchesCurrentStage) {
+        historyKnownBeforeActive = false;
+      } else if (!hasPriorActualDate && cultivation.cycleStartKnown === false) {
+        historyKnownBeforeActive = false;
+      } else if (hasPriorActualDate) {
+        historyKnownBeforeActive = true;
+      } else {
+        historyKnownBeforeActive = false;
+      }
+    }
+  }
+
   // 4. Real dates priority
   const florIdx = baseStages.findIndex((s) => isFloweringStage(s.name));
   const isFlorActiveOrPassed = florIdx !== -1 && activeStageIndex >= florIdx;
@@ -622,10 +660,184 @@ export function buildCultivationStageSchedule(
          : null))
     : null;
 
-  const realActiveStageStart = cultivation.stageStartDate || null;
+  // 5. Active anchor date
+  const isFlorActive = isFloweringStage(baseStages[activeStageIndex]?.name);
+  const activeAnchor = (isFlorActive && realFloraStartDate)
+    ? realFloraStartDate
+    : (cultivation.stageStartDate ||
+       baseStages[activeStageIndex]?.actualStartDate ||
+       (isFirstStage ? cultivation.startDate : undefined) ||
+       todayStr);
 
-  // 5. Compute baseline harvest date
-  let baselineTotalDays = 0;
+  // 6. Build reconciled schedule items
+  const scheduleItems: StageScheduleItem[] = [];
+  let runnerDate = activeAnchor;
+
+  // First pass: stages prior to active stage
+  for (let i = 0; i < activeStageIndex; i++) {
+    const st = baseStages[i];
+    const isFlor = isFloweringStage(st.name);
+    const duration = (isFlor ? floweringDaysGenetics : st.expectedDurationDays) || 7;
+
+    if (st.actualStartDate) {
+      const sStart = st.actualStartDate;
+      const sEnd = st.actualEndDate || addDays(sStart, duration);
+      const startReal = true;
+      const endReal = Boolean(st.actualEndDate);
+
+      scheduleItems.push({
+        id: st.id || `stage_${i}_${st.name.toLowerCase()}`,
+        name: st.name,
+        expectedDurationDays: duration,
+        actualDurationDays: startReal && endReal ? Math.max(1, daysBetween(sStart, sEnd)) : undefined,
+        startDate: sStart,
+        endDate: sEnd,
+        status: 'completed',
+        dateKnowledge: startReal && endReal ? 'actual' : 'projected',
+        isProjected: !(startReal && endReal),
+        isActual: startReal && endReal,
+        isUnknown: false,
+        startIsReal: startReal,
+        endIsReal: endReal,
+        actualStartDate: sStart,
+        actualEndDate: st.actualEndDate,
+        photoperiodHoursLight: st.photoperiodHoursLight,
+        targetTempMinC: st.targetTempMinC,
+        targetTempMaxC: st.targetTempMaxC,
+        targetHumidityMinPct: st.targetHumidityMinPct,
+        targetHumidityMaxPct: st.targetHumidityMaxPct,
+        notes: st.notes,
+      });
+    } else if (historyKnownBeforeActive && i === 0 && cultivation.startDate) {
+      const sStart = cultivation.startDate;
+      const sEnd = st.actualEndDate || addDays(sStart, duration);
+      scheduleItems.push({
+        id: st.id || `stage_${i}_${st.name.toLowerCase()}`,
+        name: st.name,
+        expectedDurationDays: duration,
+        actualDurationDays: undefined,
+        startDate: sStart,
+        endDate: sEnd,
+        status: 'completed',
+        dateKnowledge: 'projected',
+        isProjected: true,
+        isActual: false,
+        isUnknown: false,
+        startIsReal: true,
+        endIsReal: Boolean(st.actualEndDate),
+        actualStartDate: sStart,
+        actualEndDate: st.actualEndDate,
+        photoperiodHoursLight: st.photoperiodHoursLight,
+        targetTempMinC: st.targetTempMinC,
+        targetTempMaxC: st.targetTempMaxC,
+        targetHumidityMinPct: st.targetHumidityMinPct,
+        targetHumidityMaxPct: st.targetHumidityMaxPct,
+        notes: st.notes,
+      });
+    } else {
+      // UNKNOWN: No explicit record, never fabricate past dates
+      scheduleItems.push({
+        id: st.id || `stage_${i}_${st.name.toLowerCase()}`,
+        name: st.name,
+        expectedDurationDays: duration,
+        actualDurationDays: undefined,
+        startDate: undefined,
+        endDate: undefined,
+        status: 'completed',
+        dateKnowledge: 'unknown',
+        isProjected: false,
+        isActual: false,
+        isUnknown: true,
+        startIsReal: false,
+        endIsReal: false,
+        actualStartDate: undefined,
+        actualEndDate: undefined,
+        photoperiodHoursLight: st.photoperiodHoursLight,
+        targetTempMinC: st.targetTempMinC,
+        targetTempMaxC: st.targetTempMaxC,
+        targetHumidityMinPct: st.targetHumidityMinPct,
+        targetHumidityMaxPct: st.targetHumidityMaxPct,
+        notes: st.notes,
+      });
+    }
+  }
+
+  // Second pass: active stage
+  const activeSt = baseStages[activeStageIndex];
+  if (activeSt) {
+    const isFlor = isFloweringStage(activeSt.name);
+    const duration = (isFlor ? floweringDaysGenetics : activeSt.expectedDurationDays) || 7;
+    const stageStart = activeAnchor;
+    const stageEnd = activeSt.actualEndDate || addDays(stageStart, duration);
+    const startReal = Boolean(
+      cultivation.stageStartDate ||
+      activeSt.actualStartDate ||
+      (isFlor && cultivation.floweringStartDate) ||
+      (isFirstStage && cultivation.startDate)
+    );
+
+    scheduleItems.push({
+      id: activeSt.id || `stage_${activeStageIndex}_${activeSt.name.toLowerCase()}`,
+      name: activeSt.name,
+      expectedDurationDays: duration,
+      actualDurationDays: undefined,
+      startDate: stageStart,
+      endDate: stageEnd,
+      status: 'active',
+      dateKnowledge: 'actual',
+      isProjected: true,
+      isActual: startReal,
+      isUnknown: false,
+      startIsReal: startReal,
+      endIsReal: Boolean(activeSt.actualEndDate),
+      actualStartDate: startReal ? stageStart : activeSt.actualStartDate,
+      actualEndDate: activeSt.actualEndDate,
+      photoperiodHoursLight: activeSt.photoperiodHoursLight,
+      targetTempMinC: activeSt.targetTempMinC,
+      targetTempMaxC: activeSt.targetTempMaxC,
+      targetHumidityMinPct: activeSt.targetHumidityMinPct,
+      targetHumidityMaxPct: activeSt.targetHumidityMaxPct,
+      notes: activeSt.notes,
+    });
+
+    runnerDate = stageEnd;
+  }
+
+  // Third pass: upcoming stages projected forward from runnerDate
+  for (let i = activeStageIndex + 1; i < baseStages.length; i++) {
+    const st = baseStages[i];
+    const isFlor = isFloweringStage(st.name);
+    const duration = (isFlor ? floweringDaysGenetics : st.expectedDurationDays) || 7;
+    const stageStart = runnerDate;
+    const stageEnd = addDays(stageStart, duration);
+    runnerDate = stageEnd;
+
+    scheduleItems.push({
+      id: st.id || `stage_${i}_${st.name.toLowerCase()}`,
+      name: st.name,
+      expectedDurationDays: duration,
+      actualDurationDays: undefined,
+      startDate: stageStart,
+      endDate: stageEnd,
+      status: 'upcoming',
+      dateKnowledge: 'projected',
+      isProjected: true,
+      isActual: false,
+      isUnknown: false,
+      startIsReal: false,
+      endIsReal: false,
+      actualStartDate: undefined,
+      actualEndDate: undefined,
+      photoperiodHoursLight: st.photoperiodHoursLight,
+      targetTempMinC: st.targetTempMinC,
+      targetTempMaxC: st.targetTempMaxC,
+      targetHumidityMinPct: st.targetHumidityMinPct,
+      targetHumidityMaxPct: st.targetHumidityMaxPct,
+      notes: st.notes,
+    });
+  }
+
+  // 7. Harvest calculations
   let harvestStageIndex = baseStages.findIndex(
     (s) => s.name.toLowerCase().includes('cosech') || s.name.toLowerCase().includes('corte')
   );
@@ -636,129 +848,16 @@ export function buildCultivationStageSchedule(
   }
   if (harvestStageIndex === -1) harvestStageIndex = baseStages.length - 1;
 
+  const harvestStage = scheduleItems[harvestStageIndex] || scheduleItems[scheduleItems.length - 1];
+  const estimatedHarvestDate = harvestStage?.startDate || harvestStage?.endDate || addDays(todayStr, 30);
+
+  // Compute baseline harvest date for comparison
+  let baselineTotalDays = 0;
   for (let i = 0; i <= harvestStageIndex; i++) {
     const isFlor = isFloweringStage(baseStages[i].name);
     baselineTotalDays += isFlor ? floweringDaysGenetics : (baseStages[i].expectedDurationDays || 7);
   }
   const baselineHarvestDate = addDays(cropStartDate, baselineTotalDays);
-
-  // 6. Build reconciled schedule items
-  const scheduleItems: StageScheduleItem[] = [];
-  let runnerDate = cropStartDate;
-
-  for (let i = 0; i < baseStages.length; i++) {
-    const st = baseStages[i];
-    const isFlor = isFloweringStage(st.name);
-    const duration = (isFlor ? floweringDaysGenetics : st.expectedDurationDays) || 7;
-
-    const isCompleted = i < activeStageIndex;
-    const isActive = i === activeStageIndex;
-    const isUpcoming = i > activeStageIndex;
-
-    let stageStart = runnerDate;
-    let stageEnd = addDays(stageStart, duration);
-    let startIsReal = false;
-    let endIsReal = false;
-
-    // Check explicit evidence for stageStart:
-    if (st.actualStartDate) {
-      stageStart = st.actualStartDate;
-      startIsReal = true;
-    } else if (i === 0 && cultivation.startDate) {
-      stageStart = cultivation.startDate;
-      startIsReal = true;
-    } else if (isActive && realActiveStageStart) {
-      stageStart = realActiveStageStart;
-      startIsReal = true;
-    } else if (isFlor && realFloraStartDate) {
-      stageStart = realFloraStartDate;
-      startIsReal = true;
-    } else if ((st.name === 'Cosecha' || st.name === 'Finalizado') && (cultivation.harvestDate || cultivation.endDate)) {
-      stageStart = (cultivation.harvestDate || cultivation.endDate)!;
-      startIsReal = true;
-    }
-
-    // Check explicit evidence for stageEnd:
-    if (st.actualEndDate) {
-      stageEnd = st.actualEndDate;
-      endIsReal = true;
-    } else if (isCompleted) {
-      if (i === activeStageIndex - 1 && realActiveStageStart) {
-        stageEnd = realActiveStageStart;
-        endIsReal = true;
-      } else if ((st.name === 'Vegetativo' || isPreFloweringStage(st.name)) && realFloraStartDate) {
-        stageEnd = realFloraStartDate;
-        endIsReal = true;
-      } else if ((st.name === 'Cosecha' || st.name === 'Finalizado') && (cultivation.harvestDate || cultivation.endDate)) {
-        stageEnd = (cultivation.harvestDate || cultivation.endDate)!;
-        endIsReal = true;
-      } else if (st.endDate && st.actualStartDate) {
-        stageEnd = st.endDate;
-      } else {
-        stageEnd = addDays(stageStart, duration);
-      }
-    } else if (isActive) {
-      stageEnd = addDays(stageStart, duration);
-    } else {
-      stageEnd = addDays(stageStart, duration);
-    }
-
-    runnerDate = stageEnd;
-
-    // Strict determination of isActual and isProjected:
-    // Dates calculated from presets alone without explicit evidence MUST NOT be labeled as REAL.
-    let isActual = false;
-    let isProjected = true;
-
-    if (isCompleted) {
-      if (startIsReal && endIsReal) {
-        isActual = true;
-        isProjected = false;
-      } else {
-        isActual = false;
-        isProjected = true;
-      }
-    } else if (isActive) {
-      // Active stage has verified real start, but its end is projected
-      isActual = startIsReal;
-      isProjected = true;
-    } else {
-      isActual = false;
-      isProjected = true;
-    }
-
-    const status: 'completed' | 'active' | 'upcoming' = isCompleted
-      ? 'completed'
-      : isActive
-      ? 'active'
-      : 'upcoming';
-
-    scheduleItems.push({
-      id: st.id || `stage_${i}_${st.name.toLowerCase()}`,
-      name: st.name,
-      expectedDurationDays: duration,
-      actualDurationDays: isCompleted && startIsReal && endIsReal ? Math.max(1, daysBetween(stageStart, stageEnd)) : undefined,
-      startDate: stageStart,
-      endDate: stageEnd,
-      status,
-      isProjected,
-      isActual,
-      startIsReal,
-      endIsReal,
-      actualStartDate: startIsReal ? stageStart : st.actualStartDate,
-      actualEndDate: endIsReal ? stageEnd : st.actualEndDate,
-      photoperiodHoursLight: st.photoperiodHoursLight,
-      targetTempMinC: st.targetTempMinC,
-      targetTempMaxC: st.targetTempMaxC,
-      targetHumidityMinPct: st.targetHumidityMinPct,
-      targetHumidityMaxPct: st.targetHumidityMaxPct,
-      notes: st.notes,
-    });
-  }
-
-  // 7. Reconcile estimated harvest
-  const harvestStage = scheduleItems[harvestStageIndex] || scheduleItems[scheduleItems.length - 1];
-  const estimatedHarvestDate = harvestStage.startDate || harvestStage.endDate;
 
   const adjustmentDeltaDays = daysBetween(baselineHarvestDate, estimatedHarvestDate);
   const hasStageAdjustments = adjustmentDeltaDays !== 0;
@@ -772,17 +871,33 @@ export function buildCultivationStageSchedule(
 
   const daysUntilHarvest = Math.max(0, daysBetween(todayStr, estimatedHarvestDate));
   const weeksUntilHarvest = Math.ceil(daysUntilHarvest / 7);
-  const totalElapsedDays = Math.max(1, daysBetween(cropStartDate, todayStr));
-  const totalCycleDays = Math.max(1, daysBetween(cropStartDate, estimatedHarvestDate));
-  const overallProgressPct = Math.min(100, Math.round((totalElapsedDays / totalCycleDays) * 100));
+
+  // Cycle start knowledge & total elapsed calculation
+  const isCycleStartKnown = isFirstStage || (scheduleItems[0]?.dateKnowledge === 'actual' && Boolean(scheduleItems[0]?.startDate));
+
+  let totalElapsedDays: number | null = null;
+  let totalCycleDays: number | null = null;
+  let overallProgressPct: number | null = null;
+
+  if (isCycleStartKnown && scheduleItems[0]?.startDate) {
+    totalElapsedDays = Math.max(1, daysBetween(scheduleItems[0].startDate, todayStr));
+    totalCycleDays = Math.max(1, daysBetween(scheduleItems[0].startDate, estimatedHarvestDate));
+    overallProgressPct = Math.min(100, Math.round((totalElapsedDays / totalCycleDays) * 100));
+  }
+
+  const activeStageItem = scheduleItems[activeStageIndex] || scheduleItems[0];
+  const activeStageStart = activeStageItem?.startDate || todayStr;
+  const activeStageElapsedDays = Math.max(1, daysBetween(activeStageStart, todayStr));
 
   const floweringStage = scheduleItems.find((s) => isFloweringStage(s.name));
 
   return {
     stages: scheduleItems,
     activeStageIndex,
-    activeStage: scheduleItems[activeStageIndex] || scheduleItems[0],
+    activeStage: activeStageItem,
     cropStartDate,
+    isCycleStartKnown,
+    activeStageElapsedDays,
     baselineHarvestDate,
     estimatedHarvestDate,
     daysUntilHarvest,

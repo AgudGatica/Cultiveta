@@ -16,6 +16,7 @@ import {
   formatFriendlyDate,
   daysBetween,
   getLocalTodayDateOnly,
+  isFloweringStage,
 } from '../../utils/growthStageUtils';
 
 export interface FloweringProgressSectionProps {
@@ -45,8 +46,8 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
     const florStage = schedule.floweringStage;
     const todayStr = getLocalTodayDateOnly();
 
-    const startDateStr = florStage ? florStage.startDate : (cultivation.floweringStartDate || cultivation.startDate);
-    const startIsReal = Boolean(cultivation.floweringStartDate || florStage?.startIsReal);
+    const startDateStr = florStage?.startDate || cultivation.floweringStartDate || (isFloweringStage(cultivation.currentStage) ? cultivation.stageStartDate : todayStr);
+    const startIsReal = Boolean(cultivation.floweringStartDate || florStage?.startIsReal || (isFloweringStage(cultivation.currentStage) && cultivation.stageStartDate));
     const floweringDaysElapsed = Math.max(1, daysBetween(startDateStr, todayStr));
     const typicalFloweringDays = schedule.floweringDaysGenetics || 56;
     const typicalFloweringWeeks = schedule.floweringWeeksGenetics || 8;
@@ -56,7 +57,8 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
       Math.max(1, Math.round((floweringDaysElapsed / typicalFloweringDays) * 100))
     );
 
-    const daysRemaining = Math.max(0, typicalFloweringDays - floweringDaysElapsed);
+    const daysUntilHarvest = schedule.daysUntilHarvest;
+    const daysRemaining = daysUntilHarvest !== undefined ? daysUntilHarvest : Math.max(0, typicalFloweringDays - floweringDaysElapsed);
     const weeksRemaining = Math.ceil(daysRemaining / 7);
     const currentWeekNumber = Math.max(1, Math.ceil(floweringDaysElapsed / 7));
     const currentDayInWeek = ((floweringDaysElapsed - 1) % 7) + 1;
@@ -74,7 +76,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
     const geneticsName = matchedGenetics?.name || cultivation.geneticsName || 'Genética híbrida';
     const seedBank = matchedGenetics?.seedBank || cultivation.seedBank || '';
 
-    // Sub-fases fenológicas
+    // Sub-fases fenológicas con condiciones estrictas y explícitas
     let subPhase = {
       title: 'Fase 1: Transición & Estiramiento (Stretch)',
       stageName: 'Floración Inicial (Sem. 1-2)',
@@ -83,7 +85,15 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
       badgeColor: 'bg-[#62B95B]/15 text-[#2d6b28] border-[#62B95B]/30',
     };
 
-    if (progressPercentage >= 25 && progressPercentage < 55) {
+    if (progressPercentage < 25) {
+      subPhase = {
+        title: 'Fase 1: Transición & Estiramiento (Stretch)',
+        stageName: 'Floración Inicial (Sem. 1-2)',
+        description: 'Aparición de primeros pistilos blancos y estiramiento vertical acelerado de ramas.',
+        advice: 'Mantener balance nutricional, regular altura de luces para evitar espigado excesivo.',
+        badgeColor: 'bg-[#62B95B]/15 text-[#2d6b28] border-[#62B95B]/30',
+      };
+    } else if (progressPercentage >= 25 && progressPercentage < 55) {
       subPhase = {
         title: 'Fase 2: Formación y Engorde de Cálices',
         stageName: 'Floración Media (Sem. 3-5)',
@@ -99,7 +109,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
         advice: 'Reducir nitrógeno, evitar mojar cogollos y asegurar ventilación continua para prevenir botrytis.',
         badgeColor: 'bg-[#6C45C7]/15 text-[#6C45C7] border-[#6C45C7]/30',
       };
-    } else if (progressPercentage >= 80 && progressPercentage < 100) {
+    } else if (progressPercentage >= 80 && (daysUntilHarvest === undefined || daysUntilHarvest > 2)) {
       subPhase = {
         title: 'Fase 4: Maduración Final & Lavado de Raíces',
         stageName: 'Maduración (Sem. 8+)',
@@ -107,12 +117,22 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
         advice: 'Regar con agua sola reposada/desclorada para limpiar sales acumuladas del sustrato.',
         badgeColor: 'bg-[#EB7864]/15 text-[#EB7864] border-[#EB7864]/30',
       };
-    } else {
+    } else if (daysUntilHarvest === 0) {
+      // SOLO en día 0 de cosecha
       subPhase = {
-        title: 'Fase 5: Ventana Óptima de Cosecha',
-        stageName: 'Lista para Cosechar (100%)',
-        description: 'Genética cumplió su tiempo teórico. Monitorear tricomas con lupa o microscopio.',
+        title: 'Ventana estimada de cosecha',
+        stageName: 'Ventana de Cosecha',
+        description: 'Confirmá madurez observando tricomas.',
         advice: 'Buscar 70-80% tricomas lechosos y 15-20% ámbar antes de cortar.',
+        badgeColor: 'bg-[#62B95B] text-white border-[#62B95B]',
+      };
+    } else {
+      // Días 1 o 2 restantes
+      subPhase = {
+        title: 'Cosecha estimada muy cerca',
+        stageName: `Cosecha Próxima (~${daysUntilHarvest}d)`,
+        description: 'Revisá tricomas antes de cortar.',
+        advice: 'Confirmá madurez de resina con lupa o microscopio en cálices medios.',
         badgeColor: 'bg-[#62B95B] text-white border-[#62B95B]',
       };
     }
@@ -151,8 +171,8 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
         week: Math.ceil(typicalFloweringWeeks),
         title: 'Corte Estimado',
         subtitle: `~${typicalFloweringDays} días`,
-        isPassed: progressPercentage >= 100,
-        isCurrent: progressPercentage >= 100,
+        isPassed: daysRemaining === 0 && progressPercentage >= 100,
+        isCurrent: daysRemaining <= 2,
       },
     ];
 
@@ -221,7 +241,11 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
           <div className="text-right pl-2 sm:border-l sm:border-[#EFE3CF]">
             <span className="text-[10px] text-[#9887A2] block uppercase tracking-wider">Faltan aprox.</span>
             <span className="font-extrabold text-[#EB7864] block">
-              {analysis.daysRemaining === 0 ? '¡Listo para cosechar!' : `${analysis.daysRemaining} días`}
+              {analysis.daysRemaining === 0
+                ? 'Ventana de cosecha'
+                : analysis.daysRemaining <= 2
+                ? `Cosecha muy cerca (~${analysis.daysRemaining}d)`
+                : `${analysis.daysRemaining} días`}
             </span>
           </div>
         </div>

@@ -1,7 +1,8 @@
-import { Cultivation, Watering, EnvironmentRecord, CultivationTask, TaskUrgency, TaskPriority } from '../types';
+import { Cultivation, Watering, EnvironmentRecord, CultivationTask, TaskUrgency, TaskPriority, Genetics } from '../types';
 import { wateringService } from './wateringService';
 import { localStore } from './localStore';
 import { analyzeWateringUrgency, getRecommendedWateringIntervalDays } from '../utils/wateringAlertUtils';
+import { buildCultivationStageSchedule } from '../utils/growthStageUtils';
 
 const COMPLETED_TASKS_KEY_PREFIX = 'cultiveta_completed_tasks_';
 
@@ -70,7 +71,8 @@ export const taskService = {
     waterings: Watering[],
     envRecords: EnvironmentRecord[],
     userId: string,
-    serverTasks: CultivationTask[] = []
+    serverTasks: CultivationTask[] = [],
+    geneticsList: Genetics[] = []
   ): CultivationTask[] {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -81,6 +83,7 @@ export const taskService = {
     const tasks: CultivationTask[] = [];
 
     for (const crop of activeCrops) {
+      const schedule = buildCultivationStageSchedule(crop, geneticsList);
       // Find latest watering for this specific crop
       const cropWaterings = waterings
         .filter((w) => w.cultivationId === crop.id)

@@ -1,6 +1,8 @@
 export type CultivationType = 'Indoor' | 'Outdoor' | 'Invernadero';
 export type PhotoperiodType = 'Fotoperiódica' | 'Automática' | 'CBD' | 'Regular';
 export type PotType = 'Geotextil' | 'Plástico' | 'Airpot' | 'Tierra madre' | 'Hidropónico' | 'Otro';
+export type PotLiftFeeling = 'heavy' | 'medium' | 'light' | 'very_light';
+export type StageDateKnowledge = 'actual' | 'projected' | 'unknown';
 
 export type CultivationStageName =
   | 'Germinación'
@@ -63,6 +65,7 @@ export interface CultivationGrowthStage {
   actualEndDate?: string; // YYYY-MM-DD (fecha real registrada)
   expectedDurationDays: number;
   actualDurationDays?: number;
+  dateKnowledge?: StageDateKnowledge;
   photoperiodHoursLight?: number;
   targetTempMinC?: number;
   targetTempMaxC?: number;
@@ -97,6 +100,8 @@ export interface Cultivation {
   stageStartDate: string;
   floweringStartDate?: string;
   stagesTimeline?: CultivationGrowthStage[];
+  cycleStartKnown?: boolean;
+  timelineHistoryMode?: 'known_from_start' | 'unknown_before_current_stage';
   substrate: {
     type: string;
     brand?: string;
@@ -218,9 +223,13 @@ export interface Watering {
   observations?: string;
   isDemo?: boolean;
   createdAt: string;
+  // Percepción subjetiva levantando la maceta a mano antes de regar (sin balanza)
+  potLiftBeforeWatering?: PotLiftFeeling;
   // Backward-compatible optional technical fields for precision dryback estimation
   runoffVolumeLiters?: number;
+  /** @deprecated Conservado por retrocompatibilidad con registros antiguos. La experiencia actual usa potLiftBeforeWatering. */
   potWeightBeforeWateringKg?: number;
+  /** @deprecated Conservado por retrocompatibilidad con registros antiguos. */
   potWeightAfterWateringKg?: number;
   substrateMoistureBeforePct?: number;
   substrateMoistureAfterPct?: number;
@@ -519,6 +528,7 @@ export interface IrrigationForecast {
   wateringWindowEnd: string | null;
 
   confidence: 'low' | 'medium' | 'high';
+  baselineSource?: 'historical' | 'generic_stage' | 'insufficient_data';
 
   factors: string[];
   missingSignals: string[];
@@ -543,8 +553,10 @@ export interface CultivationIntelligenceContext {
     photoperiodHoursDark?: number;
   };
   chronology: {
-    startDate: string;
-    realDaysElapsed: number;
+    startDate?: string;
+    realDaysElapsed?: number;
+    isCycleStartKnown?: boolean;
+    activeStageElapsedDays?: number;
     currentStage: string;
     stageStartDate?: string;
     daysInActiveStage: number;

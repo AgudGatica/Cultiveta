@@ -1,4 +1,4 @@
-import { Cultivation, Watering, EnvironmentRecord, IrrigationForecast } from '../types';
+import { Cultivation, Watering, EnvironmentRecord, IrrigationForecast, PotLiftFeeling } from '../types';
 import { environmentService } from './environmentService';
 import { getRecommendedWateringIntervalDays } from '../utils/wateringAlertUtils';
 import {
@@ -25,6 +25,7 @@ export interface WateringEpisode {
   maxVpdKPa: number | null;
   avgPpfd: number | null;
   estimatedDli: number | null;
+  potLiftBeforeWatering?: PotLiftFeeling;
   potWeightBeforeKg?: number;
   potWeightAfterKg?: number;
   potWeightLossKg?: number;
@@ -35,6 +36,7 @@ export interface WateringEpisode {
 export interface HistoricalWateringStats {
   episodes: WateringEpisode[];
   intervalsHours: number[];
+  representativeIntervalsHours: number[];
   medianIntervalHours: number | null;
   averageIntervalHours: number | null;
   dispersionHours: number; // MAD (Median Absolute Deviation)
@@ -45,6 +47,13 @@ export interface HistoricalWateringStats {
   historicalAvgTemp: number | null;
   hasDirectWeightMeasurements: boolean;
   hasDirectMoistureMeasurements: boolean;
+  hasDirectPotLift: boolean;
+  potLiftDistribution?: {
+    heavy: number;
+    medium: number;
+    light: number;
+    very_light: number;
+  };
   intervalByVpdLevel?: {
     lowVpdAvgHours: number | null;
     mediumVpdAvgHours: number | null;
@@ -257,6 +266,7 @@ export function buildWateringEpisodes(
       maxVpdKPa: maxVpd,
       avgPpfd,
       estimatedDli: null,
+      potLiftBeforeWatering: nextW.potLiftBeforeWatering,
       potWeightBeforeKg: currentW.potWeightBeforeWateringKg,
       potWeightAfterKg: currentW.potWeightAfterWateringKg,
       potWeightLossKg,
@@ -271,12 +281,14 @@ export function buildWateringEpisodes(
 /**
  * Calculates historical statistical summary based on episodes.
  * Uses robust MEDIAN and MAD/IQR to prevent single extreme events from corrupting forecasts.
+ * Distinguishes anticipated waterings (potLift = 'heavy') from full dryback cycles.
  */
 export function calculateHistoricalWateringStats(episodes: WateringEpisode[]): HistoricalWateringStats {
   if (episodes.length === 0) {
     return {
       episodes: [],
       intervalsHours: [],
+      representativeIntervalsHours: [],
       medianIntervalHours: null,
       averageIntervalHours: null,
       dispersionHours: 0,
@@ -287,14 +299,34 @@ export function calculateHistoricalWateringStats(episodes: WateringEpisode[]): H
       historicalAvgTemp: null,
       hasDirectWeightMeasurements: false,
       hasDirectMoistureMeasurements: false,
+      hasDirectPotLift: false,
+      potLiftDistribution: { heavy: 0, medium: 0, light: 0, very_light: 0 },
     };
   }
 
   const intervals = episodes.map((e) => e.intervalHours);
   const volumes = episodes.map((e) => e.netVolumeLiters);
-  const medianInterval = calculateMedian(intervals);
+
+  // Pot lift evaluation
+  const potLiftDistribution = {
+    heavy: episodes.filter((e) => e.potLiftBeforeWatering === 'heavy').length,
+    medium: episodes.filter((e) => e.potLiftBeforeWatering === 'medium').length,
+    light: episodes.filter((e) => e.potLiftBeforeWatering === 'light').length,
+    very_light: episodes.filter((e) => e.potLiftBeforeWatering === 'very_light').length,
+  };
+  const hasDirectPotLift = episodes.some((e) => Boolean(e.potLiftBeforeWatering));
+
+  // Determine representative dryback intervals:
+  // Episodes with potLift === 'heavy' indicate that the user watered prematurely before dryback.
+  // We do NOT treat those short intervals as full dryback.
+  const representativeEpisodes = episodes.filter((e) => e.potLiftBeforeWatering !== 'heavy');
+  const candidateIntervals = representativeEpisodes.length > 0
+    ? representativeEpisodes.map((e) => e.intervalHours)
+    : intervals;
+
+  const medianInterval = calculateMedian(candidateIntervals);
   const avgInterval = Number((intervals.reduce((a, b) => a + b, 0) / intervals.length).toFixed(1));
-  const dispersion = medianInterval ? calculateMAD(intervals, medianInterval) : 0;
+  const dispersion = medianInterval ? calculateMAD(candidateIntervals, medianInterval) : 0;
 
   const medianVolume = calculateMedian(volumes);
   const avgVolume = Number((volumes.reduce((a, b) => a + b, 0) / volumes.length).toFixed(2));
@@ -339,6 +371,7 @@ export function calculateHistoricalWateringStats(episodes: WateringEpisode[]): H
   return {
     episodes,
     intervalsHours: intervals,
+    representativeIntervalsHours: candidateIntervals,
     medianIntervalHours: medianInterval,
     averageIntervalHours: avgInterval,
     dispersionHours: Number(dispersion.toFixed(1)),
@@ -349,6 +382,8 @@ export function calculateHistoricalWateringStats(episodes: WateringEpisode[]): H
     historicalAvgTemp,
     hasDirectWeightMeasurements: hasDirectWeight,
     hasDirectMoistureMeasurements: hasDirectMoisture,
+    hasDirectPotLift,
+    potLiftDistribution,
     intervalByVpdLevel,
   };
 }
@@ -365,13 +400,27 @@ export function calculateEnvironmentalDemandIndex(params: {
   historicalVpd: number | null;
   historicalTemp: number | null;
   stageName?: string;
-}): { demandIndex: number; notes: string[] } {
+}): {
+  demandIndex: number;
+  notes: string[];
+  baselineSource: 'historical' | 'generic_stage' | 'insufficient_data';
+} {
   const { currentVpd, currentTemp, historicalVpd, historicalTemp, stageName } = params;
   const notes: string[] = [];
 
-  // Stage baseline defaults when historical averages are unavailable
-  const baselineVpd = historicalVpd ?? (isFloweringStage(stageName) ? 1.3 : 1.0);
-  const baselineTemp = historicalTemp ?? (isFloweringStage(stageName) ? 23.5 : 24.5);
+  let baselineSource: 'historical' | 'generic_stage' | 'insufficient_data' = 'historical';
+  let baselineVpd = historicalVpd;
+  let baselineTemp = historicalTemp;
+
+  if (baselineVpd === null || baselineTemp === null) {
+    baselineSource = 'generic_stage';
+    baselineVpd = historicalVpd ?? (isFloweringStage(stageName) ? 1.3 : 1.0);
+    baselineTemp = historicalTemp ?? (isFloweringStage(stageName) ? 23.5 : 24.5);
+  }
+
+  if (currentVpd === null && currentTemp === null && historicalVpd === null && historicalTemp === null) {
+    baselineSource = 'insufficient_data';
+  }
 
   let vpdRatio = 1.0;
   if (currentVpd !== null && baselineVpd > 0) {
@@ -394,7 +443,7 @@ export function calculateEnvironmentalDemandIndex(params: {
   // Bound index safely between 0.70 (very humid/cool) and 1.55 (very dry/hot)
   const demandIndex = Number(Math.min(1.55, Math.max(0.70, rawIndex)).toFixed(2));
 
-  return { demandIndex, notes };
+  return { demandIndex, notes, baselineSource };
 }
 
 /**
@@ -532,9 +581,15 @@ export function calculateIrrigationForecast(
     }
     if (ppfds.length > 0) {
       avgPpfdSince = Math.round(ppfds.reduce((a, b) => a + b, 0) / ppfds.length);
-      const photoHours = cultivation.lighting?.photoperiodHoursLight || (isFloweringStage(cultivation.currentStage) ? 12 : 18);
-      estimatedDli = calculateDLI(avgPpfdSince, photoHours);
-      factors.push(`Radiación lumínica: PPFD ~${avgPpfdSince} µmol/m²/s (DLI estimado ~${estimatedDli} mol/m²/d).`);
+      const photoHours = cultivation.lighting?.photoperiodHoursLight;
+      if (typeof photoHours === 'number' && photoHours > 0) {
+        estimatedDli = calculateDLI(avgPpfdSince, photoHours);
+        factors.push(`Radiación lumínica: PPFD ~${avgPpfdSince} µmol/m²/s (DLI estimado ~${estimatedDli} mol/m²/d con ${photoHours}h de luz).`);
+      } else {
+        estimatedDli = null;
+        missingSignals.push('Fotoperíodo no registrado: no se puede calcular DLI con precisión.');
+        factors.push(`Radiación lumínica: PPFD ~${avgPpfdSince} µmol/m²/s (sin fotoperíodo registrado para calcular DLI).`);
+      }
     } else {
       missingSignals.push('PPFD / DLI no registrado');
     }
@@ -542,17 +597,23 @@ export function calculateIrrigationForecast(
     missingSignals.push('Sin registros ambientales posteriores al último riego');
   }
 
-  // Missing direct measurement checks
-  if (lastW.potWeightBeforeWateringKg === undefined && lastW.potWeightAfterWateringKg === undefined) {
-    missingSignals.push('Peso de maceta no medido');
+  // Qualitative pot lift observation
+  if (lastW.potLiftBeforeWatering) {
+    const potLiftDescriptions: Record<PotLiftFeeling, string> = {
+      very_light: "Percepción de maceta antes de regar: 'muy liviana' (sustrato seco al momento del riego).",
+      light: "Percepción de maceta antes de regar: 'liviana' (buena pérdida de agua previa).",
+      medium: "Percepción de maceta antes de regar: 'intermedia' (humedad residual presente).",
+      heavy: "Percepción de maceta antes de regar: 'pesada' (riego realizado de forma anticipada).",
+    };
+    factors.push(potLiftDescriptions[lastW.potLiftBeforeWatering]);
   } else {
-    factors.push('Medición gravimétrica registrada en el último riego (1 kg pérdida ≈ 1 L agua).');
+    missingSignals.push('Percepción de peso de maceta (levantada a mano) no registrada');
   }
 
-  if (lastW.substrateMoistureBeforePct === undefined && lastW.substrateMoistureAfterPct === undefined) {
-    missingSignals.push('Humedad de sustrato no medida');
+  if (lastW.substrateMoistureBeforePct !== undefined) {
+    factors.push(`Humedad de sustrato medida con sensor: ${lastW.substrateMoistureBeforePct}%.`);
   } else {
-    factors.push('Medición de humedad de sustrato registrada.');
+    missingSignals.push('Humedad de sustrato no medida');
   }
 
   // 3. Environmental Demand Index
@@ -564,6 +625,11 @@ export function calculateIrrigationForecast(
     stageName: cultivation.currentStage,
   });
   const demandIndex = demandResult.demandIndex;
+  const baselineSource = demandResult.baselineSource;
+
+  if (baselineSource === 'generic_stage') {
+    factors.push('Estimación inicial: todavía no hay suficiente historial ambiental propio.');
+  }
 
   if (demandIndex > 1.08) {
     factors.push('El ambiente actual está demandando más agua que la referencia histórica (acelera el secado).');
@@ -579,8 +645,9 @@ export function calculateIrrigationForecast(
     baselineIntervalHours = stats.medianIntervalHours;
     factors.push(`Historial del cultivo: ${stats.episodes.length} ciclos anteriores con mediana de ${stats.medianIntervalHours} h.`);
 
-    // Determine confidence
-    if (stats.episodes.length >= 5 && cropEnv.length >= 2 && (stats.hasDirectWeightMeasurements || stats.hasDirectMoistureMeasurements)) {
+    // Determine confidence: generic_stage reduces confidence
+    const hasUsefulSignals = stats.hasDirectPotLift || stats.hasDirectMoistureMeasurements || stats.hasDirectWeightMeasurements;
+    if (stats.episodes.length >= 5 && cropEnv.length >= 2 && hasUsefulSignals && baselineSource === 'historical') {
       confidence = 'high';
     } else if (stats.episodes.length >= 3 && cropEnv.length >= 1) {
       confidence = 'medium';
@@ -652,6 +719,7 @@ export function calculateIrrigationForecast(
     wateringWindowStart: formatTimestamp(windowStartMs),
     wateringWindowEnd: formatTimestamp(windowEndMs),
     confidence,
+    baselineSource,
     factors,
     missingSignals,
     modelVersion,
