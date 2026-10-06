@@ -205,6 +205,8 @@ async function run() {
     assert(cropPartial.cycleStartKnown === false, 'cycleStartKnown debe ser false si Germinación es desconocida');
     assert(schedule.isCycleStartKnown === false, 'schedule.isCycleStartKnown debe ser false');
     assert(schedule.totalCycleDays === null, 'totalCycleDays debe ser null si cycleStart no es conocido');
+    assert(schedule.totalElapsedDays === null, 'totalElapsedDays debe ser null si cycleStart no es conocido');
+    assert(schedule.overallProgressPct === null, 'overallProgressPct debe ser estrictamente null si cycleStart no es conocido (no inventar porcentaje)');
     recordPass('7. Vegetativo conocido NO implica cycleStartKnown = true');
   } catch (e) {
     recordFail('7. Vegetativo conocido NO implica cycleStartKnown = true', e);
@@ -474,6 +476,7 @@ async function run() {
   }
 
   // 14. Vegetativo.actualEndDate = Floración.actualStartDate.
+  // y no saltar etapas unknown: Germinación o Plántula sin etapa contigua conocida deben tener actualEndDate = undefined
   try {
     const updatedStages = buildUpdatedStagesTimeline({
       currentStage: 'Floración',
@@ -493,6 +496,55 @@ async function run() {
       `Vegetativo actualEndDate (${veg?.actualEndDate}) debe ser idéntico a Floración actualStartDate (${flor?.actualStartDate})`
     );
     assert(veg?.actualEndDate === '2026-09-27', `Vegetativo actualEndDate debe ser 2026-09-27, recibido: ${veg?.actualEndDate}`);
+    assert(veg?.dateKnowledge === 'actual', 'Vegetativo consecutivo a Floración debe tener dateKnowledge actual');
+
+    // Caso de no saltar etapas unknown:
+    // Germinación: 20 julio, Plántula: unknown, Vegetativo: 20 agosto
+    const timelineWithSkip = buildUpdatedStagesTimeline({
+      currentStage: 'Floración',
+      stageStartDate: '2026-09-27',
+      floweringStartDate: '2026-09-27',
+      priorDates: {
+        germinacion: '2026-07-20',
+        vegetativo: '2026-08-20',
+      },
+    });
+    const germSkip = timelineWithSkip.find((s) => s.name.toLowerCase().includes('germin'));
+    const plantulaSkip = timelineWithSkip.find((s) => s.name.toLowerCase().includes('plánt') || s.name.toLowerCase().includes('plant'));
+
+    assert(germSkip, 'Debe existir Germinación');
+    assert(germSkip?.actualStartDate === '2026-07-20', 'Germinación actualStartDate debe ser 2026-07-20');
+    assert(plantulaSkip?.actualStartDate === undefined, 'Plántula debe ser unknown (sin actualStartDate)');
+    assert(
+      germSkip?.actualEndDate === undefined,
+      `Germinación.actualEndDate NO debe saltar Plántula unknown. Recibido: ${germSkip?.actualEndDate}`
+    );
+    assert(
+      germSkip?.dateKnowledge === 'projected',
+      `Germinación sin fin real conocido debe tener dateKnowledge="projected", recibido: ${germSkip?.dateKnowledge}`
+    );
+
+    // Caso de Plántula: 1 agosto, Vegetativo: unknown, Floración: 27 septiembre
+    const timelineWithPlantulaSkip = buildUpdatedStagesTimeline({
+      currentStage: 'Floración',
+      stageStartDate: '2026-09-27',
+      floweringStartDate: '2026-09-27',
+      priorDates: {
+        plantula: '2026-08-01',
+      },
+    });
+    const plantulaOnly = timelineWithPlantulaSkip.find((s) => s.name.toLowerCase().includes('plánt') || s.name.toLowerCase().includes('plant'));
+    assert(plantulaOnly, 'Debe existir Plántula');
+    assert(plantulaOnly?.actualStartDate === '2026-08-01', 'Plántula actualStartDate debe ser 2026-08-01');
+    assert(
+      plantulaOnly?.actualEndDate === undefined,
+      `Plántula.actualEndDate NO debe saltar Vegetativo unknown. Recibido: ${plantulaOnly?.actualEndDate}`
+    );
+    assert(
+      plantulaOnly?.dateKnowledge === 'projected',
+      `Plántula sin fin real conocido debe tener dateKnowledge="projected", recibido: ${plantulaOnly?.dateKnowledge}`
+    );
+
     recordPass('14. Vegetativo.actualEndDate = Floración.actualStartDate');
   } catch (e) {
     recordFail('14. Vegetativo.actualEndDate = Floración.actualStartDate', e);

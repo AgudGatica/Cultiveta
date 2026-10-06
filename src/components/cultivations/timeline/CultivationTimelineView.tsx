@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   Calendar,
   CheckCircle2,
@@ -52,6 +52,23 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
   const metrics = calculateTimelineMetrics(cultivation, stages, geneticsList);
   const nextStage = getNextStage(cultivation, stages);
   const schedule = buildCultivationStageSchedule(cultivation, geneticsList);
+
+  const timelineVisualProgressPct = useMemo(() => {
+    if (schedule.overallProgressPct !== null) {
+      return schedule.overallProgressPct;
+    }
+    const totalExpectedDays = schedule.stages.reduce(
+      (acc, s) => acc + (s.expectedDurationDays || 7),
+      0
+    ) || 1;
+    let priorDays = 0;
+    for (let i = 0; i < schedule.activeStageIndex && i < schedule.stages.length; i++) {
+      priorDays += schedule.stages[i].expectedDurationDays || 7;
+    }
+    const activeDuration = schedule.activeStage.expectedDurationDays || 7;
+    const daysInActive = Math.min(activeDuration, Math.max(1, schedule.activeStageElapsedDays || 1));
+    return Math.min(100, Math.max(5, Math.round(((priorDays + daysInActive) / totalExpectedDays) * 100)));
+  }, [schedule]);
 
   const handleOpenTransition = (targetStage?: CultivationGrowthStage | null) => {
     setStageForTransition(targetStage || nextStage || stages[0]);
@@ -134,19 +151,33 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
         <div className="p-4 sm:p-5 rounded-2xl bg-stone-50 border border-stone-200/80 space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
             <div className="flex items-center gap-2">
-              <span className="font-extrabold text-stone-900 text-sm">
-                Día {schedule.totalElapsedDays}
-              </span>
-              <span className="text-stone-400">de ~{schedule.totalCycleDays} días estimados</span>
-              <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-[11px]">
-                {schedule.overallProgressPct}% ciclo total
-              </span>
+              {schedule.overallProgressPct !== null ? (
+                <>
+                  <span className="font-extrabold text-stone-900 text-sm">
+                    Día {schedule.totalElapsedDays}
+                  </span>
+                  <span className="text-stone-400">de ~{schedule.totalCycleDays} días estimados</span>
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-[11px]">
+                    {schedule.overallProgressPct}% ciclo total
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="font-extrabold text-stone-900 text-sm">
+                    Día {schedule.activeStageElapsedDays}
+                  </span>
+                  <span className="text-stone-400">en {schedule.activeStage.name}</span>
+                  <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-extrabold text-[11px]">
+                    Inicio de ciclo no registrado
+                  </span>
+                </>
+              )}
             </div>
 
             <div className="flex items-center gap-4 text-stone-600 font-medium text-[11px] sm:text-xs">
               <span className="flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-stone-400" />
-                Inicio: <strong>{formatFriendlyDate(schedule.cropStartDate)}</strong>
+                Inicio: <strong>{schedule.isCycleStartKnown ? formatFriendlyDate(schedule.cropStartDate) : 'No registrado'}</strong>
               </span>
               <span className="flex items-center gap-1 text-amber-800 font-bold">
                 <Flag className="w-3.5 h-3.5 text-amber-600" />
@@ -162,7 +193,7 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
           <div className="w-full h-3 rounded-full bg-stone-200 overflow-hidden relative">
             <div
               className="h-full bg-emerald-600 rounded-full transition-all duration-700"
-              style={{ width: `${schedule.overallProgressPct}%` }}
+              style={{ width: `${timelineVisualProgressPct}%` }}
             />
           </div>
         </div>

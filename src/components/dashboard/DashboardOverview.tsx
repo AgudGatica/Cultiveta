@@ -383,12 +383,20 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     if (harvestIdx === -1) harvestIdx = schedule.stages.length - 1;
     const lifecycleStages = schedule.stages.slice(0, harvestIdx + 1);
 
+    const totalExpectedCycleDays = lifecycleStages.reduce(
+      (acc, s) => acc + (s.expectedDurationDays || 7),
+      0
+    ) || 1;
+    const baseCycleDays = schedule.totalCycleDays || totalExpectedCycleDays;
+
     let cumulativeDays = 0;
     const milestones = lifecycleStages.map((st, idx) => {
       const duration = st.expectedDurationDays || 1;
       const startDay = cumulativeDays;
-      const pct = Math.min(100, Math.max(0, Math.round((startDay / (schedule.totalCycleDays || 1)) * 100)));
-      const isReached = schedule.overallProgressPct >= pct;
+      const pct = Math.min(100, Math.max(0, Math.round((startDay / baseCycleDays) * 100)));
+      const isReached = schedule.overallProgressPct !== null
+        ? schedule.overallProgressPct >= pct
+        : idx < schedule.activeStageIndex;
       const isCurrent = idx === schedule.activeStageIndex;
       cumulativeDays += duration;
 
@@ -408,6 +416,27 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
       };
     });
 
+    // Ancho visual para el slider de avance del ciclo:
+    // Si cycleStartKnown es true, schedule.overallProgressPct tiene el % exacto.
+    // Si cycleStartKnown es false (overallProgressPct === null), se deriva el progreso
+    // visual según la etapa activa y los días transcurridos para que el slider nunca
+    // quede en "null%" ni desaparezca visualmente, manteniendo overallProgressPct como null.
+    let visualProgressPct = 0;
+    if (schedule.overallProgressPct !== null) {
+      visualProgressPct = Math.min(100, Math.max(0, schedule.overallProgressPct));
+    } else {
+      let priorDays = 0;
+      for (let i = 0; i < schedule.activeStageIndex && i < lifecycleStages.length; i++) {
+        priorDays += lifecycleStages[i].expectedDurationDays || 7;
+      }
+      const activeDuration = schedule.activeStage.expectedDurationDays || 7;
+      const daysInActive = Math.min(activeDuration, Math.max(1, schedule.activeStageElapsedDays || 1));
+      visualProgressPct = Math.min(
+        100,
+        Math.max(5, Math.round(((priorDays + daysInActive) / totalExpectedCycleDays) * 100))
+      );
+    }
+
     const vegeStage = schedule.stages.find((s) => s.name.toLowerCase().includes('vege'));
     const floraStage = schedule.floweringStage || schedule.stages.find((s) => isFloweringStage(s.name));
 
@@ -417,6 +446,9 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
       metrics,
       milestones,
       progressPct: schedule.overallProgressPct,
+      visualProgressPct,
+      isCycleStartKnown: schedule.isCycleStartKnown,
+      activeStageElapsedDays: schedule.activeStageElapsedDays,
       elapsedDays: schedule.totalElapsedDays,
       totalCycleDays: schedule.totalCycleDays,
       currentStageName: primaryCrop.currentStage || schedule.activeStage?.name || 'Vegetativo',
@@ -1034,20 +1066,32 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 {/* 4ta Capa: Ciclo del Cultivo del primaryCrop seleccionado */}
                 {primaryCropTimeline && (
                   <div id="crop-lifecycle-card-section" className="pt-5 border-t border-[#EFE3CF] space-y-3">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="text-sm font-extrabold text-[#29202F]">
                           Ciclo del cultivo
                         </h3>
-                        <span className="text-xs font-bold text-[#62B95B]">
-                          {primaryCropTimeline.progressPct}% del ciclo estimado
-                        </span>
+                        {primaryCropTimeline.progressPct !== null ? (
+                          <span className="text-xs font-bold text-[#62B95B]">
+                            {primaryCropTimeline.progressPct}% del ciclo estimado
+                          </span>
+                        ) : (
+                          <span className="text-xs font-bold text-[#6C45C7]">
+                            Inicio de ciclo no registrado
+                          </span>
+                        )}
                       </div>
 
                       <div className="flex items-center gap-3">
-                        <span className="text-xs text-[#6E5D77] font-semibold">
-                          Día {primaryCropTimeline.elapsedDays} de ~{primaryCropTimeline.totalCycleDays}
-                        </span>
+                        {primaryCropTimeline.elapsedDays !== null && primaryCropTimeline.totalCycleDays !== null ? (
+                          <span className="text-xs text-[#6E5D77] font-semibold">
+                            Día {primaryCropTimeline.elapsedDays} de ~{primaryCropTimeline.totalCycleDays}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-[#6E5D77] font-semibold">
+                            Día {primaryCropTimeline.activeStageElapsedDays} en {primaryCropTimeline.currentStageName}
+                          </span>
+                        )}
                         <button
                           type="button"
                           id="toggle-lifecycle-details-btn"
@@ -1071,7 +1115,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                         id="cycle-progress-bar-fill"
                         className="h-full bg-gradient-to-r from-[#62B95B] via-[#F3C843] to-[#6C45C7] rounded-full"
                         initial={{ width: 0 }}
-                        animate={{ width: `${primaryCropTimeline.progressPct}%` }}
+                        animate={{ width: `${primaryCropTimeline.visualProgressPct}%` }}
                         transition={{ duration: 0.8, ease: 'easeOut' }}
                       />
                     </div>
@@ -1081,7 +1125,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                       <div className="text-left">
                         <span className="block font-bold text-[#29202F]">Siembra</span>
                         <span className="text-[10px] text-[#9887A2] block mt-0.5">
-                          {primaryCropTimeline.startDateFormatted}
+                          {primaryCropTimeline.isCycleStartKnown ? primaryCropTimeline.startDateFormatted : 'No registrada'}
                         </span>
                       </div>
                       <div className="text-left sm:text-center">

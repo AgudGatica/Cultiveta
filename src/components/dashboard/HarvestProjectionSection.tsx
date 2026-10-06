@@ -127,10 +127,14 @@ export const HarvestProjectionSection: React.FC<HarvestProjectionSectionProps> =
               Ciclo Total Estimado
             </span>
             <span className="text-xl sm:text-2xl font-black text-[#29202F] block mt-1">
-              ~{schedule.totalCycleDays} días
+              {schedule.totalCycleDays !== null ? `~${schedule.totalCycleDays} días` : 'Por estimar'}
             </span>
             <span className="text-[11px] text-[#6E5D77] block mt-0.5">
-              Llevas {schedule.totalElapsedDays} días transcurridos ({schedule.overallProgressPct}%)
+              {schedule.overallProgressPct !== null ? (
+                `Llevas ${schedule.totalElapsedDays} días transcurridos (${schedule.overallProgressPct}%)`
+              ) : (
+                `Día ${schedule.activeStageElapsedDays} en etapa actual (${schedule.activeStage.name})`
+              )}
             </span>
           </div>
         </div>

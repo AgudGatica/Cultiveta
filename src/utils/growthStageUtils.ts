@@ -881,15 +881,20 @@ export function buildCultivationStageSchedule(
   const weeksUntilHarvest = Math.ceil(daysUntilHarvest / 7);
 
   // Cycle start knowledge & total elapsed calculation
-  const isCycleStartKnown = isFirstStage || (scheduleItems[0]?.dateKnowledge === 'actual' && Boolean(scheduleItems[0]?.startDate));
+  const isCycleStartKnown =
+    isFirstStage ||
+    (cultivation.cycleStartKnown === true && Boolean(scheduleItems[0]?.actualStartDate || scheduleItems[0]?.startDate)) ||
+    (scheduleItems[0]?.dateKnowledge === 'actual' && Boolean(scheduleItems[0]?.startDate)) ||
+    (Boolean(scheduleItems[0]?.actualStartDate) && cultivation.cycleStartKnown !== false);
 
   let totalElapsedDays: number | null = null;
   let totalCycleDays: number | null = null;
   let overallProgressPct: number | null = null;
 
-  if (isCycleStartKnown && scheduleItems[0]?.startDate) {
-    totalElapsedDays = Math.max(1, daysBetween(scheduleItems[0].startDate, todayStr));
-    totalCycleDays = Math.max(1, daysBetween(scheduleItems[0].startDate, estimatedHarvestDate));
+  if (isCycleStartKnown && (scheduleItems[0]?.actualStartDate || scheduleItems[0]?.startDate)) {
+    const cycleStart = scheduleItems[0].actualStartDate || scheduleItems[0].startDate!;
+    totalElapsedDays = Math.max(1, daysBetween(cycleStart, todayStr));
+    totalCycleDays = Math.max(1, daysBetween(cycleStart, estimatedHarvestDate));
     overallProgressPct = Math.min(100, Math.round((totalElapsedDays / totalCycleDays) * 100));
   }
 
@@ -1050,9 +1055,9 @@ export function getNextStage(
 }
 
 export interface TimelineMetrics {
-  totalElapsedDays: number;
-  totalCycleDays: number;
-  overallProgressPct: number;
+  totalElapsedDays: number | null;
+  totalCycleDays: number | null;
+  overallProgressPct: number | null;
   activeStage: CultivationGrowthStage;
   activeStageIndex: number;
   daysInActiveStage: number;
@@ -1161,6 +1166,17 @@ export function buildUpdatedStagesTimeline(params: {
     baseStages = getStagesForCultivation(dummyCrop);
   }
 
+  // Si Prefloración no es la etapa activa ni fue registrada en existingTimeline o priorDates,
+  // se omite para respetar la secuencia estándar Vegetativo -> Floración
+  const hasPreflorExplicit =
+    params.currentStage.toLowerCase().includes('preflor') ||
+    Boolean((params.priorDates as any)?.prefloracion) ||
+    Boolean(params.existingTimeline?.some((s) => s.name.toLowerCase().includes('preflor') && s.actualStartDate));
+
+  if (!hasPreflorExplicit) {
+    baseStages = baseStages.filter((s) => !s.name.toLowerCase().includes('preflor'));
+  }
+
   const normCurrent = (params.currentStage || '').toLowerCase().trim();
   const activeIdx = baseStages.findIndex(
     (s) => s.name.toLowerCase().trim() === normCurrent
@@ -1224,22 +1240,20 @@ export function buildUpdatedStagesTimeline(params: {
   }
 
   // Paso 2: Inferir transiciones reales (actualEndDate) entre etapas conocidas consecutivas
+  // REGLA: currentStage.actualEndDate = nextStage.actualStartDate SOLAMENTE cuando la etapa
+  // INMEDIATAMENTE siguiente tiene actualStartDate real. No saltar etapas unknown.
   for (let i = 0; i < resolvedActiveIdx; i++) {
     const current = updatedStages[i];
     if (current.actualStartDate) {
-      let nextKnownStart: string | undefined = undefined;
-      for (let j = i + 1; j <= resolvedActiveIdx; j++) {
-        if (updatedStages[j].actualStartDate) {
-          nextKnownStart = updatedStages[j].actualStartDate;
-          break;
-        }
-      }
-      if (nextKnownStart) {
-        current.actualEndDate = nextKnownStart;
-        current.endDate = nextKnownStart;
+      const immediateNext = updatedStages[i + 1];
+      if (immediateNext && immediateNext.actualStartDate) {
+        current.actualEndDate = immediateNext.actualStartDate;
+        current.endDate = immediateNext.actualStartDate;
         current.dateKnowledge = 'actual';
-      } else if (!current.actualEndDate) {
+      } else {
+        current.actualEndDate = undefined;
         current.endDate = addDays(current.actualStartDate, current.expectedDurationDays || 7);
+        current.dateKnowledge = 'projected';
       }
     }
   }
