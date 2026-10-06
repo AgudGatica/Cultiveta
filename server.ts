@@ -636,6 +636,41 @@ Responde en JSON con:
   }
 });
 
+// 4b. Weekly Summary with Aggregated Real Metrics (No Invented Defaults)
+app.post('/api/ai/weekly-summary', async (req, res) => {
+  try {
+    const { cultivations, wateringsCount, recentEnvAvg } = req.body;
+    const cropNames =
+      (cultivations || []).map((c: any) => `${c.name} (${c.stage || 'Sin etapa'})`).join(', ') ||
+      'Cultivos activos';
+
+    const ai = getAIClient();
+    const prompt = `
+Genera un resumen semanal objetivo para el conjunto de cultivos activos:
+Cultivos: ${cropNames}
+Total riegos en los últimos 7 días: ${wateringsCount ?? 0}
+Promedio ambiental reciente: Temperatura ${recentEnvAvg?.tempC ?? 'N/D'}°C, Humedad ${recentEnvAvg?.humidityPct ?? 'N/D'}% HR.
+
+Responde en JSON con:
+{
+  "summary": "Resumen conciso en español de la evolución agronómica agregada sin inventar datos que no se hayan proporcionado."
+}
+`;
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.6-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+      },
+    });
+
+    res.json(JSON.parse(response.text || '{}'));
+  } catch (error: any) {
+    console.error('Error in /api/ai/weekly-summary:', error);
+    res.status(500).json({ error: error?.message || 'Error generando resumen semanal' });
+  }
+});
+
 // 5. Compare Photos Evolution (Multimodal Real)
 app.post('/api/ai/compare-photos', async (req, res) => {
   try {

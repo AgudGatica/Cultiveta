@@ -31,7 +31,11 @@ import { cultivationService } from '../../services/cultivationService';
 import { photoService } from '../../services/photoService';
 import { auth } from '../../firebase/config';
 import { GENETICS_DATABASE } from '../../data/predefinedGenetics';
-import { getLocalTodayDateOnly, isFloweringStage } from '../../utils/growthStageUtils';
+import {
+  getLocalTodayDateOnly,
+  isFloweringStage,
+  buildUpdatedStagesTimeline,
+} from '../../utils/growthStageUtils';
 
 const parseFloweringWeeks = (daysStr: string) => {
   const match = daysStr.match(/(\d+)/g);
@@ -81,10 +85,10 @@ interface CultivationFormModalProps {
 export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
   isOpen,
   onClose,
-  userId,
+  userId = '',
   cultivationToEdit,
   initialGenetics,
-  geneticsList,
+  geneticsList = [],
   onSaved,
 }) => {
   const [name, setName] = useState('');
@@ -139,7 +143,27 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
   useEffect(() => {
     if (cultivationToEdit) {
       setName(cultivationToEdit.name);
-      setStartDate(cultivationToEdit.startDate);
+      const initialStageDate =
+        cultivationToEdit.stageStartDate ||
+        (isFloweringStage(cultivationToEdit.currentStage) ? cultivationToEdit.floweringStartDate : undefined) ||
+        cultivationToEdit.startDate ||
+        getLocalTodayDateOnly();
+      setStartDate(initialStageDate);
+
+      // Precargar priorDates desde stagesTimeline[].actualStartDate
+      const existingTimeline = cultivationToEdit.stagesTimeline || [];
+      const germinacionStage = existingTimeline.find((s) => s.name.toLowerCase().includes('germin'));
+      const plantulaStage = existingTimeline.find((s) => s.name.toLowerCase().includes('plánt') || s.name.toLowerCase().includes('plant'));
+      const vegetativoStage = existingTimeline.find((s) => s.name.toLowerCase().includes('veg'));
+
+      const loadedPriorDates = {
+        germinacion: germinacionStage?.actualStartDate || '',
+        plantula: plantulaStage?.actualStartDate || '',
+        vegetativo: vegetativoStage?.actualStartDate || '',
+      };
+      setPriorDates(loadedPriorDates);
+      setShowPreviousHistory(Boolean(loadedPriorDates.germinacion || loadedPriorDates.plantula || loadedPriorDates.vegetativo));
+
       setType(cultivationToEdit.type);
       setPlantCount(cultivationToEdit.plantCount || 1);
       setLocationCoordinates(cultivationToEdit.locationCoordinates);
@@ -443,33 +467,52 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
         ? Math.max(...cleanGeneticsList.map((g) => g.declaredFloweringWeeks || 8))
         : 8;
 
-      const isStageChanged = cultivationToEdit && cultivationToEdit.currentStage !== currentStage;
       const todayStr = getLocalTodayDateOnly();
-      const stageStartDate = isStageChanged
-        ? todayStr
-        : (cultivationToEdit?.stageStartDate || startDate || todayStr);
+      // Una fecha explícitamente escrita por el usuario SIEMPRE tiene prioridad sobre hoy
+      const stageStartDate = (startDate && startDate.trim()) || todayStr;
 
       const isStartFromGermination = currentStage === 'Germinación';
-      const hasExplicitPriorHistory = Boolean(
-        priorDates.germinacion || priorDates.plantula || priorDates.vegetativo
-      );
+      const hasExplicitGermination = Boolean(priorDates.germinacion);
+      const hasOtherPriorDates = Boolean(priorDates.plantula || priorDates.vegetativo);
 
-      const timelineHistoryMode: 'known_from_start' | 'unknown_before_current_stage' =
-        cultivationToEdit?.timelineHistoryMode ||
-        (isStartFromGermination || hasExplicitPriorHistory
-          ? 'known_from_start'
-          : 'unknown_before_current_stage');
+      let timelineHistoryMode: 'known_from_start' | 'unknown_before_current_stage' | 'partially_known';
+      if (isStartFromGermination || hasExplicitGermination) {
+        timelineHistoryMode = 'known_from_start';
+      } else if (hasOtherPriorDates) {
+        timelineHistoryMode = 'partially_known';
+      } else {
+        timelineHistoryMode = 'unknown_before_current_stage';
+      }
 
-      const cycleStartKnown =
-        cultivationToEdit?.cycleStartKnown !== undefined
-          ? cultivationToEdit.cycleStartKnown
-          : isStartFromGermination
-          ? true
-          : Boolean(priorDates.germinacion);
+      const cycleStartKnown = isStartFromGermination || hasExplicitGermination;
 
       const resolvedStartDate = isStartFromGermination
         ? stageStartDate
-        : (priorDates.germinacion || cultivationToEdit?.startDate || stageStartDate);
+        : (priorDates.germinacion ||
+           (cycleStartKnown && cultivationToEdit?.startDate) ||
+           priorDates.plantula ||
+           priorDates.vegetativo ||
+           stageStartDate);
+
+      let finalFloweringStartDate: string | undefined = undefined;
+      if (isFloweringStage(currentStage)) {
+        // En Floración: fecha contextual ingresada tiene prioridad; si no fue modificada conservar la existente
+        finalFloweringStartDate = stageStartDate || cultivationToEdit?.floweringStartDate || todayStr;
+      } else if (cultivationToEdit?.floweringStartDate) {
+        finalFloweringStartDate = cultivationToEdit.floweringStartDate;
+      }
+
+      // Construir o actualizar stagesTimeline de forma determinista
+      const updatedStagesTimeline = buildUpdatedStagesTimeline({
+        currentStage: currentStage || 'Vegetativo',
+        stageStartDate,
+        floweringStartDate: finalFloweringStartDate,
+        priorDates,
+        photoperiodType: primaryGen?.photoperiodType || 'Fotoperiódica',
+        declaredFloweringWeeks: calculatedFloweringWeeks,
+        type: type || 'Indoor',
+        existingTimeline: cultivationToEdit?.stagesTimeline,
+      });
 
       const isOutdoorOrGreenhouse = type === 'Outdoor' || type === 'Invernadero';
       let finalLightingType = lightingType.trim();
@@ -526,6 +569,7 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
         stageStartDate,
         timelineHistoryMode,
         cycleStartKnown,
+        stagesTimeline: updatedStagesTimeline,
         substrate: {
           type: substrateType || 'Turba / Perlita / Humus',
           potVolumeLiters: Number(potVolumeLiters) || 11,
@@ -535,6 +579,10 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
         status: cultivationToEdit?.status || 'ESTABLE',
         isFinished: cultivationToEdit?.isFinished || false,
       };
+
+      if (finalFloweringStartDate) {
+        cultivationPayload.floweringStartDate = finalFloweringStartDate;
+      }
 
       if (primaryGen?.geneticsId) {
         cultivationPayload.geneticsId = primaryGen.geneticsId;
@@ -547,23 +595,6 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
       }
       if (cleanGeneticsList.length > 0) {
         cultivationPayload.geneticsList = cleanGeneticsList;
-      }
-
-      if (isFloweringStage(currentStage)) {
-        cultivationPayload.floweringStartDate =
-          cultivationToEdit?.floweringStartDate || (isStageChanged ? todayStr : stageStartDate);
-      }
-
-      // Sync stagesTimeline if present on edit
-      if (cultivationToEdit?.stagesTimeline && cultivationToEdit.stagesTimeline.length > 0) {
-        const normSelected = (currentStage || '').toLowerCase().trim();
-        const activeIdx = cultivationToEdit.stagesTimeline.findIndex(
-          (s) => s.name.toLowerCase().trim() === normSelected
-        );
-        cultivationPayload.stagesTimeline = cultivationToEdit.stagesTimeline.map((st, idx) => ({
-          ...st,
-          isCompleted: activeIdx !== -1 && idx < activeIdx,
-        }));
       }
 
       if (coverPhotoUrl) {

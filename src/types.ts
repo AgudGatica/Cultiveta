@@ -101,7 +101,7 @@ export interface Cultivation {
   floweringStartDate?: string;
   stagesTimeline?: CultivationGrowthStage[];
   cycleStartKnown?: boolean;
-  timelineHistoryMode?: 'known_from_start' | 'unknown_before_current_stage';
+  timelineHistoryMode?: 'known_from_start' | 'unknown_before_current_stage' | 'partially_known';
   substrate: {
     type: string;
     brand?: string;

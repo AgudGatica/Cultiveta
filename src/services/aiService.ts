@@ -288,48 +288,27 @@ export const aiService = {
     wateringsCount: number;
     recentEnvAvg: { tempC: number; humidityPct: number };
   }): Promise<string> {
-    const cropNames = params.cultivations.map((c) => c.name).join(', ') || 'Cultivos activos';
-    const dummyCultivation: Cultivation = {
-      id: 'all',
-      userId: 'user',
-      name: cropNames,
-      startDate: new Date().toISOString(),
-      type: 'Indoor',
-      plantCount: params.cultivations.length,
-      currentStage: (params.cultivations[0]?.stage as any) || 'Vegetativo',
-      stageStartDate: new Date().toISOString(),
-      substrate: {
-        type: 'No especificado',
-        potVolumeLiters: 0,
-        potType: 'Otro',
-      },
-      status: 'ESTABLE',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    const cropNames =
+      params.cultivations.map((c) => `${c.name} (${c.stage || 'Sin etapa'})`).join(', ') ||
+      'Cultivos activos';
 
     try {
-      const res = await this.get7DaySummary({
-        cultivation: dummyCultivation,
-        waterings7d: Array(params.wateringsCount).fill({} as any),
-        env7d: [
-          {
-            id: 'avg',
-            userId: 'user',
-            cultivationId: 'all',
-            date: new Date().toISOString(),
-            temperatureC: params.recentEnvAvg.tempC,
-            humidityPct: params.recentEnvAvg.humidityPct,
-            createdAt: new Date().toISOString(),
-          },
-        ],
-        photos7d: [],
-        notes7d: [],
+      const headers = await getAuthHeaders();
+      const response = await fetch('/api/ai/weekly-summary', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(params),
       });
-      return res.summary;
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.summary) return data.summary;
+      }
     } catch {
-      return `Resumen semanal: ${params.cultivations.length} cultivo(s) en seguimiento (${cropNames}). Riegos registrados: ${params.wateringsCount}. Parámetros climáticos promedio: ${params.recentEnvAvg.tempC}°C y ${params.recentEnvAvg.humidityPct}% HR.`;
+      // Continuar con fallback determinista basado exclusivamente en métricas reales
     }
+
+    return `Resumen semanal: ${params.cultivations.length} cultivo(s) en seguimiento (${cropNames}). Riegos registrados: ${params.wateringsCount}. Parámetros climáticos promedio: ${params.recentEnvAvg.tempC}°C y ${params.recentEnvAvg.humidityPct}% HR.`;
   },
 
   async comparePhotos(params: {

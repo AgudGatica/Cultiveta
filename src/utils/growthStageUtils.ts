@@ -1,4 +1,12 @@
-import { Cultivation, CultivationGrowthStage, CultivationStageName, Genetics, StageDateKnowledge } from '../types';
+import {
+  Cultivation,
+  CultivationGrowthStage,
+  CultivationStageName,
+  CultivationType,
+  Genetics,
+  PhotoperiodType,
+  StageDateKnowledge,
+} from '../types';
 
 export interface StagePreset {
   id: string;
@@ -620,7 +628,7 @@ export function buildCultivationStageSchedule(
   // Check if historical dates prior to active stage are known
   let historyKnownBeforeActive = isFirstStage;
   if (!isFirstStage) {
-    if (cultivation.timelineHistoryMode === 'unknown_before_current_stage') {
+    if (cultivation.timelineHistoryMode === 'unknown_before_current_stage' || cultivation.timelineHistoryMode === 'partially_known') {
       historyKnownBeforeActive = false;
     } else if (cultivation.timelineHistoryMode === 'known_from_start') {
       historyKnownBeforeActive = true;
@@ -1115,3 +1123,145 @@ export function calculateTimelineMetrics(
     isHarvestCompleted,
   };
 }
+
+/**
+ * Builds or updates stagesTimeline ensuring deterministic knowledge preservation
+ * across each stage:
+ * - prior stages with explicit priorDates: actualStartDate preserved, dateKnowledge='actual', actualEndDate inferred from next stage
+ * - prior stages without real dates: dateKnowledge='unknown', actualStartDate=undefined, NO backward projection
+ * - active stage: actualStartDate=stageStartDate (or floweringStartDate), dateKnowledge='actual'
+ * - future stages: dateKnowledge='projected', projected forward from active stage end
+ */
+export function buildUpdatedStagesTimeline(params: {
+  currentStage: CultivationStageName;
+  stageStartDate: string;
+  floweringStartDate?: string;
+  priorDates?: {
+    germinacion?: string;
+    plantula?: string;
+    vegetativo?: string;
+  };
+  photoperiodType?: PhotoperiodType;
+  declaredFloweringWeeks?: number;
+  type?: CultivationType;
+  existingTimeline?: CultivationGrowthStage[];
+}): CultivationGrowthStage[] {
+  // 1. Determinar lista base de etapas
+  let baseStages: CultivationGrowthStage[] = [];
+  if (params.existingTimeline && params.existingTimeline.length > 0) {
+    baseStages = params.existingTimeline.map((s) => ({ ...s }));
+  } else {
+    const dummyCrop: any = {
+      photoperiodType: params.photoperiodType || 'Fotoperiódica',
+      declaredFloweringWeeks: params.declaredFloweringWeeks || 8,
+      type: params.type || 'Indoor',
+      startDate: params.stageStartDate,
+      currentStage: params.currentStage,
+    };
+    baseStages = getStagesForCultivation(dummyCrop);
+  }
+
+  const normCurrent = (params.currentStage || '').toLowerCase().trim();
+  const activeIdx = baseStages.findIndex(
+    (s) => s.name.toLowerCase().trim() === normCurrent
+  );
+  const resolvedActiveIdx = activeIdx !== -1 ? activeIdx : 0;
+
+  const explicitPriorDateForStage = (stageName: string): string | undefined => {
+    const sName = stageName.toLowerCase().trim();
+    if (sName.includes('germin')) {
+      return params.priorDates?.germinacion?.trim() || undefined;
+    }
+    if (sName.includes('plánt') || sName.includes('plant')) {
+      return params.priorDates?.plantula?.trim() || undefined;
+    }
+    if (sName.includes('veg')) {
+      return params.priorDates?.vegetativo?.trim() || undefined;
+    }
+    return undefined;
+  };
+
+  const updatedStages: CultivationGrowthStage[] = [];
+  const activeStageRealStart =
+    (isFloweringStage(params.currentStage) && params.floweringStartDate) ||
+    params.stageStartDate;
+
+  // Paso 1: Asignar fechas reales a cada etapa
+  for (let i = 0; i < baseStages.length; i++) {
+    const st = { ...baseStages[i] };
+    if (i < resolvedActiveIdx) {
+      const explicit = explicitPriorDateForStage(st.name);
+      if (explicit) {
+        st.actualStartDate = explicit;
+        st.startDate = explicit;
+        st.dateKnowledge = 'actual';
+        st.isCompleted = true;
+      } else if (st.actualStartDate) {
+        st.startDate = st.actualStartDate;
+        st.dateKnowledge = 'actual';
+        st.isCompleted = true;
+      } else {
+        st.actualStartDate = undefined;
+        st.actualEndDate = undefined;
+        st.startDate = undefined as any;
+        st.endDate = undefined;
+        st.dateKnowledge = 'unknown';
+        st.isCompleted = true;
+      }
+    } else if (i === resolvedActiveIdx) {
+      st.actualStartDate = activeStageRealStart;
+      st.startDate = activeStageRealStart;
+      st.actualEndDate = undefined;
+      st.dateKnowledge = 'actual';
+      st.isCompleted = false;
+    } else {
+      st.actualStartDate = undefined;
+      st.actualEndDate = undefined;
+      st.dateKnowledge = 'projected';
+      st.isCompleted = false;
+    }
+    updatedStages.push(st);
+  }
+
+  // Paso 2: Inferir transiciones reales (actualEndDate) entre etapas conocidas consecutivas
+  for (let i = 0; i < resolvedActiveIdx; i++) {
+    const current = updatedStages[i];
+    if (current.actualStartDate) {
+      let nextKnownStart: string | undefined = undefined;
+      for (let j = i + 1; j <= resolvedActiveIdx; j++) {
+        if (updatedStages[j].actualStartDate) {
+          nextKnownStart = updatedStages[j].actualStartDate;
+          break;
+        }
+      }
+      if (nextKnownStart) {
+        current.actualEndDate = nextKnownStart;
+        current.endDate = nextKnownStart;
+        current.dateKnowledge = 'actual';
+      } else if (!current.actualEndDate) {
+        current.endDate = addDays(current.actualStartDate, current.expectedDurationDays || 7);
+      }
+    }
+  }
+
+  // Paso 3: Proyectar hacia adelante etapas futuras desde el cierre de la etapa activa
+  const activeSt = updatedStages[resolvedActiveIdx];
+  const activeDuration =
+    (isFloweringStage(activeSt.name) && params.declaredFloweringWeeks
+      ? Math.max(28, params.declaredFloweringWeeks * 7)
+      : activeSt.expectedDurationDays) || 7;
+  activeSt.endDate = addDays(activeSt.startDate || params.stageStartDate, activeDuration);
+
+  let runner = activeSt.endDate;
+  for (let i = resolvedActiveIdx + 1; i < updatedStages.length; i++) {
+    const fut = updatedStages[i];
+    fut.startDate = runner;
+    const dur = fut.expectedDurationDays || 7;
+    fut.endDate = addDays(fut.startDate, dur);
+    fut.dateKnowledge = 'projected';
+    runner = fut.endDate;
+  }
+
+  return updatedStages;
+}
+

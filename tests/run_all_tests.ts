@@ -79,6 +79,13 @@ const suites: SuiteConfig[] = [
     expectedTests: 20,
   },
   {
+    id: 'partial_timeline_history',
+    name: 'Historial Parcialmente Conocido, Fechas por Etapa & Resumen IA: 17 Pruebas Específicas',
+    category: 'mocks',
+    file: 'tests/partial_timeline_history.test.ts',
+    expectedTests: 17,
+  },
+  {
     id: 'irrigation_forecast',
     name: 'Inteligencia Hídrica: 18 Pruebas Matemáticas Deterministas de Riego',
     category: 'mocks',
