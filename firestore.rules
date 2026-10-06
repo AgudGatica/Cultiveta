@@ -21,10 +21,20 @@ service cloud.firestore {
     match /geneticsCatalogPhotos/{docId} {
       allow read, write: if false;
     }
-    // Top-level collections scoped by userId field
+    // Top-level collections scoped by userId field (excluyendo expresamente colecciones reservadas)
     match /{collection}/{document} {
-      allow read, update, delete: if request.auth != null && (resource == null || resource.data.userId == request.auth.uid);
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      function isReservedTopLevelCollection() {
+        return collection == 'users'
+            || collection == 'geneticsCatalogPhotos';
+      }
+
+      allow read, update, delete: if request.auth != null
+        && !isReservedTopLevelCollection()
+        && resource.data.userId == request.auth.uid;
+
+      allow create: if request.auth != null
+        && !isReservedTopLevelCollection()
+        && request.resource.data.userId == request.auth.uid;
     }
   }
 }

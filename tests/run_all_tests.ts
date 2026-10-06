@@ -30,7 +30,7 @@ let totalSkipped = 0;
 interface SuiteConfig {
   id: string;
   name: string;
-  category: 'mocks' | 'jsdom' | 'e2e' | 'firebase_real';
+  category: 'mocks' | 'jsdom' | 'e2e' | 'firebase_real' | 'firebase_rules';
   file: string;
   expectedTests: number;
 }
@@ -122,10 +122,17 @@ const suites: SuiteConfig[] = [
   },
   {
     id: 'genetics_admin_photos',
-    name: 'Genéticas: Administración Privada de Fotos Representativas por Creador/Admin (32 Casos)',
+    name: 'Genéticas: Administración Privada de Fotos Representativas por Creador/Admin (37 Casos)',
     category: 'jsdom',
     file: 'tests/genetics_admin_photos.test.ts',
-    expectedTests: 32,
+    expectedTests: 37,
+  },
+  {
+    id: 'firestore_admin_rules',
+    name: 'Firestore Rules: Admin Privilege Escalation & Genetics Catalog Isolation (7 Casos)',
+    category: 'firebase_rules',
+    file: 'tests/firestore_admin_rules.test.ts',
+    expectedTests: 7,
   },
   {
     id: 'e2e_browser_real',

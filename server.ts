@@ -15,6 +15,7 @@ import { CultivationTask } from './src/types';
 import { verifyAdminRole, isRequestAdmin } from './src/server/adminAuthMiddleware';
 import { validateImageBuffer } from './src/server/imageValidation';
 import { getGeneticsPhotoKey } from './src/utils/geneticsKeyUtils';
+import { cleanFirestoreData } from './src/utils/firestoreUtils';
 
 dotenv.config();
 
@@ -1535,10 +1536,14 @@ app.post(
         });
       }
 
+      const trimmedSourceUrl = photoSourceUrl ? String(photoSourceUrl).trim() : '';
+      const trimmedSourceName = photoSourceName ? String(photoSourceName).trim() : '';
+      const trimmedAttribution = photoAttribution ? String(photoAttribution).trim() : '';
+      const trimmedLicense = photoLicense ? String(photoLicense).trim() : '';
+
       // Validar photoSourceUrl si fue provisto
-      if (photoSourceUrl) {
-        const urlStr = String(photoSourceUrl).trim();
-        if (urlStr.length > 2048 || (!urlStr.startsWith('http://') && !urlStr.startsWith('https://'))) {
+      if (trimmedSourceUrl) {
+        if (trimmedSourceUrl.length > 2048 || (!trimmedSourceUrl.startsWith('http://') && !trimmedSourceUrl.startsWith('https://'))) {
           return res.status(400).json({
             error: 'La URL de la fuente debe ser una dirección HTTP o HTTPS válida de hasta 2048 caracteres.',
             code: 'invalid/photo-source-url',
@@ -1643,8 +1648,22 @@ app.post(
       // Generar URL estable mediante downloadToken (sin depender de makePublic)
       const photoUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(newStoragePath)}?alt=media&token=${downloadToken}`;
 
+      let parsedDimensions: { width: number; height: number } | undefined = undefined;
+      if (req.body.dimensions) {
+        try {
+          const parsed = typeof req.body.dimensions === 'string'
+            ? JSON.parse(req.body.dimensions)
+            : req.body.dimensions;
+          if (parsed && typeof parsed === 'object' && typeof parsed.width === 'number' && typeof parsed.height === 'number') {
+            parsedDimensions = { width: parsed.width, height: parsed.height };
+          }
+        } catch {
+          parsedDimensions = undefined;
+        }
+      }
+
       const now = new Date().toISOString();
-      const newPhotoRecord: any = {
+      const rawPhotoRecord: any = {
         key,
         seedBank: seedBank.trim(),
         name: name.trim(),
@@ -1652,23 +1671,23 @@ app.post(
         storagePath: newStoragePath,
         fileSize: req.file.size,
         mimeType: imageValidation.detectedMime,
-        // Dimensions provistas por cliente son informativas, no validadas server-side
-        dimensions: req.body.dimensions
-          ? typeof req.body.dimensions === 'string'
-            ? JSON.parse(req.body.dimensions)
-            : req.body.dimensions
-          : undefined,
-        photoSourceUrl: photoSourceUrl ? String(photoSourceUrl).trim() : undefined,
-        photoSourceName: photoSourceName ? String(photoSourceName).trim() : undefined,
-        photoAttribution: photoAttribution ? String(photoAttribution).trim() : undefined,
-        photoLicense: photoLicense ? String(photoLicense).trim() : undefined,
+        dimensions: parsedDimensions || undefined,
+        photoSourceUrl: trimmedSourceUrl || undefined,
+        photoSourceName: trimmedSourceName || undefined,
+        photoAttribution: trimmedAttribution || undefined,
+        photoLicense: trimmedLicense || undefined,
         photoRightsStatus: rightsStatus,
         updatedAt: now,
         updatedBy: req.userId,
       };
 
+      // Construcción del documento Firestore sin ninguna propiedad undefined
+      const newPhotoRecord = cleanFirestoreData(rawPhotoRecord);
+
       try {
-        await docRef.set(newPhotoRecord, { merge: true });
+        // Reemplazo completo del documento SIN { merge: true }
+        // Evita que metadatos viejos opcionales sobrevivan cuando el usuario los deja vacíos
+        await docRef.set(newPhotoRecord);
       } catch {
         // En caso de fallo de Firestore: borrar SOLAMENTE el objeto nuevo para no pisar el anterior
         await fileRef.delete({ ignoreNotFound: true }).catch(() => {
@@ -1687,8 +1706,8 @@ app.post(
         });
       }
 
-      // Respuesta exitosa: DTO público sin exponer updatedBy
-      const publicDto = {
+      // Respuesta exitosa: DTO público sin exponer updatedBy ni undefined
+      const publicDto = cleanFirestoreData({
         key,
         seedBank: newPhotoRecord.seedBank,
         name: newPhotoRecord.name,
@@ -1703,7 +1722,7 @@ app.post(
         photoLicense: newPhotoRecord.photoLicense,
         photoRightsStatus: newPhotoRecord.photoRightsStatus,
         updatedAt: newPhotoRecord.updatedAt,
-      };
+      });
 
       return res.json({ success: true, photo: publicDto });
     } catch (err: any) {

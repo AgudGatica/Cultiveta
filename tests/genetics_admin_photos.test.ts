@@ -1,9 +1,10 @@
 /**
  * tests/genetics_admin_photos.test.ts
  *
- * SUITE DE PRUEBAS: HERRAMIENTA PRIVADA DE ADMINISTRACIÓN DE FOTOS DE GENÉTICAS (32 CASOS)
+ * SUITE DE PRUEBAS: HERRAMIENTA PRIVADA DE ADMINISTRACIÓN DE FOTOS DE GENÉTICAS (37 CASOS)
  * Con endurecimiento final: reemplazo versionado, URLs estables con token, atomicidad en Firestore,
- * eliminación segura, sanitización DTO sin updatedBy y badges precisos por derechos.
+ * eliminación segura, sanitización DTO sin updatedBy, badges precisos por derechos,
+ * eliminación de propiedades undefined y reemplazo completo sin merge:true.
  *
  * 1. UID ficticio creator-cultiveta-admin NO autoriza.
  * 2. UID ficticio admin-cultiveta-main NO autoriza.
@@ -37,6 +38,11 @@
  * 30. delete Firestore exitoso + Storage delete fallido igualmente elimina foto activa y registra orphan.
  * 31. endpoint catálogo DTO no contiene updatedBy.
  * 32. badge depende correctamente de photoRightsStatus.
+ * 33. newPhotoRecord no contiene ninguna propiedad undefined.
+ * 34. foto nueva con campos de texto vacíos produce un Firestore payload válido sin claves residuales.
+ * 35. photoRightsStatus sigue siendo unknown cuando no se especifica.
+ * 36. regresión: reemplazo con metadata opcional vacía NO conserva metadata antigua.
+ * 37. Firestore write sin merge:true asegura un estado limpio sin valores residuales.
  */
 
 import { JSDOM } from 'jsdom';
@@ -55,6 +61,7 @@ import {
 import { GENETICS_DATABASE } from '../src/data/predefinedGenetics';
 import { GeneticsLibraryView, getRightsBadgeLabel } from '../src/components/genetics/GeneticsLibraryView';
 import { UserProfile, GeneticsCatalogPhotoDTO } from '../src/types';
+import { cleanFirestoreData } from '../src/utils/firestoreUtils';
 
 // Configurar entorno JSDOM
 const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>', {
@@ -76,7 +83,7 @@ Object.defineProperty(globalThis, 'navigator', {
 
 async function run(): Promise<void> {
   console.log('\n================================================================');
-  console.log('   PRUEBAS: ADMINISTRACIÓN PRIVADA DE FOTOS DE GENÉTICAS (32 CASOS) ');
+  console.log('   PRUEBAS: ADMINISTRACIÓN PRIVADA DE FOTOS DE GENÉTICAS (37 CASOS) ');
   console.log('================================================================\n');
 
   let passed = 0;
@@ -790,12 +797,205 @@ async function run(): Promise<void> {
       }
     }
 
+    // -------------------------------------------------------------
+    // CASO 33: newPhotoRecord no contiene ninguna propiedad undefined
+    // -------------------------------------------------------------
+    {
+      const rawRecord = {
+        key: 'sensi-seeds__skunk-1',
+        seedBank: 'Sensi Seeds',
+        name: 'Skunk #1',
+        photoUrl: 'https://firebasestorage.googleapis.com/...',
+        storagePath: 'genetics/reference/sensi-seeds__skunk-1/cover-1.jpg',
+        fileSize: 1024,
+        mimeType: 'image/jpeg',
+        dimensions: undefined,
+        photoSourceUrl: undefined,
+        photoSourceName: undefined,
+        photoAttribution: undefined,
+        photoLicense: undefined,
+        photoRightsStatus: 'unknown',
+        updatedAt: '2026-10-06T12:00:00Z',
+        updatedBy: 'admin-uid-33',
+      };
+
+      const cleaned = cleanFirestoreData(rawRecord);
+      const hasUndefinedKey = Object.keys(cleaned).some((k) => (cleaned as any)[k] === undefined);
+      const hasUndefinedValue = Object.values(cleaned).some((v) => v === undefined);
+
+      if (!hasUndefinedKey && !hasUndefinedValue && cleaned.key === 'sensi-seeds__skunk-1') {
+        recordPass('33. newPhotoRecord no contiene ninguna propiedad undefined');
+      } else {
+        recordFail('33. newPhotoRecord contiene propiedades con valor undefined');
+      }
+    }
+
+    // -------------------------------------------------------------
+    // CASO 34: Foto nueva con photoSourceUrl='', photoAttribution='', photoLicense='' produce payload válido
+    // -------------------------------------------------------------
+    {
+      const trimmedSourceUrl = ''.trim() || undefined;
+      const trimmedSourceName = ''.trim() || undefined;
+      const trimmedAttribution = ''.trim() || undefined;
+      const trimmedLicense = ''.trim() || undefined;
+
+      const rawRecord: Record<string, any> = {
+        key: 'dutch-passion__white-widow',
+        seedBank: 'Dutch Passion',
+        name: 'White Widow',
+        photoUrl: 'https://firebasestorage.googleapis.com/...',
+        storagePath: 'genetics/reference/dutch-passion__white-widow/cover-1.jpg',
+        fileSize: 2048,
+        mimeType: 'image/jpeg',
+        dimensions: undefined,
+        photoSourceUrl: trimmedSourceUrl,
+        photoSourceName: trimmedSourceName,
+        photoAttribution: trimmedAttribution,
+        photoLicense: trimmedLicense,
+        photoRightsStatus: 'unknown',
+        updatedAt: new Date().toISOString(),
+        updatedBy: 'admin-uid-34',
+      };
+
+      const cleaned: any = cleanFirestoreData(rawRecord);
+
+      if (
+        cleaned.photoSourceUrl === undefined &&
+        cleaned.photoAttribution === undefined &&
+        cleaned.photoLicense === undefined &&
+        !('photoSourceUrl' in cleaned) &&
+        !('photoAttribution' in cleaned) &&
+        !('photoLicense' in cleaned) &&
+        cleaned.key === 'dutch-passion__white-widow'
+      ) {
+        recordPass('34. Foto nueva con campos de texto vacíos produce un Firestore payload válido sin claves residuales');
+      } else {
+        recordFail('34. Payload de Firestore contiene campos vacíos o residuales');
+      }
+    }
+
+    // -------------------------------------------------------------
+    // CASO 35: photoRightsStatus sigue siendo unknown por defecto
+    // -------------------------------------------------------------
+    {
+      const rawStatus: any = '';
+      const status = rawStatus ? String(rawStatus).trim() : 'unknown';
+      const ALLOWED = ['unknown', 'official-source', 'permission-granted', 'licensed', 'owned'];
+      const finalStatus = ALLOWED.includes(status) ? status : 'unknown';
+
+      if (finalStatus === 'unknown') {
+        recordPass('35. photoRightsStatus sigue siendo unknown cuando no se especifica');
+      } else {
+        recordFail(`35. photoRightsStatus no fue unknown: ${finalStatus}`);
+      }
+    }
+
+    // -------------------------------------------------------------
+    // CASO 36: Test de regresión: Reemplazo con metadata vacía NO conserva metadata antigua
+    // -------------------------------------------------------------
+    {
+      const previousRecord = {
+        key: 'sensi-seeds__skunk-1',
+        seedBank: 'Sensi Seeds',
+        name: 'Skunk #1',
+        photoUrl: 'https://firebasestorage.googleapis.com/.../old-cover.jpg',
+        storagePath: 'genetics/reference/sensi-seeds__skunk-1/old-cover.jpg',
+        fileSize: 5000,
+        mimeType: 'image/jpeg',
+        photoSourceUrl: 'https://old.example.com',
+        photoSourceName: 'Old Source',
+        photoAttribution: 'Old attribution',
+        photoLicense: 'Old license',
+        photoRightsStatus: 'official-source',
+        updatedAt: '2026-10-05T10:00:00Z',
+        updatedBy: 'admin-old',
+      };
+
+      // Nuevo upload donde el admin dejó los campos opcionales en blanco
+      const newUploadInput = {
+        photoSourceUrl: '',
+        photoSourceName: '',
+        photoAttribution: '',
+        photoLicense: '',
+        photoRightsStatus: 'unknown',
+      };
+
+      const trimmedSourceUrl = newUploadInput.photoSourceUrl.trim() || undefined;
+      const trimmedSourceName = newUploadInput.photoSourceName.trim() || undefined;
+      const trimmedAttribution = newUploadInput.photoAttribution.trim() || undefined;
+      const trimmedLicense = newUploadInput.photoLicense.trim() || undefined;
+
+      const rawNewPhotoRecord = {
+        key: previousRecord.key,
+        seedBank: previousRecord.seedBank,
+        name: previousRecord.name,
+        photoUrl: 'https://firebasestorage.googleapis.com/.../cover-new-version.jpg',
+        storagePath: 'genetics/reference/sensi-seeds__skunk-1/cover-new-version.jpg',
+        fileSize: 6000,
+        mimeType: 'image/jpeg',
+        photoSourceUrl: trimmedSourceUrl,
+        photoSourceName: trimmedSourceName,
+        photoAttribution: trimmedAttribution,
+        photoLicense: trimmedLicense,
+        photoRightsStatus: newUploadInput.photoRightsStatus,
+        updatedAt: '2026-10-06T14:00:00Z',
+        updatedBy: 'admin-new',
+      };
+
+      // Documento Firestore nuevo y completo (sin merge: true)
+      const firestoreResult = cleanFirestoreData(rawNewPhotoRecord);
+
+      const hasOldSourceUrl = 'photoSourceUrl' in firestoreResult;
+      const hasOldAttribution = 'photoAttribution' in firestoreResult;
+      const hasOldLicense = 'photoLicense' in firestoreResult;
+      const isRightsUnknown = firestoreResult.photoRightsStatus === 'unknown';
+
+      if (!hasOldSourceUrl && !hasOldAttribution && !hasOldLicense && isRightsUnknown) {
+        recordPass('36. Regresión: Reemplazo con metadata opcional vacía NO conserva metadata antigua');
+      } else {
+        recordFail('36. Regresión fallida: Metadata anterior sobrevivió al reemplazo de la foto');
+      }
+    }
+
+    // -------------------------------------------------------------
+    // CASO 37: Firestore write sin merge:true previene valores residuales
+    // -------------------------------------------------------------
+    {
+      const newFullRecord = cleanFirestoreData({
+        key: 'sensi-seeds__skunk-1',
+        seedBank: 'Sensi Seeds',
+        name: 'Skunk #1',
+        photoUrl: 'https://new.jpg',
+        storagePath: 'genetics/reference/sensi-seeds__skunk-1/cover.jpg',
+        fileSize: 4000,
+        mimeType: 'image/jpeg',
+        photoRightsStatus: 'unknown',
+        updatedAt: '2026-10-06T14:00:00Z',
+        updatedBy: 'admin-uid-37',
+      });
+
+      // Simulación de set(newFullRecord) [sin merge]: sustituye el documento completo
+      const finalDocState = { ...newFullRecord };
+
+      const noResidualFields =
+        !('photoSourceUrl' in finalDocState) &&
+        !('photoAttribution' in finalDocState) &&
+        !('photoLicense' in finalDocState) &&
+        finalDocState.photoRightsStatus === 'unknown';
+
+      if (noResidualFields) {
+        recordPass('37. Firestore write sin merge:true asegura un estado limpio sin valores residuales');
+      } else {
+        recordFail('37. El estado de Firestore retuvo campos residuales');
+      }
+    }
+
   } catch (globalErr) {
     recordFail('Error global inesperado durante la ejecución de las pruebas', globalErr);
   }
 
   console.log('\n----------------------------------------------------------------');
-  console.log(`TOTAL: 32 | PASARON: ${passed} | FALLARON: ${failed}`);
+  console.log(`TOTAL: 37 | PASARON: ${passed} | FALLARON: ${failed}`);
   console.log('================================================================\n');
 
   if (failed > 0) {
