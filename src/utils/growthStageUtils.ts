@@ -559,6 +559,7 @@ export interface CultivationScheduleSummary {
   totalCycleDays: number | null;
   totalElapsedDays: number | null;
   overallProgressPct: number | null;
+  roadmapProgressPct: number;
   adjustmentDeltaDays: number;
   hasStageAdjustments: boolean;
   adjustmentReason: string;
@@ -902,6 +903,35 @@ export function buildCultivationStageSchedule(
   const activeStageStart = activeStageItem?.startDate || todayStr;
   const activeStageElapsedDays = Math.max(1, daysBetween(activeStageStart, todayStr));
 
+  // 7. Roadmap progress calculation (centralized for dashboard slider and timeline views)
+  let harvestIdx = scheduleItems.findIndex(
+    (s) => s.name === 'Cosecha' || s.name === 'Secado' || s.name === 'Finalizado' || s.name.toLowerCase().includes('cosech')
+  );
+  if (harvestIdx === -1) harvestIdx = scheduleItems.length - 1;
+  const lifecycleStages = scheduleItems.slice(0, harvestIdx + 1);
+
+  const totalLifecycleExpectedDays = lifecycleStages.reduce(
+    (acc, s) => acc + (s.expectedDurationDays || 7),
+    0
+  ) || 1;
+
+  let priorExpectedDays = 0;
+  for (let i = 0; i < activeStageIndex && i < lifecycleStages.length; i++) {
+    priorExpectedDays += lifecycleStages[i].expectedDurationDays || 7;
+  }
+  const activeExpectedDays = activeStageItem?.expectedDurationDays || 7;
+  const activeElapsed = Math.min(activeExpectedDays, Math.max(1, activeStageElapsedDays));
+
+  let roadmapProgressPct: number;
+  if (overallProgressPct !== null) {
+    roadmapProgressPct = Math.min(100, Math.max(0, overallProgressPct));
+  } else {
+    roadmapProgressPct = Math.min(
+      100,
+      Math.max(1, Math.round(((priorExpectedDays + activeElapsed) / totalLifecycleExpectedDays) * 100))
+    );
+  }
+
   const floweringStage = scheduleItems.find((s) => isFloweringStage(s.name));
 
   return {
@@ -918,6 +948,7 @@ export function buildCultivationStageSchedule(
     totalCycleDays,
     totalElapsedDays,
     overallProgressPct,
+    roadmapProgressPct,
     adjustmentDeltaDays,
     hasStageAdjustments,
     adjustmentReason,

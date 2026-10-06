@@ -53,23 +53,6 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
   const nextStage = getNextStage(cultivation, stages);
   const schedule = buildCultivationStageSchedule(cultivation, geneticsList);
 
-  const timelineVisualProgressPct = useMemo(() => {
-    if (schedule.overallProgressPct !== null) {
-      return schedule.overallProgressPct;
-    }
-    const totalExpectedDays = schedule.stages.reduce(
-      (acc, s) => acc + (s.expectedDurationDays || 7),
-      0
-    ) || 1;
-    let priorDays = 0;
-    for (let i = 0; i < schedule.activeStageIndex && i < schedule.stages.length; i++) {
-      priorDays += schedule.stages[i].expectedDurationDays || 7;
-    }
-    const activeDuration = schedule.activeStage.expectedDurationDays || 7;
-    const daysInActive = Math.min(activeDuration, Math.max(1, schedule.activeStageElapsedDays || 1));
-    return Math.min(100, Math.max(5, Math.round(((priorDays + daysInActive) / totalExpectedDays) * 100)));
-  }, [schedule]);
-
   const handleOpenTransition = (targetStage?: CultivationGrowthStage | null) => {
     setStageForTransition(targetStage || nextStage || stages[0]);
     setIsTransitionModalOpen(true);
@@ -177,7 +160,7 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
             <div className="flex items-center gap-4 text-stone-600 font-medium text-[11px] sm:text-xs">
               <span className="flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-stone-400" />
-                Inicio: <strong>{schedule.isCycleStartKnown ? formatFriendlyDate(schedule.cropStartDate) : 'No registrado'}</strong>
+                Inicio: <strong>{schedule.isCycleStartKnown ? formatFriendlyDate(schedule.cropStartDate) : 'Sin fecha registrada'}</strong>
               </span>
               <span className="flex items-center gap-1 text-amber-800 font-bold">
                 <Flag className="w-3.5 h-3.5 text-amber-600" />
@@ -193,7 +176,7 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
           <div className="w-full h-3 rounded-full bg-stone-200 overflow-hidden relative">
             <div
               className="h-full bg-emerald-600 rounded-full transition-all duration-700"
-              style={{ width: `${timelineVisualProgressPct}%` }}
+              style={{ width: `${schedule.roadmapProgressPct}%` }}
             />
           </div>
         </div>

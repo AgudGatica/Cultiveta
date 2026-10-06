@@ -413,29 +413,14 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         endDate: st.endDate,
         isActual: st.isActual,
         isProjected: st.isProjected,
+        dateKnowledge: st.dateKnowledge,
+        isUnknown: Boolean(st.isUnknown || st.dateKnowledge === 'unknown'),
+        startIsReal: st.startIsReal,
+        endIsReal: st.endIsReal,
+        actualStartDate: st.actualStartDate,
+        actualEndDate: st.actualEndDate,
       };
     });
-
-    // Ancho visual para el slider de avance del ciclo:
-    // Si cycleStartKnown es true, schedule.overallProgressPct tiene el % exacto.
-    // Si cycleStartKnown es false (overallProgressPct === null), se deriva el progreso
-    // visual según la etapa activa y los días transcurridos para que el slider nunca
-    // quede en "null%" ni desaparezca visualmente, manteniendo overallProgressPct como null.
-    let visualProgressPct = 0;
-    if (schedule.overallProgressPct !== null) {
-      visualProgressPct = Math.min(100, Math.max(0, schedule.overallProgressPct));
-    } else {
-      let priorDays = 0;
-      for (let i = 0; i < schedule.activeStageIndex && i < lifecycleStages.length; i++) {
-        priorDays += lifecycleStages[i].expectedDurationDays || 7;
-      }
-      const activeDuration = schedule.activeStage.expectedDurationDays || 7;
-      const daysInActive = Math.min(activeDuration, Math.max(1, schedule.activeStageElapsedDays || 1));
-      visualProgressPct = Math.min(
-        100,
-        Math.max(5, Math.round(((priorDays + daysInActive) / totalExpectedCycleDays) * 100))
-      );
-    }
 
     const vegeStage = schedule.stages.find((s) => s.name.toLowerCase().includes('vege'));
     const floraStage = schedule.floweringStage || schedule.stages.find((s) => isFloweringStage(s.name));
@@ -446,7 +431,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
       metrics,
       milestones,
       progressPct: schedule.overallProgressPct,
-      visualProgressPct,
+      roadmapProgressPct: schedule.roadmapProgressPct,
       isCycleStartKnown: schedule.isCycleStartKnown,
       activeStageElapsedDays: schedule.activeStageElapsedDays,
       elapsedDays: schedule.totalElapsedDays,
@@ -741,9 +726,17 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                     </h2>
                     {/* Metadatos sin cajas píldora */}
                     <div className="flex items-center gap-2 text-xs text-[#6E5D77] mt-1 flex-wrap">
-                      <span className="font-bold text-[#29202F]">Día {primaryCropDays}</span>
-                      <span aria-hidden="true" className="text-[#DECDB3]">·</span>
-                      <span className="font-semibold text-[#6C45C7]">{primaryCrop.currentStage || 'Vegetativo'}</span>
+                      {primaryCropTimeline?.schedule.isCycleStartKnown ? (
+                        <>
+                          <span className="font-bold text-[#29202F]">Día {primaryCropDays}</span>
+                          <span aria-hidden="true" className="text-[#DECDB3]">·</span>
+                          <span className="font-semibold text-[#6C45C7]">{primaryCrop.currentStage || 'Vegetativo'}</span>
+                        </>
+                      ) : (
+                        <span className="font-bold text-[#29202F]">
+                          Día {primaryCropTimeline?.schedule.activeStageElapsedDays || 1} de {primaryCrop.currentStage || primaryCropTimeline?.schedule.activeStage?.name || 'Floración'}
+                        </span>
+                      )}
                       {primaryCrop.geneticsName && (
                         <>
                           <span aria-hidden="true" className="text-[#DECDB3]">·</span>
@@ -1115,7 +1108,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                         id="cycle-progress-bar-fill"
                         className="h-full bg-gradient-to-r from-[#62B95B] via-[#F3C843] to-[#6C45C7] rounded-full"
                         initial={{ width: 0 }}
-                        animate={{ width: `${primaryCropTimeline.visualProgressPct}%` }}
+                        animate={{ width: `${primaryCropTimeline.roadmapProgressPct}%` }}
                         transition={{ duration: 0.8, ease: 'easeOut' }}
                       />
                     </div>
@@ -1125,7 +1118,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                       <div className="text-left">
                         <span className="block font-bold text-[#29202F]">Siembra</span>
                         <span className="text-[10px] text-[#9887A2] block mt-0.5">
-                          {primaryCropTimeline.isCycleStartKnown ? primaryCropTimeline.startDateFormatted : 'No registrada'}
+                          {primaryCropTimeline.isCycleStartKnown ? primaryCropTimeline.startDateFormatted : 'Sin fecha registrada'}
                         </span>
                       </div>
                       <div className="text-left sm:text-center">
@@ -1155,34 +1148,55 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                     {/* Progressive disclosure: Desglose detallado de etapas configuradas para primaryCrop */}
                     {showLifecycleDetails && (
                       <div id="crop-lifecycle-stage-breakdown" className="pt-3 border-t border-[#EFE3CF] grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs animate-in fade-in duration-200">
-                        {primaryCropTimeline.milestones.map((m) => (
-                          <div
-                            key={m.id}
-                            className={`p-3 rounded-xl border transition-all ${
-                              m.isCurrent
-                                ? 'bg-[#62B95B]/10 border-[#62B95B]/40 text-[#29202F] font-bold shadow-2xs'
-                                : m.isReached
-                                ? 'bg-[#FAF2E1] border-[#EFE3CF] text-[#29202F]'
-                                : 'bg-white border-[#EFE3CF] text-[#9887A2]'
-                            }`}
-                          >
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-[10px] text-[#9887A2] uppercase tracking-wider block">
-                                {m.isCurrent ? 'Actual' : m.isReached ? 'Completada' : 'Estimada'}
+                        {primaryCropTimeline.milestones.map((m, mIdx) => {
+                          let tag = 'Estimada';
+                          if (m.isCurrent || mIdx === primaryCropTimeline.schedule.activeStageIndex) {
+                            tag = 'Actual';
+                          } else if (mIdx < primaryCropTimeline.schedule.activeStageIndex) {
+                            if (m.dateKnowledge === 'unknown' || m.isUnknown || !m.startDate) {
+                              tag = 'Anterior · Sin fecha';
+                            } else if (m.dateKnowledge === 'actual' || (m.startIsReal && m.endIsReal)) {
+                              tag = 'Anterior · Real';
+                            } else {
+                              tag = 'Anterior · Parcial';
+                            }
+                          } else {
+                            tag = 'Estimada';
+                          }
+
+                          const dateText = (m.dateKnowledge === 'unknown' || m.isUnknown || !m.startDate)
+                            ? 'Sin fecha registrada'
+                            : `${formatFriendlyDate(m.startDate, { isProjected: !m.isActual })} → ${formatFriendlyDate(m.endDate, { isProjected: m.isProjected })}`;
+
+                          return (
+                            <div
+                              key={m.id}
+                              className={`p-3 rounded-xl border transition-all ${
+                                m.isCurrent
+                                  ? 'bg-[#62B95B]/10 border-[#62B95B]/40 text-[#29202F] font-bold shadow-2xs'
+                                  : m.isReached
+                                  ? 'bg-[#FAF2E1] border-[#EFE3CF] text-[#29202F]'
+                                  : 'bg-white border-[#EFE3CF] text-[#9887A2]'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-[10px] text-[#9887A2] uppercase tracking-wider block">
+                                  {tag}
+                                </span>
+                                {m.isCurrent && (
+                                  <span className="w-2 h-2 rounded-full bg-[#62B95B] animate-pulse" title="Etapa actual" />
+                                )}
+                              </div>
+                              <span className="block font-bold truncate">{m.name}</span>
+                              <span className="text-[10px] text-[#6E5D77] block mt-0.5">
+                                {dateText}
                               </span>
-                              {m.isCurrent && (
-                                <span className="w-2 h-2 rounded-full bg-[#62B95B] animate-pulse" title="Etapa actual" />
-                              )}
+                              <span className="text-[10px] text-[#9887A2] block mt-0.5">
+                                {m.durationDays} días
+                              </span>
                             </div>
-                            <span className="block font-bold truncate">{m.name}</span>
-                            <span className="text-[10px] text-[#6E5D77] block mt-0.5">
-                              {formatFriendlyDate(m.startDate, { isProjected: !m.isActual })} → {formatFriendlyDate(m.endDate, { isProjected: m.isProjected })}
-                            </span>
-                            <span className="text-[10px] text-[#9887A2] block mt-0.5">
-                              {m.durationDays} días
-                            </span>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>

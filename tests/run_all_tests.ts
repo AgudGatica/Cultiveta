@@ -107,6 +107,13 @@ const suites: SuiteConfig[] = [
     expectedTests: 5,
   },
   {
+    id: 'dashboard_lifecycle_progress',
+    name: 'Dashboard: Barra de Progreso del Ciclo y Desglose de Etapas en Historial Parcial (12 Casos)',
+    category: 'jsdom',
+    file: 'tests/dashboard_lifecycle_progress.test.ts',
+    expectedTests: 12,
+  },
+  {
     id: 'component_gallery_real',
     name: 'JSDOM: Pruebas de Componentes con React act y Binarios Reales JPEG/PNG',
     category: 'jsdom',
