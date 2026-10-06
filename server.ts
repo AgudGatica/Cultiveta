@@ -10,6 +10,7 @@ import { getAuth, DecodedIdToken } from 'firebase-admin/auth';
 import { getFirestore, Firestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { CultivationTask } from './src/types';
+import { verifyAdminRole } from './src/server/adminAuthMiddleware';
 
 dotenv.config();
 
@@ -1382,6 +1383,137 @@ app.get('/api/notifications/recent', verifyFirebaseAuth, (req, res) => {
     res.json(alerts.slice(-20).reverse());
   } catch (err: any) {
     res.status(500).json({ error: err?.message || 'Error consultando alertas recientes' });
+  }
+});
+
+// =========================================================================
+// GESTIÓN PRIVADA DE FOTOGRAFÍAS OFICIALES DE GENÉTICAS (CREADOR / ADMIN)
+// =========================================================================
+
+const catalogPhotosMemoryStore = new Map<string, any>();
+
+// 1. Obtener todas las fotos oficiales del catálogo de genéticas (Público / Autenticado)
+app.get('/api/genetics/catalog-photos', async (req, res) => {
+  try {
+    const photos: Record<string, any> = {};
+
+    // 1.1 Cargar desde memoria
+    catalogPhotosMemoryStore.forEach((v, k) => {
+      photos[k] = v;
+    });
+
+    // 1.2 Cargar desde Firestore si está disponible
+    try {
+      const adminApp = getFirebaseAdmin();
+      const db = adminApp.firestore();
+      const snap = await db.collection('geneticsCatalogPhotos').get();
+      snap.forEach((doc) => {
+        const data = doc.data();
+        if (data && data.key) {
+          photos[data.key] = data;
+          catalogPhotosMemoryStore.set(data.key, data);
+        }
+      });
+    } catch {
+      // Ignorar fallback si Firestore no está conectado
+    }
+
+    res.json({ success: true, photos });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Error consultando fotos de catálogo' });
+  }
+});
+
+// 2. Cargar/Actualizar fotografía oficial de una genética (Solo Creador/Admin)
+app.post('/api/admin/genetics/upload-photo', verifyFirebaseAuth, verifyAdminRole, async (req, res) => {
+  try {
+    const { seedBank, name, photoData, mimeType, fileSize, dimensions } = req.body;
+
+    if (!seedBank || typeof seedBank !== 'string' || !seedBank.trim()) {
+      return res.status(400).json({ error: 'El banco de semillas es obligatorio.' });
+    }
+    if (!name || typeof name !== 'string' || !name.trim()) {
+      return res.status(400).json({ error: 'El nombre de la genética es obligatorio.' });
+    }
+    if (!photoData || typeof photoData !== 'string') {
+      return res.status(400).json({ error: 'La fotografía es obligatoria.' });
+    }
+
+    // Validar tipo de imagen
+    const isDataUrl = photoData.startsWith('data:image/');
+    const isHttpUrl = photoData.startsWith('http://') || photoData.startsWith('https://');
+    if (!isDataUrl && !isHttpUrl) {
+      return res.status(400).json({
+        error: 'Formato no soportado. Se requiere una imagen JPG, JPEG, PNG o WEBP.',
+      });
+    }
+
+    // Validar tamaño máximo (15 MB aproximado para base64)
+    if (photoData.length > 15 * 1024 * 1024) {
+      return res.status(400).json({ error: 'El archivo excede el tamaño máximo permitido (10 MB).' });
+    }
+
+    const cleanBank = seedBank.trim().toLowerCase().replace(/[^a-z0-9]/g, '-');
+    const cleanName = name.trim().toLowerCase().replace(/[^a-z0-9]/g, '-');
+    const key = `${cleanBank}__${cleanName}`;
+
+    const now = new Date().toISOString();
+    const photoRecord = {
+      key,
+      seedBank: seedBank.trim(),
+      name: name.trim(),
+      photoUrl: photoData,
+      mimeType: mimeType || 'image/jpeg',
+      fileSize: fileSize || Math.round((photoData.length * 3) / 4),
+      dimensions: dimensions || undefined,
+      updatedAt: now,
+      updatedBy: req.userId,
+    };
+
+    // Guardar en memoria
+    catalogPhotosMemoryStore.set(key, photoRecord);
+
+    // Guardar en Firestore si está disponible
+    try {
+      const adminApp = getFirebaseAdmin();
+      const db = adminApp.firestore();
+      await db.collection('geneticsCatalogPhotos').doc(key).set(photoRecord, { merge: true });
+    } catch (fsErr) {
+      console.warn('[upload-photo] Guardado solo en memoria (Firestore no disponible):', fsErr);
+    }
+
+    res.json({ success: true, photo: photoRecord });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Error procesando la fotografía de la genética' });
+  }
+});
+
+// 3. Eliminar fotografía oficial de una genética (Solo Creador/Admin)
+app.delete('/api/admin/genetics/delete-photo', verifyFirebaseAuth, verifyAdminRole, async (req, res) => {
+  try {
+    const { seedBank, name } = req.body;
+
+    if (!seedBank || !name) {
+      return res.status(400).json({ error: 'Se requiere especificar banco y nombre de la genética.' });
+    }
+
+    const cleanBank = seedBank.trim().toLowerCase().replace(/[^a-z0-9]/g, '-');
+    const cleanName = name.trim().toLowerCase().replace(/[^a-z0-9]/g, '-');
+    const key = `${cleanBank}__${cleanName}`;
+
+    catalogPhotosMemoryStore.delete(key);
+
+    try {
+      const adminApp = getFirebaseAdmin();
+      const db = adminApp.firestore();
+      await db.collection('geneticsCatalogPhotos').doc(key).delete();
+    } catch (fsErr) {
+      console.warn('[delete-photo] Borrado solo de memoria (Firestore no disponible):', fsErr);
+    }
+
+    res.json({ success: true, message: `Fotografía de "${name}" eliminada correctamente.` });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message || 'Error eliminando la fotografía' });
   }
 });
 

@@ -121,6 +121,13 @@ const suites: SuiteConfig[] = [
     expectedTests: 5,
   },
   {
+    id: 'genetics_admin_photos',
+    name: 'Genéticas: Administración Privada de Fotos Representativas por Creador/Admin (14 Casos)',
+    category: 'jsdom',
+    file: 'tests/genetics_admin_photos.test.ts',
+    expectedTests: 14,
+  },
+  {
     id: 'e2e_browser_real',
     name: 'Navegador E2E: Chrome / Playwright Real (Condicional)',
     category: 'e2e',

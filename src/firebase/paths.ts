@@ -29,6 +29,7 @@ export const FIRESTORE_COLLECTIONS = {
   HARVESTS: 'harvests',
   TASKS: 'tasks',
   GENETICS: 'genetics',
+  GENETICS_CATALOG_PHOTOS: 'geneticsCatalogPhotos',
 } as const;
 
 /**

@@ -42,7 +42,22 @@ export interface UserProfile {
   displayName: string | null;
   photoURL?: string | null;
   createdAt: string;
+  role?: 'admin' | 'user';
+  isCreator?: boolean;
   preferences?: UserPreferences;
+}
+
+export interface GeneticsCatalogPhoto {
+  key: string; // identificador único ej: "sensi-seeds__skunk-1"
+  seedBank: string;
+  name: string;
+  photoUrl: string;
+  storagePath?: string;
+  fileSize?: number;
+  mimeType?: string;
+  dimensions?: { width: number; height: number };
+  updatedAt: string;
+  updatedBy?: string;
 }
 
 export interface CultivationGeneticsItem {

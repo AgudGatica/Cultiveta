@@ -17,16 +17,22 @@ import {
   Scale,
   BookOpen,
   Filter,
-  Heart
+  Heart,
+  Camera,
+  Image as ImageIcon,
 } from 'lucide-react';
-import { Genetics, Harvest, PhotoperiodType, DominanceType, FavoriteGenetic } from '../../types';
+import { Genetics, Harvest, PhotoperiodType, DominanceType, FavoriteGenetic, UserProfile, GeneticsCatalogPhoto } from '../../types';
 import { GeneticsFormModal } from './GeneticsFormModal';
+import { GeneticsPhotoAdminModal } from './GeneticsPhotoAdminModal';
 import { GENETICS_DATABASE, PredefinedGenetic } from '../../data/predefinedGenetics';
 import { geneticsService } from '../../services/geneticsService';
 import { favoritesService, getGeneticsKey } from '../../services/favoritesService';
+import { geneticsCatalogPhotoService, getGeneticsPhotoKey } from '../../services/geneticsCatalogPhotoService';
+import { ADMIN_CONFIG } from '../../config/adminConfig';
 
 interface GeneticsLibraryViewProps {
   userId: string;
+  userProfile?: UserProfile | null;
   geneticsList: Genetics[];
   harvests: Harvest[];
   onStartCropWithGenetics: (genetics: Genetics) => void;
@@ -34,7 +40,11 @@ interface GeneticsLibraryViewProps {
   onGeneticsDeleted?: (geneticsId: string) => void;
 }
 
-export function convertPredefinedToGenetics(p: PredefinedGenetic, userId: string): Genetics {
+export function convertPredefinedToGenetics(
+  p: PredefinedGenetic,
+  userId: string,
+  photoUrl?: string
+): Genetics {
   const numbers = p.floweringDays.match(/\d+/g);
   const parsedDays = numbers ? parseInt(numbers[numbers.length - 1], 10) : 60;
 
@@ -57,6 +67,7 @@ export function convertPredefinedToGenetics(p: PredefinedGenetic, userId: string
     dominance,
     declaredFloweringDays: parsedDays,
     expectedAroma: p.organolepticProfile,
+    photoUrl: photoUrl || undefined,
     notes: `Perfil organoléptico: ${p.organolepticProfile} | Floración estimada: ${p.floweringDays} | Rendimiento: ${p.estimatedYield} g/m²`,
     createdAt: now,
     updatedAt: now,
@@ -65,12 +76,17 @@ export function convertPredefinedToGenetics(p: PredefinedGenetic, userId: string
 
 export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
   userId,
+  userProfile,
   geneticsList,
   harvests,
   onStartCropWithGenetics,
   onGeneticsUpdated,
   onGeneticsDeleted,
 }) => {
+  const isAdminOrCreator = ADMIN_CONFIG.isUserAdminOrCreator(userProfile, userId);
+  const [isAdminPhotoModalOpen, setIsAdminPhotoModalOpen] = useState(false);
+  const [catalogPhotos, setCatalogPhotos] = useState<Record<string, GeneticsCatalogPhoto>>({});
+
   const [activeTab, setActiveTab] = useState<'catalog' | 'saved' | 'favorites'>('catalog');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSeedBank, setSelectedSeedBank] = useState<string>('ALL');
@@ -79,6 +95,14 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [geneticsToEdit, setGeneticsToEdit] = useState<Genetics | null>(null);
   const [savingMap, setSavingMap] = useState<Record<string, boolean>>({});
+
+  // Suscribirse a fotografías oficiales del catálogo
+  useEffect(() => {
+    const unsub = geneticsCatalogPhotoService.subscribeCatalogPhotos((photos) => {
+      setCatalogPhotos(photos);
+    });
+    return () => unsub();
+  }, []);
 
   // Favoritos en tiempo real desde Firestore / localStore
   const [favorites, setFavorites] = useState<FavoriteGenetic[]>([]);
@@ -220,9 +244,12 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
     const key = `${item.seedBank}-${item.name}`;
     if (savingMap[key] || isSavedInUserLibrary(item.name, item.seedBank)) return;
 
+    const photoKey = getGeneticsPhotoKey(item.seedBank, item.name);
+    const officialPhoto = catalogPhotos[photoKey]?.photoUrl;
+
     try {
       setSavingMap((prev) => ({ ...prev, [key]: true }));
-      const converted = convertPredefinedToGenetics(item, userId);
+      const converted = convertPredefinedToGenetics(item, userId, officialPhoto);
       const saved = await geneticsService.createGenetics({
         userId,
         name: item.name,
@@ -231,6 +258,7 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
         dominance: converted.dominance,
         declaredFloweringDays: converted.declaredFloweringDays,
         expectedAroma: item.organolepticProfile,
+        photoUrl: officialPhoto || undefined,
         notes: `Rendimiento estimado: ${item.estimatedYield} g/m². Floración: ${item.floweringDays}`,
       });
       onGeneticsUpdated(saved);
@@ -275,18 +303,33 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
           </p>
         </div>
 
-        <button
-          type="button"
-          id="add-genetics-btn"
-          onClick={() => {
-            setGeneticsToEdit(null);
-            setIsFormOpen(true);
-          }}
-          className="px-5 py-2.5 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Nueva Genética Personalizada</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2.5">
+          {isAdminOrCreator && (
+            <button
+              type="button"
+              id="admin-manage-genetics-photos-btn"
+              onClick={() => setIsAdminPhotoModalOpen(true)}
+              className="px-4 py-2.5 rounded-2xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer"
+              title="Panel privado de administración y carga de fotos de genéticas"
+            >
+              <Camera className="w-4 h-4" />
+              <span>Carga manual de fotos</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            id="add-genetics-btn"
+            onClick={() => {
+              setGeneticsToEdit(null);
+              setIsFormOpen(true);
+            }}
+            className="px-5 py-2.5 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Nueva Genética Personalizada</span>
+          </button>
+        </div>
       </div>
 
       {/* Tabs Switcher: Catálogo Base vs Mis Genéticas vs Favoritas */}
@@ -523,7 +566,9 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
               {filteredPredefined.map((item) => {
                 const isSaved = isSavedInUserLibrary(item.name, item.seedBank);
                 const isSaving = savingMap[`${item.seedBank}-${item.name}`];
-                const converted = convertPredefinedToGenetics(item, userId);
+                const photoKey = getGeneticsPhotoKey(item.seedBank, item.name);
+                const officialPhoto = catalogPhotos[photoKey]?.photoUrl;
+                const converted = convertPredefinedToGenetics(item, userId, officialPhoto);
 
                 // Dominance styling
                 const dom = item.dominance.toLowerCase();
@@ -536,6 +581,22 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                     className="bg-white rounded-3xl p-5 border border-stone-200 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
                   >
                     <div className="space-y-3">
+                      {/* Fotografía representativa oficial */}
+                      {officialPhoto && (
+                        <div className="relative w-full h-44 rounded-2xl overflow-hidden bg-stone-100 border border-stone-200/80">
+                          <img
+                            src={officialPhoto}
+                            alt={`${item.name} - ${item.seedBank}`}
+                            className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
+                            loading="lazy"
+                          />
+                          <div className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-xs text-white text-[10px] font-bold tracking-wide flex items-center gap-1 shadow-xs">
+                            <Sparkles className="w-3 h-3 text-amber-300" />
+                            <span>Foto oficial</span>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Title & Bank */}
                       <div className="flex items-start justify-between gap-2">
                         <div>
@@ -677,6 +738,8 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {filteredSavedGenetics.map((genetics) => {
                 const stats = getStatsForGenetics(genetics.name);
+                const photoKey = getGeneticsPhotoKey(genetics.seedBank, genetics.name);
+                const effectivePhoto = genetics.photoUrl || catalogPhotos[photoKey]?.photoUrl;
 
                 return (
                   <div
@@ -684,6 +747,18 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                     className="bg-white rounded-3xl p-5 border border-stone-200 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
                   >
                     <div className="space-y-3">
+                      {/* Fotografía si existe */}
+                      {effectivePhoto && (
+                        <div className="relative w-full h-44 rounded-2xl overflow-hidden bg-stone-100 border border-stone-200/80">
+                          <img
+                            src={effectivePhoto}
+                            alt={`${genetics.name} - ${genetics.seedBank}`}
+                            className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
+                            loading="lazy"
+                          />
+                        </div>
+                      )}
+
                       {/* Card Title & Bank */}
                       <div className="flex items-start justify-between">
                         <div>
@@ -821,6 +896,14 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
           onSaved={(saved) => {
             onGeneticsUpdated(saved);
           }}
+        />
+      )}
+
+      {/* Admin Photo Management Modal (Solo Creador/Admin) */}
+      {isAdminPhotoModalOpen && isAdminOrCreator && (
+        <GeneticsPhotoAdminModal
+          isOpen={isAdminPhotoModalOpen}
+          onClose={() => setIsAdminPhotoModalOpen(false)}
         />
       )}
     </div>

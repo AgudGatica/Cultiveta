@@ -9,6 +9,11 @@ service cloud.firestore {
     match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+    // Catálogo de fotografías oficiales de genéticas (lectura por usuarios autenticados, mutación exclusiva por backend admin)
+    match /geneticsCatalogPhotos/{docId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
     // Top-level collections scoped by userId field
     match /{collection}/{document} {
       allow read, update, delete: if request.auth != null && (resource == null || resource.data.userId == request.auth.uid);

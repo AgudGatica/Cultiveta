@@ -843,6 +843,7 @@ export default function App() {
           {currentView === 'genetics' && (
             <GeneticsLibraryView
               userId={currentUser.uid}
+              userProfile={userProfile}
               geneticsList={geneticsList}
               harvests={harvests}
               onStartCropWithGenetics={(genetics) => {
