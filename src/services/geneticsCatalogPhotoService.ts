@@ -1,7 +1,5 @@
 import { GeneticsCatalogPhoto, GeneticsCatalogPhotoDTO } from '../types';
 import { authService } from './authService';
-import { db, auth } from '../firebase/config';
-import { collection, onSnapshot } from 'firebase/firestore';
 import { getGeneticsPhotoKey } from '../utils/geneticsKeyUtils';
 
 export { getGeneticsPhotoKey };
@@ -176,39 +174,21 @@ class GeneticsCatalogPhotoService {
   private async initRemoteSync(): Promise<void> {
     this.isInitialized = true;
 
-    try {
-      if (db) {
-        const colRef = collection(db, 'geneticsCatalogPhotos');
-        onSnapshot(
-          colRef,
-          (snapshot) => {
-            snapshot.docChanges().forEach((change) => {
-              const data = change.doc.data() as GeneticsCatalogPhoto;
-              if (change.type === 'removed') {
-                delete this.cache[change.doc.id];
-              } else if (data && data.key) {
-                this.cache[data.key] = data;
-              }
-            });
-            this.saveToLocalStorage();
-            this.notify();
-          },
-          async (err) => {
-            console.debug('Firestore geneticsCatalogPhotos snapshot fallback to REST:', err.message);
-            await this.fetchFromApi();
-          }
-        );
-        return;
-      }
-    } catch {
-      // Continuar al fetch de API
+    // Escuchar cambios de visibilidad para refrescar cuando la pestaña pasa a primer plano
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          this.fetchFromApi().catch(() => {});
+        }
+      });
     }
 
     await this.fetchFromApi();
   }
 
   /**
-   * Consulta el backend GET /api/genetics/catalog-photos enviando token JWT
+   * Consulta el backend GET /api/genetics/catalog-photos enviando token JWT.
+   * REEMPLAZA el caché local con el DTO remoto (no merge acumulativo).
    */
   async fetchFromApi(): Promise<void> {
     try {
@@ -221,11 +201,10 @@ class GeneticsCatalogPhotoService {
       const res = await fetch('/api/genetics/catalog-photos', { headers });
       if (res.ok) {
         const data = await res.json();
-        if (data?.photos) {
-          this.cache = { ...this.cache, ...data.photos };
-          this.saveToLocalStorage();
-          this.notify();
-        }
+        // Reemplazo estricto: evita conservar entradas eliminadas en el servidor
+        this.cache = data?.photos || {};
+        this.saveToLocalStorage();
+        this.notify();
       }
     } catch {
       // Sin conexión o ambiente local

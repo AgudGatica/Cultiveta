@@ -39,26 +39,10 @@ export const ADMIN_CONFIG = {
       return {
         authenticated: Boolean(data?.authenticated),
         isAdmin: Boolean(data?.isAdmin),
-        userId: data?.userId,
         storageAvailable: Boolean(data?.storageAvailable),
       };
     } catch {
       return { authenticated: false, isAdmin: false };
     }
-  },
-
-  /**
-   * Helper síncrono para UI inicial/optimista.
-   * La autorización real y final siempre proviene del backend /api/admin/me.
-   */
-  isUserAdminOrCreator(
-    userProfile?: { role?: string; isCreator?: boolean; uid?: string } | null,
-    uid?: string
-  ): boolean {
-    if (!userProfile && !uid) return false;
-    if (userProfile?.role === 'admin' || userProfile?.isCreator === true) {
-      return true;
-    }
-    return false;
   },
 };

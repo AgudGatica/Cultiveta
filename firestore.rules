@@ -4,11 +4,11 @@ service cloud.firestore {
     // User profile with strict privilege escalation prevention
     match /users/{userId} {
       allow read, delete: if request.auth != null && request.auth.uid == userId;
-      // Prevent client self-assigning admin privileges on profile creation
+      // Prevent client self-assigning admin privileges on profile creation (role can only be 'user' or absent, isCreator only false or absent)
       allow create: if request.auth != null && request.auth.uid == userId
-                    && !request.resource.data.keys().hasAny(['admin', 'creator', 'customClaims', 'permissions'])
-                    && (!('role' in request.resource.data) || request.resource.data.role != 'admin')
-                    && (!('isCreator' in request.resource.data) || request.resource.data.isCreator != true);
+                    && (!('role' in request.resource.data) || request.resource.data.role == 'user')
+                    && (!('isCreator' in request.resource.data) || request.resource.data.isCreator == false)
+                    && !request.resource.data.keys().hasAny(['admin', 'creator', 'customClaims', 'permissions']);
       // Prevent client modifying RBAC/admin fields on profile update
       allow update: if request.auth != null && request.auth.uid == userId
                     && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isCreator', 'admin', 'creator', 'customClaims', 'permissions']);
@@ -17,10 +17,9 @@ service cloud.firestore {
     match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-    // Catálogo de fotografías oficiales de genéticas (lectura por usuarios autenticados, mutación exclusiva por backend admin)
+    // Catálogo de fotografías oficiales de genéticas (solo accesible y mutable vía Firebase Admin en backend)
     match /geneticsCatalogPhotos/{docId} {
-      allow read: if request.auth != null;
-      allow write: if false;
+      allow read, write: if false;
     }
     // Top-level collections scoped by userId field
     match /{collection}/{document} {

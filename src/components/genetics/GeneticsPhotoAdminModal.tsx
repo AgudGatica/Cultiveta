@@ -147,13 +147,13 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
       setPhotoSourceUrl(existing.photoSourceUrl || '');
       setPhotoAttribution(existing.photoAttribution || `Fotografía oficial cortesía de ${genetic.seedBank}`);
       setPhotoLicense(existing.photoLicense || 'Uso editorial / Prensa oficial');
-      setPhotoRightsStatus(existing.photoRightsStatus || 'official-source');
+      setPhotoRightsStatus(existing.photoRightsStatus || 'unknown');
     } else {
       setPhotoSourceName(genetic.seedBank);
       setPhotoSourceUrl('');
-      setPhotoAttribution(`Fotografía oficial cortesía de ${genetic.seedBank}`);
-      setPhotoLicense('Uso oficial / Prensa autorizada');
-      setPhotoRightsStatus('official-source');
+      setPhotoAttribution('');
+      setPhotoLicense('');
+      setPhotoRightsStatus('unknown');
     }
   };
 
@@ -170,15 +170,21 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
     if (!validation.valid) {
       setValidationError(validation.error || 'Archivo inválido.');
       setSelectedFile(null);
+      if (previewUrl && previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl);
+      }
       setPreviewUrl(null);
       setPreviewDimensions(null);
       return;
     }
 
-    // Generar vista previa
-    const dataUrl = await fileToDataUrl(file);
+    // Generar vista previa con Object URL seguro
+    if (previewUrl && previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrl);
+    }
+    const objectUrl = URL.createObjectURL(file);
     setSelectedFile(file);
-    setPreviewUrl(dataUrl);
+    setPreviewUrl(objectUrl);
     setPreviewDimensions(validation.dimensions || null);
   };
 
@@ -221,6 +227,9 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
       }
 
       // Cerrar subpanel y resetear estados
+      if (previewUrl && previewUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(previewUrl);
+      }
       setSelectedGeneticForUpload(null);
       setSelectedFile(null);
       setPreviewUrl(null);
@@ -234,6 +243,9 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
 
   // Cancelar la selección/subida actual
   const handleCancelUpload = () => {
+    if (previewUrl && previewUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(previewUrl);
+    }
     setSelectedGeneticForUpload(null);
     setSelectedFile(null);
     setPreviewUrl(null);
@@ -550,6 +562,9 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
                     <option value="owned">Propia de Cultiveta</option>
                     <option value="unknown">Sin especificar / Desconocida</option>
                   </select>
+                  <p className="text-[10px] text-stone-500 mt-1 leading-tight">
+                    Que una foto provenga de una web oficial no implica automáticamente permiso de reutilización. Registrá el estado real de derechos antes de publicarla.
+                  </p>
                 </div>
 
                 <div className="sm:col-span-2">

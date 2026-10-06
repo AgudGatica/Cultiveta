@@ -41,6 +41,22 @@ interface GeneticsLibraryViewProps {
   onGeneticsDeleted?: (geneticsId: string) => void;
 }
 
+export function getRightsBadgeLabel(status?: string): string {
+  switch (status) {
+    case 'official-source':
+      return 'Fuente oficial';
+    case 'permission-granted':
+      return 'Uso autorizado';
+    case 'licensed':
+      return 'Imagen licenciada';
+    case 'owned':
+      return 'Imagen Cultiveta';
+    case 'unknown':
+    default:
+      return 'Foto de referencia';
+  }
+}
+
 export function convertPredefinedToGenetics(
   p: PredefinedGenetic,
   userId: string,
@@ -84,10 +100,8 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
   onGeneticsUpdated,
   onGeneticsDeleted,
 }) => {
-  // Verificación reactiva segura con el backend (/api/admin/me como única autoridad)
-  const [isAdminConfirmed, setIsAdminConfirmed] = useState<boolean>(() => {
-    return ADMIN_CONFIG.isUserAdminOrCreator(userProfile, userId);
-  });
+  // Verificación reactiva segura exclusivamente con el backend (/api/admin/me como única autoridad)
+  const [isAdminConfirmed, setIsAdminConfirmed] = useState<boolean>(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -95,9 +109,7 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
       try {
         const token = await authService.getIdToken();
         if (!token) {
-          if (isMounted) {
-            setIsAdminConfirmed(ADMIN_CONFIG.isUserAdminOrCreator(userProfile, userId));
-          }
+          if (isMounted) setIsAdminConfirmed(false);
           return;
         }
         const res = await ADMIN_CONFIG.fetchAdminStatus(token);
@@ -105,9 +117,7 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
           setIsAdminConfirmed(Boolean(res.isAdmin));
         }
       } catch {
-        if (isMounted) {
-          setIsAdminConfirmed(ADMIN_CONFIG.isUserAdminOrCreator(userProfile, userId));
-        }
+        if (isMounted) setIsAdminConfirmed(false);
       }
     }
 
@@ -119,7 +129,7 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
       isMounted = false;
       unsub();
     };
-  }, [userId, userProfile]);
+  }, [userId]);
 
   const isAdminOrCreator = isAdminConfirmed;
   const [isAdminPhotoModalOpen, setIsAdminPhotoModalOpen] = useState(false);
@@ -630,7 +640,7 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                           />
                           <div className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-xs text-white text-[10px] font-bold tracking-wide flex items-center gap-1 shadow-xs">
                             <Sparkles className="w-3 h-3 text-amber-300" />
-                            <span>Foto oficial</span>
+                            <span>{getRightsBadgeLabel(catalogPhotos[photoKey]?.photoRightsStatus)}</span>
                           </div>
                         </div>
                       )}

@@ -1394,7 +1394,6 @@ app.get('/api/notifications/recent', verifyFirebaseAuth, (req, res) => {
 // GESTIÓN PRIVADA DE FOTOGRAFÍAS OFICIALES DE GENÉTICAS (CREADOR / ADMIN)
 // =========================================================================
 
-const catalogPhotosMemoryStore = new Map<string, any>();
 const photoUpload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -1423,7 +1422,6 @@ app.get('/api/admin/me', verifyFirebaseAuth, async (req, res) => {
     res.json({
       authenticated: true,
       isAdmin,
-      userId: req.userId,
       storageAvailable,
     });
   } catch (err: any) {
@@ -1458,36 +1456,48 @@ app.get('/api/admin/genetics/storage-status', verifyFirebaseAuth, verifyAdminRol
   }
 });
 
-// 3. Obtener todas las fotos oficiales del catálogo de genéticas (Público / Autenticado)
-app.get('/api/genetics/catalog-photos', async (req, res) => {
+// 3. Obtener todas las fotos oficiales del catálogo de genéticas (Autenticado - Sanitizado DTO)
+app.get('/api/genetics/catalog-photos', verifyFirebaseAuth, async (req, res) => {
   try {
+    const adminApp = getFirebaseAdmin();
+    const db = adminApp.firestore();
+    const snap = await db.collection('geneticsCatalogPhotos').get();
     const photos: Record<string, any> = {};
 
-    try {
-      const adminApp = getFirebaseAdmin();
-      const db = adminApp.firestore();
-      const snap = await db.collection('geneticsCatalogPhotos').get();
-      snap.forEach((doc: any) => {
-        const data = doc.data();
-        if (data && data.key) {
-          photos[data.key] = data;
-          catalogPhotosMemoryStore.set(data.key, data);
-        }
-      });
-    } catch {
-      // Fallback a memoria si Firestore no está inicializado
-      catalogPhotosMemoryStore.forEach((v, k) => {
-        photos[k] = v;
-      });
-    }
+    snap.forEach((doc: any) => {
+      const data = doc.data();
+      if (data && (data.key || doc.id)) {
+        const key = data.key || doc.id;
+        // DTO explícito que nunca expone updatedBy a clientes
+        photos[key] = {
+          key,
+          seedBank: data.seedBank,
+          name: data.name,
+          photoUrl: data.photoUrl,
+          storagePath: data.storagePath,
+          fileSize: data.fileSize,
+          mimeType: data.mimeType,
+          dimensions: data.dimensions,
+          photoSourceUrl: data.photoSourceUrl,
+          photoSourceName: data.photoSourceName,
+          photoAttribution: data.photoAttribution,
+          photoLicense: data.photoLicense,
+          photoRightsStatus: data.photoRightsStatus || 'unknown',
+          updatedAt: data.updatedAt,
+        };
+      }
+    });
 
     res.json({ success: true, photos });
   } catch (err: any) {
-    res.status(500).json({ error: err?.message || 'Error consultando fotos de catálogo' });
+    res.status(503).json({
+      code: 'firestore/unavailable',
+      error: 'No se pudo cargar el catálogo de fotografías.',
+    });
   }
 });
 
-// 4. Cargar/Actualizar fotografía oficial de una genética (Solo Creador/Admin - Almacenamiento Físico en Storage)
+// 4. Cargar/Actualizar fotografía oficial de una genética (Solo Creador/Admin - Almacenamiento Físico en Storage con ruta versionada y atomicidad)
 app.post(
   '/api/admin/genetics/upload-photo',
   verifyFirebaseAuth,
@@ -1513,6 +1523,27 @@ app.post(
       }
       if (!req.file || !req.file.buffer || req.file.buffer.length === 0) {
         return res.status(400).json({ error: 'Se requiere un archivo de imagen en el campo "photo".' });
+      }
+
+      // Validar photoRightsStatus estrictamente
+      const ALLOWED_RIGHTS = ['unknown', 'official-source', 'permission-granted', 'licensed', 'owned'];
+      const rightsStatus = photoRightsStatus ? String(photoRightsStatus).trim() : 'unknown';
+      if (!ALLOWED_RIGHTS.includes(rightsStatus)) {
+        return res.status(400).json({
+          error: 'Estado de derechos inválido. Permitidos: unknown, official-source, permission-granted, licensed, owned.',
+          code: 'invalid/photo-rights-status',
+        });
+      }
+
+      // Validar photoSourceUrl si fue provisto
+      if (photoSourceUrl) {
+        const urlStr = String(photoSourceUrl).trim();
+        if (urlStr.length > 2048 || (!urlStr.startsWith('http://') && !urlStr.startsWith('https://'))) {
+          return res.status(400).json({
+            error: 'La URL de la fuente debe ser una dirección HTTP o HTTPS válida de hasta 2048 caracteres.',
+            code: 'invalid/photo-source-url',
+          });
+        }
       }
 
       // Validar firma binaria (magic bytes) estrictamente en el backend
@@ -1547,21 +1578,55 @@ app.post(
         });
       }
 
-      // Subir binario a Firebase Storage
+      // Conectar a Cloud Firestore para leer el registro anterior
+      let db: any;
+      try {
+        db = adminApp.firestore();
+      } catch {
+        return res.status(503).json({
+          code: 'firestore/unavailable',
+          error: 'No se pudo conectar a Cloud Firestore.',
+        });
+      }
+
+      const docRef = db.collection('geneticsCatalogPhotos').doc(key);
+      let previousRecord: any = null;
+      try {
+        const prevSnap = await docRef.get();
+        if (prevSnap.exists) {
+          previousRecord = prevSnap.data();
+        }
+      } catch (readErr) {
+        console.warn('[upload-photo] No se pudo leer registro anterior:', readErr);
+      }
+      const previousStoragePath = previousRecord?.storagePath;
+
+      // Generar ruta Storage versionada: genetics/reference/{key}/cover-{timestamp}-{uuid}.{ext}
       const ext =
         imageValidation.detectedMime === 'image/png'
           ? 'png'
           : imageValidation.detectedMime === 'image/webp'
           ? 'webp'
           : 'jpg';
-      const storagePath = `genetics-catalog/${key}.${ext}`;
-      const fileRef = bucket.file(storagePath);
+      const ts = new Date().toISOString().replace(/[-:]/g, '').replace(/\..+/, 'Z');
+      const uuidSuffix = crypto.randomUUID().slice(0, 8);
+      const newStoragePath = `genetics/reference/${key}/cover-${ts}-${uuidSuffix}.${ext}`;
+
+      // Garantizar que la nueva ruta sea diferente a la anterior
+      if (previousStoragePath && previousStoragePath === newStoragePath) {
+        throw new Error('Colisión de ruta versionada de almacenamiento.');
+      }
+
+      // Subir archivo nuevo con token de descarga Firebase Storage
+      const downloadToken = crypto.randomUUID();
+      const fileRef = bucket.file(newStoragePath);
 
       try {
         await fileRef.save(req.file.buffer, {
           metadata: {
             contentType: imageValidation.detectedMime || req.file.mimetype || 'image/jpeg',
             metadata: {
+              firebaseStorageDownloadTokens: downloadToken,
               seedBank: seedBank.trim(),
               geneticsName: name.trim(),
               uploadedBy: req.userId,
@@ -1575,67 +1640,79 @@ app.post(
         });
       }
 
-      // Generar URL de acceso
-      let photoUrl = `https://storage.googleapis.com/${bucketName}/${storagePath}`;
-      try {
-        await fileRef.makePublic();
-      } catch {
-        photoUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(storagePath)}?alt=media`;
-      }
+      // Generar URL estable mediante downloadToken (sin depender de makePublic)
+      const photoUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(newStoragePath)}?alt=media&token=${downloadToken}`;
 
-      // Conectar a Cloud Firestore para persistir metadatos
-      let db: any;
-      try {
-        db = adminApp.firestore();
-      } catch {
-        await fileRef.delete({ ignoreNotFound: true }).catch(() => {});
-        return res.status(500).json({
-          error: 'No se pudo conectar a Cloud Firestore para guardar los metadatos de la fotografía.',
-          code: 'firestore/unavailable',
-        });
-      }
-
-      const photoRecord: any = {
+      const now = new Date().toISOString();
+      const newPhotoRecord: any = {
         key,
         seedBank: seedBank.trim(),
         name: name.trim(),
         photoUrl,
-        storagePath,
+        storagePath: newStoragePath,
         fileSize: req.file.size,
         mimeType: imageValidation.detectedMime,
+        // Dimensions provistas por cliente son informativas, no validadas server-side
         dimensions: req.body.dimensions
           ? typeof req.body.dimensions === 'string'
             ? JSON.parse(req.body.dimensions)
             : req.body.dimensions
           : undefined,
-        photoSourceUrl: photoSourceUrl?.trim() || undefined,
-        photoSourceName: photoSourceName?.trim() || undefined,
-        photoAttribution: photoAttribution?.trim() || undefined,
-        photoLicense: photoLicense?.trim() || undefined,
-        photoRightsStatus: photoRightsStatus || 'unknown',
-        updatedAt: new Date().toISOString(),
+        photoSourceUrl: photoSourceUrl ? String(photoSourceUrl).trim() : undefined,
+        photoSourceName: photoSourceName ? String(photoSourceName).trim() : undefined,
+        photoAttribution: photoAttribution ? String(photoAttribution).trim() : undefined,
+        photoLicense: photoLicense ? String(photoLicense).trim() : undefined,
+        photoRightsStatus: rightsStatus,
+        updatedAt: now,
         updatedBy: req.userId,
       };
 
       try {
-        await db.collection('geneticsCatalogPhotos').doc(key).set(photoRecord, { merge: true });
+        await docRef.set(newPhotoRecord, { merge: true });
       } catch {
-        await fileRef.delete({ ignoreNotFound: true }).catch(() => {});
+        // En caso de fallo de Firestore: borrar SOLAMENTE el objeto nuevo para no pisar el anterior
+        await fileRef.delete({ ignoreNotFound: true }).catch(() => {
+          console.warn('[genetics-photo] Rollback failed deleting new object:', newStoragePath);
+        });
         return res.status(500).json({
           error: 'Error persistiendo metadatos de la fotografía en Firestore.',
           code: 'firestore/write-failed',
         });
       }
 
-      catalogPhotosMemoryStore.set(key, photoRecord);
-      return res.json({ success: true, photo: photoRecord });
+      // Firestore confirmó: limpiar previousStoragePath best-effort si existe
+      if (previousStoragePath && previousStoragePath !== newStoragePath) {
+        bucket.file(previousStoragePath).delete({ ignoreNotFound: true }).catch(() => {
+          console.warn('[genetics-photo] Orphaned previous Storage object:', previousStoragePath);
+        });
+      }
+
+      // Respuesta exitosa: DTO público sin exponer updatedBy
+      const publicDto = {
+        key,
+        seedBank: newPhotoRecord.seedBank,
+        name: newPhotoRecord.name,
+        photoUrl: newPhotoRecord.photoUrl,
+        storagePath: newPhotoRecord.storagePath,
+        fileSize: newPhotoRecord.fileSize,
+        mimeType: newPhotoRecord.mimeType,
+        dimensions: newPhotoRecord.dimensions,
+        photoSourceUrl: newPhotoRecord.photoSourceUrl,
+        photoSourceName: newPhotoRecord.photoSourceName,
+        photoAttribution: newPhotoRecord.photoAttribution,
+        photoLicense: newPhotoRecord.photoLicense,
+        photoRightsStatus: newPhotoRecord.photoRightsStatus,
+        updatedAt: newPhotoRecord.updatedAt,
+      };
+
+      return res.json({ success: true, photo: publicDto });
     } catch (err: any) {
       return res.status(500).json({ error: err?.message || 'Error procesando la fotografía de la genética' });
     }
   }
 );
 
-// 5. Eliminar fotografía oficial de una genética (Solo Creador/Admin)
+// 5. Eliminar fotografía oficial de una genética (Solo Creador/Admin - Firestore primero, luego Storage)
 app.delete('/api/admin/genetics/delete-photo', verifyFirebaseAuth, verifyAdminRole, async (req, res) => {
   try {
     const { seedBank, name } = req.body;
@@ -1650,26 +1727,17 @@ app.delete('/api/admin/genetics/delete-photo', verifyFirebaseAuth, verifyAdminRo
     let existingDoc: any = null;
     try {
       const snap = await db.collection('geneticsCatalogPhotos').doc(key).get();
-      if (snap.exists) {
-        existingDoc = snap.data();
+      if (!snap.exists) {
+        return res.status(404).json({ error: 'Fotografía no encontrada.', code: 'photo/not-found' });
       }
+      existingDoc = snap.data();
     } catch {
       return res.status(500).json({ error: 'Error accediendo a Firestore.', code: 'firestore/read-error' });
     }
 
-    if (existingDoc?.storagePath) {
-      try {
-        const bucketName =
-          process.env.FIREBASE_STORAGE_BUCKET ||
-          appletFirebaseConfig.storageBucket ||
-          'gen-lang-client-0531791519.firebasestorage.app';
-        const bucket = getStorage(adminApp).bucket(bucketName);
-        await bucket.file(existingDoc.storagePath).delete({ ignoreNotFound: true });
-      } catch (storageErr) {
-        console.warn('[delete-photo] Error eliminando de Firebase Storage:', storageErr);
-      }
-    }
+    const existingStoragePath = existingDoc?.storagePath;
 
+    // 1. Borrar metadata de Firestore PRIMERO
     try {
       await db.collection('geneticsCatalogPhotos').doc(key).delete();
     } catch {
@@ -1679,8 +1747,23 @@ app.delete('/api/admin/genetics/delete-photo', verifyFirebaseAuth, verifyAdminRo
       });
     }
 
-    catalogPhotosMemoryStore.delete(key);
-    res.json({ success: true, message: `Fotografía de "${name}" eliminada correctamente.` });
+    // 2. Solo cuando Firestore confirmó: eliminar archivo de Storage best-effort
+    if (existingStoragePath) {
+      try {
+        const bucketName =
+          process.env.FIREBASE_STORAGE_BUCKET ||
+          appletFirebaseConfig.storageBucket ||
+          'gen-lang-client-0531791519.firebasestorage.app';
+        const bucket = getStorage(adminApp).bucket(bucketName);
+        await bucket.file(existingStoragePath).delete({ ignoreNotFound: true }).catch(() => {
+          console.warn('[genetics-photo] Orphaned storage object:', existingStoragePath);
+        });
+      } catch (storageErr) {
+        console.warn('[genetics-photo] Orphaned storage object:', existingStoragePath);
+      }
+    }
+
+    res.json({ success: true, key });
   } catch (err: any) {
     res.status(500).json({ error: err?.message || 'Error eliminando la fotografía' });
   }

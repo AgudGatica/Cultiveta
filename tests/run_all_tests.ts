@@ -122,10 +122,10 @@ const suites: SuiteConfig[] = [
   },
   {
     id: 'genetics_admin_photos',
-    name: 'Genéticas: Administración Privada de Fotos Representativas por Creador/Admin (14 Casos)',
+    name: 'Genéticas: Administración Privada de Fotos Representativas por Creador/Admin (32 Casos)',
     category: 'jsdom',
     file: 'tests/genetics_admin_photos.test.ts',
-    expectedTests: 14,
+    expectedTests: 32,
   },
   {
     id: 'e2e_browser_real',
