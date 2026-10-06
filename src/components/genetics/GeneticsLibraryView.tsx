@@ -29,6 +29,7 @@ import { geneticsService } from '../../services/geneticsService';
 import { favoritesService, getGeneticsKey } from '../../services/favoritesService';
 import { geneticsCatalogPhotoService, getGeneticsPhotoKey } from '../../services/geneticsCatalogPhotoService';
 import { ADMIN_CONFIG } from '../../config/adminConfig';
+import { authService } from '../../services/authService';
 
 interface GeneticsLibraryViewProps {
   userId: string;
@@ -83,7 +84,44 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
   onGeneticsUpdated,
   onGeneticsDeleted,
 }) => {
-  const isAdminOrCreator = ADMIN_CONFIG.isUserAdminOrCreator(userProfile, userId);
+  // Verificación reactiva segura con el backend (/api/admin/me como única autoridad)
+  const [isAdminConfirmed, setIsAdminConfirmed] = useState<boolean>(() => {
+    return ADMIN_CONFIG.isUserAdminOrCreator(userProfile, userId);
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+    async function checkAdminStatus() {
+      try {
+        const token = await authService.getIdToken();
+        if (!token) {
+          if (isMounted) {
+            setIsAdminConfirmed(ADMIN_CONFIG.isUserAdminOrCreator(userProfile, userId));
+          }
+          return;
+        }
+        const res = await ADMIN_CONFIG.fetchAdminStatus(token);
+        if (isMounted) {
+          setIsAdminConfirmed(Boolean(res.isAdmin));
+        }
+      } catch {
+        if (isMounted) {
+          setIsAdminConfirmed(ADMIN_CONFIG.isUserAdminOrCreator(userProfile, userId));
+        }
+      }
+    }
+
+    checkAdminStatus();
+    const unsub = authService.onAuthStateChanged(() => {
+      checkAdminStatus();
+    });
+    return () => {
+      isMounted = false;
+      unsub();
+    };
+  }, [userId, userProfile]);
+
+  const isAdminOrCreator = isAdminConfirmed;
   const [isAdminPhotoModalOpen, setIsAdminPhotoModalOpen] = useState(false);
   const [catalogPhotos, setCatalogPhotos] = useState<Record<string, GeneticsCatalogPhoto>>({});
 

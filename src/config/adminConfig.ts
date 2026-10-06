@@ -1,53 +1,64 @@
 /**
- * Configuración centralizada de seguridad y permisos para creador/administrador de Cultiveta.
+ * Configuración y utilidades de verificación administrativa en frontend.
  * 
- * Reglas de diseño:
- * 1. Control real de permisos: No resolver esto únicamente con 'display: none' o condicionales visuales.
- * 2. Soporta UserProfile.role === 'admin' o UserProfile.isCreator === true.
- * 3. Centraliza identificadores de creador (UIDs) en esta configuración y variables de entorno,
- *    evitando repetir cadenas o hardcodear emails privados por toda la aplicación.
+ * Reglas de seguridad:
+ * 1. La autoridad final reside EXCLUSIVAMENTE en el servidor y Firebase Auth (/api/admin/me).
+ * 2. Ningún UID ficticio ni configuración en cliente otorga privilegios.
+ * 3. Ni localStorage ni UserProfile determinan acceso administrativo.
  */
 
-// UIDs preconfigurados con privilegios de creador / administrador
-const DEFAULT_CREATOR_UIDS: string[] = [
-  'creator-cultiveta-admin',
-  'admin-cultiveta-main',
-  'cultiveta-creator-master',
-];
+export interface AdminMeResponse {
+  authenticated: boolean;
+  isAdmin: boolean;
+  userId?: string;
+  storageAvailable?: boolean;
+}
 
 export const ADMIN_CONFIG = {
   /**
-   * Lista de UIDs reconocidos como creador / admin.
-   * Permite inyectar vía VITE_CREATOR_UID en tiempo de compilación/despliegue.
+   * Consulta el endpoint seguro del servidor /api/admin/me utilizando el token JWT verificado.
+   * La respuesta del servidor es la única autoridad de seguridad.
    */
-  CREATOR_UIDS: [
-    ...DEFAULT_CREATOR_UIDS,
-    typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_CREATOR_UID
-      ? (import.meta as any).env.VITE_CREATOR_UID
-      : '',
-  ].filter(Boolean),
+  async fetchAdminStatus(idToken: string | null): Promise<AdminMeResponse> {
+    if (!idToken) {
+      return { authenticated: false, isAdmin: false };
+    }
+
+    try {
+      const res = await fetch('/api/admin/me', {
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+      });
+
+      if (!res.ok) {
+        return { authenticated: false, isAdmin: false };
+      }
+
+      const data = await res.json();
+      return {
+        authenticated: Boolean(data?.authenticated),
+        isAdmin: Boolean(data?.isAdmin),
+        userId: data?.userId,
+        storageAvailable: Boolean(data?.storageAvailable),
+      };
+    } catch {
+      return { authenticated: false, isAdmin: false };
+    }
+  },
 
   /**
-   * Determina si un usuario autenticado posee permisos reales de creador / administrador.
-   * Valida roles persistidos en el perfil o coincidencia con la lista centralizada de UIDs.
+   * Helper síncrono para UI inicial/optimista.
+   * La autorización real y final siempre proviene del backend /api/admin/me.
    */
   isUserAdminOrCreator(
     userProfile?: { role?: string; isCreator?: boolean; uid?: string } | null,
     uid?: string
   ): boolean {
     if (!userProfile && !uid) return false;
-
-    // 1. Privilegios explícitos en el perfil del usuario
     if (userProfile?.role === 'admin' || userProfile?.isCreator === true) {
       return true;
     }
-
-    // 2. Coincidencia de UID con la configuración centralizada de creador
-    const targetUid = uid || userProfile?.uid;
-    if (targetUid && ADMIN_CONFIG.CREATOR_UIDS.includes(targetUid)) {
-      return true;
-    }
-
     return false;
   },
 };

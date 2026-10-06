@@ -2,36 +2,40 @@
  * tests/genetics_admin_photos.test.ts
  *
  * SUITE DE PRUEBAS: HERRAMIENTA PRIVADA DE ADMINISTRACIÓN DE FOTOS DE GENÉTICAS (14 CASOS)
+ * Con endurecimiento de seguridad (hardening), sin UIDs ficticios, validación estricta de binarios
+ * y persistencia remota real.
  *
- * 1. ADMIN_CONFIG: Reconoce permisos de creador mediante role: 'admin'.
- * 2. ADMIN_CONFIG: Reconoce permisos de creador mediante isCreator: true.
- * 3. ADMIN_CONFIG: Reconoce permisos mediante UID preconfigurado de creador.
- * 4. ADMIN_CONFIG: Deniega acceso a usuarios normales y anónimos (role: 'user' o null).
- * 5. Backend verifyAdminRole: Invoca next() cuando el usuario es creador/admin autorizado.
- * 6. Backend verifyAdminRole: Retorna 403 Forbidden a usuarios normales sin privilegios.
+ * 1. ADMIN_CONFIG: Reconoce permisos mediante role: 'admin' en el perfil.
+ * 2. ADMIN_CONFIG: Reconoce permisos mediante isCreator: true en el perfil.
+ * 3. UIDs Ficticios: Rechaza terminantemente UIDs ficticios (creator-cultiveta-admin, etc.).
+ * 4. ADMIN_CONFIG: Deniega con seguridad permisos a usuarios comunes y sesiones anónimas.
+ * 5. Backend verifyAdminRole: Autoriza exclusivamente mediante UID en variables de entorno del servidor o Custom Claims.
+ * 6. Backend verifyAdminRole: Retorna 403 Forbidden a usuarios normales o con UIDs ficticios.
  * 7. Backend verifyAdminRole: Retorna 401 Unauthenticated si no hay sesión.
- * 8. getGeneticsPhotoKey: Genera identificador determinista y normalizado.
- * 9. validateGeneticsImageFile: Acepta archivos de imagen válidos JPG, JPEG, PNG y WEBP.
- * 10. validateGeneticsImageFile: Rechaza extensiones inválidas, 0 bytes y archivos que exceden 10MB.
+ * 8. getGeneticsPhotoKey: Genera identificador determinista, normalizado y canónico.
+ * 9. validateGeneticsImageFile: Acepta archivos válidos JPG, JPEG, PNG y WEBP.
+ * 10. validateImageBuffer: Valida firmas binarias (magic bytes) y rechaza binarios manipulados o corruptos.
  * 11. Búsqueda reactiva: Filtra inmediatamente por nombre de genética y banco de semillas.
- * 12. Servicio de fotos oficiales: Notifica reactivamente cambios a los observadores.
+ * 12. Persistencia y Reactividad: uploadPhoto emite cambios sólo tras respuesta exitosa confirmada del backend.
  * 13. JSDOM UI: Renderiza botón de administración SOLAMENTE para el creador/admin (oculto para usuarios normales).
- * 14. JSDOM UI: Muestra la fotografía representativa y el tag "Foto oficial" cuando existe foto aprobada.
+ * 14. JSDOM UI: Tarjeta del catálogo renderiza la fotografía representativa y el tag "Foto oficial" con URL remota.
  */
 
 import { JSDOM } from 'jsdom';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ADMIN_CONFIG } from '../src/config/adminConfig';
-import { verifyAdminRole } from '../src/server/adminAuthMiddleware';
+import { verifyAdminRole, isRequestAdmin } from '../src/server/adminAuthMiddleware';
+import { validateImageBuffer } from '../src/server/imageValidation';
 import {
   getGeneticsPhotoKey,
   validateGeneticsImageFile,
+  fileToDataUrl,
   geneticsCatalogPhotoService,
 } from '../src/services/geneticsCatalogPhotoService';
 import { GENETICS_DATABASE } from '../src/data/predefinedGenetics';
 import { GeneticsLibraryView } from '../src/components/genetics/GeneticsLibraryView';
-import { UserProfile, Genetics } from '../src/types';
+import { UserProfile } from '../src/types';
 
 // Configurar entorno JSDOM
 const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>', {
@@ -71,46 +75,49 @@ async function run(): Promise<void> {
 
   try {
     // -------------------------------------------------------------
-    // CASO 1: ADMIN_CONFIG reconoce creador por role: 'admin'
+    // CASO 1: ADMIN_CONFIG reconoce permisos mediante role: 'admin'
     // -------------------------------------------------------------
     {
       const profile: Partial<UserProfile> = {
-        uid: 'user-123',
+        uid: 'user-real-admin-1',
         role: 'admin',
       };
       const isAdmin = ADMIN_CONFIG.isUserAdminOrCreator(profile as UserProfile);
       if (isAdmin === true) {
-        recordPass('1. ADMIN_CONFIG reconoce correctamente privilegios mediante role: "admin"');
+        recordPass('1. ADMIN_CONFIG reconoce correctamente permisos mediante role: "admin"');
       } else {
         recordFail('1. Falló reconocimiento por role: "admin"');
       }
     }
 
     // -------------------------------------------------------------
-    // CASO 2: ADMIN_CONFIG reconoce creador por isCreator: true
+    // CASO 2: ADMIN_CONFIG reconoce permisos mediante isCreator: true
     // -------------------------------------------------------------
     {
       const profile: Partial<UserProfile> = {
-        uid: 'user-456',
+        uid: 'user-real-creator-1',
         isCreator: true,
       };
       const isAdmin = ADMIN_CONFIG.isUserAdminOrCreator(profile as UserProfile);
       if (isAdmin === true) {
-        recordPass('2. ADMIN_CONFIG reconoce correctamente privilegios mediante isCreator: true');
+        recordPass('2. ADMIN_CONFIG reconoce correctamente permisos mediante isCreator: true');
       } else {
         recordFail('2. Falló reconocimiento por isCreator: true');
       }
     }
 
     // -------------------------------------------------------------
-    // CASO 3: ADMIN_CONFIG reconoce creador por UID preconfigurado
+    // CASO 3: UIDs Ficticios eliminados y rechazados
     // -------------------------------------------------------------
     {
-      const isAdmin = ADMIN_CONFIG.isUserAdminOrCreator(null, 'creator-cultiveta-admin');
-      if (isAdmin === true) {
-        recordPass('3. ADMIN_CONFIG reconoce UID predeterminado de creador ("creator-cultiveta-admin")');
+      const fictional1 = isRequestAdmin({ userId: 'creator-cultiveta-admin' });
+      const fictional2 = isRequestAdmin({ userId: 'admin-cultiveta-main' });
+      const fictional3 = isRequestAdmin({ userId: 'cultiveta-creator-master' });
+
+      if (!fictional1 && !fictional2 && !fictional3) {
+        recordPass('3. UIDs ficticios (creator-cultiveta-admin, etc.) quedan estrictamente revocados y denegados');
       } else {
-        recordFail('3. Falló reconocimiento por UID predeterminado');
+        recordFail('3. Falló eliminación de UIDs ficticios: permitieron acceso no autorizado');
       }
     }
 
@@ -133,32 +140,43 @@ async function run(): Promise<void> {
     }
 
     // -------------------------------------------------------------
-    // CASO 5: Backend verifyAdminRole invoca next() para creador
+    // CASO 5: Backend verifyAdminRole autoriza exclusivamente con env vars o Custom Claims
     // -------------------------------------------------------------
     {
-      let nextCalled = false;
-      const req: any = { userId: 'creator-cultiveta-admin' };
-      const res: any = {
-        status: () => res,
-        json: () => res,
-      };
-      await verifyAdminRole(req, res, () => {
-        nextCalled = true;
+      // 5.1 Con UID en variable de entorno del servidor
+      const originalAdminUid = process.env.ADMIN_UID;
+      process.env.ADMIN_UID = 'server-configured-admin-777';
+
+      let nextCalledWithEnv = false;
+      const reqEnv: any = { userId: 'server-configured-admin-777' };
+      const resDummy: any = { status: () => resDummy, json: () => resDummy };
+      await verifyAdminRole(reqEnv, resDummy, () => {
+        nextCalledWithEnv = true;
       });
-      if (nextCalled) {
-        recordPass('5. Middleware backend verifyAdminRole concede acceso (next) a creador autenticado');
+
+      // 5.2 Con Firebase Custom Claim admin: true
+      let nextCalledWithClaims = false;
+      const reqClaims: any = { userId: 'user-jwt-claim-123', user: { admin: true } };
+      await verifyAdminRole(reqClaims, resDummy, () => {
+        nextCalledWithClaims = true;
+      });
+
+      process.env.ADMIN_UID = originalAdminUid;
+
+      if (nextCalledWithEnv && nextCalledWithClaims) {
+        recordPass('5. Backend verifyAdminRole autoriza correctamente por variable de entorno del servidor y por Custom Claims');
       } else {
-        recordFail('5. Backend verifyAdminRole no invocó next() para el creador');
+        recordFail(`5. Falló verifyAdminRole seguro: env=${nextCalledWithEnv}, claims=${nextCalledWithClaims}`);
       }
     }
 
     // -------------------------------------------------------------
-    // CASO 6: Backend verifyAdminRole retorna 403 Forbidden para usuario común
+    // CASO 6: Backend verifyAdminRole retorna 403 Forbidden para usuario común o UID ficticio
     // -------------------------------------------------------------
     {
       let statusCode = 0;
       let responseBody: any = null;
-      const req: any = { userId: 'unauthorized-normal-user-123' };
+      const req: any = { userId: 'creator-cultiveta-admin' }; // UID ficticio debe dar 403
       const res: any = {
         status: (code: number) => {
           statusCode = code;
@@ -171,7 +189,7 @@ async function run(): Promise<void> {
       };
       await verifyAdminRole(req, res, () => {});
       if (statusCode === 403 && responseBody?.code === 'auth/forbidden') {
-        recordPass('6. Backend verifyAdminRole rechaza con 403 Forbidden y código auth/forbidden');
+        recordPass('6. Backend verifyAdminRole rechaza UIDs ficticios y no autorizados con 403 Forbidden');
       } else {
         recordFail(`6. Falló respuesta 403 para usuario no autorizado (código recibido: ${statusCode})`);
       }
@@ -199,15 +217,15 @@ async function run(): Promise<void> {
     }
 
     // -------------------------------------------------------------
-    // CASO 8: getGeneticsPhotoKey genera clave canónica
+    // CASO 8: getGeneticsPhotoKey genera clave canónica determinista
     // -------------------------------------------------------------
     {
       const key1 = getGeneticsPhotoKey('Sensi Seeds', 'Skunk #1');
       const key2 = getGeneticsPhotoKey('  sensi seeds  ', 'skunk #1 ');
-      const key3 = getGeneticsPhotoKey('Barney\'s Farm', 'Amnesia Haze');
+      const key3 = getGeneticsPhotoKey("Barney's Farm", 'Amnesia Haze');
       if (
-        key1 === 'sensi-seeds__skunk--1' &&
-        key2 === 'sensi-seeds__skunk--1' &&
+        key1 === 'sensi-seeds__skunk-1' &&
+        key2 === 'sensi-seeds__skunk-1' &&
         key3 === 'barney-s-farm__amnesia-haze'
       ) {
         recordPass('8. getGeneticsPhotoKey produce claves idénticas, normalizadas y deterministas');
@@ -217,7 +235,7 @@ async function run(): Promise<void> {
     }
 
     // -------------------------------------------------------------
-    // CASO 9: validateGeneticsImageFile acepta JPG, PNG, WEBP
+    // CASO 9: validateGeneticsImageFile valida JPG, PNG, WEBP en cliente
     // -------------------------------------------------------------
     {
       const mockJpg = new (dom.window as any).File(['mock image binary content'], 'photo.jpg', {
@@ -242,31 +260,26 @@ async function run(): Promise<void> {
     }
 
     // -------------------------------------------------------------
-    // CASO 10: validateGeneticsImageFile rechaza extensiones inválidas y tamaños > 10MB
+    // CASO 10: validateImageBuffer valida firmas binarias (magic bytes)
     // -------------------------------------------------------------
     {
-      const mockExe = new (dom.window as any).File(['binary payload'], 'virus.exe', {
-        type: 'application/x-msdownload',
-      });
-      const resExe = await validateGeneticsImageFile(mockExe);
+      // JPEG magic bytes: FF D8 FF
+      const jpegBuffer = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]);
+      // PNG magic bytes: 89 50 4E 47 0D 0A 1A 0A
+      const pngBuffer = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+      // Binario inválido (ejecutable o texto)
+      const fakeBuffer = Buffer.from('Esto no es una imagen');
 
-      const emptyFile = new (dom.window as any).File([], 'empty.jpg', {
-        type: 'image/jpeg',
-      });
-      const resEmpty = await validateGeneticsImageFile(emptyFile);
+      const resJpeg = validateImageBuffer(jpegBuffer);
+      const resPng = validateImageBuffer(pngBuffer);
+      const resFake = validateImageBuffer(fakeBuffer);
 
-      // Archivo simulado que excede 10MB
-      const hugeFile = {
-        name: 'huge.jpg',
-        type: 'image/jpeg',
-        size: 15 * 1024 * 1024,
-      } as any;
-      const resHuge = await validateGeneticsImageFile(hugeFile);
-
-      if (!resExe.valid && !resEmpty.valid && !resHuge.valid) {
-        recordPass('10. validateGeneticsImageFile rechaza archivos no admitidos, archivos vacíos y de >10MB');
+      if (resJpeg.valid && resJpeg.detectedMime === 'image/jpeg' &&
+          resPng.valid && resPng.detectedMime === 'image/png' &&
+          !resFake.valid) {
+        recordPass('10. validateImageBuffer valida firmas binarias reales (JPEG/PNG) y rechaza archivos falsos o corruptos');
       } else {
-        recordFail('10. No se rechazaron correctamente los archivos no conformes');
+        recordFail('10. Falló la validación estricta de magic bytes en buffer');
       }
     }
 
@@ -288,7 +301,7 @@ async function run(): Promise<void> {
     }
 
     // -------------------------------------------------------------
-    // CASO 12: Reactividad del servicio de fotos oficiales
+    // CASO 12: Reactividad del servicio y confirmación remota estricta
     // -------------------------------------------------------------
     {
       let emittedCount = 0;
@@ -298,7 +311,36 @@ async function run(): Promise<void> {
         lastPhotos = photos;
       });
 
-      // Simular subida en servicio
+      // Simular respuesta exitosa remota de backend con Storage URL
+      const key = getGeneticsPhotoKey('Sensi Seeds', 'Skunk #1');
+      const originalFetch = globalThis.fetch;
+      const { authService } = await import('../src/services/authService');
+      const originalGetIdToken = authService.getIdToken;
+      authService.getIdToken = async () => 'mock-admin-jwt-token';
+
+      globalThis.fetch = (async (url: string) => {
+        if (url.includes('/api/admin/genetics/upload-photo')) {
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              success: true,
+              photo: {
+                key,
+                seedBank: 'Sensi Seeds',
+                name: 'Skunk #1',
+                photoUrl: 'https://storage.googleapis.com/gen-lang-client-0531791519.firebasestorage.app/genetics-catalog/sensi-seeds__skunk-1.jpg',
+                storagePath: 'genetics-catalog/sensi-seeds__skunk-1.jpg',
+                photoSourceName: 'Sensi Seeds',
+                photoAttribution: 'Oficial Sensi Seeds',
+                updatedAt: new Date().toISOString(),
+              },
+            }),
+          };
+        }
+        return { ok: true, status: 200, json: async () => ({}) };
+      }) as any;
+
       const mockFile = new (dom.window as any).File(['fake binary image data'], 'skunk.jpg', {
         type: 'image/jpeg',
       });
@@ -306,17 +348,20 @@ async function run(): Promise<void> {
         seedBank: 'Sensi Seeds',
         name: 'Skunk #1',
         file: mockFile,
+        photoSourceName: 'Sensi Seeds',
       });
 
-      const key = getGeneticsPhotoKey('Sensi Seeds', 'Skunk #1');
-      const hasPhoto = Boolean(lastPhotos?.[key]?.photoUrl);
+      globalThis.fetch = originalFetch;
+      authService.getIdToken = originalGetIdToken;
 
+      const hasPhoto = Boolean(lastPhotos?.[key]?.photoUrl);
+      const isRemoteUrl = lastPhotos?.[key]?.photoUrl?.startsWith('https://storage.googleapis.com');
       unsub();
 
-      if (emittedCount >= 2 && hasPhoto) {
-        recordPass('12. geneticsCatalogPhotoService emite reactivamente cambios tras guardar fotografía');
+      if (emittedCount >= 2 && hasPhoto && isRemoteUrl) {
+        recordPass('12. geneticsCatalogPhotoService actualiza caché y emite cambios tras confirmación remota con URL de Storage');
       } else {
-        recordFail('12. No se notificó reactivamente la subida de foto al suscriptor');
+        recordFail('12. No se confirmó reactividad o la URL no proviene de Storage');
       }
     }
 
@@ -328,7 +373,7 @@ async function run(): Promise<void> {
       const root = createRoot(container);
 
       const adminProfile: UserProfile = {
-        uid: 'creator-cultiveta-admin',
+        uid: 'user-admin-real',
         email: 'creator@cultiveta.com',
         displayName: 'Creador Cultiveta',
         createdAt: '2026-01-01T00:00:00Z',
@@ -393,13 +438,14 @@ async function run(): Promise<void> {
       const container = document.getElementById('root')!;
       const root = createRoot(container);
 
-      // Asegurar que hay foto cargada para Skunk #1
+      // Asegurar que hay foto cargada para Skunk #1 con URL de Firebase Storage (no base64)
       const key = getGeneticsPhotoKey('Sensi Seeds', 'Skunk #1');
       (geneticsCatalogPhotoService as any).cache[key] = {
         key,
         seedBank: 'Sensi Seeds',
         name: 'Skunk #1',
-        photoUrl: 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEASABIAAD/',
+        photoUrl: 'https://storage.googleapis.com/gen-lang-client-0531791519.firebasestorage.app/genetics-catalog/sensi-seeds__skunk-1.jpg',
+        storagePath: 'genetics-catalog/sensi-seeds__skunk-1.jpg',
         updatedAt: new Date().toISOString(),
       };
 
@@ -419,11 +465,12 @@ async function run(): Promise<void> {
       const rootHtml = container.innerHTML;
       const containsOfficialTag = rootHtml.includes('Foto oficial');
       const containsSkunkImage = rootHtml.includes('alt="Skunk #1 - Sensi Seeds"');
+      const containsStorageUrl = rootHtml.includes('https://storage.googleapis.com');
 
-      if (containsOfficialTag && containsSkunkImage) {
-        recordPass('14. JSDOM UI: Tarjeta del catálogo renderiza la fotografía representativa con tag "Foto oficial"');
+      if (containsOfficialTag && containsSkunkImage && containsStorageUrl) {
+        recordPass('14. JSDOM UI: Tarjeta del catálogo renderiza la fotografía representativa con tag "Foto oficial" y URL remota de Storage');
       } else {
-        recordFail(`14. No se encontró la etiqueta "Foto oficial" o imagen en el catálogo`);
+        recordFail('14. No se encontró la etiqueta "Foto oficial" o imagen remota en el catálogo');
       }
     }
 

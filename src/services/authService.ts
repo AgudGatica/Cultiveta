@@ -16,7 +16,6 @@ import { doc, setDoc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { auth, googleProvider, calendarGoogleProvider, db } from '../firebase/config';
 import { UserProfile } from '../types';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
-import { ADMIN_CONFIG } from '../config/adminConfig';
 
 let cachedAccessToken: string | null = null;
 const authListeners: ((user: User | null) => void)[] = [];
@@ -206,15 +205,14 @@ export const authService = {
   },
 
   async syncUserProfile(user: User, customName?: string): Promise<UserProfile> {
-    const isCreatorOrAdmin = ADMIN_CONFIG.isUserAdminOrCreator(null, user.uid);
     const fallbackProfile: UserProfile = {
       uid: user.uid,
       email: user.email,
       displayName: customName || user.displayName || user.email?.split('@')[0] || 'Cultivador',
       photoURL: user.photoURL,
       createdAt: new Date().toISOString(),
-      role: isCreatorOrAdmin ? 'admin' : 'user',
-      isCreator: isCreatorOrAdmin,
+      role: 'user',
+      isCreator: false,
       preferences: {
         advancedMode: false,
         tempUnit: 'C',

@@ -13,6 +13,8 @@ import {
   ArrowLeft,
   Sparkles,
   Filter,
+  Lock,
+  Globe,
 } from 'lucide-react';
 import { GENETICS_DATABASE, PredefinedGenetic } from '../../data/predefinedGenetics';
 import {
@@ -20,6 +22,7 @@ import {
   validateGeneticsImageFile,
   fileToDataUrl,
   getGeneticsPhotoKey,
+  StorageStatusResult,
 } from '../../services/geneticsCatalogPhotoService';
 import { GeneticsCatalogPhoto } from '../../types';
 
@@ -39,6 +42,10 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
   const [selectedSeedBank, setSelectedSeedBank] = useState<string>('ALL');
   const [statusFilter, setStatusFilter] = useState<'all' | 'with_photo' | 'without_photo'>('all');
 
+  // Estado del servicio de almacenamiento
+  const [storageStatus, setStorageStatus] = useState<StorageStatusResult | null>(null);
+  const [isCheckingStorage, setIsCheckingStorage] = useState(false);
+
   // Estado para la subida manual de una genética seleccionada
   const [selectedGeneticForUpload, setSelectedGeneticForUpload] = useState<PredefinedGenetic | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -49,15 +56,49 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
   const [isDeletingKey, setIsDeletingKey] = useState<string | null>(null);
   const [feedbackMessage, setFeedbackMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Metadata de la fuente y trazabilidad
+  const [photoSourceName, setPhotoSourceName] = useState('');
+  const [photoSourceUrl, setPhotoSourceUrl] = useState('');
+  const [photoAttribution, setPhotoAttribution] = useState('');
+  const [photoLicense, setPhotoLicense] = useState('');
+  const [photoRightsStatus, setPhotoRightsStatus] = useState<
+    'official-source' | 'permission-granted' | 'licensed' | 'owned' | 'unknown'
+  >('official-source');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Suscribirse a las fotos oficiales del catálogo en tiempo real
+  // Verificar estado de almacenamiento y suscribirse a las fotos oficiales
   useEffect(() => {
     if (!isOpen) return;
+
+    let isMounted = true;
+    async function checkStorage() {
+      setIsCheckingStorage(true);
+      try {
+        const res = await geneticsCatalogPhotoService.checkStorageStatus();
+        if (isMounted) {
+          setStorageStatus(res);
+        }
+      } catch {
+        if (isMounted) {
+          setStorageStatus({
+            available: false,
+            message: 'El almacenamiento de imágenes todavía no está habilitado.',
+          });
+        }
+      } finally {
+        if (isMounted) setIsCheckingStorage(false);
+      }
+    }
+    checkStorage();
+
     const unsub = geneticsCatalogPhotoService.subscribeCatalogPhotos((photos) => {
       setCatalogPhotos(photos);
     });
-    return () => unsub();
+    return () => {
+      isMounted = false;
+      unsub();
+    };
   }, [isOpen]);
 
   // Lista única de bancos de semillas para filtrar
@@ -70,19 +111,16 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
   // Filtrado reactivo por nombre, banco y estado
   const filteredGenetics = useMemo(() => {
     return GENETICS_DATABASE.filter((item) => {
-      // 1. Filtro por banco
       if (selectedSeedBank !== 'ALL' && item.seedBank !== selectedSeedBank) {
         return false;
       }
 
-      // 2. Filtro por estado fotográfico
       const key = getGeneticsPhotoKey(item.seedBank, item.name);
       const hasPhoto = Boolean(catalogPhotos[key]?.photoUrl);
 
       if (statusFilter === 'with_photo' && !hasPhoto) return false;
       if (statusFilter === 'without_photo' && hasPhoto) return false;
 
-      // 3. Filtro por término de búsqueda (nombre o banco)
       if (searchTerm.trim()) {
         const q = searchTerm.toLowerCase().trim();
         const matchesName = item.name.toLowerCase().includes(q);
@@ -93,6 +131,31 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
       return true;
     });
   }, [searchTerm, selectedSeedBank, statusFilter, catalogPhotos]);
+
+  // Iniciar subida preparando metadata
+  const handleStartUpload = (genetic: PredefinedGenetic) => {
+    setSelectedGeneticForUpload(genetic);
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setPreviewDimensions(null);
+    setValidationError(null);
+
+    const key = getGeneticsPhotoKey(genetic.seedBank, genetic.name);
+    const existing = catalogPhotos[key];
+    if (existing) {
+      setPhotoSourceName(existing.photoSourceName || genetic.seedBank);
+      setPhotoSourceUrl(existing.photoSourceUrl || '');
+      setPhotoAttribution(existing.photoAttribution || `Fotografía oficial cortesía de ${genetic.seedBank}`);
+      setPhotoLicense(existing.photoLicense || 'Uso editorial / Prensa oficial');
+      setPhotoRightsStatus(existing.photoRightsStatus || 'official-source');
+    } else {
+      setPhotoSourceName(genetic.seedBank);
+      setPhotoSourceUrl('');
+      setPhotoAttribution(`Fotografía oficial cortesía de ${genetic.seedBank}`);
+      setPhotoLicense('Uso oficial / Prensa autorizada');
+      setPhotoRightsStatus('official-source');
+    }
+  };
 
   // Manejador al seleccionar un archivo de imagen en el subpanel
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -126,6 +189,13 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
       return;
     }
 
+    if (storageStatus && !storageStatus.available) {
+      setValidationError(
+        storageStatus.message || 'El almacenamiento de imágenes todavía no está habilitado.'
+      );
+      return;
+    }
+
     setIsSaving(true);
     setValidationError(null);
 
@@ -134,11 +204,16 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
         seedBank: selectedGeneticForUpload.seedBank,
         name: selectedGeneticForUpload.name,
         file: selectedFile,
+        photoSourceName,
+        photoSourceUrl,
+        photoAttribution,
+        photoLicense,
+        photoRightsStatus,
       });
 
       setFeedbackMessage({
         type: 'success',
-        text: `Fotografía oficial de "${selectedGeneticForUpload.name}" guardada correctamente.`,
+        text: `Fotografía oficial de "${selectedGeneticForUpload.name}" guardada y persistida en Firebase Storage exitosamente.`,
       });
 
       if (onPhotoSaved) {
@@ -183,7 +258,7 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
       await geneticsCatalogPhotoService.deletePhoto(genetic.seedBank, genetic.name);
       setFeedbackMessage({
         type: 'success',
-        text: `Fotografía de "${genetic.name}" eliminada.`,
+        text: `Fotografía de "${genetic.name}" eliminada correctamente.`,
       });
     } catch (err: any) {
       setFeedbackMessage({
@@ -196,6 +271,8 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
   };
 
   if (!isOpen) return null;
+
+  const isStorageBlocked = Boolean(storageStatus && !storageStatus.available);
 
   return (
     <div
@@ -239,6 +316,16 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
           </button>
         </div>
 
+        {/* Advertencia de Storage No Habilitado */}
+        {isStorageBlocked && (
+          <div className="mx-6 mt-4 p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold flex items-center gap-2.5">
+            <Lock className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              {storageStatus?.message || 'El almacenamiento de imágenes todavía no está habilitado.'}
+            </span>
+          </div>
+        )}
+
         {/* Notificación Feedback temporal */}
         {feedbackMessage && (
           <div
@@ -266,7 +353,7 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
           </div>
         )}
 
-        {/* Contenido Principal: O bien el listado o bien el panel de carga de la genética seleccionada */}
+        {/* Contenido Principal */}
         {selectedGeneticForUpload ? (
           /* =========================================================================
              SUBPANEL: CARGA MANUAL Y PREVIEW DE LA GENÉTICA SELECCIONADA
@@ -294,7 +381,7 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
                 Cargar foto de {selectedGeneticForUpload.name}
               </h4>
               <p className="text-xs text-stone-500 mt-1">
-                Selecciona una imagen representativa (JPG, JPEG, PNG o WEBP). Comprueba la previsualización antes de guardar.
+                Selecciona una imagen representativa (JPG, JPEG, PNG o WEBP). Comprueba la previsualización y registra la fuente antes de guardar.
               </p>
             </div>
 
@@ -396,6 +483,90 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
               )}
             </div>
 
+            {/* Formulario de Metadatos de la Fuente y Derechos */}
+            <div className="bg-stone-50/80 p-5 rounded-3xl border border-stone-200 space-y-3">
+              <div className="flex items-center gap-2">
+                <Globe className="w-4 h-4 text-purple-700" />
+                <h5 className="font-bold text-xs text-stone-800">
+                  Datos de la Fuente y Derechos de la Fotografía
+                </h5>
+              </div>
+              <p className="text-[11px] text-stone-500">
+                Información administrativa para mantener la trazabilidad del banco de semillas u origen.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                    Fuente / Breeder
+                  </label>
+                  <input
+                    type="text"
+                    value={photoSourceName}
+                    onChange={(e) => setPhotoSourceName(e.target.value)}
+                    placeholder="Ej: Sensi Seeds, Dutch Passion..."
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-purple-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                    URL de la fuente (página web oficial)
+                  </label>
+                  <input
+                    type="url"
+                    value={photoSourceUrl}
+                    onChange={(e) => setPhotoSourceUrl(e.target.value)}
+                    placeholder="https://sensiseeds.com/es/..."
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-purple-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                    Atribución / Crédito
+                  </label>
+                  <input
+                    type="text"
+                    value={photoAttribution}
+                    onChange={(e) => setPhotoAttribution(e.target.value)}
+                    placeholder="Ej: Fotografía oficial cortesía de Sensi Seeds"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-purple-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                    Estado de derechos
+                  </label>
+                  <select
+                    value={photoRightsStatus}
+                    onChange={(e: any) => setPhotoRightsStatus(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-purple-600"
+                  >
+                    <option value="official-source">Fuente oficial del breeder</option>
+                    <option value="permission-granted">Permiso otorgado</option>
+                    <option value="licensed">Con licencia</option>
+                    <option value="owned">Propia de Cultiveta</option>
+                    <option value="unknown">Sin especificar / Desconocida</option>
+                  </select>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                    Licencia / Términos de uso
+                  </label>
+                  <input
+                    type="text"
+                    value={photoLicense}
+                    onChange={(e) => setPhotoLicense(e.target.value)}
+                    placeholder="Ej: Uso oficial de catálogo / Permiso de prensa"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-purple-600"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Botones de Acción de Carga */}
             <div className="pt-4 border-t border-stone-200 flex items-center justify-end gap-3">
               <button
@@ -411,7 +582,7 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
                 type="button"
                 id="save-photo-upload-btn"
                 onClick={handleSavePhoto}
-                disabled={!selectedFile || isSaving}
+                disabled={!selectedFile || isSaving || isStorageBlocked}
                 className="px-6 py-2.5 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSaving ? (
@@ -451,107 +622,99 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
                     <button
                       type="button"
                       onClick={() => setSearchTerm('')}
-                      className="absolute right-3 top-2.5 p-1 rounded-full text-stone-400 hover:text-stone-700 cursor-pointer"
-                      title="Limpiar búsqueda"
+                      className="absolute right-3.5 top-3 text-stone-400 hover:text-stone-600"
                     >
-                      <X className="w-3.5 h-3.5" />
+                      <X className="w-4 h-4" />
                     </button>
                   )}
                 </div>
 
-                {/* Filtro Banco */}
-                <select
-                  id="admin-seedbank-filter-select"
-                  value={selectedSeedBank}
-                  onChange={(e) => setSelectedSeedBank(e.target.value)}
-                  className="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs font-semibold text-stone-700 focus:outline-hidden cursor-pointer"
-                >
-                  <option value="ALL">Todos los bancos ({seedBanks.length})</option>
-                  {seedBanks.map((bank) => (
-                    <option key={bank} value={bank}>
-                      {bank}
-                    </option>
-                  ))}
-                </select>
-
-                {/* Filtro Estado de Foto */}
-                <div className="flex items-center gap-1 bg-white p-1 rounded-2xl border border-stone-200 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setStatusFilter('all')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                      statusFilter === 'all'
-                        ? 'bg-purple-700 text-white shadow-2xs'
-                        : 'text-stone-600 hover:text-stone-900'
-                    }`}
+                {/* Filtro por Banco de Semillas */}
+                <div className="w-full sm:w-auto">
+                  <select
+                    id="admin-filter-seedbank-select"
+                    value={selectedSeedBank}
+                    onChange={(e) => setSelectedSeedBank(e.target.value)}
+                    className="w-full sm:w-48 px-3 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs text-stone-700 font-semibold focus:outline-hidden focus:border-purple-600 cursor-pointer"
                   >
-                    Todas
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setStatusFilter('with_photo')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                      statusFilter === 'with_photo'
-                        ? 'bg-emerald-700 text-white shadow-2xs'
-                        : 'text-stone-600 hover:text-stone-900'
-                    }`}
-                  >
-                    Con foto
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setStatusFilter('without_photo')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                      statusFilter === 'without_photo'
-                        ? 'bg-amber-600 text-white shadow-2xs'
-                        : 'text-stone-600 hover:text-stone-900'
-                    }`}
-                  >
-                    Sin foto
-                  </button>
+                    <option value="ALL">Todos los bancos ({seedBanks.length})</option>
+                    {seedBanks.map((b) => (
+                      <option key={b} value={b}>
+                        {b}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
-              {/* Contador de resultados */}
-              <div className="flex items-center justify-between text-xs text-stone-500 px-1 pt-1">
-                <span>
-                  Mostrando <strong>{filteredGenetics.length}</strong> de {GENETICS_DATABASE.length} variedades
-                  {selectedSeedBank !== 'ALL' && <span> de <strong>{selectedSeedBank}</strong></span>}
-                  {searchTerm && <span> para "{searchTerm}"</span>}
+              {/* Filtro por Estado de Fotografía */}
+              <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
+                <span className="text-stone-400 text-[11px] font-semibold flex items-center gap-1">
+                  <Filter className="w-3 h-3" />
+                  <span>Estado:</span>
                 </span>
-                <span className="text-[11px] text-stone-400">
-                  {Object.keys(catalogPhotos).length} fotografías cargadas en el catálogo
-                </span>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('all')}
+                  className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    statusFilter === 'all'
+                      ? 'bg-purple-700 text-white shadow-xs'
+                      : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200'
+                  }`}
+                >
+                  Todas ({GENETICS_DATABASE.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('with_photo')}
+                  className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    statusFilter === 'with_photo'
+                      ? 'bg-emerald-700 text-white shadow-xs'
+                      : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200'
+                  }`}
+                >
+                  Con foto (
+                  {
+                    GENETICS_DATABASE.filter(
+                      (g) => catalogPhotos[getGeneticsPhotoKey(g.seedBank, g.name)]?.photoUrl
+                    ).length
+                  }
+                  )
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter('without_photo')}
+                  className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                    statusFilter === 'without_photo'
+                      ? 'bg-stone-800 text-white shadow-xs'
+                      : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200'
+                  }`}
+                >
+                  Sin foto (
+                  {
+                    GENETICS_DATABASE.filter(
+                      (g) => !catalogPhotos[getGeneticsPhotoKey(g.seedBank, g.name)]?.photoUrl
+                    ).length
+                  }
+                  )
+                </button>
               </div>
             </div>
 
             {/* Listado de Genéticas */}
             <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-3">
               {filteredGenetics.length === 0 ? (
-                <div className="py-12 text-center space-y-3 bg-stone-50 rounded-3xl border border-stone-200">
-                  <div className="w-12 h-12 rounded-full bg-stone-200 flex items-center justify-center mx-auto text-stone-400">
-                    <Search className="w-6 h-6" />
+                <div className="text-center py-16 px-4">
+                  <div className="w-14 h-14 rounded-2xl bg-stone-100 flex items-center justify-center mx-auto text-stone-400 mb-3">
+                    <Search className="w-7 h-7" />
                   </div>
-                  <h5 className="font-bold text-stone-700 text-sm">
-                    No se encontraron genéticas que coincidan
-                  </h5>
-                  <p className="text-xs text-stone-500 max-w-sm mx-auto">
-                    Intenta cambiar el término de búsqueda o quitar los filtros de estado y banco de semillas.
+                  <h4 className="font-bold text-stone-800 text-sm">No se encontraron genéticas</h4>
+                  <p className="text-xs text-stone-500 mt-1 max-w-sm mx-auto">
+                    Prueba modificando los filtros de búsqueda o el banco de semillas seleccionado.
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSearchTerm('');
-                      setSelectedSeedBank('ALL');
-                      setStatusFilter('all');
-                    }}
-                    className="px-4 py-2 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-700 text-xs font-bold transition-colors cursor-pointer"
-                  >
-                    Restablecer filtros
-                  </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {filteredGenetics.map((item) => {
                     const key = getGeneticsPhotoKey(item.seedBank, item.name);
                     const photoRecord = catalogPhotos[key];
@@ -609,12 +772,7 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
                               <button
                                 type="button"
                                 id={`load-photo-btn-${key}`}
-                                onClick={() => {
-                                  setSelectedGeneticForUpload(item);
-                                  setSelectedFile(null);
-                                  setPreviewUrl(null);
-                                  setValidationError(null);
-                                }}
+                                onClick={() => handleStartUpload(item)}
                                 className="px-3.5 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
                               >
                                 <Camera className="w-3.5 h-3.5" />
@@ -625,12 +783,7 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
                                 <button
                                   type="button"
                                   id={`replace-photo-btn-${key}`}
-                                  onClick={() => {
-                                    setSelectedGeneticForUpload(item);
-                                    setSelectedFile(null);
-                                    setPreviewUrl(null);
-                                    setValidationError(null);
-                                  }}
+                                  onClick={() => handleStartUpload(item)}
                                   className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
                                   title="Reemplazar por una nueva imagen"
                                 >
@@ -658,6 +811,20 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
                   })}
                 </div>
               )}
+            </div>
+
+            {/* Footer Informativo */}
+            <div className="p-4 border-t border-stone-200 bg-stone-50/80 flex items-center justify-between text-xs text-stone-500">
+              <span>
+                Mostrando {filteredGenetics.length} de {GENETICS_DATABASE.length} variedades del catálogo
+              </span>
+              <button
+                type="button"
+                onClick={onClose}
+                className="px-4 py-2 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold transition-all cursor-pointer"
+              >
+                Cerrar
+              </button>
             </div>
           </>
         )}

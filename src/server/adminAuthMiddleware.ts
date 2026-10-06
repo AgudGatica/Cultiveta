@@ -1,12 +1,54 @@
 import type { RequestHandler } from 'express';
-import { getFirebaseAdmin } from './firebaseAdminHelper';
 
 /**
- * Middleware para verificar que el usuario autenticado tiene permisos reales de administrador/creador.
- *
- * Criterios de autorización:
- * 1. UID en la lista centralizada de creadores (variables de entorno o predeterminado seguro).
- * 2. Perfil en Firestore con role: 'admin' o isCreator: true.
+ * Obtiene la lista autorizada de UIDs administrativos exclusivamente configurados
+ * en variables de entorno del servidor.
+ * No expone UIDs ficticios ni valores predeterminados de desarrollo en producción.
+ */
+export function getServerAdminUids(): string[] {
+  const list: string[] = [];
+  if (process.env.CREATOR_UID) {
+    const val = process.env.CREATOR_UID.trim();
+    if (val) list.push(val);
+  }
+  if (process.env.ADMIN_UID) {
+    const val = process.env.ADMIN_UID.trim();
+    if (val) list.push(val);
+  }
+  if (process.env.ADMIN_UIDS) {
+    process.env.ADMIN_UIDS.split(',').forEach((uid) => {
+      const val = uid.trim();
+      if (val) list.push(val);
+    });
+  }
+  return list;
+}
+
+/**
+ * Evalúa si una solicitud autenticada proviene de un creador/administrador verificado.
+ * Fuentes autorizadas estrictas:
+ * A. Firebase Custom Claims (admin: true o creator: true)
+ * B. UID en variables de entorno del servidor (CREATOR_UID, ADMIN_UID, ADMIN_UIDS)
+ */
+export function isRequestAdmin(req: { user?: any; userId?: string }): boolean {
+  if (!req.userId) return false;
+
+  // A. Firebase Custom Claims verificados criptográficamente
+  if (req.user?.admin === true || req.user?.creator === true) {
+    return true;
+  }
+
+  // B. UIDs configurados exclusivamente en variables de entorno del servidor
+  const serverAdminUids = getServerAdminUids();
+  if (serverAdminUids.includes(req.userId)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Middleware para restringir rutas exclusivamente a administradores verificados.
  */
 export const verifyAdminRole: RequestHandler = async (req, res, next) => {
   const userId = req.userId;
@@ -17,34 +59,8 @@ export const verifyAdminRole: RequestHandler = async (req, res, next) => {
     });
   }
 
-  // 1. Verificar si está en la lista de UIDs predeterminados o por variable de entorno
-  const creatorUids = [
-    'creator-cultiveta-admin',
-    'admin-cultiveta-main',
-    'cultiveta-creator-master',
-    process.env.CREATOR_UID,
-    process.env.ADMIN_UID,
-  ].filter(Boolean);
-
-  if (creatorUids.includes(userId)) {
+  if (isRequestAdmin(req)) {
     return next();
-  }
-
-  // 2. Verificar en Firestore el perfil del usuario (role === 'admin' o isCreator === true)
-  try {
-    const adminApp = getFirebaseAdmin();
-    if (adminApp) {
-      const db = (adminApp as any).firestore();
-      const userSnap = await db.collection('users').doc(userId).get();
-      if (userSnap.exists) {
-        const userData = userSnap.data();
-        if (userData?.role === 'admin' || userData?.isCreator === true) {
-          return next();
-        }
-      }
-    }
-  } catch (err) {
-    console.warn('[verifyAdminRole] No se pudo verificar rol en Firestore:', err);
   }
 
   return res.status(403).json({

@@ -52,12 +52,34 @@ export interface GeneticsCatalogPhoto {
   seedBank: string;
   name: string;
   photoUrl: string;
-  storagePath?: string;
+  storagePath: string;
   fileSize?: number;
   mimeType?: string;
   dimensions?: { width: number; height: number };
+  photoSourceUrl?: string;
+  photoSourceName?: string;
+  photoAttribution?: string;
+  photoLicense?: string;
+  photoRightsStatus?: 'unknown' | 'official-source' | 'permission-granted' | 'licensed' | 'owned';
   updatedAt: string;
   updatedBy?: string;
+}
+
+export interface GeneticsCatalogPhotoDTO {
+  key: string;
+  seedBank: string;
+  name: string;
+  photoUrl: string;
+  storagePath: string;
+  fileSize?: number;
+  mimeType?: string;
+  dimensions?: { width: number; height: number };
+  photoSourceUrl?: string;
+  photoSourceName?: string;
+  photoAttribution?: string;
+  photoLicense?: string;
+  photoRightsStatus?: 'unknown' | 'official-source' | 'permission-granted' | 'licensed' | 'owned';
+  updatedAt: string;
 }
 
 export interface CultivationGeneticsItem {

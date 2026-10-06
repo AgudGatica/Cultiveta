@@ -1,16 +1,25 @@
-import { GeneticsCatalogPhoto } from '../types';
+import { GeneticsCatalogPhoto, GeneticsCatalogPhotoDTO } from '../types';
 import { authService } from './authService';
 import { db, auth } from '../firebase/config';
-import { collection, doc, onSnapshot, getDocs } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
+import { getGeneticsPhotoKey } from '../utils/geneticsKeyUtils';
+
+export { getGeneticsPhotoKey };
+
+/**
+ * Convierte un File local a Data URL estrictamente para vista previa en el navegador.
+ * NUNCA se utiliza para persistencia en Firestore ni backend.
+ */
+export function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (err) => reject(err);
+    reader.readAsDataURL(file);
+  });
+}
 
 const CATALOG_PHOTOS_STORAGE_KEY = 'cultiveta_genetics_catalog_photos';
-
-// Normaliza nombres y bancos para generar una clave canónica
-export function getGeneticsPhotoKey(seedBank: string, name: string): string {
-  const cleanBank = (seedBank || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '-');
-  const cleanName = (name || '').trim().toLowerCase().replace(/[^a-z0-9]/g, '-');
-  return `${cleanBank}__${cleanName}`;
-}
 
 export interface ImageValidationResult {
   valid: boolean;
@@ -19,33 +28,32 @@ export interface ImageValidationResult {
 }
 
 /**
- * Valida minuciosamente un archivo de imagen antes de permitir la subida.
+ * Valida minuciosamente un archivo de imagen en cliente antes de iniciar la subida.
  */
 export async function validateGeneticsImageFile(file: File): Promise<ImageValidationResult> {
-  // 1. Validar que exista y no esté vacío
   if (!file) {
     return { valid: false, error: 'No se seleccionó ningún archivo.' };
   }
 
-  // 2. Validar tipo MIME y extensión
+  // Validar extensión y MIME type
   const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-  const ext = file.name.split('.').pop()?.toLowerCase() || '';
+  const ext = file.name ? file.name.split('.').pop()?.toLowerCase() || '' : '';
   const allowedExts = ['jpg', 'jpeg', 'png', 'webp'];
 
-  const mimeValid = allowedTypes.includes(file.type.toLowerCase()) || allowedExts.includes(ext);
+  const mimeValid = (file.type && allowedTypes.includes(file.type.toLowerCase())) || allowedExts.includes(ext);
   if (!mimeValid) {
     return {
       valid: false,
-      error: 'Formato no válido. Solo se admiten imágenes JPG, JPEG, PNG o WEBP.',
+      error: 'Formato no admitido. Solo se permiten imágenes JPG, JPEG, PNG o WEBP.',
     };
   }
 
-  // 3. Validar tamaño (máximo 10 MB)
+  // Validar tamaño (máximo 10 MB)
   const MAX_SIZE_BYTES = 10 * 1024 * 1024; // 10 MB
   if (file.size > MAX_SIZE_BYTES) {
     return {
       valid: false,
-      error: `El archivo excede el tamaño máximo permitido de 10 MB (tamaño actual: ${(file.size / (1024 * 1024)).toFixed(1)} MB).`,
+      error: `El archivo excede el tamaño máximo permitido de 10 MB (${(file.size / (1024 * 1024)).toFixed(1)} MB).`,
     };
   }
 
@@ -53,7 +61,7 @@ export async function validateGeneticsImageFile(file: File): Promise<ImageValida
     return { valid: false, error: 'El archivo de imagen está vacío (0 bytes).' };
   }
 
-  // 4. Validar dimensiones reales cargando la imagen en memoria
+  // Validar dimensiones reales cargando la imagen en memoria si está en entorno de navegador
   if (typeof window !== 'undefined' && typeof Image !== 'undefined') {
     try {
       const dimensions = await new Promise<{ width: number; height: number }>((resolve, reject) => {
@@ -74,7 +82,6 @@ export async function validateGeneticsImageFile(file: File): Promise<ImageValida
         img.src = objectUrl;
       });
 
-      // Validar dimensiones mínimas razonables
       if (dimensions.width < 50 || dimensions.height < 50) {
         return {
           valid: false,
@@ -91,28 +98,21 @@ export async function validateGeneticsImageFile(file: File): Promise<ImageValida
   return { valid: true };
 }
 
-/**
- * Convierte un File a Data URL (base64)
- */
-export async function fileToDataUrl(file: File): Promise<string> {
-  if (typeof FileReader !== 'undefined') {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = (err) => reject(err);
-      reader.readAsDataURL(file);
-    });
-  }
+export interface UploadGeneticsPhotoParams {
+  seedBank: string;
+  name: string;
+  file: File;
+  photoSourceName?: string;
+  photoSourceUrl?: string;
+  photoAttribution?: string;
+  photoLicense?: string;
+  photoRightsStatus?: 'unknown' | 'official-source' | 'permission-granted' | 'licensed' | 'owned';
+}
 
-  // Node.js / JSDOM environment fallback
-  try {
-    const arrayBuffer = await file.arrayBuffer();
-    const base64 = Buffer.from(arrayBuffer).toString('base64');
-    const mime = file.type || 'image/jpeg';
-    return `data:${mime};base64,${base64}`;
-  } catch (e) {
-    return 'data:image/jpeg;base64,';
-  }
+export interface StorageStatusResult {
+  available: boolean;
+  code?: string;
+  message?: string;
 }
 
 class GeneticsCatalogPhotoService {
@@ -150,30 +150,19 @@ class GeneticsCatalogPhotoService {
     this.listeners.forEach((cb) => cb(copy));
   }
 
-  /**
-   * Obtiene sincrónicamente el mapa actual de fotos oficiales
-   */
   getCatalogPhotos(): Record<string, GeneticsCatalogPhoto> {
     return { ...this.cache };
   }
 
-  /**
-   * Obtiene la foto de una genética específica si existe
-   */
   getPhotoForGenetic(seedBank: string, name: string): GeneticsCatalogPhoto | null {
     const key = getGeneticsPhotoKey(seedBank, name);
     return this.cache[key] || null;
   }
 
-  /**
-   * Suscribe en tiempo real a las fotos oficiales del catálogo.
-   */
   subscribeCatalogPhotos(callback: (photos: Record<string, GeneticsCatalogPhoto>) => void): () => void {
     this.listeners.push(callback);
-    // Emisión inmediata desde caché en memoria / localStorage
     callback({ ...this.cache });
 
-    // Carga desde Firestore / API si aún no se inicializó
     if (!this.isInitialized) {
       this.initRemoteSync();
     }
@@ -184,13 +173,9 @@ class GeneticsCatalogPhotoService {
     };
   }
 
-  /**
-   * Sincronización remota con Firestore o endpoint del servidor
-   */
   private async initRemoteSync(): Promise<void> {
     this.isInitialized = true;
 
-    // 1. Intentar suscribir a Firestore si hay usuario autenticado
     try {
       if (db) {
         const colRef = collection(db, 'geneticsCatalogPhotos');
@@ -209,7 +194,6 @@ class GeneticsCatalogPhotoService {
             this.notify();
           },
           async (err) => {
-            // Si Firestore arroja error de reglas o permisos, hacer fallback al endpoint backend
             console.debug('Firestore geneticsCatalogPhotos snapshot fallback to REST:', err.message);
             await this.fetchFromApi();
           }
@@ -224,11 +208,17 @@ class GeneticsCatalogPhotoService {
   }
 
   /**
-   * Consulta el backend GET /api/genetics/catalog-photos
+   * Consulta el backend GET /api/genetics/catalog-photos enviando token JWT
    */
-  private async fetchFromApi(): Promise<void> {
+  async fetchFromApi(): Promise<void> {
     try {
-      const res = await fetch('/api/genetics/catalog-photos');
+      const token = await authService.getIdToken();
+      const headers: Record<string, string> = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const res = await fetch('/api/genetics/catalog-photos', { headers });
       if (res.ok) {
         const data = await res.json();
         if (data?.photos) {
@@ -238,19 +228,66 @@ class GeneticsCatalogPhotoService {
         }
       }
     } catch {
-      // Sin conexión o ambiente local sin backend corriendo
+      // Sin conexión o ambiente local
     }
   }
 
   /**
-   * Subida de fotografía oficial por el creador / administrador
+   * Verifica el estado real de Firebase Storage en el backend
    */
-  async uploadPhoto(params: {
-    seedBank: string;
-    name: string;
-    file: File;
-  }): Promise<GeneticsCatalogPhoto> {
-    const { seedBank, name, file } = params;
+  async checkStorageStatus(): Promise<StorageStatusResult> {
+    const token = await authService.getIdToken();
+    try {
+      const res = await fetch('/api/admin/genetics/storage-status', {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      if (res.status === 503) {
+        const errorData = await res.json().catch(() => ({}));
+        return {
+          available: false,
+          code: errorData?.code || 'storage/unavailable',
+          message: errorData?.message || 'El almacenamiento de imágenes todavía no está habilitado.',
+        };
+      }
+
+      if (res.ok) {
+        return { available: true };
+      }
+
+      const errJson = await res.json().catch(() => ({}));
+      return {
+        available: false,
+        code: errJson?.code || 'storage/error',
+        message: errJson?.message || 'Error verificando el estado del almacenamiento.',
+      };
+    } catch (netErr: any) {
+      return {
+        available: false,
+        code: 'storage/network-error',
+        message: netErr?.message || 'No se pudo conectar con el servidor para verificar el almacenamiento.',
+      };
+    }
+  }
+
+  /**
+   * Subida de fotografía oficial por el creador / administrador.
+   * Envía el binario mediante multipart/form-data.
+   * NUNCA actualiza caché ni responde éxito si el backend o Firestore fallan.
+   */
+  async uploadPhoto(params: UploadGeneticsPhotoParams): Promise<GeneticsCatalogPhoto> {
+    const {
+      seedBank,
+      name,
+      file,
+      photoSourceName,
+      photoSourceUrl,
+      photoAttribution,
+      photoLicense,
+      photoRightsStatus,
+    } = params;
 
     // 1. Validar archivo minuciosamente
     const validation = await validateGeneticsImageFile(file);
@@ -259,73 +296,58 @@ class GeneticsCatalogPhotoService {
     }
 
     const key = getGeneticsPhotoKey(seedBank, name);
-    const dataUrl = await fileToDataUrl(file);
 
     // 2. Obtener token de autenticación
     const token = await authService.getIdToken();
-
-    // 3. Preparar registro local optimista
-    const optimisticRecord: GeneticsCatalogPhoto = {
-      key,
-      seedBank: seedBank.trim(),
-      name: name.trim(),
-      photoUrl: dataUrl,
-      fileSize: file.size,
-      mimeType: file.type,
-      dimensions: validation.dimensions,
-      updatedAt: new Date().toISOString(),
-      updatedBy: auth.currentUser?.uid || 'admin',
-    };
-
-    // 4. Enviar al endpoint seguro del backend
-    let savedRecord = optimisticRecord;
-    try {
-      const response = await fetch('/api/admin/genetics/upload-photo', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          seedBank: seedBank.trim(),
-          name: name.trim(),
-          photoData: dataUrl,
-          mimeType: file.type,
-          fileSize: file.size,
-          dimensions: validation.dimensions,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        // Si el backend responde con error 403 de permisos, lanzar error explícito
-        if (response.status === 403) {
-          throw new Error('Acceso denegado: Se requieren permisos de creador/administrador para subir fotos oficiales.');
-        }
-        if (response.status === 401) {
-          throw new Error('Acceso no autorizado: Debes iniciar sesión con la cuenta de administrador.');
-        }
-        throw new Error(errorData?.error || `Error del servidor (${response.status}) al guardar la fotografía.`);
-      }
-
-      const resJson = await response.json();
-      if (resJson?.photo) {
-        savedRecord = resJson.photo;
-      }
-    } catch (networkOrAuthErr: any) {
-      // Si fue error de permisos (401 o 403), relanzarlo sin guardar
-      if (
-        networkOrAuthErr.message?.includes('Acceso denegado') ||
-        networkOrAuthErr.message?.includes('Acceso no autorizado')
-      ) {
-        throw networkOrAuthErr;
-      }
-
-      // En entornos de testing o sin backend activo, registrar localmente
-      console.warn('Backend API no disponible para subir foto de catálogo, guardando en caché local:', networkOrAuthErr.message);
+    if (!token) {
+      throw new Error('Acceso no autorizado: Debes iniciar sesión como administrador.');
     }
 
-    // 5. Actualizar caché y notificar
+    // 3. Empaquetar como multipart/form-data (PARTE E)
+    const formData = new FormData();
+    formData.append('photo', file);
+    formData.append('seedBank', seedBank.trim());
+    formData.append('name', name.trim());
+    if (photoSourceName) formData.append('photoSourceName', photoSourceName.trim());
+    if (photoSourceUrl) formData.append('photoSourceUrl', photoSourceUrl.trim());
+    if (photoAttribution) formData.append('photoAttribution', photoAttribution.trim());
+    if (photoLicense) formData.append('photoLicense', photoLicense.trim());
+    if (photoRightsStatus) formData.append('photoRightsStatus', photoRightsStatus);
+
+    // 4. Enviar al endpoint seguro del backend
+    const response = await fetch('/api/admin/genetics/upload-photo', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      if (response.status === 503 || errorData?.code === 'storage/unavailable') {
+        const msg = errorData?.message || 'El almacenamiento de imágenes todavía no está habilitado.';
+        const err = new Error(msg);
+        (err as any).code = 'storage/unavailable';
+        throw err;
+      }
+      if (response.status === 403) {
+        throw new Error('Acceso denegado: Se requieren permisos de creador/administrador para subir fotos.');
+      }
+      if (response.status === 401) {
+        throw new Error('Acceso no autorizado: Sesión de administrador requerida.');
+      }
+      throw new Error(errorData?.error || errorData?.message || `Error del servidor (${response.status}) al guardar la fotografía.`);
+    }
+
+    const resJson = await response.json();
+    if (!resJson?.success || !resJson?.photo?.photoUrl || !resJson?.photo?.storagePath) {
+      throw new Error('La respuesta del servidor no confirmó la persistencia remota de la fotografía.');
+    }
+
+    const savedRecord: GeneticsCatalogPhoto = resJson.photo;
+
+    // 5. Sólo después de respuesta 2xx exitosa confirmada, actualizar caché
     this.cache[key] = savedRecord;
     this.saveToLocalStorage();
     this.notify();
@@ -334,46 +356,45 @@ class GeneticsCatalogPhotoService {
   }
 
   /**
-   * Eliminación de fotografía oficial por el creador / administrador
+   * Eliminación de fotografía oficial por el creador / administrador.
+   * Si el backend falla, NO altera la caché local.
    */
   async deletePhoto(seedBank: string, name: string): Promise<void> {
     const key = getGeneticsPhotoKey(seedBank, name);
     const token = await authService.getIdToken();
-
-    try {
-      const response = await fetch('/api/admin/genetics/delete-photo', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          seedBank: seedBank.trim(),
-          name: name.trim(),
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        if (response.status === 403) {
-          throw new Error('Acceso denegado: Se requieren permisos de creador/administrador para eliminar fotos oficiales.');
-        }
-        if (response.status === 401) {
-          throw new Error('Acceso no autorizado: Debes iniciar sesión como administrador.');
-        }
-        throw new Error(errorData?.error || `Error del servidor (${response.status}) al eliminar la fotografía.`);
-      }
-    } catch (networkOrAuthErr: any) {
-      if (
-        networkOrAuthErr.message?.includes('Acceso denegado') ||
-        networkOrAuthErr.message?.includes('Acceso no autorizado')
-      ) {
-        throw networkOrAuthErr;
-      }
-      console.warn('Backend API no disponible para eliminar foto de catálogo, eliminando de caché local:', networkOrAuthErr.message);
+    if (!token) {
+      throw new Error('Acceso no autorizado: Debes iniciar sesión como administrador.');
     }
 
-    // Actualizar caché
+    const response = await fetch('/api/admin/genetics/delete-photo', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        seedBank: seedBank.trim(),
+        name: name.trim(),
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      if (response.status === 403) {
+        throw new Error('Acceso denegado: Se requieren permisos de creador/administrador para eliminar fotos.');
+      }
+      if (response.status === 401) {
+        throw new Error('Acceso no autorizado: Sesión de administrador requerida.');
+      }
+      throw new Error(errorData?.error || errorData?.message || `Error del servidor (${response.status}) al eliminar la fotografía.`);
+    }
+
+    const resJson = await response.json();
+    if (!resJson?.success) {
+      throw new Error('El servidor no confirmó la eliminación de la fotografía.');
+    }
+
+    // Actualizar caché solo tras confirmación
     delete this.cache[key];
     this.saveToLocalStorage();
     this.notify();

@@ -1,9 +1,17 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // User profile
+    // User profile with strict privilege escalation prevention
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, delete: if request.auth != null && request.auth.uid == userId;
+      // Prevent client self-assigning admin privileges on profile creation
+      allow create: if request.auth != null && request.auth.uid == userId
+                    && !request.resource.data.keys().hasAny(['admin', 'creator', 'customClaims', 'permissions'])
+                    && (!('role' in request.resource.data) || request.resource.data.role != 'admin')
+                    && (!('isCreator' in request.resource.data) || request.resource.data.isCreator != true);
+      // Prevent client modifying RBAC/admin fields on profile update
+      allow update: if request.auth != null && request.auth.uid == userId
+                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isCreator', 'admin', 'creator', 'customClaims', 'permissions']);
     }
     // Subcollections under users
     match /users/{userId}/{document=**} {
