@@ -1,29 +1,22 @@
 rules_version = '2';
 
 // Reglas de seguridad para Firebase Storage de Cultiveta
-// Restringe el acceso exclusivamente a usuarios autenticados para sus propios cultivos y evidencias
+// Restringe el acceso de usuarios a sus propias evidencias y bloquea acceso directo al catálogo de referencia
 service firebase.storage {
   match /b/{bucket}/o {
-    // Evidencias fotográficas del cultivo botánico
-    // Ruta canónica: users/{userId}/cultivations/{cultivationId}/photos/{photoId}
-    match /users/{userId}/cultivations/{cultivationId}/photos/{photoId} {
-      // Lectura permitida exclusivamente al propietario autenticado
+    // Evidencias fotográficas y archivos del usuario autenticado
+    match /users/{userId}/{allPaths=**} {
       allow read: if request.auth != null && request.auth.uid == userId;
-
-      // Creación/subida: propietario autenticado, tamaño máximo 15 MB, tipo MIME permitido
-      allow create: if request.auth != null 
-                    && request.auth.uid == userId
-                    && request.resource.size < 15 * 1024 * 1024
-                    && request.resource.contentType.matches('image/(jpeg|png|webp)');
-
-      // Actualización: propietario autenticado, tamaño máximo 15 MB, tipo MIME permitido
-      allow update: if request.auth != null 
-                    && request.auth.uid == userId
-                    && request.resource.size < 15 * 1024 * 1024
-                    && request.resource.contentType.matches('image/(jpeg|png|webp)');
-
-      // Eliminación permitida exclusivamente al propietario autenticado
+      allow create, update: if request.auth != null 
+                            && request.auth.uid == userId
+                            && request.resource.size < 15 * 1024 * 1024
+                            && request.resource.contentType.matches('image/(jpeg|png|webp)');
       allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Catálogo de fotografías oficiales de referencia de genéticas (solo accesible y mutable vía Firebase Admin en backend)
+    match /genetics/reference/{allPaths=**} {
+      allow read, write: if false;
     }
 
     // Denegación por defecto para cualquier otra ruta no autorizada
