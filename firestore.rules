@@ -12,10 +12,11 @@ service cloud.firestore {
       // Prevent client modifying RBAC/admin fields on profile update
       allow update: if request.auth != null && request.auth.uid == userId
                     && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'isCreator', 'admin', 'creator', 'customClaims', 'permissions']);
-    }
-    // Subcollections under users
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      // Subcollections under users (strictly 1 or more path segments deeper than /users/{userId})
+      match /{subcollection}/{subDoc=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
     // Catálogo de fotografías oficiales de genéticas (solo accesible y mutable vía Firebase Admin en backend)
     match /geneticsCatalogPhotos/{docId} {
