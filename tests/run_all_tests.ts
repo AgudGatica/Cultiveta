@@ -121,6 +121,13 @@ const suites: SuiteConfig[] = [
     expectedTests: 5,
   },
   {
+    id: 'cultivation_visual_identity',
+    name: 'Cultivos: Identidad Visual de Genéticas y Catálogo Oficial (21 Casos)',
+    category: 'jsdom',
+    file: 'tests/cultivation_visual_identity.test.ts',
+    expectedTests: 21,
+  },
+  {
     id: 'genetics_admin_photos',
     name: 'Genéticas: Administración Privada de Fotos Representativas por Creador/Admin (37 Casos)',
     category: 'jsdom',

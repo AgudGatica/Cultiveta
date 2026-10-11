@@ -29,6 +29,7 @@ import {
   Harvest,
   WateringProductItem,
   Genetics,
+  GeneticsCatalogPhoto,
 } from '../../types';
 import { StatusPill } from '../common/StatusPill';
 import { cultivationService } from '../../services/cultivationService';
@@ -56,6 +57,9 @@ import {
   formatFriendlyDate,
 } from '../../utils/growthStageUtils';
 import { analyzeWateringUrgency } from '../../utils/wateringAlertUtils';
+import { resolveCultivationDisplayPhoto } from '../../utils/cultivationPhotoResolver';
+import { useGeneticsCatalogPhotos } from '../../hooks/useGeneticsCatalogPhotos';
+import { GeneticsHeaderPhoto } from './GeneticsHeaderPhoto';
 
 interface CultivationDetailViewProps {
   cultivation: Cultivation;
@@ -65,6 +69,7 @@ interface CultivationDetailViewProps {
   photos: PhotoRecord[];
   diaryEntries: DiaryEntry[];
   geneticsList?: Genetics[];
+  catalogPhotos?: Record<string, GeneticsCatalogPhoto>;
   onBack: () => void;
   onEditCultivation: (cultivation: Cultivation) => void;
   onDeleteCultivation: (cultivationId: string) => void;
@@ -87,6 +92,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
   photos,
   diaryEntries,
   geneticsList = [],
+  catalogPhotos: catalogPhotosProp,
   onBack,
   onEditCultivation,
   onDeleteCultivation,
@@ -140,6 +146,11 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
   }, [cultivation, lastWatering]);
 
   const isHealthy = !wateringAnalysis.isOverdue && (!lastEnv || (lastEnv.temperatureC >= 18 && lastEnv.temperatureC <= 29 && lastEnv.humidityPct >= 40 && lastEnv.humidityPct <= 70));
+  const subscribedPhotos = useGeneticsCatalogPhotos();
+  const effectiveCatalogPhotos = catalogPhotosProp || subscribedPhotos;
+  const photoResolution = React.useMemo(() => {
+    return resolveCultivationDisplayPhoto(cultivation, effectiveCatalogPhotos);
+  }, [cultivation, effectiveCatalogPhotos]);
 
   return (
     <div className="space-y-6 animate-in fade-in">
@@ -242,7 +253,12 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
       <div className="bg-white rounded-[32px] p-6 sm:p-8 border border-[#EFE3CF] shadow-xs space-y-6">
         {/* Primera lectura: Qué cultivo, día/etapa y estado en 3 segundos */}
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 pb-6 border-b border-[#EFE3CF]">
-          <div className="space-y-2">
+          {/* Panel visual de identidad: Fotografía de portada / Foto de referencia del catálogo */}
+          <GeneticsHeaderPhoto
+            resolution={photoResolution}
+            cultivationName={cultivation.name}
+          />
+          <div className="space-y-2 flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <StatusPill status={cultivation.status} />
               <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#FAF2E1] text-[#29202F] border border-[#EFE3CF]">
