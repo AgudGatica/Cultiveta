@@ -1,5 +1,5 @@
 import { Cultivation, CultivationGeneticsItem, GeneticsCatalogPhoto } from '../types';
-import { getGeneticsPhotoKey } from './geneticsKeyUtils';
+import { getGeneticsPhotoKey, normalizeGeneticsSlug } from './geneticsKeyUtils';
 
 export interface ResolvedGeneticsPhotoItem {
   name: string;
@@ -27,7 +27,15 @@ export interface CultivationPhotoResolution {
 /**
  * Resuelve la identidad fotográfica de un cultivo según las reglas de prioridad:
  * 1. cultivation.coverPhotoUrl (foto propia del cultivo - gana con máxima prioridad, sin badge de referencia)
- * 2. Catálogo oficial de genéticas (geneticsCatalogPhotos) resuelto vía getGeneticsPhotoKey(seedBank, name)
+ * 2. Catálogo oficial de genéticas (geneticsCatalogPhotos):
+ *    - Si hay seedBank + geneticsName:
+ *      resolver ÚNICAMENTE mediante getGeneticsPhotoKey(seedBank, geneticsName).
+ *      Si no existe esa key exacta, NO buscar por nombre solamente (evita atribución cruzada entre bancos).
+ *    - Sólo permitir fallback por nombre si seedBank está vacío o ausente:
+ *      normalizar el nombre con normalizeGeneticsSlug(...) y recopilar todas las entradas coincidentes.
+ *      Usar la foto solamente si existe EXACTAMENTE 1 coincidencia.
+ *      Si existen 0 o más de 1, devolver sin foto.
+ *    - Nunca usar una foto de otro seedBank para “rellenar” una coincidencia faltante.
  * 3. geneticsPhotoUrl persistida en el cultivo o en su genética asociada
  * 4. undefined (sin placeholder obligatorio, preserva el layout)
  *
@@ -64,9 +72,10 @@ export function resolveCultivationDisplayPhoto(
   if (rawList.length > 0) {
     for (const item of rawList) {
       if (item && item.name && item.name.trim() !== '') {
+        const itemBank = (item.seedBank && item.seedBank.trim()) || (cultivation.seedBank && cultivation.seedBank.trim()) || '';
         effectiveGeneticsList.push({
           name: item.name.trim(),
-          seedBank: (item.seedBank && item.seedBank.trim()) || cultivation.seedBank || '',
+          seedBank: itemBank,
           persistedPhotoUrl: (item as any).geneticsPhotoUrl || (item as any).photoUrl || '',
         });
       }
@@ -89,30 +98,39 @@ export function resolveCultivationDisplayPhoto(
     let photoUrl: string | undefined = undefined;
     let source: 'catalog' | 'persisted' = 'catalog';
 
-    // 2. Resolver catálogo mediante seedBank + geneticsName canónico
-    if (gen.seedBank && gen.name) {
-      const key = getGeneticsPhotoKey(gen.seedBank, gen.name);
+    const hasSeedBank = Boolean(gen.seedBank && gen.seedBank.trim() !== '');
+
+    if (hasSeedBank) {
+      // 1. Regla obligatoria: Si hay seedBank + geneticsName -> ÚNICAMENTE key exacta
+      const key = getGeneticsPhotoKey(gen.seedBank!, gen.name);
       const catalogEntry = catalogPhotos[key];
       if (catalogEntry && catalogEntry.photoUrl) {
         photoUrl = catalogEntry.photoUrl;
         source = 'catalog';
       }
-    }
+      // Si no existe esa key exacta, NO buscar por nombre solamente. Nunca rellenar con otro banco.
+    } else {
+      // 2. Sólo permitir fallback por nombre si seedBank está vacío
+      if (gen.name && gen.name.trim() !== '') {
+        const targetSlug = normalizeGeneticsSlug(gen.name);
+        const matchingEntries: GeneticsCatalogPhoto[] = [];
 
-    // Si aún no encontró y no hay seedBank, buscar coincidencia por nombre en el catálogo
-    if (!photoUrl && gen.name) {
-      const targetSlug = gen.name.toLowerCase().trim();
-      for (const catKey of Object.keys(catalogPhotos)) {
-        const entry = catalogPhotos[catKey];
-        if (entry && entry.name && entry.name.toLowerCase().trim() === targetSlug && entry.photoUrl) {
-          photoUrl = entry.photoUrl;
+        for (const catKey of Object.keys(catalogPhotos)) {
+          const entry = catalogPhotos[catKey];
+          if (entry && entry.name && normalizeGeneticsSlug(entry.name) === targetSlug && entry.photoUrl) {
+            matchingEntries.push(entry);
+          }
+        }
+
+        // 3. Usar la foto solamente si existe EXACTAMENTE 1 coincidencia
+        if (matchingEntries.length === 1) {
+          photoUrl = matchingEntries[0].photoUrl;
           source = 'catalog';
-          break;
         }
       }
     }
 
-    // 3. geneticsPhotoUrl persistida si existiera
+    // 4. geneticsPhotoUrl persistida si existiera
     if (!photoUrl && gen.persistedPhotoUrl && gen.persistedPhotoUrl.trim() !== '') {
       photoUrl = gen.persistedPhotoUrl.trim();
       source = 'persisted';

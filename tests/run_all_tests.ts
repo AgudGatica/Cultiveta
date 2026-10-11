@@ -122,10 +122,10 @@ const suites: SuiteConfig[] = [
   },
   {
     id: 'cultivation_visual_identity',
-    name: 'Cultivos: Identidad Visual de Genéticas y Catálogo Oficial (21 Casos)',
+    name: 'Cultivos: Identidad Visual de Genéticas y Catálogo Oficial (30 Casos)',
     category: 'jsdom',
     file: 'tests/cultivation_visual_identity.test.ts',
-    expectedTests: 21,
+    expectedTests: 30,
   },
   {
     id: 'genetics_admin_photos',
