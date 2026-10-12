@@ -184,6 +184,21 @@ export const verifyFirebaseAuth: express.RequestHandler = async (req, res, next)
 };
 
 // Lazy initialization of Gemini API
+function isQuotaOrCreditExhausted(err: any): boolean {
+  if (!err) return false;
+  const msg = (err?.message || (typeof err === 'string' ? err : JSON.stringify(err)) || '').toLowerCase();
+  const code = err?.code || err?.status || err?.error?.code || err?.error?.status;
+  return (
+    code === 402 ||
+    code === 429 ||
+    code === 'RESOURCE_EXHAUSTED' ||
+    msg.includes('prepayment credits are depleted') ||
+    msg.includes('resource_exhausted') ||
+    msg.includes('quota') ||
+    msg.includes('402')
+  );
+}
+
 let aiClient: GoogleGenAI | null = null;
 function getAIClient(): GoogleGenAI {
   if (!aiClient) {
@@ -596,6 +611,12 @@ REGLAS ESTRICTAS DE RESPUESTA:
     res.json(result);
   } catch (error: any) {
     console.error('Error in /api/ai/chat:', error);
+    if (isQuotaOrCreditExhausted(error)) {
+      return res.status(402).json({
+        error: 'Los créditos o cuota del servicio de IA se encuentran agotados momentáneamente. Puedes seguir utilizando todas las herramientas, riegos y cálculos botánicos de la aplicación con total normalidad.',
+        code: 'RESOURCE_EXHAUSTED',
+      });
+    }
     res.status(500).json({ error: error?.message || 'Error procesando consulta con Cultiveta IA' });
   }
 });
@@ -1065,23 +1086,32 @@ Devuelve ESTRICTAMENTE un objeto JSON válido con este formato:
   "description": "Recomendación de emergencia clara de 1 a 2 oraciones indicando las acciones prioritarias a tomar."
 }`;
 
-            const ai = getAIClient();
             let aiResponse: any = null;
-            const candidateModels = ['gemini-3.8-flash', 'gemini-3.6-flash'];
-            for (const modelName of candidateModels) {
-              try {
-                aiResponse = await ai.models.generateContent({
-                  model: modelName,
-                  contents: prompt,
-                  config: {
-                    responseMimeType: 'application/json',
-                    temperature: 0.2,
-                  },
-                });
-                if (aiResponse?.text) break;
-              } catch (mErr: any) {
-                console.warn(`[Cron Job Alertas] Modelo ${modelName} no respondió, probando alternativa:`, mErr?.message || mErr);
+            try {
+              const ai = getAIClient();
+              const candidateModels = ['gemini-3.8-flash', 'gemini-3.6-flash'];
+              for (const modelName of candidateModels) {
+                try {
+                  aiResponse = await ai.models.generateContent({
+                    model: modelName,
+                    contents: prompt,
+                    config: {
+                      responseMimeType: 'application/json',
+                      temperature: 0.2,
+                    },
+                  });
+                  if (aiResponse?.text) break;
+                } catch (mErr: any) {
+                  if (isQuotaOrCreditExhausted(mErr)) {
+                    console.info(`[Cron Job Alertas] Cuota o créditos agotados en ${modelName}. Aplicando recomendaciones botánicas deterministas de emergencia sin bloqueo.`);
+                    break;
+                  } else {
+                    console.warn(`[Cron Job Alertas] Modelo ${modelName} no respondió, probando alternativa:`, mErr?.message || mErr);
+                  }
+                }
               }
+            } catch (clientErr: any) {
+              console.info('[Cron Job Alertas] Cliente de IA no disponible o sin clave. Utilizando fallback botánico determinista.');
             }
 
             // Valores de respaldo por si el modelo devuelve estructura atípica o no está disponible
