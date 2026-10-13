@@ -477,7 +477,7 @@ export default function App() {
   // Authentication Loading Screen
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#A9E2F1] flex items-center justify-center p-4">
+      <div className="min-h-screen cultiveta-page-background flex items-center justify-center p-4">
         <div className="flex flex-col items-center gap-3">
           <div className="w-16 h-16 rounded-3xl bg-white border border-[#D1EAEF] shadow-md flex items-center justify-center text-3xl transition-transform animate-bounce">
             🌱
@@ -513,13 +513,17 @@ export default function App() {
   }
 
   return (
-    <div className={`cultiveta-app-shell ${pageAtmosphereClass} text-[#29202F] flex flex-col selection:bg-[#6C45C7] selection:text-white`}>
-      {/* Capa de fondo fija e inmutable (pointer-events: none, z-index: -1) */}
+    <div className="cultiveta-app-shell text-[#29202F] flex flex-col selection:bg-[#7856FA] selection:text-white">
+      {/* Capa de fondo fija e inmutable: Degradado vertical continuo (Menta → Turquesa → Celeste → Azul → Violeta) */}
       <div aria-hidden="true" className="cultiveta-page-background">
-        {/* Capa de microgranulado editorial perceptible en toda la superficie */}
-        <div className="cultiveta-page-grain" />
-        {/* Textura halftone / comic / afiche urbano visible en el área violeta inferior */}
-        <div className="cultiveta-page-violet-grain" />
+        {/* Trama Halftone Cómic: Círculos ordenados en cuadrícula de 22px con crecimiento vertical progresivo real */}
+        <div className="cultiveta-page-halftone">
+          <div className="cultiveta-halftone-layer-1" />
+          <div className="cultiveta-halftone-layer-2" />
+          <div className="cultiveta-halftone-layer-3" />
+          <div className="cultiveta-halftone-layer-4" />
+          <div className="cultiveta-halftone-layer-5" />
+        </div>
       </div>
 
       {/* Toast Notification */}
