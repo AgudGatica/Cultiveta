@@ -477,7 +477,7 @@ export default function App() {
   // Authentication Loading Screen
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#E4F5F8] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#C7ECF4] flex items-center justify-center p-4">
         <div className="flex flex-col items-center gap-3">
           <div className="w-16 h-16 rounded-3xl bg-white border border-[#D1EAEF] shadow-md flex items-center justify-center text-3xl transition-transform animate-bounce">
             🌱
@@ -516,8 +516,10 @@ export default function App() {
     <div className={`cultiveta-app-shell ${pageAtmosphereClass} text-[#29202F] flex flex-col selection:bg-[#6C45C7] selection:text-white`}>
       {/* Capa de fondo fija e inmutable (pointer-events: none, z-index: -1) */}
       <div aria-hidden="true" className="cultiveta-page-background">
-        {/* Capa de microgranulado editorial perceptible sobre el background */}
+        {/* Capa de microgranulado editorial perceptible en toda la superficie */}
         <div className="cultiveta-page-grain" />
+        {/* Capa de granulado/textura reforzada visible en el área violeta inferior */}
+        <div className="cultiveta-page-violet-grain" />
 
         {/* Motivos decorativos sutiles de pequeños puntos botánicos (1-2 clusters según vista) */}
         {currentView === 'genetics' && (

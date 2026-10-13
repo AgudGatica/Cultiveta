@@ -150,7 +150,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
             type="button"
             id="mobile-nav-quick-action-btn"
             onClick={onOpenQuickAction}
-            className="w-13 h-13 rounded-full bg-[#62B95B] hover:bg-[#52A54C] text-white flex items-center justify-center shadow-lg shadow-[#62B95B]/30 transition-transform active:scale-95 cursor-pointer border-4 border-[#E4F5F8]"
+            className="w-13 h-13 rounded-full bg-[#62B95B] hover:bg-[#52A54C] text-white flex items-center justify-center shadow-lg shadow-[#62B95B]/30 transition-transform active:scale-95 cursor-pointer border-4 border-[#C7ECF4]"
             title="Anotar algo rápido"
           >
             <Plus className="w-6 h-6 stroke-[3]" />

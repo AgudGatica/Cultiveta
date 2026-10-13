@@ -475,63 +475,143 @@ app.post('/api/ai/chat', async (req, res) => {
 
   const cropName = intelligenceContext?.identity?.name || cultivation?.name;
 
-  // Generador agronómico determinista enriquecido con datos reales del cultivo
+  // Generador agronómico determinista estricto: BASADO EXCLUSIVAMENTE EN DATOS REALES (SIN INVENTAR VALORES)
   const buildAgronomicDeterministicFallback = (userQuery: string) => {
     const qLower = (userQuery || '').toLowerCase();
     const recordsReferenced: string[] = [];
     const metricsReferenced: string[] = [];
     const datesReferenced: string[] = [];
 
-    let intro = cropName
-      ? `¡Hola! Estoy analizando los registros reales de tu cultivo **${cropName}**.`
-      : '¡Hola! Estoy revisando las variables botánicas de tu espacio de cultivo.';
+    const intro = cropName
+      ? `¡Hola! Estoy analizando los registros reales y confirmados de tu cultivo **${cropName}**.`
+      : '¡Hola! Estoy revisando las variables botánicas y registros de tu espacio de cultivo.';
 
-    let agronomicDetails: string[] = [];
+    const agronomicDetails: string[] = [];
 
-    // 1. Datos del cultivo si existen
+    // 1. Datos reales del cultivo si existen
     if (intelligenceContext) {
       const { identity, chronology, irrigation, environment } = intelligenceContext;
-      agronomicDetails.push(`🌱 **Estado general:** Etapa de **${chronology.currentStage}** (Día ${chronology.daysInActiveStage} en etapa, ${chronology.realDaysElapsed} días totales de ciclo).`);
-      if (identity.geneticsName) {
-        agronomicDetails.push(`🧬 **Genética:** ${identity.geneticsName}${identity.seedBank ? ` (${identity.seedBank})` : ''} en sustrato ${identity.substrateType || 'estándar'}.`);
-      }
+      
+      // Cronología real
+      const stageName = chronology.currentStage || 'No registrada';
+      const daysInStage = chronology.daysInActiveStage !== undefined ? chronology.daysInActiveStage : 's/d';
+      const totalDays = chronology.realDaysElapsed !== undefined ? chronology.realDaysElapsed : 's/d';
+      agronomicDetails.push(`🌱 **Estado general:** Etapa de **${stageName}** (Días en etapa: ${daysInStage}, Días totales de ciclo: ${totalDays}).`);
 
-      // Riego
-      if (irrigation.lastWatering) {
-        recordsReferenced.push(`Último riego: ${irrigation.lastWatering.volumeLiters} L el ${irrigation.lastWatering.date}`);
-        datesReferenced.push(irrigation.lastWatering.date);
-        agronomicDetails.push(`💧 **Riego:** El último riego registrado fue de **${irrigation.lastWatering.volumeLiters} L** el **${irrigation.lastWatering.date}**.`);
-        if (irrigation.forecast.wateringWindowStart) {
+      // Genética y sustrato estrictamente reales (NUNCA inventar "sustrato estándar")
+      const genPart = identity.geneticsName
+        ? `${identity.geneticsName}${identity.seedBank ? ` (${identity.seedBank})` : ''}`
+        : 'Genética no registrada';
+      const substratePart = identity.substrateType
+        ? `en sustrato ${identity.substrateType}`
+        : 'sustrato no registrado';
+      agronomicDetails.push(`🧬 **Genética y medio:** ${genPart}, ${substratePart}.`);
+
+      // Riego real (NUNCA inventar "1 L" ni fechas falsas)
+      if (irrigation.lastWatering && irrigation.lastWatering.volumeLiters !== undefined) {
+        const dateStr = irrigation.lastWatering.date || 'reciente';
+        recordsReferenced.push(`Último riego: ${irrigation.lastWatering.volumeLiters} L (${dateStr})`);
+        if (irrigation.lastWatering.date) {
+          datesReferenced.push(irrigation.lastWatering.date);
+        }
+        metricsReferenced.push(`${irrigation.lastWatering.volumeLiters} L`);
+        agronomicDetails.push(`💧 **Riego registrado:** Último riego de **${irrigation.lastWatering.volumeLiters} L** el **${dateStr}**.`);
+
+        if (irrigation.forecast.wateringWindowStart && irrigation.forecast.wateringWindowEnd) {
           agronomicDetails.push(`⏱️ **Ventana de revisión estimada:** Entre **${irrigation.forecast.wateringWindowStart}** y **${irrigation.forecast.wateringWindowEnd}**.`);
         }
+      } else {
+        agronomicDetails.push('💧 **Riego:** Sin riegos registrados en el sistema para calcular el intervalo de secado.');
       }
 
-      // Clima / Ambiente
+      // Clima / Ambiente estrictamente real (NUNCA inventar 24°C ni 55% HR)
       if (environment.latest) {
         const temp = environment.latest.temperatureC ?? environment.latest.temperature;
         const hum = environment.latest.humidityPct ?? environment.latest.humidity;
         const vpd = environment.latest.vpdKPa;
-        if (temp !== undefined && hum !== undefined) {
-          metricsReferenced.push(`${temp}°C`, `${hum}% HR`);
-          agronomicDetails.push(`🌡️ **Clima reciente:** Temperatura en **${temp}°C**, Humedad relativa al **${hum}%**${vpd !== undefined ? `, VPD en **${vpd} kPa**` : ''}.`);
+
+        if (temp !== undefined || hum !== undefined || vpd !== undefined) {
+          const parts: string[] = [];
+          if (temp !== undefined) {
+            metricsReferenced.push(`${temp}°C`);
+            parts.push(`Temperatura: **${temp}°C**`);
+          } else {
+            parts.push('Temperatura: s/d');
+          }
+          if (hum !== undefined) {
+            metricsReferenced.push(`${hum}% HR`);
+            parts.push(`Humedad: **${hum}%**`);
+          } else {
+            parts.push('Humedad: s/d');
+          }
+          if (vpd !== undefined) {
+            metricsReferenced.push(`${vpd} kPa`);
+            parts.push(`VPD: **${vpd} kPa**`);
+          }
+          agronomicDetails.push(`🌡️ **Clima reciente:** ${parts.join(', ')}.`);
+        } else {
+          agronomicDetails.push('🌡️ **Ambiente:** Sin mediciones ambientales recientes registradas.');
         }
+      } else {
+        agronomicDetails.push('🌡️ **Ambiente:** Sin mediciones ambientales recientes registradas.');
       }
     } else if (cultivation) {
-      agronomicDetails.push(`🌱 **Etapa actual:** ${cultivation.currentStage || 'No especificada'} (${cultivation.type || 'Indoor'}).`);
+      // Cultivation básico sin intelligenceContext completo
+      const stageStr = cultivation.currentStage || 'No especificada';
+      const typeStr = cultivation.type || 'Tipo no registrado';
+      agronomicDetails.push(`🌱 **Etapa actual:** ${stageStr} (${typeStr}).`);
+
       if (cultivation.geneticsName) {
         agronomicDetails.push(`🧬 **Genética:** ${cultivation.geneticsName}.`);
+      } else {
+        agronomicDetails.push('🧬 **Genética:** No especificada.');
       }
-      if (recentWaterings && recentWaterings.length > 0) {
+
+      // Sustrato estrictamente real
+      if (cultivation.substrate?.type) {
+        agronomicDetails.push(`🪴 **Sustrato:** ${cultivation.substrate.type}${cultivation.substrate.potVolumeLiters ? ` (${cultivation.substrate.potVolumeLiters}L)` : ''}.`);
+      }
+
+      // Riegos reales
+      if (recentWaterings && Array.isArray(recentWaterings) && recentWaterings.length > 0 && recentWaterings[0].volumeLiters !== undefined) {
         const lastW = recentWaterings[0];
-        agronomicDetails.push(`💧 **Último riego:** ${lastW.volumeLiters || 1} L el ${lastW.date || 'reciente'}.`);
+        recordsReferenced.push(`Riego: ${lastW.volumeLiters} L`);
+        metricsReferenced.push(`${lastW.volumeLiters} L`);
+        if (lastW.date) datesReferenced.push(lastW.date);
+        agronomicDetails.push(`💧 **Último riego:** ${lastW.volumeLiters} L el ${lastW.date || 'reciente'}.`);
+      } else {
+        agronomicDetails.push('💧 **Riego:** Sin riegos registrados.');
       }
-      if (recentEnv && recentEnv.length > 0) {
+
+      // Mediciones ambientales reales (SIN DEFAULT FICTICIO DE 24°C / 55% HR)
+      if (recentEnv && Array.isArray(recentEnv) && recentEnv.length > 0) {
         const lastE = recentEnv[0];
-        agronomicDetails.push(`🌡️ **Ambiente reciente:** ${lastE.temperatureC ?? 24}°C / ${lastE.humidityPct ?? 55}% HR.`);
+        const temp = lastE.temperatureC ?? lastE.temperature;
+        const hum = lastE.humidityPct ?? lastE.humidity;
+        if (temp !== undefined || hum !== undefined) {
+          const parts: string[] = [];
+          if (temp !== undefined) {
+            metricsReferenced.push(`${temp}°C`);
+            parts.push(`${temp}°C`);
+          } else {
+            parts.push('s/d');
+          }
+          if (hum !== undefined) {
+            metricsReferenced.push(`${hum}% HR`);
+            parts.push(`${hum}% HR`);
+          } else {
+            parts.push('s/d');
+          }
+          agronomicDetails.push(`🌡️ **Ambiente reciente:** ${parts.join(' / ')}.`);
+        } else {
+          agronomicDetails.push('🌡️ **Ambiente:** Sin parámetros de temperatura ni humedad registrados.');
+        }
+      } else {
+        agronomicDetails.push('🌡️ **Ambiente:** Sin mediciones ambientales registradas.');
       }
     }
 
-    // 2. Respuesta agronómica según la intención de la consulta
+    // 2. Respuesta y asesoramiento contextual según la consulta
     let specificAdvice = '';
     if (qLower.includes('riego') || qLower.includes('regar') || qLower.includes('agua') || qLower.includes('humedad')) {
       specificAdvice = 'Para evaluar si la planta necesita riego en este momento, recordá verificar el peso de la maceta y los primeros 3-4 cm del sustrato. Si la maceta se siente ligera y el sustrato está seco, regá despacio hasta lograr entre 10% y 15% de drenaje uniforme.';
@@ -550,7 +630,7 @@ app.post('/api/ai/chat', async (req, res) => {
       agronomicDetails.length > 0 ? '' : null,
       specificAdvice,
       '',
-      '_Nota botánica: Todos tus registros, cálculos y motores de riego continúan funcionando al 100% de manera local y determinista._',
+      '_Nota agronómica: El motor de asistencia está respondiendo con tus datos verificados y cálculos locales de contingencia._',
     ].filter((x) => x !== null).join('\n');
 
     return {
@@ -667,13 +747,19 @@ ESTRUCTURA DE RESPUESTA JSON REQUERIDA:
       parts: [{ text: message }],
     });
 
+    // ROTACIÓN SECUENCIAL Y REAL DE MODELOS
+    // 1. Probar primero gemini-3.8-flash
+    // 2. Si falla por error transitorio o cuota/créditos, intentar gemini-3.6-flash
+    // 3. Solo si ambos fallan, activar el fallback agronómico determinista
     const candidateModels = ['gemini-3.8-flash', 'gemini-3.6-flash'];
     let lastErr: any = null;
     let aiSuccess = false;
     let result: any = null;
 
-    for (const modelName of candidateModels) {
+    for (let i = 0; i < candidateModels.length; i++) {
+      const modelName = candidateModels[i];
       try {
+        console.log(`[Cultiveta IA] Intentando consulta con modelo (${i + 1}/${candidateModels.length}): ${modelName}`);
         const response = await ai.models.generateContent({
           model: modelName,
           contents: chatContents,
@@ -693,15 +779,17 @@ ESTRUCTURA DE RESPUESTA JSON REQUERIDA:
           };
         }
         aiSuccess = true;
-        break;
+        console.log(`[Cultiveta IA] Consulta exitosa con modelo: ${modelName}`);
+        break; // Éxito con este modelo, no intentar más
       } catch (err: any) {
         lastErr = err;
-        if (isQuotaOrCreditExhausted(err)) {
-          console.info(`[Cultiveta IA] Cuota/crédito agotado en ${modelName}.`);
-          break;
-        } else {
-          console.warn(`[Cultiveta IA] Modelo ${modelName} devolvió error, probando siguiente modelo:`, err?.message || err);
-        }
+        const isQuota = isQuotaOrCreditExhausted(err);
+        console.warn(
+          `[Cultiveta IA] Fallo en modelo ${modelName} (${isQuota ? 'Cuota/Créditos agotados' : 'Error de API'}): ${err?.message || err}. ${
+            i < candidateModels.length - 1 ? 'Rotando al siguiente modelo candidato...' : 'Todos los modelos candidatos agotados.'
+          }`
+        );
+        // NO HACEMOS break: continuamos el loop para intentar el siguiente modelo candidato
       }
     }
 
@@ -709,24 +797,17 @@ ESTRUCTURA DE RESPUESTA JSON REQUERIDA:
       return res.json(result);
     }
 
-    // Si falló por cuota/créditos de Gemini, activar fallback agronómico determinista con datos reales
-    if (isQuotaOrCreditExhausted(lastErr)) {
-      console.info('[Cultiveta IA] Activando asistente agronómico determinista por cuota de API.');
-      const fallbackResult = buildAgronomicDeterministicFallback(message);
-      return res.json(fallbackResult);
-    }
-
-    res.status(500).json({ error: lastErr?.message || 'Error procesando consulta con Cultiveta IA' });
+    // Todos los modelos fallaron: activar fallback agronómico determinista
+    console.info('[Cultiveta IA] Activando fallback agronómico determinista de contingencia (sin inventar datos).');
+    const fallbackResult = buildAgronomicDeterministicFallback(message);
+    return res.json(fallbackResult);
   } catch (error: any) {
-    console.error('Error in /api/ai/chat:', error);
-    if (isQuotaOrCreditExhausted(error)) {
-      const fallbackResult = buildAgronomicDeterministicFallback(message);
-      return res.json(fallbackResult);
-    }
-    res.status(500).json({ error: error?.message || 'Error procesando consulta con Cultiveta IA' });
+    console.error('Error general en /api/ai/chat:', error);
+    console.info('[Cultiveta IA] Activando fallback agronómico determinista por excepción en controlador.');
+    const fallbackResult = buildAgronomicDeterministicFallback(message);
+    return res.json(fallbackResult);
   }
 });
-
 // 4. 7-Day Summary
 app.post('/api/ai/summary', async (req, res) => {
   try {
