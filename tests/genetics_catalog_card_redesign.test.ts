@@ -42,12 +42,12 @@ function assert(condition: boolean, desc: string) {
 
 export async function runGeneticsCatalogCardRedesignTests(): Promise<{ passed: number; failed: number; skipped: number }> {
   console.log('\n================================================================');
-  console.log('   PRUEBAS: REVERSIÓN DE TARJETAS AL ESTADO ORIGINAL (SIN DEGRADÉ)');
+  console.log('   PRUEBAS: TARJETA MOBILE GRANDE DE GENÉTICAS (SIN DEGRADÉ NEGRO)');
   console.log('================================================================\n');
 
   // Configurar auth / token mock
   const origGetIdToken = authService.getIdToken;
-  authService.getIdToken = async () => 'test-token-catalog-revert';
+  authService.getIdToken = async () => 'test-token-catalog-mobile';
 
   const origFetch = globalThis.fetch;
   globalThis.fetch = (async (url: string) => {
@@ -81,6 +81,24 @@ export async function runGeneticsCatalogCardRedesignTests(): Promise<{ passed: n
     return () => {};
   };
 
+  let toggleFavoriteCalls: any[] = [];
+  const origToggleFavorite = favoritesService.toggleFavorite;
+  favoritesService.toggleFavorite = async (userId, isCurrentlyFav, data): Promise<boolean> => {
+    toggleFavoriteCalls.push({ userId, isCurrentlyFav, data });
+    return !isCurrentlyFav;
+  };
+
+  const origSubscribeFavorites = favoritesService.subscribeFavorites;
+  let currentFavs: any[] = [];
+  let favListeners: Array<(favs: any[]) => void> = [];
+  favoritesService.subscribeFavorites = (userId: string, callback: any) => {
+    favListeners.push(callback);
+    callback(currentFavs);
+    return () => {
+      favListeners = favListeners.filter((l) => l !== callback);
+    };
+  };
+
   let startCropCalls: any[] = [];
   const handleStartCrop = (converted: any) => {
     startCropCalls.push(converted);
@@ -104,83 +122,106 @@ export async function runGeneticsCatalogCardRedesignTests(): Promise<{ passed: n
   });
 
   // Tomamos la primera tarjeta del catálogo renderizada (Skunk #1)
-  const catalogGrid = container.querySelector('.grid.grid-cols-1');
-  assert(catalogGrid !== null, 'Catalogo montado en DOM');
+  const cardEl = container.querySelector('article') as HTMLElement;
+  assert(cardEl !== null, 'Tarjeta mobile de genética montada en DOM');
 
-  const skunk1NameEl = Array.from(container.querySelectorAll('h3')).find(
-    (el) => el.textContent?.trim() === 'Skunk #1'
-  );
-  assert(skunk1NameEl !== undefined, '1. Nombre "Skunk #1" aparece en su posición original');
+  // 1. Nombre de la genética sobre la foto
+  const skunk1NameEl = cardEl.querySelector('h2');
+  assert(skunk1NameEl !== null && skunk1NameEl.textContent?.trim() === 'Skunk #1', '1. Nombre "Skunk #1" aparece como h2');
 
-  const cardEl = skunk1NameEl?.closest('.bg-white.rounded-3xl') as HTMLElement;
-  assert(cardEl !== null, 'Tarjeta contenedora identificada');
+  // 2. Foto grande con aspect-[295/176] y rounded-[24px]
+  const photoContainer = cardEl.querySelector('.aspect-\\[295\\/176\\]');
+  assert(photoContainer !== null, '2a. Contenedor de fotografía con aspect-[295/176] presente');
+  const imgEl = photoContainer?.querySelector('img');
+  assert(imgEl !== null, '2b. Imagen renderizada con object-cover');
 
-  // 1. Foto limpia, sin degradé negro ni overlay oscuro
-  const photoContainer = cardEl.querySelector('.relative.w-full.h-44');
-  assert(photoContainer !== null, 'Foto en contenedor original h-44');
+  // 3. Cero degradé negro o sombra encima de la foto (foto 100% limpia)
+  const allHtmlInsidePhoto = photoContainer?.innerHTML || '';
+  assert(!allHtmlInsidePhoto.includes('bg-gradient-to'), '3a. No hay clases bg-gradient-to encima de la foto');
+  assert(!allHtmlInsidePhoto.includes('from-black'), '3b. No hay from-black en la foto');
+  assert(!allHtmlInsidePhoto.includes('to-black'), '3c. No hay to-black en la foto');
+  assert(!allHtmlInsidePhoto.includes('via-black'), '3d. No hay via-black en la foto');
 
-  const darkGradient = photoContainer?.querySelector('.bg-gradient-to-b');
-  assert(darkGradient === null, '1b. Cero degradé negro o sombra encima de la foto (foto limpia y natural)');
-
-  // 2. Badge de derechos sobre la foto presente como en el diseño original
-  const rightsBadge = photoContainer?.querySelector('.absolute.top-2\\.5.left-2\\.5');
-  assert(rightsBadge !== null, '2. Badge oficial original sobre la foto conservado');
-
-  // 3. Título y banco en cuerpo de tarjeta
-  const bankEl = Array.from(cardEl.querySelectorAll('span')).find(
+  // 4. Banco sobre la foto con fondo claro propio
+  const bankBadge = Array.from(photoContainer?.querySelectorAll('span') || []).find(
     (s) => s.textContent?.trim() === 'Sensi Seeds'
   );
-  assert(bankEl !== undefined, '3. Banco "Sensi Seeds" visible en el cuerpo de la tarjeta');
+  assert(bankBadge !== undefined && bankBadge.classList.contains('bg-emerald-50'), '4. Banco "Sensi Seeds" en badge claro sobre la foto');
 
-  // 4. Botón de guardado a biblioteca Bookmark en la esquina superior del título
-  const bookmarkBtn = cardEl.querySelector('button[title*="biblioteca"]');
-  assert(bookmarkBtn !== null, '4. Botón Bookmark original conservado');
-
-  // 5. Badges originales de dominancia, días de floración y rendimiento
-  const domBadge = Array.from(cardEl.querySelectorAll('span')).find(
+  // 5. Dominancia sobre la foto con fondo claro propio
+  const domBadge = Array.from(photoContainer?.querySelectorAll('span') || []).find(
     (s) => s.textContent?.includes('Híbrida')
   );
-  assert(domBadge !== undefined, '5. Badge de dominancia original presente');
+  assert(domBadge !== undefined && domBadge.classList.contains('bg-[#FFF8EB]'), '5. Dominancia "Híbrida" en badge claro sobre la foto');
 
-  const flowBadge = Array.from(cardEl.querySelectorAll('span')).find(
-    (s) => s.textContent?.includes('45 - 50 d')
-  );
-  assert(flowBadge !== undefined, '6. Badge de floración original presente');
-
-  const yieldBadge = Array.from(cardEl.querySelectorAll('span')).find(
+  // 6. Debajo de la foto: Fila de DOS elementos (Rendimiento + Floración)
+  const yieldPill = Array.from(cardEl.querySelectorAll('span')).find(
     (s) => s.textContent?.includes('500 - 600 g/m²')
   );
-  assert(yieldBadge !== undefined, '7. Badge de rendimiento original presente');
+  assert(yieldPill !== undefined, '6a. Rendimiento en pill pill grande debajo de foto');
 
-  // 6. Sección de Aroma y Gusto original
+  const flowPill = Array.from(cardEl.querySelectorAll('span')).find(
+    (s) => s.textContent?.includes('45 - 50 d')
+  );
+  assert(flowPill !== undefined, '6b. Floración en pill grande debajo de foto');
+
+  // 7. Bloque AROMA Y GUSTO
+  const aromaHeader = Array.from(cardEl.querySelectorAll('span')).find(
+    (s) => s.textContent?.trim() === 'AROMA Y GUSTO'
+  );
+  assert(aromaHeader !== undefined, '7a. Encabezado "AROMA Y GUSTO" presente');
+
   const aromaText = cardEl.querySelector('p.italic');
-  assert(aromaText !== null && aromaText.textContent?.includes('Skunk acre'), '8. Aroma y gusto original presente');
+  assert(aromaText !== null && aromaText.textContent?.includes('Skunk acre'), '7b. Perfil organoléptico real renderizado');
 
-  // 7. Botón "Iniciar Cultivo con Skunk #1"
-  const startCropBtn = Array.from(cardEl.querySelectorAll('button')).find(
-    (btn) => btn.textContent?.includes('Iniciar Cultivo con Skunk #1')
-  );
-  assert(startCropBtn !== undefined, '9. Botón original "Iniciar Cultivo con Skunk #1" presente');
+  // 8. Únicamente DOS botones inferiores: "Iniciar Cultivo" y "FAVORITOS"
+  const allButtons = Array.from(cardEl.querySelectorAll('button'));
+  assert(allButtons.length === 2, '8a. Exactamente 2 botones en la tarjeta');
 
-  // 8. Botón "Guardar en Mi Biblioteca" inferior original
-  const saveLibraryBtn = Array.from(cardEl.querySelectorAll('button')).find(
-    (btn) => btn.textContent?.includes('Guardar en Mi Biblioteca')
-  );
-  assert(saveLibraryBtn !== undefined, '10. Botón inferior "Guardar en Mi Biblioteca" presente');
+  const startCropBtn = allButtons.find((b) => b.textContent?.includes('Iniciar Cultivo'));
+  assert(startCropBtn !== undefined, '8b. Botón "Iniciar Cultivo" presente');
 
-  // 9. Click en Iniciar Cultivo
+  const favBtn = allButtons.find((b) => b.textContent?.includes('FAVORITOS'));
+  assert(favBtn !== undefined, '8c. Botón "FAVORITOS" presente con corazón');
+
+  // 9. NO deben existir botones eliminados
+  const cardText = cardEl.textContent || '';
+  assert(!cardText.includes('Ver detalles'), '9a. "Ver detalles" no se renderiza en la tarjeta');
+  assert(!cardText.includes('Comparar'), '9b. "Comparar" no se renderiza en la tarjeta');
+  assert(!cardText.includes('THC'), '9c. "THC" no se renderiza en la tarjeta');
+  assert(!cardText.includes('CBD'), '9d. "CBD" no se renderiza en la tarjeta');
+  assert(!cardText.includes('Guardar en Mi Biblioteca'), '9e. "Guardar en Mi Biblioteca" no se renderiza');
+  assert(cardEl.querySelector('svg.lucide-bookmark') === null, '9f. Bookmark no se renderiza');
+
+  // 10. Click en "Iniciar Cultivo" dispara onStartCropWithGenetics
   await act(async () => {
     startCropBtn?.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
   });
-  assert(startCropCalls.length === 1 && startCropCalls[0].name === 'Skunk #1', '11. Click en Iniciar Cultivo funciona');
+  assert(startCropCalls.length === 1 && startCropCalls[0].name === 'Skunk #1', '10. Click en Iniciar Cultivo llama onStartCropWithGenetics con la genética real');
 
-  // 10. Genética sin foto renderiza correctamente
-  const allCards = container.querySelectorAll('.grid.grid-cols-1.md\\:grid-cols-2 .bg-white.rounded-3xl');
-  assert(allCards.length > 1, '12. Catálogo renderiza todas las variedades');
+  // 11. Click en FAVORITOS dispara toggleFavorite
+  await act(async () => {
+    favBtn?.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+  });
+  assert(toggleFavoriteCalls.length === 1, '11. Click en FAVORITOS dispara favoritesService.toggleFavorite');
 
-  // 11. Tabs y filtros funcionan normalmente
-  const tabSavedBtn = document.getElementById('tab-saved-btn');
-  assert(tabSavedBtn !== null, '13. Tab Mis Genéticas Guardadas existe');
+  // 12. Reacción al estado de favorito
+  currentFavs = [
+    {
+      geneticsKey: getGeneticsKey('Skunk #1', 'Sensi Seeds'),
+      name: 'Skunk #1',
+      seedBank: 'Sensi Seeds',
+    },
+  ];
+  await act(async () => {
+    favListeners.forEach((l) => l(currentFavs));
+  });
+  const heartIcon = favBtn?.querySelector('svg.lucide-heart');
+  assert(heartIcon !== null && heartIcon.classList.contains('fill-white'), '12. Estado activo de favorito muestra corazón blanco relleno');
+
+  // 13. Tarjeta responsive centrada
+  const catalogContainer = container.querySelector('.max-w-\\[570px\\]');
+  assert(catalogContainer !== null, '13. Contenedor centrado max-w-[570px] mobile-first');
 
   await act(async () => {
     root.unmount();
@@ -190,6 +231,8 @@ export async function runGeneticsCatalogCardRedesignTests(): Promise<{ passed: n
   authService.getIdToken = origGetIdToken;
   globalThis.fetch = origFetch;
   geneticsCatalogPhotoService.subscribeCatalogPhotos = origSubscribeCatalog;
+  favoritesService.toggleFavorite = origToggleFavorite;
+  favoritesService.subscribeFavorites = origSubscribeFavorites;
 
   console.log('\n----------------------------------------------------------------');
   console.log(`TOTAL PASSED:  ${passedCount}`);

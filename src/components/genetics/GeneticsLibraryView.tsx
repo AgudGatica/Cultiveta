@@ -591,7 +591,7 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
       {activeTab === 'catalog' && (
         <>
           {filteredPredefined.length === 0 ? (
-            <div className="bg-white rounded-3xl p-12 border border-stone-200 text-center space-y-3">
+            <div className="bg-white rounded-3xl p-12 border border-stone-200 text-center space-y-3 max-w-[570px] mx-auto">
               <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
                 <Search className="w-8 h-8 text-stone-400" />
               </div>
@@ -612,129 +612,128 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="flex flex-col gap-6 w-full max-w-[570px] mx-auto">
               {filteredPredefined.map((item) => {
-                const isSaved = isSavedInUserLibrary(item.name, item.seedBank);
-                const isSaving = savingMap[`${item.seedBank}-${item.name}`];
                 const photoKey = getGeneticsPhotoKey(item.seedBank, item.name);
                 const officialPhoto = catalogPhotos[photoKey]?.photoUrl;
                 const converted = convertPredefinedToGenetics(item, userId, officialPhoto);
 
-                // Dominance styling
-                const dom = item.dominance.toLowerCase();
-                const isSativa = dom.includes('sátiva') || dom.includes('sativa');
-                const isIndica = dom.includes('índica') || dom.includes('indica');
+                const isFav = isGeneticsFavorite(item.name, item.seedBank);
+                const itemFavKey = getGeneticsKey(item.name, item.seedBank);
+                const isTogglingFav = Boolean(togglingFavMap[itemFavKey]);
 
                 return (
-                  <div
+                  <article
                     key={`${item.seedBank}-${item.name}`}
-                    className="bg-white rounded-3xl p-5 border border-stone-200 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+                    className="bg-white rounded-[30px] border border-stone-200/80 shadow-sm overflow-hidden p-4 space-y-4 w-full"
                   >
-                    <div className="space-y-3">
-                      {/* Fotografía representativa oficial (limpia, natural, sin degradé oscuro) */}
-                      {officialPhoto && (
-                        <div className="relative w-full h-44 rounded-2xl overflow-hidden bg-stone-100 border border-stone-200/80">
-                          <img
-                            src={officialPhoto}
-                            alt={`${item.name} - ${item.seedBank}`}
-                            className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
-                            loading="lazy"
-                          />
-                          <div className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-xs text-white text-[10px] font-bold tracking-wide flex items-center gap-1 shadow-xs">
-                            <Sparkles className="w-3 h-3 text-amber-300" />
-                            <span>{getRightsBadgeLabel(catalogPhotos[photoKey]?.photoRightsStatus)}</span>
-                          </div>
+                    {/* 1. Fotografía grande con aspect-[295/176] y rounded-[24px] SIN NINGÚN DEGRADÉ NEGRO NI OVERLAY OSCURO */}
+                    <div className="relative w-full aspect-[295/176] rounded-[24px] overflow-hidden bg-stone-100 border border-stone-200/60">
+                      {officialPhoto ? (
+                        <img
+                          src={officialPhoto}
+                          alt={`${item.name} - ${item.seedBank}`}
+                          className="w-full h-full object-cover rounded-[24px]"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-stone-400 bg-stone-100 rounded-[24px]">
+                          <ImageIcon className="w-10 h-10 stroke-1 text-stone-400" />
+                          <span className="text-xs font-medium text-stone-500 mt-1">Sin fotografía</span>
                         </div>
                       )}
 
-                      {/* Title & Bank */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <h3 className="font-bold text-base text-stone-900 leading-tight">{item.name}</h3>
-                          <span className="inline-block mt-0.5 text-xs font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
-                            {item.seedBank}
-                          </span>
-                        </div>
-
-                        {/* Save to library indicator / button */}
-                        <button
-                          type="button"
-                          onClick={() => handleSavePredefined(item)}
-                          disabled={isSaved || isSaving}
-                          title={isSaved ? 'Ya está en tu biblioteca' : 'Guardar en mi biblioteca'}
-                          className={`p-1.5 rounded-xl border transition-colors cursor-pointer ${
-                            isSaved
-                              ? 'bg-emerald-50 border-emerald-200 text-emerald-700 cursor-default'
-                              : 'bg-stone-50 border-stone-200 text-stone-500 hover:bg-stone-100 hover:text-stone-800'
-                          }`}
+                      {/* 2. Contenido sobre la foto en esquina superior izquierda (Sin caja negra ni overlay detrás) */}
+                      <div className="absolute left-4 top-4 z-10 flex flex-col items-start gap-1.5 max-w-[85%]">
+                        {/* Nombre de la genética */}
+                        <h2
+                          className="text-white font-black uppercase leading-none text-[32px] sm:text-[38px] drop-shadow-[0_2px_3px_rgba(0,0,0,0.35)] truncate max-w-full"
                         >
-                          {isSaved ? (
-                            <Check className="w-3.5 h-3.5" />
-                          ) : (
-                            <Bookmark className="w-3.5 h-3.5" />
-                          )}
-                        </button>
-                      </div>
+                          {item.name}
+                        </h2>
 
-                      {/* Dominance & Specs Badges */}
-                      <div className="flex flex-wrap gap-1.5">
-                        <span
-                          className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
-                            isSativa
-                              ? 'bg-amber-50 text-amber-900 border-amber-200'
-                              : isIndica
-                              ? 'bg-purple-50 text-purple-900 border-purple-200'
-                              : 'bg-emerald-50 text-emerald-900 border-emerald-200'
-                          }`}
-                        >
+                        {/* Banco / breeder con fondo propio claro */}
+                        <span className="inline-flex items-center rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-1 text-sm font-semibold text-emerald-800 shadow-2xs">
+                          {item.seedBank}
+                        </span>
+
+                        {/* Dominancia / clasificación con fondo claro propio */}
+                        <span className="inline-flex items-center rounded-full bg-[#FFF8EB] border border-amber-400 px-3 py-1 text-sm font-bold text-stone-800 shadow-2xs">
                           {item.dominance}
                         </span>
-                        <span className="px-2.5 py-0.5 rounded-full bg-stone-100 border border-stone-200 text-stone-700 text-[11px] font-semibold flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5 text-stone-400" />
-                          <span>{item.floweringDays} d</span>
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-full bg-stone-100 border border-stone-200 text-stone-700 text-[11px] font-semibold flex items-center gap-1">
-                          <Scale className="w-3.5 h-3.5 text-stone-400" />
-                          <span>{item.estimatedYield} g/m²</span>
-                        </span>
-                      </div>
-
-                      {/* Organoleptic Profile */}
-                      <div className="bg-stone-50/80 p-3 rounded-2xl border border-stone-200/60 space-y-1">
-                        <div className="flex items-center gap-1 text-[10px] uppercase font-bold text-stone-400 tracking-wider">
-                          <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
-                          <span>Aroma y Gusto</span>
-                        </div>
-                        <p className="text-xs text-stone-700 font-medium italic">
-                          "{item.organolepticProfile}"
-                        </p>
                       </div>
                     </div>
 
-                    {/* Actions: Start crop & Save */}
-                    <div className="space-y-2 pt-2 border-t border-stone-100">
+                    {/* 3. Debajo de la fotografía: Fila de dos elementos (Rendimiento + Floración) */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* Rendimiento */}
+                      <div className="flex items-center justify-center gap-2 rounded-full border border-stone-200 bg-stone-50 px-3 py-2 text-stone-700 font-semibold text-xs sm:text-sm">
+                        <Scale className="w-4 h-4 text-stone-500 shrink-0" />
+                        <span className="truncate">{item.estimatedYield} g/m²</span>
+                      </div>
+
+                      {/* Floración */}
+                      <div className="flex items-center justify-center gap-2 rounded-full border border-stone-200 bg-stone-50 px-3 py-2 text-stone-700 font-semibold text-xs sm:text-sm">
+                        <Clock className="w-4 h-4 text-stone-500 shrink-0" />
+                        <span className="truncate">{item.floweringDays} d</span>
+                      </div>
+                    </div>
+
+                    {/* 4. Bloque "AROMA Y GUSTO" */}
+                    <div className="rounded-[22px] border border-stone-200 bg-white p-4 space-y-1.5">
+                      <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold uppercase tracking-wide text-stone-400">
+                        <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
+                        <span>AROMA Y GUSTO</span>
+                      </div>
+                      <p className="text-stone-700 font-medium italic leading-relaxed text-xs sm:text-sm">
+                        "{item.organolepticProfile}"
+                      </p>
+                    </div>
+
+                    {/* 5. Separador */}
+                    <div className="border-t border-stone-100 my-1" />
+
+                    {/* 6. Dos botones inferiores: Iniciar Cultivo + FAVORITOS */}
+                    <div className="grid grid-cols-2 gap-3">
+                      {/* BOTÓN 1: INICIAR CULTIVO */}
                       <button
                         type="button"
                         onClick={() => onStartCropWithGenetics(converted)}
-                        className="w-full py-2.5 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                        className="bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-full min-h-[52px] text-xs sm:text-sm shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                        title={`Iniciar cultivo con ${item.name}`}
                       >
-                        <Sprout className="w-4 h-4" />
-                        <span>Iniciar Cultivo con {item.name}</span>
+                        <Sprout className="w-4 h-4 shrink-0" />
+                        <span>Iniciar Cultivo</span>
                       </button>
 
-                      {!isSaved && (
-                        <button
-                          type="button"
-                          onClick={() => handleSavePredefined(item)}
-                          disabled={isSaving}
-                          className="w-full py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
-                        >
-                          <Bookmark className="w-3.5 h-3.5" />
-                          <span>{isSaving ? 'Guardando...' : 'Guardar en Mi Biblioteca'}</span>
-                        </button>
-                      )}
+                      {/* BOTÓN 2: FAVORITOS */}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleToggleFavorite({
+                            name: item.name,
+                            seedBank: item.seedBank,
+                            photoperiodType: converted.photoperiodType,
+                            dominance: item.dominance,
+                            floweringDays: item.floweringDays,
+                            estimatedYield: item.estimatedYield,
+                            organolepticProfile: item.organolepticProfile,
+                          })
+                        }
+                        disabled={isTogglingFav}
+                        aria-pressed={isFav}
+                        title={isFav ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                        className="bg-fuchsia-600 hover:bg-fuchsia-700 active:bg-fuchsia-800 text-white font-black rounded-full min-h-[52px] text-xs sm:text-sm shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-60"
+                      >
+                        <span>FAVORITOS</span>
+                        <Heart
+                          className={`w-4 h-4 shrink-0 transition-transform ${
+                            isFav ? 'fill-white text-white scale-110' : 'text-white'
+                          }`}
+                        />
+                      </button>
                     </div>
-                  </div>
+                  </article>
                 );
               })}
             </div>
