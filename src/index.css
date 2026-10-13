@@ -1,10 +1,10 @@
 @import "tailwindcss";
 
 @theme {
-  --color-warm-bg: #C7ECF4;
-  --color-cultiveta-bg-sky: #C7ECF4;
+  --color-warm-bg: #A9E2F1;
+  --color-cultiveta-bg-sky: #A9E2F1;
 
-  --color-cultiveta-violet: #633BC4;
+  --color-cultiveta-violet: #5527B8;
   --color-cultiveta-green: #62B95B;
   --color-cultiveta-sky: #82D8E8;
   --color-cultiveta-yellow: #F3C843;
@@ -17,14 +17,14 @@
   --color-cultiveta-cream: #FFFDF7;
   --color-cultiveta-white: #FFFFFF;
 
-  --color-cultiveta-border: #B2E1EC;
-  --color-cultiveta-border-strong: #96D3E2;
+  --color-cultiveta-border: #89D5E7;
+  --color-cultiveta-border-strong: #6EC6DB;
 }
 
 @layer base {
   :root {
-    --bg-sky: #C7ECF4;
-    --color-violet: #633BC4;
+    --bg-sky: #A9E2F1;
+    --color-violet: #5527B8;
     --color-green: #62B95B;
     --color-sky: #82D8E8;
     --color-yellow: #F3C843;
@@ -35,13 +35,13 @@
 
     --surface-white: #FFFFFF;
     --surface-cream: #FFFDF7;
-    --surface-subtle: #E2F5F8;
-    --surface-border: #B2E1EC;
-    --surface-border-strong: #96D3E2;
+    --surface-subtle: #D8F2F8;
+    --surface-border: #89D5E7;
+    --surface-border-strong: #6EC6DB;
   }
 
   body {
-    background-color: #C7ECF4;
+    background-color: #A9E2F1;
     color: #29202F;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     overflow-x: hidden;
@@ -55,34 +55,34 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #C7ECF4;
+  background: #A9E2F1;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #96D3E2;
+  background: #6EC6DB;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #75C1D4;
+  background: #4FB5CC;
 }
 
 /* ==========================================================================
    CULTIVETA DESIGN SYSTEM: ATMÓSFERA GLOBAL UNIFICADA (CELESTE + VIOLETA VIVO)
    ========================================================================== */
 
-/* Shell base que aísla el stacking context y asegura fluidez */
+/* Shell base que aísla el stacking context */
 .cultiveta-app-shell {
   position: relative;
   isolation: isolate;
   min-height: 100vh;
-  background-color: #C7ECF4;
+  background-color: #A9E2F1;
 }
 
 /* Capa de fondo fija e inmutable detrás de toda la UI (pointer-events: none)
    UNIFICADA EN TODAS LAS PANTALLAS:
-   - Arriba: Celeste puro, vivo y respirado (#C7ECF4)
-   - Abajo: Gran masa y blobs de violeta intenso y profundo (#633BC4) subiendo entre el 35% y 50% del viewport
+   - Arriba: Celeste vivo, intenso y saturado (#A9E2F1)
+   - Abajo: Gran masa y blobs de violeta profundo (#5527B8) ocupando 40-50% del viewport
 */
 .cultiveta-page-background {
   position: fixed;
@@ -91,86 +91,80 @@
   z-index: -1;
   overflow: hidden;
   background:
-    /* Masa violeta profunda central inferior emergiendo con fuerte saturación */
-    radial-gradient(ellipse 110% 65% at 50% 112%, rgba(99, 59, 196, 0.82) 0%, rgba(99, 59, 196, 0.55) 38%, transparent 75%),
-    /* Blob secundario violeta/azulado en esquina inferior izquierda */
-    radial-gradient(ellipse 80% 55% at 10% 102%, rgba(99, 59, 196, 0.75) 0%, rgba(99, 59, 196, 0.38) 45%, transparent 72%),
+    /* Masa violeta profunda central inferior emergiendo con fuerte presencia (40-50% inferior) */
+    radial-gradient(ellipse 115% 70% at 50% 112%, rgba(85, 39, 184, 0.92) 0%, rgba(85, 39, 184, 0.65) 40%, transparent 78%),
+    /* Blob secundario violeta intenso en esquina inferior izquierda */
+    radial-gradient(ellipse 85% 60% at 8% 102%, rgba(85, 39, 184, 0.85) 0%, rgba(85, 39, 184, 0.45) 45%, transparent 74%),
     /* Blob secundario violeta vibrante en esquina inferior derecha */
-    radial-gradient(ellipse 85% 58% at 90% 105%, rgba(94, 54, 190, 0.75) 0%, rgba(94, 54, 190, 0.35) 48%, transparent 74%),
-    /* Resplandor celeste superior derecho */
-    radial-gradient(ellipse 65% 45% at 85% 5%, rgba(130, 216, 232, 0.55) 0%, transparent 68%),
-    #C7ECF4;
+    radial-gradient(ellipse 90% 62% at 92% 105%, rgba(80, 35, 178, 0.85) 0%, rgba(80, 35, 178, 0.42) 48%, transparent 76%),
+    /* Resplandor celeste superior derecho para aire y balance */
+    radial-gradient(ellipse 70% 50% at 85% 5%, rgba(130, 216, 232, 0.65) 0%, transparent 70%),
+    #A9E2F1;
 }
 
-/* Variantes sutiles opcionales por pantalla si se desea microdetalle, manteniendo la base unificada */
+/* Variantes sutiles armónicas por pantalla, todas conservando la base celeste #A9E2F1 + violeta #5527B8 */
 .cultiveta-page-genetics .cultiveta-page-background {
   background:
-    radial-gradient(ellipse 110% 65% at 50% 112%, rgba(99, 59, 196, 0.84) 0%, rgba(99, 59, 196, 0.56) 38%, transparent 76%),
-    radial-gradient(ellipse 80% 55% at 92% 102%, rgba(235, 120, 100, 0.50) 0%, rgba(99, 59, 196, 0.35) 48%, transparent 75%),
-    radial-gradient(ellipse 80% 55% at 8% 100%, rgba(99, 59, 196, 0.72) 0%, transparent 70%),
-    #C7ECF4;
+    radial-gradient(ellipse 115% 70% at 50% 112%, rgba(85, 39, 184, 0.94) 0%, rgba(85, 39, 184, 0.66) 40%, transparent 78%),
+    radial-gradient(ellipse 85% 60% at 92% 102%, rgba(235, 120, 100, 0.48) 0%, rgba(85, 39, 184, 0.40) 48%, transparent 76%),
+    radial-gradient(ellipse 85% 60% at 8% 100%, rgba(85, 39, 184, 0.82) 0%, transparent 72%),
+    #A9E2F1;
 }
 
 .cultiveta-page-cultivations .cultiveta-page-background {
   background:
-    radial-gradient(ellipse 110% 65% at 50% 112%, rgba(99, 59, 196, 0.80) 0%, rgba(99, 59, 196, 0.52) 38%, transparent 76%),
-    radial-gradient(ellipse 75% 50% at 12% 98%, rgba(98, 185, 91, 0.52) 0%, rgba(99, 59, 196, 0.32) 48%, transparent 72%),
-    radial-gradient(ellipse 80% 55% at 88% 105%, rgba(99, 59, 196, 0.75) 0%, transparent 72%),
-    #C7ECF4;
+    radial-gradient(ellipse 115% 70% at 50% 112%, rgba(85, 39, 184, 0.90) 0%, rgba(85, 39, 184, 0.62) 40%, transparent 78%),
+    radial-gradient(ellipse 80% 55% at 10% 98%, rgba(98, 185, 91, 0.45) 0%, rgba(85, 39, 184, 0.38) 48%, transparent 74%),
+    radial-gradient(ellipse 85% 60% at 90% 105%, rgba(85, 39, 184, 0.82) 0%, transparent 74%),
+    #A9E2F1;
 }
 
 .cultiveta-page-ai .cultiveta-page-background {
   background:
-    radial-gradient(ellipse 110% 65% at 50% 112%, rgba(99, 59, 196, 0.85) 0%, rgba(99, 59, 196, 0.58) 38%, transparent 76%),
-    radial-gradient(ellipse 80% 55% at 88% 95%, rgba(130, 216, 232, 0.65) 0%, rgba(99, 59, 196, 0.35) 50%, transparent 74%),
-    radial-gradient(ellipse 75% 50% at 10% 95%, rgba(152, 135, 162, 0.55) 0%, transparent 72%),
-    #C7ECF4;
+    radial-gradient(ellipse 115% 70% at 50% 112%, rgba(85, 39, 184, 0.94) 0%, rgba(85, 39, 184, 0.68) 40%, transparent 78%),
+    radial-gradient(ellipse 85% 60% at 88% 95%, rgba(130, 216, 232, 0.70) 0%, rgba(85, 39, 184, 0.40) 50%, transparent 75%),
+    radial-gradient(ellipse 80% 55% at 10% 95%, rgba(152, 135, 162, 0.55) 0%, transparent 72%),
+    #A9E2F1;
 }
 
 /* ==========================================================================
-   GRANULADO EDITORIAL VISIBLE Y ENFOCADO EN EL ÁREA VIOLETA
+   PARTE 3: GRANULADO ESTILO CÓMIC / CARTOON RETRO / AFICHE URBANO (HALFTONE TRAMADO)
    ========================================================================== */
 
-/* Capa de textura perceptible en todo el fondo, reforzada en el 50% inferior */
+/* 1. Capa de grano base perceptible en todo el fondo */
 .cultiveta-page-grain {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background-image: radial-gradient(rgba(41, 32, 47, 0.32) 0.75px, transparent 0.75px);
-  background-size: 4px 4px;
-  opacity: 0.085;
+  background-image: radial-gradient(rgba(41, 32, 47, 0.35) 0.85px, transparent 0.85px);
+  background-size: 5px 5px;
+  opacity: 0.095;
   mix-blend-mode: multiply;
   z-index: 1;
 }
 
-/* Capa extra de microgranulado concentrada exclusivamente en la zona inferior violeta */
+/* 2. Textura tramada halftone / comic retro intensificada en el 50% inferior violeta */
 .cultiveta-page-violet-grain {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
-  height: 60%;
+  height: 65%;
   pointer-events: none;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.35) 0.85px, transparent 0.85px);
-  background-size: 5px 5px;
-  opacity: 0.14;
-  mask-image: linear-gradient(to top, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.6) 55%, transparent 100%);
-  -webkit-mask-image: linear-gradient(to top, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.6) 55%, transparent 100%);
+  /* Doble trama de semitonos (halftone screen) con micropuntos definidos tipo cómic */
+  background-image:
+    radial-gradient(circle, rgba(255, 255, 255, 0.45) 1.25px, transparent 1.25px),
+    radial-gradient(circle, rgba(41, 32, 47, 0.25) 1.1px, transparent 1.1px);
+  background-size: 7px 7px, 7px 7px;
+  background-position: 0 0, 3.5px 3.5px;
+  opacity: 0.22;
+  mask-image: linear-gradient(to top, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.75) 50%, transparent 100%);
+  -webkit-mask-image: linear-gradient(to top, rgba(0, 0, 0, 1) 0%, rgba(0, 0, 0, 0.75) 50%, transparent 100%);
   mix-blend-mode: overlay;
   z-index: 2;
 }
 
-/* Clusters de puntitos decorativos editoriales / cartoon orgánicos */
-.cultiveta-deco-cluster {
-  position: absolute;
-  pointer-events: none;
-  z-index: 3;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-/* Grano pequeño puntual para componentes */
+/* Grano pequeño puntual para componentes específicos si se requiere */
 .cultiveta-grain {
   position: relative;
 }
@@ -188,13 +182,6 @@
   z-index: 1;
 }
 
-/* Motivos decorativos de pequeños puntos botánicos */
-.cultiveta-dots-pattern {
-  background-image: radial-gradient(#9887A2 1.2px, transparent 1.2px);
-  background-size: 10px 10px;
-  opacity: 0.28;
-}
-
 /* ==========================================================================
    CULTIVETA DESIGN SYSTEM: CARDS & SUPERFICIES
    ========================================================================== */
@@ -202,7 +189,7 @@
 /* 1. Card estándar de Cultiveta con fondo blanco puro y separación del fondo */
 .cultiveta-card {
   background-color: #FFFFFF;
-  border: 1px solid var(--surface-border, #B2E1EC);
+  border: 1px solid var(--surface-border, #89D5E7);
   border-radius: 1.75rem; /* 28px */
   box-shadow: 0 4px 20px rgba(41, 32, 47, 0.05), 0 1px 3px rgba(41, 32, 47, 0.03);
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
@@ -216,7 +203,7 @@
 /* 2. Superficie cálida interior */
 .cultiveta-editorial-surface {
   background-color: #FFFDF7;
-  border: 1px solid var(--surface-border, #B2E1EC);
+  border: 1px solid var(--surface-border, #89D5E7);
   border-radius: 1.25rem;
 }
 
@@ -258,7 +245,7 @@
 .skeleton-shimmer {
   position: relative;
   overflow: hidden;
-  background-color: #BBE4ED;
+  background-color: #A0DCE9;
 }
 
 .skeleton-shimmer::after {

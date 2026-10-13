@@ -52,14 +52,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside
       id="main-desktop-sidebar"
-      className={`hidden lg:flex flex-col justify-between h-[calc(100vh-6rem)] sticky top-24 bg-white border border-[#D1EAEF] rounded-[32px] p-4 transition-all duration-300 z-20 shadow-xs ${
+      className={`hidden lg:flex flex-col justify-between h-[calc(100vh-6rem)] sticky top-24 bg-white border border-[#89D5E7] rounded-[32px] p-4 transition-all duration-300 z-20 shadow-xs ${
         isCollapsed ? 'w-20' : 'w-64'
       }`}
     >
       {/* Top Nav Section */}
       <div className="space-y-4">
         {/* Collapse toggle row */}
-        <div className="flex items-center justify-between px-2 pt-1 pb-2 border-b border-[#D1EAEF]">
+        <div className="flex items-center justify-between px-2 pt-1 pb-2 border-b border-[#89D5E7]">
           {!isCollapsed && (
             <span className="text-[10px] uppercase tracking-wider text-[#9887A2] font-bold">
               Navegación
@@ -130,7 +130,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       isActive
                         ? 'bg-[#6C45C7] text-white'
-                        : 'bg-[#FAF2E1] text-[#6E5D77] border border-[#D1EAEF]'
+                        : 'bg-[#FAF2E1] text-[#6E5D77] border border-[#89D5E7]'
                     }`}
                   >
                     {item.badge}
@@ -144,7 +144,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Bottom Footer Info */}
       {!isCollapsed && (
-        <div className="p-3 rounded-2xl bg-[#FFFDF7] border border-[#D1EAEF] text-center space-y-1">
+        <div className="p-3 rounded-2xl bg-[#FFFDF7] border border-[#89D5E7] text-center space-y-1">
           <span className="text-[11px] font-bold text-[#29202F] block">
             Cultiveta 🌱
           </span>

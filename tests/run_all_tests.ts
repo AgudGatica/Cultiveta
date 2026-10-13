@@ -129,7 +129,7 @@ const suites: SuiteConfig[] = [
   },
   {
     id: 'genetics_catalog_card_redesign',
-    name: 'Catálogo de Genéticas: Rediseño Editorial y Favoritos en Tarjeta (29 Casos)',
+    name: 'Catálogo de Genéticas: Rediseño Editorial y Favoritos en Tarjeta (27 Casos)',
     category: 'jsdom',
     file: 'tests/genetics_catalog_card_redesign.test.ts',
     expectedTests: 27,
@@ -140,6 +140,13 @@ const suites: SuiteConfig[] = [
     category: 'jsdom',
     file: 'tests/genetics_admin_photos.test.ts',
     expectedTests: 37,
+  },
+  {
+    id: 'ai_chat_rotation_and_fallback',
+    name: 'Cultiveta IA: Rotación Secuencial de Modelos y Fallback Botánico Real (18 Casos)',
+    category: 'mocks',
+    file: 'tests/ai_chat_rotation_and_fallback.test.ts',
+    expectedTests: 18,
   },
   {
     id: 'firestore_admin_rules',

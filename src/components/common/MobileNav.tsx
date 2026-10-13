@@ -57,9 +57,9 @@ export const MobileNav: React.FC<MobileNavProps> = ({
         <div className="lg:hidden fixed inset-0 z-50 bg-[#29202F]/30 backdrop-blur-xs flex flex-col justify-end">
           <div
             ref={moreMenuRef}
-            className="bg-[#FFFDF7] rounded-t-[32px] border-t border-[#D1EAEF] p-5 shadow-2xl space-y-4 animate-in slide-in-from-bottom duration-200"
+            className="bg-[#FFFDF7] rounded-t-[32px] border-t border-[#89D5E7] p-5 shadow-2xl space-y-4 animate-in slide-in-from-bottom duration-200"
           >
-            <div className="flex items-center justify-between pb-2 border-b border-[#D1EAEF]">
+            <div className="flex items-center justify-between pb-2 border-b border-[#89D5E7]">
               <span className="text-xs font-bold text-[#29202F]">Más herramientas</span>
               <button
                 type="button"
@@ -85,7 +85,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                     className={`flex items-center gap-3.5 p-3 rounded-2xl text-left transition-all cursor-pointer ${
                       isActive
                         ? 'bg-[#6C45C7]/10 text-[#6C45C7] border border-[#6C45C7]/20 font-bold'
-                        : 'bg-white hover:bg-[#FAF2E1] text-[#29202F] border border-[#D1EAEF]'
+                        : 'bg-white hover:bg-[#FAF2E1] text-[#29202F] border border-[#89D5E7]'
                     }`}
                   >
                     <div className="p-2 rounded-xl bg-[#FFFDF7] text-[#6C45C7]">
@@ -106,7 +106,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
       {/* Barra de navegación inferior móvil */}
       <nav
         id="mobile-bottom-nav"
-        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-[#D1EAEF] px-3 py-2 flex items-center justify-around shadow-lg"
+        className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-[#89D5E7] px-3 py-2 flex items-center justify-around shadow-lg"
       >
         {/* 1. Inicio */}
         <button
@@ -150,7 +150,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
             type="button"
             id="mobile-nav-quick-action-btn"
             onClick={onOpenQuickAction}
-            className="w-13 h-13 rounded-full bg-[#62B95B] hover:bg-[#52A54C] text-white flex items-center justify-center shadow-lg shadow-[#62B95B]/30 transition-transform active:scale-95 cursor-pointer border-4 border-[#C7ECF4]"
+            className="w-13 h-13 rounded-full bg-[#62B95B] hover:bg-[#52A54C] text-white flex items-center justify-center shadow-lg shadow-[#62B95B]/30 transition-transform active:scale-95 cursor-pointer border-4 border-[#A9E2F1]"
             title="Anotar algo rápido"
           >
             <Plus className="w-6 h-6 stroke-[3]" />

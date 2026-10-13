@@ -477,7 +477,7 @@ export default function App() {
   // Authentication Loading Screen
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#C7ECF4] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#A9E2F1] flex items-center justify-center p-4">
         <div className="flex flex-col items-center gap-3">
           <div className="w-16 h-16 rounded-3xl bg-white border border-[#D1EAEF] shadow-md flex items-center justify-center text-3xl transition-transform animate-bounce">
             🌱
@@ -518,42 +518,10 @@ export default function App() {
       <div aria-hidden="true" className="cultiveta-page-background">
         {/* Capa de microgranulado editorial perceptible en toda la superficie */}
         <div className="cultiveta-page-grain" />
-        {/* Capa de granulado/textura reforzada visible en el área violeta inferior */}
+        {/* Textura halftone / comic / afiche urbano visible en el área violeta inferior */}
         <div className="cultiveta-page-violet-grain" />
-
-        {/* Motivos decorativos sutiles de pequeños puntos botánicos (1-2 clusters según vista) */}
-        {currentView === 'genetics' && (
-          <>
-            <div className="cultiveta-deco-cluster bottom-16 right-8 opacity-40 hidden sm:flex">
-              <div className="flex gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#EB7864]" /><span className="w-1.5 h-1.5 rounded-full bg-[#EB7864]" /><span className="w-1.5 h-1.5 rounded-full bg-[#EB7864]" /></div>
-              <div className="flex gap-1.5 pl-3"><span className="w-1.5 h-1.5 rounded-full bg-[#6C45C7]" /><span className="w-1.5 h-1.5 rounded-full bg-[#6C45C7]" /></div>
-              <div className="flex gap-1.5 pl-6"><span className="w-1.5 h-1.5 rounded-full bg-[#EB7864]" /></div>
-            </div>
-            <div className="cultiveta-deco-cluster top-24 left-6 opacity-35 hidden md:flex">
-              <div className="flex gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#6C45C7]" /><span className="w-1.5 h-1.5 rounded-full bg-[#6C45C7]" /></div>
-              <div className="flex gap-1.5 pl-3"><span className="w-1.5 h-1.5 rounded-full bg-[#EB7864]" /></div>
-            </div>
-          </>
-        )}
-        {currentView === 'dashboard' && (
-          <div className="cultiveta-deco-cluster bottom-20 right-10 opacity-35 hidden sm:flex">
-            <div className="flex gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#6C45C7]" /><span className="w-1.5 h-1.5 rounded-full bg-[#6C45C7]" /><span className="w-1.5 h-1.5 rounded-full bg-[#6C45C7]" /></div>
-            <div className="flex gap-1.5 pl-3"><span className="w-1.5 h-1.5 rounded-full bg-[#82D8E8]" /><span className="w-1.5 h-1.5 rounded-full bg-[#82D8E8]" /></div>
-          </div>
-        )}
-        {currentView === 'cultivations' && (
-          <div className="cultiveta-deco-cluster bottom-20 right-10 opacity-35 hidden sm:flex">
-            <div className="flex gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#62B95B]" /><span className="w-1.5 h-1.5 rounded-full bg-[#62B95B]" /><span className="w-1.5 h-1.5 rounded-full bg-[#62B95B]" /></div>
-            <div className="flex gap-1.5 pl-3"><span className="w-1.5 h-1.5 rounded-full bg-[#82D8E8]" /><span className="w-1.5 h-1.5 rounded-full bg-[#82D8E8]" /></div>
-          </div>
-        )}
-        {currentView === 'ai_assistant' && (
-          <div className="cultiveta-deco-cluster bottom-20 right-12 opacity-40 hidden sm:flex">
-            <div className="flex gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#6C45C7]" /><span className="w-1.5 h-1.5 rounded-full bg-[#82D8E8]" /><span className="w-1.5 h-1.5 rounded-full bg-[#6C45C7]" /></div>
-            <div className="flex gap-1.5 pl-3"><span className="w-1.5 h-1.5 rounded-full bg-[#9887A2]" /><span className="w-1.5 h-1.5 rounded-full bg-[#9887A2]" /></div>
-          </div>
-        )}
       </div>
+
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-5 right-5 z-50 px-5 py-3 rounded-2xl bg-white text-[#29202F] text-xs font-bold shadow-xl border border-[#D1EAEF] animate-in slide-in-from-top duration-200 flex items-center gap-2.5">
