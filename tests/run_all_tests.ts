@@ -128,6 +128,13 @@ const suites: SuiteConfig[] = [
     expectedTests: 30,
   },
   {
+    id: 'genetics_catalog_card_redesign',
+    name: 'Catálogo de Genéticas: Rediseño Editorial y Favoritos en Tarjeta (29 Casos)',
+    category: 'jsdom',
+    file: 'tests/genetics_catalog_card_redesign.test.ts',
+    expectedTests: 29,
+  },
+  {
     id: 'genetics_admin_photos',
     name: 'Genéticas: Administración Privada de Fotos Representativas por Creador/Admin (37 Casos)',
     category: 'jsdom',
