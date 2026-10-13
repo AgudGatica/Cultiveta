@@ -1,38 +1,46 @@
 @import "tailwindcss";
 
 @theme {
-  --color-warm-bg: #FFF8E8;
+  --color-warm-bg: #F4E1CC;
+
   --color-cultiveta-violet: #6C45C7;
   --color-cultiveta-green: #62B95B;
+  --color-cultiveta-sky: #82D8E8;
   --color-cultiveta-yellow: #F3C843;
   --color-cultiveta-coral: #EB7864;
+
   --color-cultiveta-ink: #29202F;
   --color-cultiveta-muted: #6E5D77;
   --color-cultiveta-subtle: #9887A2;
+
   --color-cultiveta-cream: #FFFDF7;
-  --color-cultiveta-border: #EFE3CF;
-  --color-cultiveta-border-strong: #DECDB3;
+  --color-cultiveta-white: #FFFFFF;
+
+  --color-cultiveta-border: #E7D3BB;
+  --color-cultiveta-border-strong: #D7BFA3;
 }
 
 @layer base {
   :root {
-    --bg-warm: #FFF8E8;
+    --bg-warm: #F4E1CC;
     --color-violet: #6C45C7;
     --color-green: #62B95B;
+    --color-sky: #82D8E8;
     --color-yellow: #F3C843;
     --color-coral: #EB7864;
     --color-ink: #29202F;
     --color-ink-muted: #6E5D77;
     --color-ink-subtle: #9887A2;
+
     --surface-white: #FFFFFF;
     --surface-cream: #FFFDF7;
-    --surface-subtle: #FAF2E1;
-    --surface-border: #EFE3CF;
-    --surface-border-strong: #DECDB3;
+    --surface-subtle: #F0DFC8;
+    --surface-border: #E7D3BB;
+    --surface-border-strong: #D7BFA3;
   }
 
   body {
-    background-color: #FFF8E8;
+    background-color: #F4E1CC;
     color: #29202F;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     overflow-x: hidden;
@@ -46,16 +54,100 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #FFF8E8;
+  background: #F4E1CC;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #DECDB3;
+  background: #D7BFA3;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #C4B092;
+  background: #C4A787;
+}
+
+/* ==========================================================================
+   CULTIVETA DESIGN SYSTEM: UTILITIES VISUALES REUTILIZABLES
+   ========================================================================== */
+
+/* 1. Card estándar de Cultiveta con borde cálido sutil y separación del fondo */
+.cultiveta-card {
+  background-color: #FFFFFF;
+  border: 1px solid var(--surface-border, #E7D3BB);
+  border-radius: 1.75rem; /* 28px */
+  box-shadow: 0 4px 18px rgba(41, 32, 47, 0.045), 0 1px 3px rgba(41, 32, 47, 0.025);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cultiveta-card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(41, 32, 47, 0.075), 0 2px 6px rgba(41, 32, 47, 0.04);
+}
+
+/* 2. Superficie cálida interior (Nivel 2) */
+.cultiveta-editorial-surface {
+  background-color: #FFFDF7;
+  border: 1px solid var(--surface-border, #E7D3BB);
+  border-radius: 1.25rem;
+}
+
+/* 3. Gradients Orgánicos de Marca (Asimétricos, suaves, sin saturación masiva) */
+.cultiveta-gradient-brand {
+  background:
+    radial-gradient(circle at 12% 18%, rgba(130, 216, 232, 0.75), transparent 42%),
+    radial-gradient(circle at 82% 22%, rgba(108, 69, 199, 0.70), transparent 46%),
+    radial-gradient(circle at 72% 88%, rgba(235, 120, 100, 0.50), transparent 40%),
+    radial-gradient(circle at 25% 85%, rgba(243, 200, 67, 0.40), transparent 45%),
+    #FFFDF7;
+}
+
+.cultiveta-gradient-ai {
+  background:
+    radial-gradient(circle at 18% 22%, rgba(130, 216, 232, 0.70), transparent 45%),
+    radial-gradient(circle at 80% 25%, rgba(108, 69, 199, 0.65), transparent 48%),
+    radial-gradient(circle at 50% 85%, rgba(152, 135, 162, 0.35), transparent 50%),
+    #FFFDF7;
+}
+
+.cultiveta-gradient-growth {
+  background:
+    radial-gradient(circle at 15% 20%, rgba(98, 185, 91, 0.60), transparent 45%),
+    radial-gradient(circle at 85% 30%, rgba(130, 216, 232, 0.55), transparent 48%),
+    radial-gradient(circle at 50% 90%, rgba(244, 225, 204, 0.80), transparent 40%),
+    #FFFDF7;
+}
+
+.cultiveta-gradient-energy {
+  background:
+    radial-gradient(circle at 20% 25%, rgba(235, 120, 100, 0.60), transparent 45%),
+    radial-gradient(circle at 80% 25%, rgba(243, 200, 67, 0.55), transparent 45%),
+    radial-gradient(circle at 50% 85%, rgba(244, 225, 204, 0.75), transparent 40%),
+    #FFFDF7;
+}
+
+/* 4. Textura Editorial de Microgranulado (CSS Puro, liviano, sin imágenes) */
+.cultiveta-grain {
+  position: relative;
+}
+
+.cultiveta-grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background-image: radial-gradient(rgba(41, 32, 47, 0.18) 0.55px, transparent 0.55px);
+  background-size: 4px 4px;
+  opacity: 0.045;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 5. Motivos decorativos de pequeños puntos botánicos (Editorial) */
+.cultiveta-dots-pattern {
+  background-image: radial-gradient(#9887A2 1px, transparent 1px);
+  background-size: 8px 8px;
+  opacity: 0.25;
 }
 
 /* Entry animation for cards */
@@ -74,7 +166,7 @@
   animation: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* Skeleton Shimmer Loading Animation */
+/* Skeleton Shimmer Loading Animation adaptada al tono cálido */
 @keyframes skeletonPulse {
   0%, 100% {
     opacity: 1;
@@ -96,7 +188,7 @@
 .skeleton-shimmer {
   position: relative;
   overflow: hidden;
-  background-color: #F7EEDB;
+  background-color: #EBD6BF;
 }
 
 .skeleton-shimmer::after {
@@ -118,175 +210,5 @@
 }
 
 .animate-skeleton {
-  animation: skeletonPulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* Skeleton Card */
-#root .dashboard-overview .skeleton-card {
-  position: relative;
-  overflow: hidden;
-  background-color: #FFFFFF;
-  border: 1px solid #EFE3CF;
-  border-radius: 28px;
-  box-shadow: 0 4px 16px -2px rgba(41, 32, 47, 0.04);
-}
-
-/* Card Styling for Cultiveta */
-.cultiveta-card {
-  background-color: #FFFFFF;
-  border: 1px solid #EFE3CF;
-  border-radius: 28px;
-  box-shadow: 0 4px 20px -2px rgba(41, 32, 47, 0.04), 0 2px 6px -1px rgba(41, 32, 47, 0.02);
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.2s ease;
-}
-
-.cultiveta-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 30px -4px rgba(108, 69, 199, 0.08), 0 4px 12px -2px rgba(41, 32, 47, 0.04);
-  border-color: #DECDB3;
-}
-
-/* Tactile interaction for Cultivation Cards */
-#root .cultivation-card {
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.2s ease;
-  will-change: transform, box-shadow;
-}
-
-#root .cultivation-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 14px 32px -4px rgba(108, 69, 199, 0.08), 0 4px 12px -2px rgba(41, 32, 47, 0.04);
-}
-
-#root .cultivation-card:active {
-  transform: scale(0.995);
-  transition-duration: 0.1s;
-}
-
-/* Plant Icon Gentle Rotation on Hover */
-@keyframes plant-sway-vibration {
-  0% {
-    transform: rotate(0deg) scale(1);
-  }
-  20% {
-    transform: rotate(-10deg) scale(1.08);
-  }
-  40% {
-    transform: rotate(8deg) scale(1.1);
-  }
-  60% {
-    transform: rotate(-6deg) scale(1.06);
-  }
-  80% {
-    transform: rotate(4deg) scale(1.03);
-  }
-  100% {
-    transform: rotate(0deg) scale(1);
-  }
-}
-
-.dashboard-plant-icon {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  transform-origin: 50% 90%;
-  color: #62B95B;
-  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.dashboard-plant-icon:hover {
-  animation: plant-sway-vibration 0.85s cubic-bezier(0.36, 0.07, 0.19, 0.97);
-}
-
-/* Cultiveta Standardized Modal & Component Classes */
-.cultiveta-modal-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  background-color: rgba(41, 32, 47, 0.45);
-  backdrop-filter: blur(4px);
-}
-
-.cultiveta-modal-container {
-  background-color: #FFFFFF;
-  border: 1px solid #EFE3CF;
-  border-radius: 28px;
-  box-shadow: 0 16px 40px -8px rgba(41, 32, 47, 0.12), 0 4px 12px -2px rgba(41, 32, 47, 0.04);
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-}
-
-.cultiveta-btn-primary {
-  background-color: #6C45C7;
-  color: #FFFFFF;
-  font-weight: 700;
-  border-radius: 16px;
-  padding: 0.75rem 1.25rem;
-  transition: all 0.2s;
-  box-shadow: 0 4px 12px rgba(108, 69, 199, 0.2);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  cursor: pointer;
-}
-.cultiveta-btn-primary:hover {
-  background-color: #5835ab;
-}
-
-.cultiveta-btn-green {
-  background-color: #62B95B;
-  color: #FFFFFF;
-  font-weight: 700;
-  border-radius: 16px;
-  padding: 0.75rem 1.25rem;
-  transition: all 0.2s;
-  box-shadow: 0 4px 12px rgba(98, 185, 91, 0.2);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  cursor: pointer;
-}
-.cultiveta-btn-green:hover {
-  background-color: #4fa149;
-}
-
-.cultiveta-btn-secondary {
-  background-color: #FFFDF7;
-  color: #29202F;
-  border: 1px solid #EFE3CF;
-  font-weight: 700;
-  border-radius: 16px;
-  padding: 0.75rem 1.25rem;
-  transition: all 0.2s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  cursor: pointer;
-}
-.cultiveta-btn-secondary:hover {
-  background-color: #FAF2E1;
-}
-
-.cultiveta-btn-danger {
-  background-color: #EB7864;
-  color: #FFFFFF;
-  font-weight: 700;
-  border-radius: 16px;
-  padding: 0.75rem 1.25rem;
-  transition: all 0.2s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  cursor: pointer;
-}
-.cultiveta-btn-danger:hover {
-  background-color: #d66450;
+  animation: skeletonPulse 1.5s ease-in-out infinite;
 }

@@ -458,9 +458,9 @@ export default function App() {
   // Authentication Loading Screen
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#FFF8E8] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#F4E1CC] flex items-center justify-center p-4">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-16 h-16 rounded-3xl bg-white border border-[#EFE3CF] shadow-md flex items-center justify-center text-3xl transition-transform animate-bounce">
+          <div className="w-16 h-16 rounded-3xl bg-white border border-[#E7D3BB] shadow-md flex items-center justify-center text-3xl transition-transform animate-bounce">
             🌱
           </div>
           <span className="text-xl font-black text-[#29202F] tracking-tight">Cultiveta</span>
@@ -494,10 +494,10 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFF8E8] text-[#29202F] flex flex-col selection:bg-[#6C45C7] selection:text-white">
+    <div className="min-h-screen bg-[#F4E1CC] text-[#29202F] flex flex-col selection:bg-[#6C45C7] selection:text-white">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-5 right-5 z-50 px-5 py-3 rounded-2xl bg-white text-[#29202F] text-xs font-bold shadow-xl border border-[#EFE3CF] animate-in slide-in-from-top duration-200 flex items-center gap-2.5">
+        <div className="fixed top-5 right-5 z-50 px-5 py-3 rounded-2xl bg-white text-[#29202F] text-xs font-bold shadow-xl border border-[#E7D3BB] animate-in slide-in-from-top duration-200 flex items-center gap-2.5">
           <div className="w-2.5 h-2.5 rounded-full bg-[#62B95B] animate-ping" />
           <span>{toastMessage}</span>
         </div>
@@ -597,7 +597,7 @@ export default function App() {
           {/* VIEW: CULTIVATIONS LIST */}
           {currentView === 'cultivations' && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between bg-white rounded-[32px] p-6 sm:p-8 border border-[#EFE3CF] shadow-xs relative overflow-hidden">
+              <div className="flex items-center justify-between bg-white rounded-[32px] p-6 sm:p-8 border border-[#E7D3BB] shadow-xs relative overflow-hidden">
                 <div className="relative z-10">
                   <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#9887A2] mb-1 block">Gestión de Salas</span>
                   <h2 className="font-extrabold text-2xl text-[#29202F]">Mis Cultivos 🌱</h2>
@@ -634,8 +634,8 @@ export default function App() {
               )}
 
               {cultivations.length === 0 ? (
-                <div className="bg-white rounded-[32px] p-12 border border-[#EFE3CF] text-center space-y-4 shadow-xs">
-                  <div className="w-16 h-16 rounded-2xl bg-[#FAF2E1] border border-[#EFE3CF] text-[#62B95B] flex items-center justify-center mx-auto">
+                <div className="bg-white rounded-[32px] p-12 border border-[#E7D3BB] text-center space-y-4 shadow-xs">
+                  <div className="w-16 h-16 rounded-2xl bg-[#FAF2E1] border border-[#E7D3BB] text-[#62B95B] flex items-center justify-center mx-auto">
                     <Sprout className="w-8 h-8" />
                   </div>
                   <div>
@@ -657,8 +657,8 @@ export default function App() {
                   </button>
                 </div>
               ) : filteredCultivations.length === 0 ? (
-                <div className="bg-white rounded-[32px] p-10 border border-[#EFE3CF] text-center space-y-4 shadow-xs">
-                  <div className="w-12 h-12 rounded-2xl bg-[#FAF2E1] border border-[#EFE3CF] text-[#9887A2] flex items-center justify-center mx-auto">
+                <div className="bg-white rounded-[32px] p-10 border border-[#E7D3BB] text-center space-y-4 shadow-xs">
+                  <div className="w-12 h-12 rounded-2xl bg-[#FAF2E1] border border-[#E7D3BB] text-[#9887A2] flex items-center justify-center mx-auto">
                     <SlidersHorizontal className="w-6 h-6" />
                   </div>
                   <div>

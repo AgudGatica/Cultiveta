@@ -211,9 +211,9 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-3xl border border-[#EFE3CF] shadow-xs flex flex-col h-[calc(100vh-140px)] min-h-[500px]">
+    <div className="bg-white rounded-3xl border border-[#E7D3BB] shadow-xs flex flex-col h-[calc(100vh-140px)] min-h-[500px]">
       {/* Chat Top Header with Crop Context Selector and Summary Mode Switch */}
-      <div className="p-4 sm:p-5 border-b border-[#EFE3CF] flex flex-col md:flex-row items-start md:items-center justify-between gap-3 bg-[#FFFDF7] rounded-t-3xl">
+      <div className="p-4 sm:p-5 border-b border-[#E7D3BB] flex flex-col md:flex-row items-start md:items-center justify-between gap-3 cultiveta-gradient-ai cultiveta-grain rounded-t-3xl">
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-2xl bg-[#6C45C7]/15 text-[#6C45C7]">
             <Sparkles className="w-5 h-5" />
@@ -244,7 +244,7 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
                 id="ai-crop-select"
                 value={selectedCropId}
                 onChange={(e) => setSelectedCropId(e.target.value)}
-                className="px-3 py-1.5 rounded-2xl bg-white border border-[#EFE3CF] text-xs font-bold text-[#29202F] focus:outline-hidden focus:border-[#6C45C7] cursor-pointer shadow-2xs"
+                className="px-3 py-1.5 rounded-2xl bg-white border border-[#E7D3BB] text-xs font-bold text-[#29202F] focus:outline-hidden focus:border-[#6C45C7] cursor-pointer shadow-2xs"
               >
                 <option value="">Pregunta general</option>
                 {cultivations.map((c) => (
@@ -257,7 +257,7 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
           )}
 
           {/* Summary Mode Switch */}
-          <div className="flex items-center gap-2.5 bg-white px-3 py-1.5 rounded-2xl border border-[#EFE3CF] shadow-2xs">
+          <div className="flex items-center gap-2.5 bg-white px-3 py-1.5 rounded-2xl border border-[#E7D3BB] shadow-2xs">
             <div className="flex flex-col text-right">
               <span className="text-xs font-bold text-[#29202F] flex items-center justify-end gap-1">
                 <FileText className={`w-3.5 h-3.5 ${isSummaryMode ? 'text-[#6C45C7]' : 'text-[#9887A2]'}`} />
@@ -336,7 +336,7 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
                 {condensedSummary.keyPoints.map((point, idx) => (
                   <div
                     key={idx}
-                    className="bg-white rounded-2xl p-2.5 border border-[#EFE3CF] text-xs text-[#29202F] flex items-start gap-2 shadow-2xs font-medium"
+                    className="bg-white rounded-2xl p-2.5 border border-[#E7D3BB] text-xs text-[#29202F] flex items-start gap-2 shadow-2xs font-medium"
                   >
                     <span className="w-1.5 h-1.5 rounded-full bg-[#6C45C7] mt-1.5 shrink-0" />
                     <span className="leading-relaxed">{point}</span>
@@ -386,7 +386,7 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
               className={`p-4 rounded-3xl text-xs sm:text-sm leading-relaxed whitespace-pre-wrap ${
                 msg.sender === 'user'
                   ? 'bg-[#62B95B] text-white rounded-tr-xs shadow-xs'
-                  : 'bg-[#FFFDF7] text-[#29202F] rounded-tl-xs border border-[#EFE3CF] shadow-2xs font-medium'
+                  : 'bg-[#FFFDF7] text-[#29202F] rounded-tl-xs border border-[#E7D3BB] shadow-2xs font-medium'
               }`}
             >
               {msg.text}
@@ -415,7 +415,7 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
             <div className="w-8 h-8 rounded-2xl bg-[#6C45C7]/15 text-[#6C45C7] flex items-center justify-center shrink-0">
               <Sparkles className="w-4 h-4 animate-spin" />
             </div>
-            <div className="p-4 rounded-3xl rounded-tl-xs bg-[#FFFDF7] border border-[#EFE3CF] text-[#6E5D77] text-xs flex items-center gap-2">
+            <div className="p-4 rounded-3xl rounded-tl-xs bg-[#FFFDF7] border border-[#E7D3BB] text-[#6E5D77] text-xs flex items-center gap-2">
               <span>
                 {isSummaryMode
                   ? 'Analizando puntos clave de ambiente y riegos...'
@@ -429,14 +429,14 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
       </div>
 
       {/* Quick Prompt Chips */}
-      <div className="px-4 py-2 bg-[#FFFDF7] border-t border-[#EFE3CF] flex items-center gap-2 overflow-x-auto scrollbar-none">
+      <div className="px-4 py-2 bg-[#FFFDF7] border-t border-[#E7D3BB] flex items-center gap-2 overflow-x-auto scrollbar-none">
         <span className="text-[11px] font-bold text-[#9887A2] shrink-0">Sugerencias:</span>
         {quickQuestions.map((q, idx) => (
           <button
             key={idx}
             type="button"
             onClick={() => handleSendMessage(q)}
-            className="px-3 py-1.5 rounded-full bg-white hover:bg-[#FAF2E1] text-[#29202F] hover:text-[#6C45C7] border border-[#EFE3CF] text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer shadow-2xs"
+            className="px-3 py-1.5 rounded-full bg-white hover:bg-[#FAF2E1] text-[#29202F] hover:text-[#6C45C7] border border-[#E7D3BB] text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer shadow-2xs"
           >
             {q}
           </button>
@@ -444,7 +444,7 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
       </div>
 
       {/* Chat Input Bar */}
-      <div className="p-4 border-t border-[#EFE3CF] bg-white rounded-b-3xl">
+      <div className="p-4 border-t border-[#E7D3BB] bg-white rounded-b-3xl">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -463,7 +463,7 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             disabled={loading}
-            className="flex-1 px-4 py-2.5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-[#29202F] text-xs sm:text-sm focus:outline-hidden focus:border-[#6C45C7] focus:bg-white font-medium"
+            className="flex-1 px-4 py-2.5 rounded-2xl bg-[#FFFDF7] border border-[#E7D3BB] text-[#29202F] text-xs sm:text-sm focus:outline-hidden focus:border-[#6C45C7] focus:bg-white font-medium"
           />
           <button
             type="submit"

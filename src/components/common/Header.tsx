@@ -81,7 +81,7 @@ export const Header: React.FC<HeaderProps> = ({
   }, [isUserMenuOpen]);
 
   return (
-    <header className="sticky top-0 z-30 bg-[#FFF8E8]/90 backdrop-blur-xl border-b border-[#EFE3CF] px-4 lg:px-8 py-3.5 transition-colors">
+    <header className="sticky top-0 z-30 bg-[#F4E1CC]/90 backdrop-blur-xl border-b border-[#E7D3BB] px-4 lg:px-8 py-3.5 transition-colors">
       {hasDemoData && (
         <div
           id="demo-banner"
@@ -123,7 +123,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
 
           {activeCultivations.length > 0 && onSelectCultivation && (
-            <div className="hidden sm:flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-2xl border border-[#EFE3CF] shadow-xs ml-2">
+            <div className="hidden sm:flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-2xl border border-[#E7D3BB] shadow-xs ml-2">
               <Sprout className="w-4 h-4 text-[#62B95B]" />
               <select
                 id="header-cultivation-selector"
@@ -150,7 +150,7 @@ export const Header: React.FC<HeaderProps> = ({
               type="button"
               id="header-seed-demo-btn"
               onClick={onSeedDemoData}
-              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white hover:bg-[#FAF2E1] text-[#29202F] border border-[#EFE3CF] text-xs font-semibold transition-all cursor-pointer shadow-xs"
+              className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white hover:bg-[#FAF2E1] text-[#29202F] border border-[#E7D3BB] text-xs font-semibold transition-all cursor-pointer shadow-xs"
               title="Cargar datos de prueba"
             >
               <Database className="w-3.5 h-3.5 text-[#62B95B]" />
@@ -164,7 +164,7 @@ export const Header: React.FC<HeaderProps> = ({
               type="button"
               onClick={onSearchOpen}
               id="global-search-btn"
-              className="p-2 sm:px-3 sm:py-1.5 rounded-2xl bg-white border border-[#EFE3CF] text-[#6E5D77] hover:text-[#29202F] hover:bg-[#FAF2E1] text-xs font-medium flex items-center gap-2 transition-colors cursor-pointer shadow-xs"
+              className="p-2 sm:px-3 sm:py-1.5 rounded-2xl bg-white border border-[#E7D3BB] text-[#6E5D77] hover:text-[#29202F] hover:bg-[#FAF2E1] text-xs font-medium flex items-center gap-2 transition-colors cursor-pointer shadow-xs"
               title="Buscar en cultivos y bitácora"
             >
               <Search className="w-4 h-4 text-[#9887A2]" />
@@ -181,7 +181,7 @@ export const Header: React.FC<HeaderProps> = ({
               className={`px-3 py-1.5 rounded-2xl text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border shadow-xs ${
                 isAdvancedMode
                   ? 'bg-[#6C45C7]/10 text-[#6C45C7] border-[#6C45C7]/30'
-                  : 'bg-white text-[#6E5D77] border-[#EFE3CF] hover:bg-[#FAF2E1]'
+                  : 'bg-white text-[#6E5D77] border-[#E7D3BB] hover:bg-[#FAF2E1]'
               }`}
               title="Alternar entre modo simple y avanzado"
             >
@@ -197,7 +197,7 @@ export const Header: React.FC<HeaderProps> = ({
               type="button"
               id="header-notification-btn"
               onClick={onOpenNotifications}
-              className="relative p-2 rounded-2xl bg-white border border-[#EFE3CF] text-[#29202F] hover:bg-[#FAF2E1] transition-colors cursor-pointer flex items-center justify-center shadow-xs"
+              className="relative p-2 rounded-2xl bg-white border border-[#E7D3BB] text-[#29202F] hover:bg-[#FAF2E1] transition-colors cursor-pointer flex items-center justify-center shadow-xs"
               title="Notificaciones y avisos"
             >
               <Bell className="w-4 h-4 text-[#29202F]" />
@@ -231,7 +231,7 @@ export const Header: React.FC<HeaderProps> = ({
               className={`p-1.5 sm:px-3 sm:py-1.5 rounded-2xl bg-white border transition-all flex items-center gap-2 cursor-pointer shadow-xs ${
                 isUserMenuOpen
                   ? 'border-[#6C45C7] text-[#29202F]'
-                  : 'border-[#EFE3CF] text-[#29202F] hover:bg-[#FAF2E1]'
+                  : 'border-[#E7D3BB] text-[#29202F] hover:bg-[#FAF2E1]'
               }`}
               title="Perfil y configuración"
             >
@@ -261,10 +261,10 @@ export const Header: React.FC<HeaderProps> = ({
             {isUserMenuOpen && (
               <div
                 id="header-user-dropdown-menu"
-                className="absolute right-0 mt-2 w-72 sm:w-80 rounded-3xl bg-white border border-[#EFE3CF] shadow-2xl p-3 z-50 animate-fade-in space-y-1.5"
+                className="absolute right-0 mt-2 w-72 sm:w-80 rounded-3xl bg-white border border-[#E7D3BB] shadow-2xl p-3 z-50 animate-fade-in space-y-1.5"
               >
                 {/* Cabecera del usuario en el menú */}
-                <div className="p-3 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] flex items-center gap-3">
+                <div className="p-3 rounded-2xl bg-[#FFFDF7] border border-[#E7D3BB] flex items-center gap-3">
                   {userProfile?.photoURL || currentUser?.photoURL ? (
                     <img
                       src={userProfile?.photoURL || currentUser?.photoURL || ''}

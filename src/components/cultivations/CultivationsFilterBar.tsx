@@ -104,12 +104,12 @@ export const CultivationsFilterBar: React.FC<CultivationsFilterBarProps> = ({
   return (
     <div
       id="cultivations-filter-bar"
-      className="bg-white rounded-[32px] p-4 sm:p-6 border border-[#EFE3CF] shadow-xs space-y-4"
+      className="bg-white rounded-[32px] p-4 sm:p-6 border border-[#E7D3BB] shadow-xs space-y-4"
     >
       {/* Nivel Superior: Selector de Estado (Activos / Finalizados / Todos) + Barra de Búsqueda */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         {/* Pestañas de Estado Principal */}
-        <div className="flex items-center gap-1.5 p-1 bg-[#FFF8E8] rounded-2xl border border-[#EFE3CF] self-start sm:self-auto">
+        <div className="flex items-center gap-1.5 p-1 bg-[#FFFDF7] rounded-2xl border border-[#E7D3BB] self-start sm:self-auto">
           {statusTabs.map((tab) => {
             const isSelected = statusFilter === tab.id;
             return (
@@ -147,7 +147,7 @@ export const CultivationsFilterBar: React.FC<CultivationsFilterBarProps> = ({
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Buscar cultivo..."
-              className="w-full pl-10 pr-9 py-2 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs font-medium text-[#29202F] placeholder-[#9887A2] focus:outline-hidden focus:border-[#6C45C7] focus:bg-white transition-colors"
+              className="w-full pl-10 pr-9 py-2 rounded-2xl bg-[#FFFDF7] border border-[#E7D3BB] text-xs font-medium text-[#29202F] placeholder-[#9887A2] focus:outline-hidden focus:border-[#6C45C7] focus:bg-white transition-colors"
             />
             {searchQuery && (
               <button
@@ -169,7 +169,7 @@ export const CultivationsFilterBar: React.FC<CultivationsFilterBarProps> = ({
                 onFilterChange('all');
                 onSearchChange('');
               }}
-              className="px-3 py-2 rounded-2xl bg-[#FAF2E1] hover:bg-[#EFE3CF] text-[#29202F] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 border border-[#EFE3CF]"
+              className="px-3 py-2 rounded-2xl bg-[#FAF2E1] hover:bg-[#EFE3CF] text-[#29202F] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 border border-[#E7D3BB]"
               title="Restablecer filtros"
             >
               <X className="w-3.5 h-3.5 text-[#6E5D77]" />
@@ -181,7 +181,7 @@ export const CultivationsFilterBar: React.FC<CultivationsFilterBarProps> = ({
 
       {/* Segundo Nivel: Filtro por Etapas (solo en modo 'Activos') */}
       {statusFilter === 'active' && (
-        <div className="pt-3 border-t border-[#EFE3CF] flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+        <div className="pt-3 border-t border-[#E7D3BB] flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
           <span className="flex items-center gap-1 text-[11px] font-bold text-[#9887A2] mr-1 shrink-0">
             <SlidersHorizontal className="w-3 h-3 text-[#6C45C7]" />
             Etapa:
@@ -200,7 +200,7 @@ export const CultivationsFilterBar: React.FC<CultivationsFilterBarProps> = ({
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition-all shrink-0 cursor-pointer ${
                   isSelected
                     ? 'bg-[#62B95B]/15 text-[#2d6b28] border-[#62B95B] shadow-2xs'
-                    : 'bg-[#FFFDF7] hover:bg-[#FAF2E1] border-[#EFE3CF] text-[#6E5D77] hover:text-[#29202F]'
+                    : 'bg-[#FFFDF7] hover:bg-[#FAF2E1] border-[#E7D3BB] text-[#6E5D77] hover:text-[#29202F]'
                 }`}
               >
                 <span className={isSelected ? 'text-[#62B95B]' : 'text-[#9887A2]'}>{tab.icon}</span>
@@ -220,7 +220,7 @@ export const CultivationsFilterBar: React.FC<CultivationsFilterBarProps> = ({
 
       {/* Indicador de resultados activos cuando hay filtros */}
       {hasActiveFilters && (
-        <div className="flex items-center justify-between text-[11px] text-[#6E5D77] px-1 pt-1 border-t border-[#EFE3CF]">
+        <div className="flex items-center justify-between text-[11px] text-[#6E5D77] px-1 pt-1 border-t border-[#E7D3BB]">
           <span>
             Mostrando <strong className="text-[#29202F]">{totalFilteredCount}</strong> cultivo{totalFilteredCount !== 1 ? 's' : ''}
             {hasStageFilter && (
