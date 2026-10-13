@@ -118,6 +118,25 @@ export default function App() {
   const [stageFilter, setStageFilter] = useState<StageFilterCategory>('all');
   const [cultivationSearchQuery, setCultivationSearchQuery] = useState('');
 
+  // ─────────────────────────────────────────────────────────────
+  // CULTIVETA DESIGN SYSTEM: ATMÓSFERA VISUAL SEGÚN VIEW ACTIVA
+  // ─────────────────────────────────────────────────────────────
+  const pageAtmosphereClass = useMemo(() => {
+    switch (currentView) {
+      case 'dashboard':
+        return 'cultiveta-page-home';
+      case 'cultivations':
+      case 'cultivation_detail':
+        return 'cultiveta-page-cultivations';
+      case 'genetics':
+        return 'cultiveta-page-genetics';
+      case 'ai_assistant':
+        return 'cultiveta-page-ai';
+      default:
+        return 'cultiveta-page-default';
+    }
+  }, [currentView]);
+
   const filteredCultivations = useMemo(() => {
     return cultivations
       .filter((crop) => {
@@ -492,25 +511,6 @@ export default function App() {
       />
     );
   }
-
-  // ─────────────────────────────────────────────────────────────
-  // CULTIVETA DESIGN SYSTEM: ATMÓSFERA VISUAL SEGÚN VIEW ACTIVA
-  // ─────────────────────────────────────────────────────────────
-  const pageAtmosphereClass = useMemo(() => {
-    switch (currentView) {
-      case 'dashboard':
-        return 'cultiveta-page-home';
-      case 'cultivations':
-      case 'cultivation_detail':
-        return 'cultiveta-page-cultivations';
-      case 'genetics':
-        return 'cultiveta-page-genetics';
-      case 'ai_assistant':
-        return 'cultiveta-page-ai';
-      default:
-        return 'cultiveta-page-default';
-    }
-  }, [currentView]);
 
   return (
     <div className={`cultiveta-app-shell ${pageAtmosphereClass} text-[#29202F] flex flex-col selection:bg-[#6C45C7] selection:text-white`}>

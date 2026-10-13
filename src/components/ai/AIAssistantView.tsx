@@ -198,10 +198,14 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
       setMessages((prev) => [...prev, replyMsg]);
     } catch (err: any) {
       console.error('Error in chat with AI', err);
+      const rawMsg = err?.message || '';
+      const friendlyText = rawMsg && (rawMsg.includes('créditos') || rawMsg.includes('cuota') || rawMsg.includes('agotados') || rawMsg.includes('RESOURCE_EXHAUSTED'))
+        ? rawMsg
+        : 'Disculpa, ocurrió un inconveniente con el modelo agronómico. Todos tus registros, riegos y cálculos botánicos continúan disponibles normalmente.';
       const errorMsg: AIChatMessage = {
         id: `err-${Date.now()}`,
         sender: 'ai',
-        text: 'Disculpa, ocurrió un error al consultar el modelo agronómico. Por favor intenta de nuevo en unos momentos.',
+        text: friendlyText,
         timestamp: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
       };
       setMessages((prev) => [...prev, errorMsg]);
