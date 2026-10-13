@@ -627,13 +627,13 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                     key={`${item.seedBank}-${item.name}`}
                     className="bg-white rounded-[30px] border border-stone-200/80 shadow-sm overflow-hidden p-4 space-y-4 w-full"
                   >
-                    {/* 1. Fotografía grande con aspect-[295/176] y rounded-[24px] SIN NINGÚN DEGRADÉ NEGRO NI OVERLAY OSCURO */}
-                    <div className="relative w-full aspect-[295/176] rounded-[24px] overflow-hidden bg-stone-100 border border-stone-200/60">
+                    {/* 1. Fotografía grande con aspect-[295/176], rounded-[24px], hover zoom sutil, SIN DEGRADÉ NEGRO NI OVERLAY OSCURO */}
+                    <div className="group relative w-full aspect-[295/176] rounded-[24px] overflow-hidden bg-stone-100 border border-stone-200/60">
                       {officialPhoto ? (
                         <img
                           src={officialPhoto}
                           alt={`${item.name} - ${item.seedBank}`}
-                          className="w-full h-full object-cover rounded-[24px]"
+                          className="w-full h-full object-cover rounded-[24px] transition-transform duration-500 ease-out group-hover:scale-[1.04]"
                           loading="lazy"
                         />
                       ) : (
@@ -643,38 +643,38 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                         </div>
                       )}
 
-                      {/* 2. Contenido sobre la foto en esquina superior izquierda (Sin caja negra ni overlay detrás) */}
-                      <div className="absolute left-4 top-4 z-10 flex flex-col items-start gap-1.5 max-w-[85%]">
-                        {/* Nombre de la genética */}
+                      {/* 2. Contenido sobre la foto (Nombre, Banco y Tipo reducidos aproximadamente al 50%, sin agrandarse en hover) */}
+                      <div className="absolute left-4 top-4 z-10 flex flex-col items-start gap-1 max-w-[85%] pointer-events-none">
+                        {/* Nombre de la genética: reducido a 18px / 20px */}
                         <h2
-                          className="text-white font-black uppercase leading-none text-[32px] sm:text-[38px] drop-shadow-[0_2px_3px_rgba(0,0,0,0.35)] truncate max-w-full"
+                          className="text-[18px] sm:text-[20px] font-black uppercase leading-none text-white drop-shadow-[0_2px_3px_rgba(0,0,0,0.35)] truncate max-w-full"
                         >
                           {item.name}
                         </h2>
 
-                        {/* Banco / breeder con fondo propio claro */}
-                        <span className="inline-flex items-center rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-1 text-sm font-semibold text-emerald-800 shadow-2xs">
+                        {/* Banco / breeder con fondo claro propio: reducido a text-xs, px-2.5 py-1 */}
+                        <span className="inline-flex items-center rounded-lg bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs font-semibold text-emerald-800 shadow-2xs">
                           {item.seedBank}
                         </span>
 
-                        {/* Dominancia / clasificación con fondo claro propio */}
-                        <span className="inline-flex items-center rounded-full bg-[#FFF8EB] border border-amber-400 px-3 py-1 text-sm font-bold text-stone-800 shadow-2xs">
+                        {/* Dominancia / clasificación con fondo claro propio: reducida a text-xs, px-2.5 py-1 */}
+                        <span className="inline-flex items-center rounded-full bg-[#FFF8EB] border border-amber-400 px-2.5 py-1 text-xs font-bold text-stone-800 shadow-2xs">
                           {item.dominance}
                         </span>
                       </div>
                     </div>
 
-                    {/* 3. Debajo de la fotografía: Fila de dos elementos (Rendimiento + Floración) */}
+                    {/* 3. Debajo de la fotografía: Fila de dos elementos en violeta elegante con texto e iconos en blanco */}
                     <div className="grid grid-cols-2 gap-3">
                       {/* Rendimiento */}
-                      <div className="flex items-center justify-center gap-2 rounded-full border border-stone-200 bg-stone-50 px-3 py-2 text-stone-700 font-semibold text-xs sm:text-sm">
-                        <Scale className="w-4 h-4 text-stone-500 shrink-0" />
+                      <div className="flex items-center justify-center gap-2 rounded-full bg-violet-600 px-3 py-2 text-white font-semibold text-xs sm:text-sm shadow-sm">
+                        <Scale className="w-4 h-4 text-white shrink-0" />
                         <span className="truncate">{item.estimatedYield} g/m²</span>
                       </div>
 
                       {/* Floración */}
-                      <div className="flex items-center justify-center gap-2 rounded-full border border-stone-200 bg-stone-50 px-3 py-2 text-stone-700 font-semibold text-xs sm:text-sm">
-                        <Clock className="w-4 h-4 text-stone-500 shrink-0" />
+                      <div className="flex items-center justify-center gap-2 rounded-full bg-violet-600 px-3 py-2 text-white font-semibold text-xs sm:text-sm shadow-sm">
+                        <Clock className="w-4 h-4 text-white shrink-0" />
                         <span className="truncate">{item.floweringDays} d</span>
                       </div>
                     </div>

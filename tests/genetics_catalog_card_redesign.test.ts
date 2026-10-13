@@ -125,46 +125,37 @@ export async function runGeneticsCatalogCardRedesignTests(): Promise<{ passed: n
   const cardEl = container.querySelector('article') as HTMLElement;
   assert(cardEl !== null, 'Tarjeta mobile de genética montada en DOM');
 
-  // 1. Nombre de la genética sobre la foto
+  // 1. Nombre de la genética sobre la foto (reducido a text-[18px])
   const skunk1NameEl = cardEl.querySelector('h2');
-  assert(skunk1NameEl !== null && skunk1NameEl.textContent?.trim() === 'Skunk #1', '1. Nombre "Skunk #1" aparece como h2');
+  assert(skunk1NameEl !== null && skunk1NameEl.textContent?.trim() === 'Skunk #1', '1a. Nombre "Skunk #1" aparece como h2');
+  assert(skunk1NameEl?.classList.contains('text-[18px]'), '1b. Nombre reducido a text-[18px]');
 
-  // 2. Foto grande con aspect-[295/176] y rounded-[24px]
-  const photoContainer = cardEl.querySelector('.aspect-\\[295\\/176\\]');
-  assert(photoContainer !== null, '2a. Contenedor de fotografía con aspect-[295/176] presente');
-  const imgEl = photoContainer?.querySelector('img');
-  assert(imgEl !== null, '2b. Imagen renderizada con object-cover');
-
-  // 3. Cero degradé negro o sombra encima de la foto (foto 100% limpia)
-  const allHtmlInsidePhoto = photoContainer?.innerHTML || '';
-  assert(!allHtmlInsidePhoto.includes('bg-gradient-to'), '3a. No hay clases bg-gradient-to encima de la foto');
-  assert(!allHtmlInsidePhoto.includes('from-black'), '3b. No hay from-black en la foto');
-  assert(!allHtmlInsidePhoto.includes('to-black'), '3c. No hay to-black en la foto');
-  assert(!allHtmlInsidePhoto.includes('via-black'), '3d. No hay via-black en la foto');
-
-  // 4. Banco sobre la foto con fondo claro propio
-  const bankBadge = Array.from(photoContainer?.querySelectorAll('span') || []).find(
+  // 1c. Banco reducido (text-xs)
+  const bankBadge = Array.from(cardEl.querySelectorAll('span')).find(
     (s) => s.textContent?.trim() === 'Sensi Seeds'
   );
-  assert(bankBadge !== undefined && bankBadge.classList.contains('bg-emerald-50'), '4. Banco "Sensi Seeds" en badge claro sobre la foto');
+  assert(bankBadge !== undefined && bankBadge.classList.contains('text-xs'), '1c. Banco reducido a text-xs');
 
-  // 5. Dominancia sobre la foto con fondo claro propio
-  const domBadge = Array.from(photoContainer?.querySelectorAll('span') || []).find(
+  // 1d. Dominancia reducida (text-xs)
+  const domBadge = Array.from(cardEl.querySelectorAll('span')).find(
     (s) => s.textContent?.includes('Híbrida')
   );
-  assert(domBadge !== undefined && domBadge.classList.contains('bg-[#FFF8EB]'), '5. Dominancia "Híbrida" en badge claro sobre la foto');
+  assert(domBadge !== undefined && domBadge.classList.contains('text-xs'), '1d. Dominancia reducida a text-xs');
 
-  // 6. Debajo de la foto: Fila de DOS elementos (Rendimiento + Floración)
-  const yieldPill = Array.from(cardEl.querySelectorAll('span')).find(
-    (s) => s.textContent?.includes('500 - 600 g/m²')
-  );
-  assert(yieldPill !== undefined, '6a. Rendimiento en pill pill grande debajo de foto');
+  // 2. Foto grande con zoom hover group-hover:scale-[1.04]
+  const photoContainer = Array.from(cardEl.querySelectorAll('div')).find((d) => d.className.includes('aspect-[295/176]'));
+  assert(photoContainer !== null, '2a. Contenedor de fotografía con aspect-[295/176] presente');
+  assert(photoContainer?.classList.contains('group'), '2b. Contenedor tiene clase group para hover zoom');
+  const imgEl = photoContainer?.querySelector('img');
+  assert(imgEl !== null, '2c. Imagen renderizada con object-cover');
+  assert(imgEl?.classList.contains('group-hover:scale-[1.04]'), '2d. Imagen tiene efecto de hover zoom group-hover:scale-[1.04]');
 
-  const flowPill = Array.from(cardEl.querySelectorAll('span')).find(
-    (s) => s.textContent?.includes('45 - 50 d')
-  );
-  assert(flowPill !== undefined, '6b. Floración en pill grande debajo de foto');
-
+  // 4 & 5. Rendimiento y Floración en violeta con texto e iconos en blanco
+  const violetPills = Array.from(cardEl.querySelectorAll('.bg-violet-600'));
+  assert(violetPills.length === 2, '4a. Exactamente 2 pills con fondo violeta (bg-violet-600)');
+  assert(violetPills.every((p) => p.classList.contains('text-white')), '4b. Pills de rendimiento y floración con texto en blanco (text-white)');
+  const whiteIcons = Array.from(cardEl.querySelectorAll('.bg-violet-600 svg.text-white'));
+  assert(whiteIcons.length === 2, '4c. Iconos Scale y Clock con color blanco (text-white)');
   // 7. Bloque AROMA Y GUSTO
   const aromaHeader = Array.from(cardEl.querySelectorAll('span')).find(
     (s) => s.textContent?.trim() === 'AROMA Y GUSTO'
