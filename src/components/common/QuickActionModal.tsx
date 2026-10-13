@@ -92,11 +92,11 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#29202F]/40 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className="w-full sm:max-w-md bg-[#FFFDF7] rounded-t-[32px] sm:rounded-[32px] border border-[#E7D3BB] shadow-2xl p-6 sm:p-7 space-y-5 animate-in slide-in-from-bottom duration-250 max-h-[90vh] overflow-y-auto"
+        className="w-full sm:max-w-md bg-[#FFFDF7] rounded-t-[32px] sm:rounded-[32px] border border-[#D1EAEF] shadow-2xl p-6 sm:p-7 space-y-5 animate-in slide-in-from-bottom duration-250 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cabecera del modal */}
-        <div className="flex items-center justify-between pb-3 border-b border-[#E7D3BB]">
+        <div className="flex items-center justify-between pb-3 border-b border-[#D1EAEF]">
           <div>
             <h2 className="text-lg font-extrabold text-[#29202F]">
               ¿Qué anotamos hoy? 🌱
@@ -122,7 +122,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
             type="button"
             id="quick-action-watering"
             onClick={() => handleActionClick('watering')}
-            className="flex flex-col items-start p-4 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#E7D3BB] transition-all hover:scale-[1.02] active:scale-[0.98] text-left cursor-pointer shadow-xs group"
+            className="flex flex-col items-start p-4 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] transition-all hover:scale-[1.02] active:scale-[0.98] text-left cursor-pointer shadow-xs group"
           >
             <div className="w-10 h-10 rounded-xl bg-[#62B95B]/15 text-[#62B95B] flex items-center justify-center mb-2.5 group-hover:bg-[#62B95B] group-hover:text-white transition-colors">
               <Droplets className="w-5 h-5 stroke-[2.2]" />
@@ -138,7 +138,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
             type="button"
             id="quick-action-photo"
             onClick={() => handleActionClick('photo')}
-            className="flex flex-col items-start p-4 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#E7D3BB] transition-all hover:scale-[1.02] active:scale-[0.98] text-left cursor-pointer shadow-xs group"
+            className="flex flex-col items-start p-4 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] transition-all hover:scale-[1.02] active:scale-[0.98] text-left cursor-pointer shadow-xs group"
           >
             <div className="w-10 h-10 rounded-xl bg-[#6C45C7]/15 text-[#6C45C7] flex items-center justify-center mb-2.5 group-hover:bg-[#6C45C7] group-hover:text-white transition-colors">
               <Camera className="w-5 h-5 stroke-[2.2]" />
@@ -154,7 +154,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
             type="button"
             id="quick-action-note"
             onClick={() => handleActionClick('note')}
-            className="flex flex-col items-start p-4 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#E7D3BB] transition-all hover:scale-[1.02] active:scale-[0.98] text-left cursor-pointer shadow-xs group"
+            className="flex flex-col items-start p-4 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] transition-all hover:scale-[1.02] active:scale-[0.98] text-left cursor-pointer shadow-xs group"
           >
             <div className="w-10 h-10 rounded-xl bg-[#F3C843]/25 text-[#29202F] flex items-center justify-center mb-2.5 group-hover:bg-[#F3C843] transition-colors">
               <BookOpen className="w-5 h-5 stroke-[2.2]" />
@@ -170,7 +170,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
             type="button"
             id="quick-action-ai"
             onClick={() => handleActionClick('ai-analyze')}
-            className="flex flex-col items-start p-4 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#E7D3BB] transition-all hover:scale-[1.02] active:scale-[0.98] text-left cursor-pointer shadow-xs group"
+            className="flex flex-col items-start p-4 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] transition-all hover:scale-[1.02] active:scale-[0.98] text-left cursor-pointer shadow-xs group"
           >
             <div className="w-10 h-10 rounded-xl bg-[#6C45C7]/15 text-[#6C45C7] flex items-center justify-center mb-2.5 group-hover:bg-[#6C45C7] group-hover:text-white transition-colors">
               <Sparkles className="w-5 h-5 stroke-[2.2]" />
@@ -188,7 +188,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
             type="button"
             id="quick-action-more-toggle"
             onClick={() => setShowMoreActions((prev) => !prev)}
-            className="w-full py-2.5 px-3 rounded-2xl bg-[#FFFDF7] hover:bg-[#FAF2E1] border border-[#E7D3BB] flex items-center justify-between text-xs font-bold text-[#29202F] transition-colors cursor-pointer"
+            className="w-full py-2.5 px-3 rounded-2xl bg-[#FFFDF7] hover:bg-[#FAF2E1] border border-[#D1EAEF] flex items-center justify-between text-xs font-bold text-[#29202F] transition-colors cursor-pointer"
           >
             <span>Más registros técnicos</span>
             <ChevronDown
@@ -205,7 +205,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
                 type="button"
                 id="quick-action-environment"
                 onClick={() => handleActionClick('environment')}
-                className="flex items-center gap-2.5 p-3 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#E7D3BB] text-left transition-all cursor-pointer shadow-2xs"
+                className="flex items-center gap-2.5 p-3 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] text-left transition-all cursor-pointer shadow-2xs"
               >
                 <div className="p-2 rounded-xl bg-[#EB7864]/15 text-[#EB7864]">
                   <Thermometer className="w-4 h-4" />
@@ -221,7 +221,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
                 type="button"
                 id="quick-action-measurement"
                 onClick={() => handleActionClick('measurement')}
-                className="flex items-center gap-2.5 p-3 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#E7D3BB] text-left transition-all cursor-pointer shadow-2xs"
+                className="flex items-center gap-2.5 p-3 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] text-left transition-all cursor-pointer shadow-2xs"
               >
                 <div className="p-2 rounded-xl bg-[#62B95B]/15 text-[#62B95B]">
                   <FlaskConical className="w-4 h-4" />
@@ -236,7 +236,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
         </div>
 
         {/* Footer: Crear nuevo cultivo como acceso secundario limpio */}
-        <div className="pt-2 border-t border-[#E7D3BB] text-center">
+        <div className="pt-2 border-t border-[#D1EAEF] text-center">
           <button
             type="button"
             id="quick-action-new-crop"

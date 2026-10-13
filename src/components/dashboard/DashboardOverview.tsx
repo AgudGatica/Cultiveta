@@ -539,7 +539,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               id="refresh-dashboard-btn"
               onClick={onRefreshData}
               disabled={isSyncing}
-              className="p-3 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#E7D3BB] text-[#6E5D77] hover:text-[#29202F] transition-all cursor-pointer shadow-xs disabled:opacity-50"
+              className="p-3 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] text-[#6E5D77] hover:text-[#29202F] transition-all cursor-pointer shadow-xs disabled:opacity-50"
               title="Sincronizar datos"
             >
               <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin text-[#62B95B]' : ''}`} />
@@ -594,8 +594,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         <>
           {/* 2. Tarjeta Cultivo Principal (Responde: ¿Cómo está mi cultivo? ¿Qué tengo que hacer hoy? ¿Hay algo que mirar?) */}
           {activeCrops.length === 0 ? (
-            <div className="bg-white rounded-[32px] p-8 sm:p-12 border border-[#E7D3BB] text-center space-y-4 shadow-xs">
-              <div className="w-16 h-16 rounded-2xl bg-[#FAF2E1] border border-[#E7D3BB] text-[#62B95B] flex items-center justify-center mx-auto">
+            <div className="bg-white rounded-[32px] p-8 sm:p-12 border border-[#D1EAEF] text-center space-y-4 shadow-xs">
+              <div className="w-16 h-16 rounded-2xl bg-[#FAF2E1] border border-[#D1EAEF] text-[#62B95B] flex items-center justify-center mx-auto">
                 <Sprout className="w-8 h-8" />
               </div>
               <div>
@@ -617,13 +617,13 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             primaryCrop && (
               <div
                 id="main-crop-hero-card"
-                className="bg-white rounded-[32px] p-6 sm:p-8 border border-[#E7D3BB] shadow-xs relative overflow-hidden space-y-6"
+                className="bg-white rounded-[32px] p-6 sm:p-8 border border-[#D1EAEF] shadow-xs relative overflow-hidden space-y-6"
               >
                 {/* 4 Mini-Stats en la parte superior izquierda, antes del selector Cultivos */}
                 <div className="grid grid-cols-2 sm:flex sm:flex-row sm:items-center gap-2">
                   <div
                     id="stat-active-crops"
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[#FAF2E1]/70 border border-[#E7D3BB]"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[#FAF2E1]/70 border border-[#D1EAEF]"
                   >
                     <div className="p-1.5 rounded-xl bg-[#62B95B]/15 text-[#62B95B] shrink-0">
                       <Sprout className="w-3.5 h-3.5" />
@@ -640,7 +640,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
                   <div
                     id="stat-total-plants"
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[#FAF2E1]/70 border border-[#E7D3BB]"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[#FAF2E1]/70 border border-[#D1EAEF]"
                   >
                     <div className="p-1.5 rounded-xl bg-[#FAF2E1] text-[#29202F] shrink-0">
                       <Layers className="w-3.5 h-3.5" />
@@ -657,7 +657,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
                   <div
                     id="stat-recent-waterings"
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[#FAF2E1]/70 border border-[#E7D3BB]"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[#FAF2E1]/70 border border-[#D1EAEF]"
                   >
                     <div className="p-1.5 rounded-xl bg-[#6C45C7]/15 text-[#6C45C7] shrink-0">
                       <Droplets className="w-3.5 h-3.5" />
@@ -674,7 +674,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
                   <div
                     id="stat-diary-photos"
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[#FAF2E1]/70 border border-[#E7D3BB]"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[#FAF2E1]/70 border border-[#D1EAEF]"
                   >
                     <div className="p-1.5 rounded-xl bg-[#F3C843]/25 text-[#29202F] shrink-0">
                       <Camera className="w-3.5 h-3.5" />
@@ -714,7 +714,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 )}
 
                 {/* Cabecera del Cultivo: Nombre, Día, Etapa */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#E7D3BB]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#D1EAEF]">
                   <div>
                     <h2
                       onClick={() => onSelectCultivation(primaryCrop)}
@@ -777,7 +777,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 {/* Grid de 3 Capas: Hoy, Ambiente, Último Riego */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {/* Columna 1: Hoy */}
-                  <div className="p-4 sm:p-5 rounded-2xl bg-[#FFFDF7] border border-[#E7D3BB] flex flex-col justify-between space-y-3">
+                  <div className="p-4 sm:p-5 rounded-2xl bg-[#FFFDF7] border border-[#D1EAEF] flex flex-col justify-between space-y-3">
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-[11px] font-bold uppercase tracking-wider text-[#9887A2]">
@@ -800,7 +800,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
                       {/* Próximo Riego Forecast (Discreto en bloque Hoy) */}
                       {forecastDisplay && (
-                        <div className="pt-2 border-t border-[#E7D3BB]/60 space-y-1">
+                        <div className="pt-2 border-t border-[#D1EAEF]/60 space-y-1">
                           <div className="flex items-center justify-between text-[11px]">
                             <span className="font-bold text-[#6E5D77] flex items-center gap-1">
                               <Droplets className="w-3 h-3 text-[#62B95B]" />
@@ -816,7 +816,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                             {forecastDisplay.text}
                           </p>
                           {showWhyForecast ? (
-                            <div className="p-2 rounded-xl bg-[#FAF2E1] border border-[#E7D3BB] text-[10px] text-[#6E5D77] space-y-1">
+                            <div className="p-2 rounded-xl bg-[#FAF2E1] border border-[#D1EAEF] text-[10px] text-[#6E5D77] space-y-1">
                               {primaryCropIrrigationForecast?.factors.slice(0, 3).map((f, i) => (
                                 <p key={i}>• {f}</p>
                               ))}
@@ -841,11 +841,11 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 pt-2 border-t border-[#E7D3BB]">
+                    <div className="flex items-center gap-2 pt-2 border-t border-[#D1EAEF]">
                       <button
                         type="button"
                         onClick={() => onOpenWateringModal(primaryCrop)}
-                        className="flex-1 py-2 px-2.5 rounded-xl bg-white hover:bg-[#FAF2E1] border border-[#E7D3BB] text-[#29202F] font-bold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                        className="flex-1 py-2 px-2.5 rounded-xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] text-[#29202F] font-bold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
                       >
                         <Droplets className="w-3.5 h-3.5 text-[#62B95B]" />
                         <span>Regar</span>
@@ -853,7 +853,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                       <button
                         type="button"
                         onClick={() => onOpenPhotoModal(primaryCrop)}
-                        className="flex-1 py-2 px-2.5 rounded-xl bg-white hover:bg-[#FAF2E1] border border-[#E7D3BB] text-[#29202F] font-bold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
+                        className="flex-1 py-2 px-2.5 rounded-xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] text-[#29202F] font-bold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
                       >
                         <Camera className="w-3.5 h-3.5 text-[#6C45C7]" />
                         <span>Foto</span>
@@ -862,7 +862,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                   </div>
 
                   {/* Columna 2: Ambiente (Progressive Disclosure) */}
-                  <div className="p-4 sm:p-5 rounded-2xl bg-[#FFFDF7] border border-[#E7D3BB] flex flex-col justify-between space-y-3">
+                  <div className="p-4 sm:p-5 rounded-2xl bg-[#FFFDF7] border border-[#D1EAEF] flex flex-col justify-between space-y-3">
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-[11px] font-bold uppercase tracking-wider text-[#9887A2]">
@@ -885,11 +885,11 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                       </div>
                     </div>
 
-                    <div className="pt-2 border-t border-[#E7D3BB]">
+                    <div className="pt-2 border-t border-[#D1EAEF]">
                       <button
                         type="button"
                         onClick={() => setShowEnvDetails((prev) => !prev)}
-                        className="w-full py-2 px-2.5 rounded-xl bg-white hover:bg-[#FAF2E1] border border-[#E7D3BB] text-[#6C45C7] font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="w-full py-2 px-2.5 rounded-xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] text-[#6C45C7] font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <span>{showEnvDetails ? 'Ocultar detalles' : 'Ver detalles de ambiente'}</span>
                         <ChevronDown
@@ -902,7 +902,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                   </div>
 
                   {/* Columna 3: Último Riego (Progressive Disclosure) */}
-                  <div className="p-4 sm:p-5 rounded-2xl bg-[#FFFDF7] border border-[#E7D3BB] flex flex-col justify-between space-y-3">
+                  <div className="p-4 sm:p-5 rounded-2xl bg-[#FFFDF7] border border-[#D1EAEF] flex flex-col justify-between space-y-3">
                     <div>
                       <div className="flex items-center justify-between mb-2">
                         <span className="text-[11px] font-bold uppercase tracking-wider text-[#9887A2]">
@@ -923,11 +923,11 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                       </div>
                     </div>
 
-                    <div className="pt-2 border-t border-[#E7D3BB]">
+                    <div className="pt-2 border-t border-[#D1EAEF]">
                       <button
                         type="button"
                         onClick={() => setShowWateringDetails((prev) => !prev)}
-                        className="w-full py-2 px-2.5 rounded-xl bg-white hover:bg-[#FAF2E1] border border-[#E7D3BB] text-[#6C45C7] font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="w-full py-2 px-2.5 rounded-xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] text-[#6C45C7] font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <span>{showWateringDetails ? 'Ocultar' : 'Ver pH, EC y productos'}</span>
                         <ChevronDown
@@ -942,8 +942,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
                 {/* Detalles Expandidos de Ambiente */}
                 {showEnvDetails && (
-                  <div className="p-5 rounded-2xl bg-[#FFFDF7] border border-[#E7D3BB] space-y-4 animate-in fade-in duration-200">
-                    <div className="flex items-center justify-between pb-2 border-b border-[#E7D3BB]">
+                  <div className="p-5 rounded-2xl bg-[#FFFDF7] border border-[#D1EAEF] space-y-4 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#D1EAEF]">
                       <h4 className="text-sm font-extrabold text-[#29202F]">
                         Parámetros Ambientales Detallados
                       </h4>
@@ -957,7 +957,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                      <div className="p-3 rounded-xl bg-white border border-[#E7D3BB]">
+                      <div className="p-3 rounded-xl bg-white border border-[#D1EAEF]">
                         <span className="text-[10px] text-[#9887A2] block">Temperatura</span>
                         <span className="text-base font-black text-[#29202F] block mt-0.5">
                           {latestEnvForPrimary?.temperature ?? latestEnvForPrimary?.temperatureC ?? '--'} °C
@@ -965,7 +965,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                         <span className="text-[10px] text-[#6E5D77] block mt-0.5">Óptimo: 20-27 °C</span>
                       </div>
 
-                      <div className="p-3 rounded-xl bg-white border border-[#E7D3BB]">
+                      <div className="p-3 rounded-xl bg-white border border-[#D1EAEF]">
                         <span className="text-[10px] text-[#9887A2] block">Humedad Relativa</span>
                         <span className="text-base font-black text-[#29202F] block mt-0.5">
                           {latestEnvForPrimary?.humidity ?? latestEnvForPrimary?.humidityPct ?? '--'} %
@@ -973,7 +973,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                         <span className="text-[10px] text-[#6E5D77] block mt-0.5">Óptimo: 45-65 %</span>
                       </div>
 
-                      <div className="p-3 rounded-xl bg-white border border-[#E7D3BB]">
+                      <div className="p-3 rounded-xl bg-white border border-[#D1EAEF]">
                         <span className="text-[10px] text-[#9887A2] block">VPD Estimado</span>
                         <span className="text-base font-black text-[#6C45C7] block mt-0.5">
                           {latestEnvForPrimary?.vpdKPa ?? latestEnvForPrimary?.vpd ?? '--'} kPa
@@ -981,7 +981,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                         <span className="text-[10px] text-[#6E5D77] block mt-0.5">Déficit de presión</span>
                       </div>
 
-                      <div className="p-3 rounded-xl bg-white border border-[#E7D3BB]">
+                      <div className="p-3 rounded-xl bg-white border border-[#D1EAEF]">
                         <span className="text-[10px] text-[#9887A2] block">Luz / PPFD</span>
                         <span className="text-base font-black text-[#29202F] block mt-0.5">
                           {latestEnvForPrimary?.ppfdUmols ?? '--'} µmol
@@ -1005,8 +1005,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
                 {/* Detalles Expandidos de Último Riego */}
                 {showWateringDetails && (
-                  <div className="p-5 rounded-2xl bg-[#FFFDF7] border border-[#E7D3BB] space-y-4 animate-in fade-in duration-200">
-                    <div className="flex items-center justify-between pb-2 border-b border-[#E7D3BB]">
+                  <div className="p-5 rounded-2xl bg-[#FFFDF7] border border-[#D1EAEF] space-y-4 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between pb-2 border-b border-[#D1EAEF]">
                       <h4 className="text-sm font-extrabold text-[#29202F]">
                         Detalle del Último Riego
                       </h4>
@@ -1021,25 +1021,25 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
                     {latestWateringForPrimary ? (
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                        <div className="p-3 rounded-xl bg-white border border-[#E7D3BB]">
+                        <div className="p-3 rounded-xl bg-white border border-[#D1EAEF]">
                           <span className="text-[10px] text-[#9887A2] block">Volumen</span>
                           <span className="text-base font-black text-[#29202F] block mt-0.5">
                             {latestWateringForPrimary.volumeLiters} L
                           </span>
                         </div>
-                        <div className="p-3 rounded-xl bg-white border border-[#E7D3BB]">
+                        <div className="p-3 rounded-xl bg-white border border-[#D1EAEF]">
                           <span className="text-[10px] text-[#9887A2] block">pH Entrada</span>
                           <span className="text-base font-black text-[#6C45C7] block mt-0.5">
                             {latestWateringForPrimary.phIn || 's/d'}
                           </span>
                         </div>
-                        <div className="p-3 rounded-xl bg-white border border-[#E7D3BB]">
+                        <div className="p-3 rounded-xl bg-white border border-[#D1EAEF]">
                           <span className="text-[10px] text-[#9887A2] block">EC Entrada</span>
                           <span className="text-base font-black text-[#62B95B] block mt-0.5">
                             {latestWateringForPrimary.ecIn ? `${latestWateringForPrimary.ecIn} mS` : 's/d'}
                           </span>
                         </div>
-                        <div className="p-3 rounded-xl bg-white border border-[#E7D3BB]">
+                        <div className="p-3 rounded-xl bg-white border border-[#D1EAEF]">
                           <span className="text-[10px] text-[#9887A2] block">Fertilizantes</span>
                           <span className="text-xs font-semibold text-[#29202F] block mt-0.5 truncate">
                             {latestWateringForPrimary.products && latestWateringForPrimary.products.length > 0
@@ -1058,7 +1058,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
                 {/* 4ta Capa: Ciclo del Cultivo del primaryCrop seleccionado */}
                 {primaryCropTimeline && (
-                  <div id="crop-lifecycle-card-section" className="pt-5 border-t border-[#E7D3BB] space-y-3">
+                  <div id="crop-lifecycle-card-section" className="pt-5 border-t border-[#D1EAEF] space-y-3">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="text-sm font-extrabold text-[#29202F]">
@@ -1102,7 +1102,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                     </div>
 
                     {/* Barra de progreso visual orgánica */}
-                    <div className="relative w-full h-3 bg-[#FAF2E1] rounded-full overflow-hidden border border-[#E7D3BB]">
+                    <div className="relative w-full h-3 bg-[#FAF2E1] rounded-full overflow-hidden border border-[#D1EAEF]">
                       <motion.div
                         key={`cycle-progress-bar-${primaryCrop.id}`}
                         id="cycle-progress-bar-fill"
@@ -1147,7 +1147,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
                     {/* Progressive disclosure: Desglose detallado de etapas configuradas para primaryCrop */}
                     {showLifecycleDetails && (
-                      <div id="crop-lifecycle-stage-breakdown" className="pt-3 border-t border-[#E7D3BB] grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs animate-in fade-in duration-200">
+                      <div id="crop-lifecycle-stage-breakdown" className="pt-3 border-t border-[#D1EAEF] grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs animate-in fade-in duration-200">
                         {primaryCropTimeline.milestones.map((m, mIdx) => {
                           let tag = 'Estimada';
                           if (m.isCurrent || mIdx === primaryCropTimeline.schedule.activeStageIndex) {
@@ -1175,8 +1175,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                                 m.isCurrent
                                   ? 'bg-[#62B95B]/10 border-[#62B95B]/40 text-[#29202F] font-bold shadow-2xs'
                                   : m.isReached
-                                  ? 'bg-[#FAF2E1] border-[#E7D3BB] text-[#29202F]'
-                                  : 'bg-white border-[#E7D3BB] text-[#9887A2]'
+                                  ? 'bg-[#FAF2E1] border-[#D1EAEF] text-[#29202F]'
+                                  : 'bg-white border-[#D1EAEF] text-[#9887A2]'
                               }`}
                             >
                               <div className="flex items-center justify-between mb-1">
@@ -1229,7 +1229,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           )}
 
           {/* 9. Asistente Botánico: Preguntale a Cultiveta */}
-          <div className="bg-white rounded-[32px] p-6 sm:p-8 border border-[#E7D3BB] shadow-xs relative overflow-hidden space-y-4">
+          <div className="bg-white rounded-[32px] p-6 sm:p-8 border border-[#D1EAEF] shadow-xs relative overflow-hidden space-y-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3.5">
                 <div className="p-3.5 rounded-2xl bg-[#6C45C7]/15 text-[#6C45C7]">
@@ -1257,7 +1257,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             </div>
 
             {weeklySummary && (
-              <div className="p-5 rounded-2xl bg-[#FFFDF7] border border-[#E7D3BB] text-xs sm:text-sm leading-relaxed text-[#29202F]">
+              <div className="p-5 rounded-2xl bg-[#FFFDF7] border border-[#D1EAEF] text-xs sm:text-sm leading-relaxed text-[#29202F]">
                 {weeklySummary}
               </div>
             )}

@@ -144,7 +144,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
         className="cultiveta-modal-container max-w-2xl p-6 sm:p-8 my-auto space-y-6"
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-[#E7D3BB]">
+        <div className="flex items-center justify-between pb-4 border-b border-[#D1EAEF]">
           <div>
             <h2 className="text-xl font-black text-[#29202F]">Editar Tabla de Fertilización</h2>
             <p className="text-xs text-[#29202F]/70">
@@ -168,7 +168,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
         )}
 
         {/* Quick Presets selector */}
-        <div className="p-4 rounded-2xl bg-[#FFFDF7] border border-[#E7D3BB] space-y-2">
+        <div className="p-4 rounded-2xl bg-[#FFFDF7] border border-[#D1EAEF] space-y-2">
           <div className="flex items-center justify-between text-xs font-bold text-[#29202F]">
             <span className="flex items-center gap-1.5 text-[#6C45C7]">
               <Sparkles className="w-4 h-4 text-[#6C45C7]" />
@@ -179,21 +179,21 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
             <button
               type="button"
               onClick={() => handleApplyPreset('biobizz_organic')}
-              className="px-3 py-1.5 rounded-xl bg-white border border-[#E7D3BB] text-xs font-semibold text-[#29202F] hover:bg-[#62B95B]/15 hover:border-[#62B95B]/50 transition-all cursor-pointer shadow-2xs"
+              className="px-3 py-1.5 rounded-xl bg-white border border-[#D1EAEF] text-xs font-semibold text-[#29202F] hover:bg-[#62B95B]/15 hover:border-[#62B95B]/50 transition-all cursor-pointer shadow-2xs"
             >
               🌱 Biobizz 100% Orgánico
             </button>
             <button
               type="button"
               onClick={() => handleApplyPreset('top_crop_line')}
-              className="px-3 py-1.5 rounded-xl bg-white border border-[#E7D3BB] text-xs font-semibold text-[#29202F] hover:bg-[#62B95B]/15 hover:border-[#62B95B]/50 transition-all cursor-pointer shadow-2xs"
+              className="px-3 py-1.5 rounded-xl bg-white border border-[#D1EAEF] text-xs font-semibold text-[#29202F] hover:bg-[#62B95B]/15 hover:border-[#62B95B]/50 transition-all cursor-pointer shadow-2xs"
             >
               ⚡ Top Crop Nutrición
             </button>
             <button
               type="button"
               onClick={() => handleApplyPreset('advanced_nutrients_ph_perfect')}
-              className="px-3 py-1.5 rounded-xl bg-white border border-[#E7D3BB] text-xs font-semibold text-[#29202F] hover:bg-[#62B95B]/15 hover:border-[#62B95B]/50 transition-all cursor-pointer shadow-2xs"
+              className="px-3 py-1.5 rounded-xl bg-white border border-[#D1EAEF] text-xs font-semibold text-[#29202F] hover:bg-[#62B95B]/15 hover:border-[#62B95B]/50 transition-all cursor-pointer shadow-2xs"
             >
               🧪 Advanced Nutrients pH Perfect
             </button>
@@ -211,7 +211,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="ej. Biobizz Orgánico - Tierra"
-                className="w-full px-3.5 py-2 rounded-2xl bg-white border border-[#E7D3BB] text-xs font-semibold text-[#29202F] focus:outline-hidden focus:border-[#6C45C7]"
+                className="w-full px-3.5 py-2 rounded-2xl bg-white border border-[#D1EAEF] text-xs font-semibold text-[#29202F] focus:outline-hidden focus:border-[#6C45C7]"
               />
             </div>
 
@@ -222,7 +222,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                 value={brand}
                 onChange={(e) => setBrand(e.target.value)}
                 placeholder="ej. Biobizz, Top Crop..."
-                className="w-full px-3.5 py-2 rounded-2xl bg-white border border-[#E7D3BB] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7]"
+                className="w-full px-3.5 py-2 rounded-2xl bg-white border border-[#D1EAEF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7]"
               />
             </div>
           </div>
@@ -248,7 +248,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
               return (
                 <div
                   key={wIdx}
-                  className="rounded-2xl border border-[#E7D3BB] overflow-hidden bg-[#FFFDF7]"
+                  className="rounded-2xl border border-[#D1EAEF] overflow-hidden bg-[#FFFDF7]"
                 >
                   {/* Accordion header */}
                   <div
@@ -285,7 +285,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 
                   {/* Expanded Body */}
                   {isExpanded && (
-                    <div className="p-4 space-y-3 bg-[#FFFDF7] border-t border-[#E7D3BB]">
+                    <div className="p-4 space-y-3 bg-[#FFFDF7] border-t border-[#D1EAEF]">
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                         <div>
                           <label className="block text-[11px] font-semibold text-[#29202F]/70 mb-1">Título de la semana</label>
@@ -293,7 +293,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                             type="text"
                             value={week.title}
                             onChange={(e) => handleWeekFieldChange(wIdx, 'title', e.target.value)}
-                            className="w-full px-2.5 py-1.5 rounded-xl bg-white border border-[#E7D3BB] text-xs text-[#29202F]"
+                            className="w-full px-2.5 py-1.5 rounded-xl bg-white border border-[#D1EAEF] text-xs text-[#29202F]"
                           />
                         </div>
 
@@ -302,7 +302,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                           <select
                             value={week.stage}
                             onChange={(e) => handleWeekFieldChange(wIdx, 'stage', e.target.value)}
-                            className="w-full px-2.5 py-1.5 rounded-xl bg-white border border-[#E7D3BB] text-xs font-medium text-[#29202F] cursor-pointer"
+                            className="w-full px-2.5 py-1.5 rounded-xl bg-white border border-[#D1EAEF] text-xs font-medium text-[#29202F] cursor-pointer"
                           >
                             <option value="Plántula">Plántula</option>
                             <option value="Vegetativo">Vegetativo</option>
@@ -321,7 +321,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                               step="0.05"
                               value={week.targetPh || ''}
                               onChange={(e) => handleWeekFieldChange(wIdx, 'targetPh', parseFloat(e.target.value) || undefined)}
-                              className="w-full px-2 py-1.5 rounded-xl bg-white border border-[#E7D3BB] text-xs text-[#29202F]"
+                              className="w-full px-2 py-1.5 rounded-xl bg-white border border-[#D1EAEF] text-xs text-[#29202F]"
                             />
                           </div>
                           <div className="flex-1">
@@ -331,14 +331,14 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                               step="0.05"
                               value={week.targetEc || ''}
                               onChange={(e) => handleWeekFieldChange(wIdx, 'targetEc', parseFloat(e.target.value) || undefined)}
-                              className="w-full px-2 py-1.5 rounded-xl bg-white border border-[#E7D3BB] text-xs text-[#29202F]"
+                              className="w-full px-2 py-1.5 rounded-xl bg-white border border-[#D1EAEF] text-xs text-[#29202F]"
                             />
                           </div>
                         </div>
                       </div>
 
                       {/* Products in this week */}
-                      <div className="space-y-2 pt-2 border-t border-[#E7D3BB]">
+                      <div className="space-y-2 pt-2 border-t border-[#D1EAEF]">
                         <div className="flex items-center justify-between">
                           <span className="text-[11px] font-bold text-[#29202F]/80 uppercase tracking-wider">
                             Productos en esta semana
@@ -362,14 +362,14 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                             {week.products.map((prod, pIdx) => (
                               <div
                                 key={prod.id || pIdx}
-                                className="flex flex-wrap sm:flex-nowrap items-center gap-2 p-2 rounded-xl bg-white border border-[#E7D3BB] text-xs"
+                                className="flex flex-wrap sm:flex-nowrap items-center gap-2 p-2 rounded-xl bg-white border border-[#D1EAEF] text-xs"
                               >
                                 <input
                                   type="text"
                                   placeholder="Nombre del producto"
                                   value={prod.name}
                                   onChange={(e) => handleProductChange(wIdx, pIdx, 'name', e.target.value)}
-                                  className="flex-1 px-2.5 py-1 rounded-lg bg-[#FFFDF7] border border-[#E7D3BB] text-xs font-semibold text-[#29202F]"
+                                  className="flex-1 px-2.5 py-1 rounded-lg bg-[#FFFDF7] border border-[#D1EAEF] text-xs font-semibold text-[#29202F]"
                                 />
 
                                 <input
@@ -377,7 +377,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                                   placeholder="Marca (opcional)"
                                   value={prod.brand || ''}
                                   onChange={(e) => handleProductChange(wIdx, pIdx, 'brand', e.target.value)}
-                                  className="w-24 px-2 py-1 rounded-lg bg-[#FFFDF7] border border-[#E7D3BB] text-xs text-[#29202F]"
+                                  className="w-24 px-2 py-1 rounded-lg bg-[#FFFDF7] border border-[#D1EAEF] text-xs text-[#29202F]"
                                 />
 
                                 <div className="flex items-center gap-1">
@@ -387,7 +387,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                                     min="0.1"
                                     value={prod.dosageMlPerL}
                                     onChange={(e) => handleProductChange(wIdx, pIdx, 'dosageMlPerL', parseFloat(e.target.value) || 0)}
-                                    className="w-16 px-2 py-1 rounded-lg bg-[#FFFDF7] border border-[#E7D3BB] text-xs font-bold text-center text-[#29202F]"
+                                    className="w-16 px-2 py-1 rounded-lg bg-[#FFFDF7] border border-[#D1EAEF] text-xs font-bold text-center text-[#29202F]"
                                   />
                                   <span className="text-[10px] text-[#29202F]/60">ml/L</span>
                                 </div>
@@ -413,7 +413,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
           </div>
 
           {/* Footer actions */}
-          <div className="pt-4 border-t border-[#E7D3BB] flex items-center justify-end gap-3">
+          <div className="pt-4 border-t border-[#D1EAEF] flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}

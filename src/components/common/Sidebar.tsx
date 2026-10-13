@@ -52,14 +52,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   return (
     <aside
       id="main-desktop-sidebar"
-      className={`hidden lg:flex flex-col justify-between h-[calc(100vh-6rem)] sticky top-24 bg-white border border-[#E7D3BB] rounded-[32px] p-4 transition-all duration-300 z-20 shadow-xs ${
+      className={`hidden lg:flex flex-col justify-between h-[calc(100vh-6rem)] sticky top-24 bg-white border border-[#D1EAEF] rounded-[32px] p-4 transition-all duration-300 z-20 shadow-xs ${
         isCollapsed ? 'w-20' : 'w-64'
       }`}
     >
       {/* Top Nav Section */}
       <div className="space-y-4">
         {/* Collapse toggle row */}
-        <div className="flex items-center justify-between px-2 pt-1 pb-2 border-b border-[#E7D3BB]">
+        <div className="flex items-center justify-between px-2 pt-1 pb-2 border-b border-[#D1EAEF]">
           {!isCollapsed && (
             <span className="text-[10px] uppercase tracking-wider text-[#9887A2] font-bold">
               Navegación
@@ -68,7 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             type="button"
             onClick={toggleCollapse}
-            className="p-1.5 rounded-xl hover:bg-[#FFFDF7] text-[#6E5D77] hover:text-[#29202F] transition-colors cursor-pointer ml-auto"
+            className="p-1.5 rounded-xl hover:bg-[#EBF7F9] text-[#6E5D77] hover:text-[#29202F] transition-colors cursor-pointer ml-auto"
             title={isCollapsed ? 'Expandir menú' : 'Colapsar menú'}
           >
             {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
@@ -106,7 +106,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     ? item.isAI
                       ? 'bg-[#6C45C7]/15 text-[#6C45C7] font-bold border border-[#6C45C7]/25 shadow-xs'
                       : 'bg-[#6C45C7]/10 text-[#6C45C7] font-bold border border-[#6C45C7]/20 shadow-xs'
-                    : 'text-[#6E5D77] hover:text-[#29202F] hover:bg-[#FFFDF7]'
+                    : 'text-[#6E5D77] hover:text-[#29202F] hover:bg-[#EBF7F9]'
                 }`}
                 title={item.label}
               >
@@ -130,7 +130,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                       isActive
                         ? 'bg-[#6C45C7] text-white'
-                        : 'bg-[#FAF2E1] text-[#6E5D77] border border-[#E7D3BB]'
+                        : 'bg-[#FAF2E1] text-[#6E5D77] border border-[#D1EAEF]'
                     }`}
                   >
                     {item.badge}
@@ -144,7 +144,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Bottom Footer Info */}
       {!isCollapsed && (
-        <div className="p-3 rounded-2xl bg-[#FFFDF7] border border-[#E7D3BB] text-center space-y-1">
+        <div className="p-3 rounded-2xl bg-[#FFFDF7] border border-[#D1EAEF] text-center space-y-1">
           <span className="text-[11px] font-bold text-[#29202F] block">
             Cultiveta 🌱
           </span>

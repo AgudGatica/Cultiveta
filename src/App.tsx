@@ -458,9 +458,9 @@ export default function App() {
   // Authentication Loading Screen
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#F4E1CC] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-[#E4F5F8] flex items-center justify-center p-4">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-16 h-16 rounded-3xl bg-white border border-[#E7D3BB] shadow-md flex items-center justify-center text-3xl transition-transform animate-bounce">
+          <div className="w-16 h-16 rounded-3xl bg-white border border-[#D1EAEF] shadow-md flex items-center justify-center text-3xl transition-transform animate-bounce">
             🌱
           </div>
           <span className="text-xl font-black text-[#29202F] tracking-tight">Cultiveta</span>
@@ -493,11 +493,68 @@ export default function App() {
     );
   }
 
+  // ─────────────────────────────────────────────────────────────
+  // CULTIVETA DESIGN SYSTEM: ATMÓSFERA VISUAL SEGÚN VIEW ACTIVA
+  // ─────────────────────────────────────────────────────────────
+  const pageAtmosphereClass = useMemo(() => {
+    switch (currentView) {
+      case 'dashboard':
+        return 'cultiveta-page-home';
+      case 'cultivations':
+      case 'cultivation_detail':
+        return 'cultiveta-page-cultivations';
+      case 'genetics':
+        return 'cultiveta-page-genetics';
+      case 'ai_assistant':
+        return 'cultiveta-page-ai';
+      default:
+        return 'cultiveta-page-default';
+    }
+  }, [currentView]);
+
   return (
-    <div className="min-h-screen bg-[#F4E1CC] text-[#29202F] flex flex-col selection:bg-[#6C45C7] selection:text-white">
+    <div className={`cultiveta-app-shell ${pageAtmosphereClass} text-[#29202F] flex flex-col selection:bg-[#6C45C7] selection:text-white`}>
+      {/* Capa de fondo fija e inmutable (pointer-events: none, z-index: -1) */}
+      <div aria-hidden="true" className="cultiveta-page-background">
+        {/* Capa de microgranulado editorial perceptible sobre el background */}
+        <div className="cultiveta-page-grain" />
+
+        {/* Motivos decorativos sutiles de pequeños puntos botánicos (1-2 clusters según vista) */}
+        {currentView === 'genetics' && (
+          <>
+            <div className="cultiveta-deco-cluster bottom-16 right-8 opacity-40 hidden sm:flex">
+              <div className="flex gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#EB7864]" /><span className="w-1.5 h-1.5 rounded-full bg-[#EB7864]" /><span className="w-1.5 h-1.5 rounded-full bg-[#EB7864]" /></div>
+              <div className="flex gap-1.5 pl-3"><span className="w-1.5 h-1.5 rounded-full bg-[#6C45C7]" /><span className="w-1.5 h-1.5 rounded-full bg-[#6C45C7]" /></div>
+              <div className="flex gap-1.5 pl-6"><span className="w-1.5 h-1.5 rounded-full bg-[#EB7864]" /></div>
+            </div>
+            <div className="cultiveta-deco-cluster top-24 left-6 opacity-35 hidden md:flex">
+              <div className="flex gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#6C45C7]" /><span className="w-1.5 h-1.5 rounded-full bg-[#6C45C7]" /></div>
+              <div className="flex gap-1.5 pl-3"><span className="w-1.5 h-1.5 rounded-full bg-[#EB7864]" /></div>
+            </div>
+          </>
+        )}
+        {currentView === 'dashboard' && (
+          <div className="cultiveta-deco-cluster bottom-20 right-10 opacity-35 hidden sm:flex">
+            <div className="flex gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#6C45C7]" /><span className="w-1.5 h-1.5 rounded-full bg-[#6C45C7]" /><span className="w-1.5 h-1.5 rounded-full bg-[#6C45C7]" /></div>
+            <div className="flex gap-1.5 pl-3"><span className="w-1.5 h-1.5 rounded-full bg-[#82D8E8]" /><span className="w-1.5 h-1.5 rounded-full bg-[#82D8E8]" /></div>
+          </div>
+        )}
+        {currentView === 'cultivations' && (
+          <div className="cultiveta-deco-cluster bottom-20 right-10 opacity-35 hidden sm:flex">
+            <div className="flex gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#62B95B]" /><span className="w-1.5 h-1.5 rounded-full bg-[#62B95B]" /><span className="w-1.5 h-1.5 rounded-full bg-[#62B95B]" /></div>
+            <div className="flex gap-1.5 pl-3"><span className="w-1.5 h-1.5 rounded-full bg-[#82D8E8]" /><span className="w-1.5 h-1.5 rounded-full bg-[#82D8E8]" /></div>
+          </div>
+        )}
+        {currentView === 'ai_assistant' && (
+          <div className="cultiveta-deco-cluster bottom-20 right-12 opacity-40 hidden sm:flex">
+            <div className="flex gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#6C45C7]" /><span className="w-1.5 h-1.5 rounded-full bg-[#82D8E8]" /><span className="w-1.5 h-1.5 rounded-full bg-[#6C45C7]" /></div>
+            <div className="flex gap-1.5 pl-3"><span className="w-1.5 h-1.5 rounded-full bg-[#9887A2]" /><span className="w-1.5 h-1.5 rounded-full bg-[#9887A2]" /></div>
+          </div>
+        )}
+      </div>
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-5 right-5 z-50 px-5 py-3 rounded-2xl bg-white text-[#29202F] text-xs font-bold shadow-xl border border-[#E7D3BB] animate-in slide-in-from-top duration-200 flex items-center gap-2.5">
+        <div className="fixed top-5 right-5 z-50 px-5 py-3 rounded-2xl bg-white text-[#29202F] text-xs font-bold shadow-xl border border-[#D1EAEF] animate-in slide-in-from-top duration-200 flex items-center gap-2.5">
           <div className="w-2.5 h-2.5 rounded-full bg-[#62B95B] animate-ping" />
           <span>{toastMessage}</span>
         </div>
@@ -597,7 +654,7 @@ export default function App() {
           {/* VIEW: CULTIVATIONS LIST */}
           {currentView === 'cultivations' && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between bg-white rounded-[32px] p-6 sm:p-8 border border-[#E7D3BB] shadow-xs relative overflow-hidden">
+              <div className="flex items-center justify-between bg-white rounded-[32px] p-6 sm:p-8 border border-[#D1EAEF] shadow-xs relative overflow-hidden">
                 <div className="relative z-10">
                   <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#9887A2] mb-1 block">Gestión de Salas</span>
                   <h2 className="font-extrabold text-2xl text-[#29202F]">Mis Cultivos 🌱</h2>
@@ -634,8 +691,8 @@ export default function App() {
               )}
 
               {cultivations.length === 0 ? (
-                <div className="bg-white rounded-[32px] p-12 border border-[#E7D3BB] text-center space-y-4 shadow-xs">
-                  <div className="w-16 h-16 rounded-2xl bg-[#FAF2E1] border border-[#E7D3BB] text-[#62B95B] flex items-center justify-center mx-auto">
+                <div className="bg-white rounded-[32px] p-12 border border-[#D1EAEF] text-center space-y-4 shadow-xs">
+                  <div className="w-16 h-16 rounded-2xl bg-[#FAF2E1] border border-[#D1EAEF] text-[#62B95B] flex items-center justify-center mx-auto">
                     <Sprout className="w-8 h-8" />
                   </div>
                   <div>
@@ -657,8 +714,8 @@ export default function App() {
                   </button>
                 </div>
               ) : filteredCultivations.length === 0 ? (
-                <div className="bg-white rounded-[32px] p-10 border border-[#E7D3BB] text-center space-y-4 shadow-xs">
-                  <div className="w-12 h-12 rounded-2xl bg-[#FAF2E1] border border-[#E7D3BB] text-[#9887A2] flex items-center justify-center mx-auto">
+                <div className="bg-white rounded-[32px] p-10 border border-[#D1EAEF] text-center space-y-4 shadow-xs">
+                  <div className="w-12 h-12 rounded-2xl bg-[#FAF2E1] border border-[#D1EAEF] text-[#9887A2] flex items-center justify-center mx-auto">
                     <SlidersHorizontal className="w-6 h-6" />
                   </div>
                   <div>

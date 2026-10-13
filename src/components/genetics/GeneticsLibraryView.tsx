@@ -625,7 +625,7 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                 return (
                   <article
                     key={`${item.seedBank}-${item.name}`}
-                    className="bg-white rounded-[30px] border border-[#E7D3BB] shadow-sm overflow-hidden p-4 space-y-4 w-full"
+                    className="bg-white rounded-[30px] border border-[#D1EAEF] shadow-sm overflow-hidden p-4 space-y-4 w-full"
                   >
                     {/* 1. Fotografía grande con aspect-[295/176], rounded-[24px], hover zoom sutil, SIN DEGRADÉ NEGRO NI OVERLAY OSCURO */}
                     <div className="group relative w-full aspect-[295/176] rounded-[24px] overflow-hidden bg-stone-100 border border-stone-200/60">

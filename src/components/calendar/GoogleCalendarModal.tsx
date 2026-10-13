@@ -292,17 +292,17 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-950/60 backdrop-blur-xs overflow-y-auto animate-in fade-in duration-200">
-      <div className="bg-[#FFFDF7] border border-[#E7D3BB] rounded-[32px] w-full max-w-2xl overflow-hidden shadow-2xl my-6 relative flex flex-col max-h-[90vh] text-[#29202F]">
+      <div className="bg-[#FFFDF7] border border-[#D1EAEF] rounded-[32px] w-full max-w-2xl overflow-hidden shadow-2xl my-6 relative flex flex-col max-h-[90vh] text-[#29202F]">
         {/* Header */}
-        <div className="p-5 sm:p-6 border-b border-[#E7D3BB] flex items-center justify-between bg-[#FFFDF7]">
+        <div className="p-5 sm:p-6 border-b border-[#D1EAEF] flex items-center justify-between bg-[#FFFDF7]">
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-2xl bg-white border border-[#E7D3BB] text-[#6C45C7] flex items-center justify-center shadow-xs shrink-0">
+            <div className="w-11 h-11 rounded-2xl bg-white border border-[#D1EAEF] text-[#6C45C7] flex items-center justify-center shadow-xs shrink-0">
               <CalendarIcon className="w-5 h-5 stroke-[2.2]" />
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-extrabold text-lg text-[#29202F]">Sincronización con Google Calendar</h3>
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FAF2E1] text-[#6C45C7] border border-[#E7D3BB]">
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#FAF2E1] text-[#6C45C7] border border-[#D1EAEF]">
                   {cultivation.name}
                 </span>
               </div>
@@ -314,7 +314,7 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-9 h-9 rounded-2xl bg-white border border-[#E7D3BB] text-[#6E5D77] hover:text-[#29202F] hover:bg-[#FAF2E1] flex items-center justify-center transition-colors cursor-pointer shrink-0"
+            className="w-9 h-9 rounded-2xl bg-white border border-[#D1EAEF] text-[#6E5D77] hover:text-[#29202F] hover:bg-[#FAF2E1] flex items-center justify-center transition-colors cursor-pointer shrink-0"
           >
             <X className="w-4 h-4" />
           </button>
@@ -352,9 +352,9 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
           )}
 
           {/* Connection Status Card */}
-          <div className="bg-white border border-[#E7D3BB] rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
+          <div className="bg-white border border-[#D1EAEF] rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-2xs">
             <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-white border border-[#E7D3BB] flex items-center justify-center p-2 shadow-2xs shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-white border border-[#D1EAEF] flex items-center justify-center p-2 shadow-2xs shrink-0">
                 <svg viewBox="0 0 48 48" className="w-full h-full">
                   <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
                   <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
@@ -406,7 +406,7 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
                     onClick={() => loadEvents(token)}
                     disabled={isLoadingEvents}
                     title="Actualizar eventos"
-                    className="p-2.5 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#E7D3BB] text-[#6E5D77] transition-colors cursor-pointer shadow-2xs"
+                    className="p-2.5 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] text-[#6E5D77] transition-colors cursor-pointer shadow-2xs"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${isLoadingEvents ? 'animate-spin' : ''}`} />
                   </button>
@@ -414,7 +414,7 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
                     href="https://calendar.google.com"
                     target="_blank"
                     rel="noreferrer noopener"
-                    className="px-3.5 py-2 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#E7D3BB] text-[#29202F] text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs"
+                    className="px-3.5 py-2 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] text-[#29202F] text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs"
                   >
                     <span>Abrir Google</span>
                     <ExternalLink className="w-3 h-3 text-[#6E5D77]" />
@@ -480,10 +480,10 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
                 return (
                   <div
                     key={plan.id}
-                    className="bg-white border border-[#E7D3BB] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-[#DECDB3] transition-all shadow-2xs"
+                    className="bg-white border border-[#D1EAEF] rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-[#DECDB3] transition-all shadow-2xs"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="w-9 h-9 rounded-xl bg-[#FAF2E1] border border-[#E7D3BB] flex items-center justify-center shrink-0 mt-0.5">
+                      <div className="w-9 h-9 rounded-xl bg-[#FAF2E1] border border-[#D1EAEF] flex items-center justify-center shrink-0 mt-0.5">
                         {getPlanIcon(plan.type)}
                       </div>
                       <div className="space-y-1">
@@ -491,7 +491,7 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
                           <span className="font-extrabold text-xs text-[#29202F]">
                             {plan.title}
                           </span>
-                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#FAF2E1] text-[#6E5D77] border border-[#E7D3BB]">
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#FAF2E1] text-[#6E5D77] border border-[#D1EAEF]">
                             📅 {plan.date}
                           </span>
                           {syncedEvent && !dateHasChanged && (
@@ -531,7 +531,7 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
                           href={syncedEvent.htmlLink || 'https://calendar.google.com'}
                           target="_blank"
                           rel="noreferrer noopener"
-                          className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#FAF2E1] border border-[#E7D3BB] text-[#6C45C7] text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs"
+                          className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] text-[#6C45C7] text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs"
                         >
                           <span>Ver en Calendar</span>
                           <ExternalLink className="w-3 h-3" />
@@ -541,7 +541,7 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
                           type="button"
                           onClick={() => handleSyncPlan(plan)}
                           disabled={isSyncing}
-                          className="px-3.5 py-1.5 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#E7D3BB] text-[#6C45C7] text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                          className="px-3.5 py-1.5 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] text-[#6C45C7] text-xs font-bold transition-all shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                         >
                           {isSyncing ? (
                             <RefreshCw className="w-3 h-3 animate-spin" />
@@ -597,7 +597,7 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
                         value={customTitle}
                         onChange={(e) => setCustomTitle(e.target.value)}
                         required
-                        className="w-full px-3 py-2 rounded-xl bg-[#FFFDF7] border border-[#E7D3BB] text-xs text-[#29202F] placeholder-[#9887A2] focus:outline-none focus:border-[#6C45C7]"
+                        className="w-full px-3 py-2 rounded-xl bg-[#FFFDF7] border border-[#D1EAEF] text-xs text-[#29202F] placeholder-[#9887A2] focus:outline-none focus:border-[#6C45C7]"
                       />
                     </div>
 
@@ -610,7 +610,7 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
                         value={customDate}
                         onChange={(e) => setCustomDate(e.target.value)}
                         required
-                        className="w-full px-3 py-2 rounded-xl bg-[#FFFDF7] border border-[#E7D3BB] text-xs text-[#29202F] focus:outline-none focus:border-[#6C45C7]"
+                        className="w-full px-3 py-2 rounded-xl bg-[#FFFDF7] border border-[#D1EAEF] text-xs text-[#29202F] focus:outline-none focus:border-[#6C45C7]"
                       />
                     </div>
                   </div>
@@ -624,7 +624,7 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
                       placeholder="Ej. Dosificación 3ml/L al apagar las luces"
                       value={customDescription}
                       onChange={(e) => setCustomDescription(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-[#FFFDF7] border border-[#E7D3BB] text-xs text-[#29202F] placeholder-[#9887A2] focus:outline-none focus:border-[#6C45C7]"
+                      className="w-full px-3 py-2 rounded-xl bg-[#FFFDF7] border border-[#D1EAEF] text-xs text-[#29202F] placeholder-[#9887A2] focus:outline-none focus:border-[#6C45C7]"
                     />
                   </div>
 
@@ -632,7 +632,7 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
                     <button
                       type="button"
                       onClick={() => setShowCustomForm(false)}
-                      className="px-3.5 py-1.5 rounded-xl bg-white border border-[#E7D3BB] text-[#6E5D77] text-xs font-bold hover:bg-[#FAF2E1] cursor-pointer"
+                      className="px-3.5 py-1.5 rounded-xl bg-white border border-[#D1EAEF] text-[#6E5D77] text-xs font-bold hover:bg-[#FAF2E1] cursor-pointer"
                     >
                       Cancelar
                     </button>
@@ -659,7 +659,7 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
                   <span>Cargando eventos desde Google Calendar...</span>
                 </div>
               ) : syncedEvents.length === 0 ? (
-                <div className="p-6 rounded-2xl bg-white border border-[#E7D3BB] text-center space-y-1.5 shadow-2xs">
+                <div className="p-6 rounded-2xl bg-white border border-[#D1EAEF] text-center space-y-1.5 shadow-2xs">
                   <CalendarIcon className="w-6 h-6 text-[#9887A2] mx-auto" />
                   <p className="text-xs font-bold text-[#29202F]">
                     Aún no hay eventos registrados para este cultivo en tu Google Calendar.
@@ -675,14 +675,14 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
                     return (
                       <div
                         key={evt.id}
-                        className="bg-white border border-[#E7D3BB] rounded-2xl p-3.5 flex items-center justify-between gap-3 shadow-2xs hover:border-[#DECDB3] transition-all"
+                        className="bg-white border border-[#D1EAEF] rounded-2xl p-3.5 flex items-center justify-between gap-3 shadow-2xs hover:border-[#DECDB3] transition-all"
                       >
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-xs text-[#29202F] truncate">
                               {evt.summary}
                             </span>
-                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#FAF2E1] text-[#6E5D77] border border-[#E7D3BB] shrink-0">
+                            <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-[#FAF2E1] text-[#6E5D77] border border-[#D1EAEF] shrink-0">
                               {dateStr}
                             </span>
                           </div>
@@ -699,7 +699,7 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
                               href={evt.htmlLink}
                               target="_blank"
                               rel="noreferrer noopener"
-                              className="p-2 rounded-xl bg-white hover:bg-[#FAF2E1] border border-[#E7D3BB] text-[#6C45C7] transition-colors shadow-2xs"
+                              className="p-2 rounded-xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] text-[#6C45C7] transition-colors shadow-2xs"
                               title="Abrir en Google Calendar"
                             >
                               <ExternalLink className="w-3.5 h-3.5" />
@@ -708,7 +708,7 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
                           <button
                             type="button"
                             onClick={() => setEventToDelete(evt)}
-                            className="p-2 rounded-xl bg-white hover:bg-[#EB7864]/10 border border-[#E7D3BB] text-[#6E5D77] hover:text-[#EB7864] transition-colors cursor-pointer shadow-2xs"
+                            className="p-2 rounded-xl bg-white hover:bg-[#EB7864]/10 border border-[#D1EAEF] text-[#6E5D77] hover:text-[#EB7864] transition-colors cursor-pointer shadow-2xs"
                             title="Eliminar de Google Calendar"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -724,7 +724,7 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-[#E7D3BB] bg-[#FFFDF7] flex justify-end">
+        <div className="p-4 border-t border-[#D1EAEF] bg-[#FFFDF7] flex justify-end">
           <button
             type="button"
             onClick={onClose}
@@ -738,7 +738,7 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
       {/* Confirmation Modal for Deleting Events */}
       {eventToDelete && (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-stone-950/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white border border-[#E7D3BB] rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-[#29202F]">
+          <div className="bg-white border border-[#D1EAEF] rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-[#29202F]">
             <div className="w-12 h-12 rounded-2xl bg-[#EB7864]/15 border border-[#EB7864]/30 text-[#EB7864] flex items-center justify-center mx-auto">
               <Trash2 className="w-6 h-6 stroke-[2.2]" />
             </div>
@@ -758,7 +758,7 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
                 type="button"
                 onClick={() => setEventToDelete(null)}
                 disabled={isDeleting}
-                className="flex-1 px-4 py-2.5 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#E7D3BB] text-[#6E5D77] text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
+                className="flex-1 px-4 py-2.5 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] text-[#6E5D77] text-xs font-bold transition-colors cursor-pointer disabled:opacity-50"
               >
                 Cancelar
               </button>
