@@ -12,6 +12,7 @@ import {
   Trash2,
   X,
   Bookmark,
+  Check,
   Clock,
   Scale,
   BookOpen,
@@ -141,6 +142,7 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [geneticsToEdit, setGeneticsToEdit] = useState<Genetics | null>(null);
+  const [savingMap, setSavingMap] = useState<Record<string, boolean>>({});
 
   // Suscribirse a fotografías oficiales del catálogo
   useEffect(() => {
@@ -279,6 +281,43 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
   }, [favorites, selectedSeedBank, filterPhotoperiod, searchTerm]);
 
 
+
+  const isSavedInUserLibrary = (name: string, bank: string) => {
+    const targetName = name.toLowerCase().trim();
+    const targetBank = bank.toLowerCase().trim();
+    return geneticsList.some(
+      (g) => g.name.toLowerCase().trim() === targetName && (g.seedBank || '').toLowerCase().trim() === targetBank
+    );
+  };
+
+  const handleSavePredefined = async (item: PredefinedGenetic) => {
+    const key = `${item.seedBank}-${item.name}`;
+    if (savingMap[key] || isSavedInUserLibrary(item.name, item.seedBank)) return;
+
+    const photoKey = getGeneticsPhotoKey(item.seedBank, item.name);
+    const officialPhoto = catalogPhotos[photoKey]?.photoUrl;
+
+    try {
+      setSavingMap((prev) => ({ ...prev, [key]: true }));
+      const converted = convertPredefinedToGenetics(item, userId, officialPhoto);
+      const saved = await geneticsService.createGenetics({
+        userId,
+        name: item.name,
+        seedBank: item.seedBank,
+        photoperiodType: converted.photoperiodType,
+        dominance: converted.dominance,
+        declaredFloweringDays: converted.declaredFloweringDays,
+        expectedAroma: item.organolepticProfile,
+        photoUrl: officialPhoto || undefined,
+        notes: `Rendimiento estimado: ${item.estimatedYield} g/m². Floración: ${item.floweringDays}`,
+      });
+      onGeneticsUpdated(saved);
+    } catch (err) {
+      console.error('Error guardando genética predefinida:', err);
+    } finally {
+      setSavingMap((prev) => ({ ...prev, [key]: false }));
+    }
+  };
 
   const getStatsForGenetics = (geneticsName: string) => {
     const matchingHarvests = harvests.filter(
@@ -575,6 +614,8 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {filteredPredefined.map((item) => {
+                const isSaved = isSavedInUserLibrary(item.name, item.seedBank);
+                const isSaving = savingMap[`${item.seedBank}-${item.name}`];
                 const photoKey = getGeneticsPhotoKey(item.seedBank, item.name);
                 const officialPhoto = catalogPhotos[photoKey]?.photoUrl;
                 const converted = convertPredefinedToGenetics(item, userId, officialPhoto);
@@ -584,123 +625,114 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                 const isSativa = dom.includes('sátiva') || dom.includes('sativa');
                 const isIndica = dom.includes('índica') || dom.includes('indica');
 
-                const isFav = isGeneticsFavorite(item.name, item.seedBank);
-                const itemFavKey = getGeneticsKey(item.name, item.seedBank);
-                const isTogglingFav = Boolean(togglingFavMap[itemFavKey]);
-
                 return (
                   <div
                     key={`${item.seedBank}-${item.name}`}
                     className="bg-white rounded-3xl p-5 border border-stone-200 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
                   >
-                    <div className="space-y-3.5">
-                      {/* 1. Fotografía con relación de aspecto fija aspect-[295/176] y Overlay (Nombre + Banco + Dominancia) */}
-                      <div className="relative w-full aspect-[295/176] rounded-2xl overflow-hidden bg-gradient-to-br from-stone-800 to-stone-900 border border-stone-200/80">
-                        {officialPhoto && (
+                    <div className="space-y-3">
+                      {/* Fotografía representativa oficial (limpia, natural, sin degradé oscuro) */}
+                      {officialPhoto && (
+                        <div className="relative w-full h-44 rounded-2xl overflow-hidden bg-stone-100 border border-stone-200/80">
                           <img
                             src={officialPhoto}
                             alt={`${item.name} - ${item.seedBank}`}
                             className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
                             loading="lazy"
                           />
-                        )}
+                          <div className="absolute top-2.5 left-2.5 px-2.5 py-0.5 rounded-full bg-stone-900/80 backdrop-blur-xs text-white text-[10px] font-bold tracking-wide flex items-center gap-1 shadow-xs">
+                            <Sparkles className="w-3 h-3 text-amber-300" />
+                            <span>{getRightsBadgeLabel(catalogPhotos[photoKey]?.photoRightsStatus)}</span>
+                          </div>
+                        </div>
+                      )}
 
-                        {/* Degradado sutil superior para garantizar legibilidad del texto blanco sin tapar el cogollo */}
-                        <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/35 to-transparent pointer-events-none" />
-
-                        {/* Bloque vertical de identidad en overlay superior izquierdo */}
-                        <div className="absolute top-3 left-3 right-3 flex flex-col items-start gap-1.5 pointer-events-none">
-                          <h3
-                            className="font-black text-xl sm:text-2xl text-white tracking-tight leading-tight drop-shadow-[0_2px_4px_rgba(0,0,0,0.85)] truncate max-w-full"
-                          >
-                            {item.name}
-                          </h3>
-
-                          {/* Badge de Banco */}
-                          <span className="inline-flex items-center text-[11px] font-bold text-emerald-900 bg-white/95 px-2.5 py-0.5 rounded-md border border-white/60 shadow-xs backdrop-blur-2xs">
+                      {/* Title & Bank */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <h3 className="font-bold text-base text-stone-900 leading-tight">{item.name}</h3>
+                          <span className="inline-block mt-0.5 text-xs font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200/60">
                             {item.seedBank}
                           </span>
-
-                          {/* Badge de Dominancia */}
-                          <span
-                            className={`inline-flex items-center text-[10px] font-bold px-2.5 py-0.5 rounded-full border shadow-xs backdrop-blur-2xs ${
-                              isSativa
-                                ? 'bg-amber-500/90 text-white border-amber-400/50'
-                                : isIndica
-                                ? 'bg-purple-600/90 text-white border-purple-400/50'
-                                : 'bg-emerald-600/90 text-white border-emerald-400/50'
-                            }`}
-                          >
-                            {item.dominance}
-                          </span>
                         </div>
+
+                        {/* Save to library indicator / button */}
+                        <button
+                          type="button"
+                          onClick={() => handleSavePredefined(item)}
+                          disabled={isSaved || isSaving}
+                          title={isSaved ? 'Ya está en tu biblioteca' : 'Guardar en mi biblioteca'}
+                          className={`p-1.5 rounded-xl border transition-colors cursor-pointer ${
+                            isSaved
+                              ? 'bg-emerald-50 border-emerald-200 text-emerald-700 cursor-default'
+                              : 'bg-stone-50 border-stone-200 text-stone-500 hover:bg-stone-100 hover:text-stone-800'
+                          }`}
+                        >
+                          {isSaved ? (
+                            <Check className="w-3.5 h-3.5" />
+                          ) : (
+                            <Bookmark className="w-3.5 h-3.5" />
+                          )}
+                        </button>
                       </div>
 
-                      {/* 2. Specs Principales: Rendimiento + Floración (Cápsulas más grandes) */}
-                      <div className="grid grid-cols-2 gap-2.5 pt-0.5">
-                        <div className="flex items-center justify-center gap-2 py-2 px-3 rounded-full bg-stone-100/90 border border-stone-200/80 text-stone-800 text-xs font-bold text-center">
-                          <Scale className="w-4 h-4 text-stone-500 shrink-0" />
-                          <span className="truncate">{item.estimatedYield} g/m²</span>
-                        </div>
-                        <div className="flex items-center justify-center gap-2 py-2 px-3 rounded-full bg-stone-100/90 border border-stone-200/80 text-stone-800 text-xs font-bold text-center">
-                          <Clock className="w-4 h-4 text-stone-500 shrink-0" />
-                          <span className="truncate">{item.floweringDays} d</span>
-                        </div>
+                      {/* Dominance & Specs Badges */}
+                      <div className="flex flex-wrap gap-1.5">
+                        <span
+                          className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                            isSativa
+                              ? 'bg-amber-50 text-amber-900 border-amber-200'
+                              : isIndica
+                              ? 'bg-purple-50 text-purple-900 border-purple-200'
+                              : 'bg-emerald-50 text-emerald-900 border-emerald-200'
+                          }`}
+                        >
+                          {item.dominance}
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-full bg-stone-100 border border-stone-200 text-stone-700 text-[11px] font-semibold flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5 text-stone-400" />
+                          <span>{item.floweringDays} d</span>
+                        </span>
+                        <span className="px-2.5 py-0.5 rounded-full bg-stone-100 border border-stone-200 text-stone-700 text-[11px] font-semibold flex items-center gap-1">
+                          <Scale className="w-3.5 h-3.5 text-stone-400" />
+                          <span>{item.estimatedYield} g/m²</span>
+                        </span>
                       </div>
 
-                      {/* 3. Aroma y Gusto con mayor presencia visual */}
-                      <div className="bg-stone-50/90 p-3.5 rounded-2xl border border-stone-200/70 space-y-1.5">
-                        <div className="flex items-center gap-1.5 text-[11px] uppercase font-bold text-stone-500 tracking-wider">
+                      {/* Organoleptic Profile */}
+                      <div className="bg-stone-50/80 p-3 rounded-2xl border border-stone-200/60 space-y-1">
+                        <div className="flex items-center gap-1 text-[10px] uppercase font-bold text-stone-400 tracking-wider">
                           <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
                           <span>Aroma y Gusto</span>
                         </div>
-                        <p className="text-xs sm:text-[13px] text-stone-700 font-medium italic leading-relaxed">
+                        <p className="text-xs text-stone-700 font-medium italic">
                           "{item.organolepticProfile}"
                         </p>
                       </div>
                     </div>
 
-                    {/* 4. Nueva Fila de Acciones: [ INICIAR CULTIVO ] | [ FAVORITOS ♥ ] */}
-                    <div className="grid grid-cols-2 gap-2.5 pt-3 border-t border-stone-100">
+                    {/* Actions: Start crop & Save */}
+                    <div className="space-y-2 pt-2 border-t border-stone-100">
                       <button
                         type="button"
                         onClick={() => onStartCropWithGenetics(converted)}
-                        className="w-full py-3 px-3 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-xs shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-                        title={`Iniciar cultivo con ${item.name}`}
+                        className="w-full py-2.5 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
                       >
-                        <Sprout className="w-4 h-4 shrink-0" />
-                        <span className="truncate">Iniciar Cultivo</span>
+                        <Sprout className="w-4 h-4" />
+                        <span>Iniciar Cultivo con {item.name}</span>
                       </button>
 
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleToggleFavorite({
-                            name: item.name,
-                            seedBank: item.seedBank,
-                            photoperiodType: converted.photoperiodType,
-                            dominance: item.dominance,
-                            floweringDays: item.floweringDays,
-                            estimatedYield: item.estimatedYield,
-                            organolepticProfile: item.organolepticProfile,
-                          })
-                        }
-                        disabled={isTogglingFav}
-                        aria-pressed={isFav}
-                        title={isFav ? 'Quitar de favoritos' : 'Agregar a favoritos'}
-                        className={`w-full py-3 px-3 rounded-2xl font-extrabold text-xs transition-colors flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-60 ${
-                          isFav
-                            ? 'bg-[#6C45C7] hover:bg-[#5b38aa] text-white shadow-xs'
-                            : 'bg-[#6C45C7]/90 hover:bg-[#6C45C7] text-white shadow-xs'
-                        }`}
-                      >
-                        <span className="truncate">{isFav ? 'Favorito' : 'Favoritos'}</span>
-                        <Heart
-                          className={`w-4 h-4 shrink-0 transition-transform ${
-                            isFav ? 'fill-white text-white scale-110' : 'text-white'
-                          }`}
-                        />
-                      </button>
+                      {!isSaved && (
+                        <button
+                          type="button"
+                          onClick={() => handleSavePredefined(item)}
+                          disabled={isSaving}
+                          className="w-full py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                        >
+                          <Bookmark className="w-3.5 h-3.5" />
+                          <span>{isSaving ? 'Guardando...' : 'Guardar en Mi Biblioteca'}</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
