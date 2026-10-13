@@ -513,18 +513,9 @@ export default function App() {
   }
 
   return (
-    <div className="cultiveta-app-shell text-[#29202F] flex flex-col selection:bg-[#7856FA] selection:text-white">
-      {/* Capa de fondo fija e inmutable: Degradado vertical continuo (Menta → Turquesa → Celeste → Azul → Violeta) */}
-      <div aria-hidden="true" className="cultiveta-page-background">
-        {/* Trama Halftone Cómic: Círculos ordenados en cuadrícula de 22px con crecimiento vertical progresivo real */}
-        <div className="cultiveta-page-halftone">
-          <div className="cultiveta-halftone-layer-1" />
-          <div className="cultiveta-halftone-layer-2" />
-          <div className="cultiveta-halftone-layer-3" />
-          <div className="cultiveta-halftone-layer-4" />
-          <div className="cultiveta-halftone-layer-5" />
-        </div>
-      </div>
+    <div className="cultiveta-app-shell text-[#29202F] flex flex-col selection:bg-[#5C4FCF] selection:text-white">
+      {/* Capa de fondo fija e inmutable: Degradado vertical continuo 100% liso (#D9C53A → #B9D146 → #6CCB63 → #42C98A → #4B7FC8 → #5B4CCB) */}
+      <div aria-hidden="true" className="cultiveta-page-background" />
 
       {/* Toast Notification */}
       {toastMessage && (

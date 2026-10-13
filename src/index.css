@@ -1,15 +1,15 @@
 @import "tailwindcss";
 
 @theme {
-  --color-warm-bg: #69F9D5;
-  --color-cultiveta-bg-sky: #7AEAEA;
+  --color-warm-bg: #D7F000;
+  --color-cultiveta-bg-sky: #A9E63E;
 
-  --color-cultiveta-mint: #51FFAF;
-  --color-cultiveta-water: #69F9D5;
-  --color-cultiveta-turquoise: #7AEAEA;
-  --color-cultiveta-sky: #88C8F0;
-  --color-cultiveta-lavender: #8099F5;
-  --color-cultiveta-violet: #7856FA;
+  --color-cultiveta-spectrum-0: #D7F000;
+  --color-cultiveta-spectrum-18: #A9E63E;
+  --color-cultiveta-spectrum-38: #7CD85F;
+  --color-cultiveta-spectrum-58: #53C989;
+  --color-cultiveta-spectrum-78: #5B92C9;
+  --color-cultiveta-spectrum-100: #5C4FCF;
 
   --color-cultiveta-green: #62B95B;
   --color-cultiveta-yellow: #F3C843;
@@ -22,17 +22,17 @@
   --color-cultiveta-cream: #FFFDF7;
   --color-cultiveta-white: #FFFFFF;
 
-  --color-cultiveta-border: #62E8CE;
-  --color-cultiveta-border-strong: #4CD6BB;
+  --color-cultiveta-border: rgba(41, 32, 47, 0.12);
+  --color-cultiveta-border-strong: rgba(41, 32, 47, 0.18);
 }
 
 @layer base {
   :root {
-    --bg-spectrum-mint: #51FFAF;
-    --bg-spectrum-violet: #7856FA;
-    --color-violet: #7856FA;
+    --bg-spectrum-0: #D7F000;
+    --bg-spectrum-100: #5C4FCF;
+    --color-violet: #5C4FCF;
     --color-green: #62B95B;
-    --color-sky: #88C8F0;
+    --color-sky: #53C989;
     --color-yellow: #F3C843;
     --color-coral: #EB7864;
     --color-ink: #29202F;
@@ -41,20 +41,20 @@
 
     --surface-white: #FFFFFF;
     --surface-cream: #FFFDF7;
-    --surface-subtle: #E8FCF7;
-    --surface-border: #62E8CE;
-    --surface-border-strong: #4CD6BB;
+    --surface-subtle: #F6FBEA;
+    --surface-border: rgba(41, 32, 47, 0.12);
+    --surface-border-strong: rgba(41, 32, 47, 0.18);
   }
 
   body {
     background: linear-gradient(
       180deg,
-      #51FFAF 0%,
-      #69F9D5 18%,
-      #7AEAEA 32%,
-      #88C8F0 50%,
-      #8099F5 72%,
-      #7856FA 100%
+      #D7F000 0%,
+      #A9E63E 18%,
+      #7CD85F 38%,
+      #53C989 58%,
+      #5B92C9 78%,
+      #5C4FCF 100%
     );
     color: #29202F;
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
@@ -69,20 +69,21 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.35);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #7856FA;
+  background: #5C4FCF;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #633BC4;
+  background: #473AA8;
 }
 
 /* ==========================================================================
-   CULTIVETA DESIGN SYSTEM: FONDO GLOBAL DEFINITIVO (GRADIENT + HALFTONE CARTOON)
+   CULTIVETA DESIGN SYSTEM: FONDO GLOBAL CONTINUO DEFINITIVO
+   - 100% LISO, SIN UN SOLO PUNTO, SIN HALFTONE, SIN GRAIN, SIN BLOBS
    ========================================================================== */
 
 /* Shell base que aísla el stacking context */
@@ -92,14 +93,14 @@
   min-height: 100vh;
 }
 
-/* 1. CAPA DE DEGRADADO VERTICAL CONTINUO (180deg)
-   - 0%   #51FFAF (Verde menta vibrante)
-   - 18%  #69F9D5 (Verde agua)
-   - 32%  #7AEAEA (Turquesa celeste)
-   - 50%  #88C8F0 (Celeste azulado)
-   - 72%  #8099F5 (Azul lavanda)
-   - 100% #7856FA (Violeta intenso)
-   Cubre el viewport completo, fijo con el scroll, cero blobs y unificado en todas las vistas.
+/* CAPA DE DEGRADADO VERTICAL CONTINUO (180deg)
+   - 0%   #D7F000
+   - 18%  #A9E63E
+   - 38%  #7CD85F
+   - 58%  #53C989
+   - 78%  #5B92C9
+   - 100% #5C4FCF
+   Cubre el viewport completo, fijo con el scroll, 100% liso y sin elementos superpuestos.
 */
 .cultiveta-page-background {
   position: fixed;
@@ -109,90 +110,13 @@
   overflow: hidden;
   background: linear-gradient(
     180deg,
-    #51FFAF 0%,
-    #69F9D5 18%,
-    #7AEAEA 32%,
-    #88C8F0 50%,
-    #8099F5 72%,
-    #7856FA 100%
+    #D7F000 0%,
+    #A9E63E 18%,
+    #7CD85F 38%,
+    #53C989 58%,
+    #5B92C9 78%,
+    #5C4FCF 100%
   );
-}
-
-/* ==========================================================================
-   2. TRAMA HALFTONE MULTICAPA ORDENADA — CÓMIC / PÓSTER SERIGRAFIADO
-   ==========================================================================
-   - Cuadrícula regular estricta (spacing 22px horizontal y vertical).
-   - Alineación sincronizada (0 0 en todas las capas para evitar puntos dobles o desfasados).
-   - Tinta violeta oscuro / azul profundo: rgba(40, 48, 100, ...).
-   - Crecimiento vertical progresivo real en radio y opacidad mediante 6 franjas con máscaras suaves:
-     * 0% - 18%:   Invisibles / imperceptibles
-     * 18% - 35%:  Radio 0.9px (pequeño y sutil, opacidad 0.10)
-     * 35% - 50%:  Radio 1.7px (pequeño perceptible, opacidad 0.16)
-     * 50% - 65%:  Radio 2.5px (mediano, opacidad 0.22)
-     * 65% - 80%:  Radio 3.3px (claramente visible, opacidad 0.28)
-     * 80% - 100%: Radio 4.2px (grande y protagonista, opacidad 0.35)
-*/
-
-.cultiveta-page-halftone {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 1;
-}
-
-/* Franja 1 (18% - 35%): Radio 0.9px */
-.cultiveta-halftone-layer-1 {
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(circle, rgba(40, 48, 100, 0.10) 0.9px, transparent 0.9px);
-  background-size: 22px 22px;
-  background-position: 0 0;
-  mask-image: linear-gradient(to bottom, transparent 16%, black 22%, black 32%, transparent 37%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 16%, black 22%, black 32%, transparent 37%);
-}
-
-/* Franja 2 (33% - 52%): Radio 1.7px */
-.cultiveta-halftone-layer-2 {
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(circle, rgba(40, 48, 100, 0.16) 1.7px, transparent 1.7px);
-  background-size: 22px 22px;
-  background-position: 0 0;
-  mask-image: linear-gradient(to bottom, transparent 31%, black 37%, black 48%, transparent 54%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 31%, black 37%, black 48%, transparent 54%);
-}
-
-/* Franja 3 (48% - 67%): Radio 2.5px */
-.cultiveta-halftone-layer-3 {
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(circle, rgba(40, 48, 100, 0.22) 2.5px, transparent 2.5px);
-  background-size: 22px 22px;
-  background-position: 0 0;
-  mask-image: linear-gradient(to bottom, transparent 46%, black 52%, black 63%, transparent 69%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 46%, black 52%, black 63%, transparent 69%);
-}
-
-/* Franja 4 (63% - 82%): Radio 3.3px */
-.cultiveta-halftone-layer-4 {
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(circle, rgba(40, 48, 100, 0.28) 3.3px, transparent 3.3px);
-  background-size: 22px 22px;
-  background-position: 0 0;
-  mask-image: linear-gradient(to bottom, transparent 61%, black 67%, black 78%, transparent 84%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 61%, black 67%, black 78%, transparent 84%);
-}
-
-/* Franja 5 (78% - 100%): Radio 4.2px (protagonista, cómic definido) */
-.cultiveta-halftone-layer-5 {
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(circle, rgba(40, 48, 100, 0.35) 4.2px, transparent 4.2px);
-  background-size: 22px 22px;
-  background-position: 0 0;
-  mask-image: linear-gradient(to bottom, transparent 76%, black 82%, black 100%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 76%, black 82%, black 100%);
 }
 
 /* ==========================================================================
@@ -202,40 +126,22 @@
 /* Card estándar de Cultiveta con fondo blanco puro y separación del fondo */
 .cultiveta-card {
   background-color: #FFFFFF;
-  border: 1px solid rgba(40, 48, 100, 0.10);
+  border: 1px solid rgba(41, 32, 47, 0.10);
   border-radius: 1.75rem; /* 28px */
-  box-shadow: 0 4px 20px rgba(40, 48, 100, 0.06), 0 1px 3px rgba(40, 48, 100, 0.03);
+  box-shadow: 0 4px 20px rgba(41, 32, 47, 0.06), 0 1px 3px rgba(41, 32, 47, 0.03);
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .cultiveta-card-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 10px 28px rgba(40, 48, 100, 0.10), 0 2px 6px rgba(40, 48, 100, 0.05);
+  box-shadow: 0 10px 28px rgba(41, 32, 47, 0.10), 0 2px 6px rgba(41, 32, 47, 0.05);
 }
 
 /* Superficie interior editorial */
 .cultiveta-editorial-surface {
   background-color: #FFFDF7;
-  border: 1px solid rgba(40, 48, 100, 0.08);
+  border: 1px solid rgba(41, 32, 47, 0.08);
   border-radius: 1.25rem;
-}
-
-/* Grano pequeño para componentes que lo usan internamente */
-.cultiveta-grain {
-  position: relative;
-}
-
-.cultiveta-grain::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background-image: radial-gradient(rgba(41, 32, 47, 0.22) 0.55px, transparent 0.55px);
-  background-size: 4px 4px;
-  opacity: 0.05;
-  mix-blend-mode: multiply;
-  pointer-events: none;
-  z-index: 1;
 }
 
 /* Entry animation for cards */
@@ -276,7 +182,7 @@
 .skeleton-shimmer {
   position: relative;
   overflow: hidden;
-  background-color: #88C8F0;
+  background-color: #A9E63E;
 }
 
 .skeleton-shimmer::after {
