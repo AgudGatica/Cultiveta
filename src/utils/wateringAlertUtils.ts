@@ -1,4 +1,17 @@
-import { Cultivation, Watering } from '../types';
+import { Cultivation, Watering, IrrigationForecast } from '../types';
+import { WATERING_INTERVAL_DAYS } from './agronomicThresholds';
+
+const DAY_MS = 1000 * 60 * 60 * 24;
+
+/** Convierte "YYYY-MM-DDTHH:mm" (hora local, formato de calculateIrrigationForecast) a milisegundos. */
+function parseLocalTimestamp(ts: string | null | undefined): number | null {
+  if (!ts) return null;
+  const [datePart, timePart = '00:00'] = ts.split('T');
+  const [y, m, d] = datePart.split('-').map(Number);
+  const [hh, mm] = timePart.split(':').map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d, hh || 0, mm || 0).getTime();
+}
 
 export interface WateringAlertAnalysis {
   cultivationId: string;
@@ -35,7 +48,7 @@ export interface WateringAlertAnalysis {
  * - Cosechado / Secado / Curado: 0 días (no requiere riego)
  */
 export function getRecommendedWateringIntervalDays(stage?: string): number {
-  if (!stage) return 3;
+  if (!stage) return WATERING_INTERVAL_DAYS.default;
   const s = stage.toLowerCase().trim();
 
   if (
@@ -44,7 +57,7 @@ export function getRecommendedWateringIntervalDays(stage?: string): number {
     s.includes('curad') ||
     s.includes('finaliz')
   ) {
-    return 0;
+    return WATERING_INTERVAL_DAYS.finished;
   }
 
   // Etapas de alta demanda hídrica (Floración, Prefloración, Engorde)
@@ -54,36 +67,39 @@ export function getRecommendedWateringIntervalDays(stage?: string): number {
     s.includes('engorde') ||
     s.includes('stretch')
   ) {
-    return 2;
+    return WATERING_INTERVAL_DAYS.flowering;
   }
 
   // Maduración / Lavado
   if (s.includes('madur') || s.includes('lavad') || s.includes('flush')) {
-    return 2;
+    return WATERING_INTERVAL_DAYS.ripening;
   }
 
   // Germinación y Plántula
   if (s.includes('germin') || s.includes('semill') || s.includes('plánt') || s.includes('plant')) {
-    return 3;
+    return WATERING_INTERVAL_DAYS.seedling;
   }
 
   // Vegetativo y crecimiento
   if (s.includes('vege') || s.includes('crecim')) {
-    return 3;
+    return WATERING_INTERVAL_DAYS.vegetative;
   }
 
   // Valor por defecto estándar en sustrato orgánico / inerte
-  return 3;
+  return WATERING_INTERVAL_DAYS.default;
 }
 
 /**
- * Analiza la fecha del último riego frente al período recomendado para la etapa actual del cultivo.
- * Si supera dicho período recomendado, marca el estado como 'Overdue'.
+ * Analiza la urgencia de riego de un cultivo.
+ * Con `forecast` (salida de calculateIrrigationForecast) y al menos un riego registrado, "atrasado"
+ * significa que ya terminó la ventana estimada de revisión. Sin pronóstico se usa, como respaldo,
+ * el plazo fijo por etapa.
  */
 export function analyzeWateringUrgency(
   cultivation: Cultivation,
   latestWatering: Watering | null,
-  currentDate: Date = new Date()
+  currentDate: Date = new Date(),
+  forecast?: IrrigationForecast | null
 ): WateringAlertAnalysis {
   const isFinished =
     Boolean(cultivation.isFinished) ||
@@ -129,6 +145,122 @@ export function analyzeWateringUrgency(
     const lastDate = new Date(latestWatering.date);
     const diffMs = currentDate.getTime() - lastDate.getTime();
     daysSinceWatering = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+  }
+
+  // Caso con pronóstico: la ventana estimada reemplaza al plazo fijo por etapa
+  if (forecast) {
+    const windowStartMs = parseLocalTimestamp(forecast.wateringWindowStart);
+    const windowEndMs = parseLocalTimestamp(forecast.wateringWindowEnd);
+    const hasWatering = Boolean(latestWatering) && Boolean(forecast.lastWateringAt);
+
+    if (hasWatering && windowStartMs !== null && windowEndMs !== null) {
+      const nowMs = currentDate.getTime();
+      const windowEndText = forecast.wateringWindowEnd!.replace('T', ' ');
+      const base = {
+        cultivationId: cultivation.id,
+        cultivationName: cultivation.name,
+        currentStage: stage,
+        recommendedIntervalDays: recommendedInterval,
+        latestWateringDate: latestWatering!.date,
+        daysSinceWatering,
+        isFinished: false,
+      };
+
+      if (nowMs > windowEndMs) {
+        const daysOverdue = Math.max(1, Math.ceil((nowMs - windowEndMs) / DAY_MS));
+        return {
+          ...base,
+          isOverdue: true,
+          isDueToday: false,
+          isUpcoming: false,
+          isOptimal: false,
+          daysOverdue,
+          urgencyLevel: 'critical',
+          badgeText: 'Atrasado',
+          dotClass: 'bg-rose-500 dot-red',
+          glowClass: 'shadow-[0_0_12px_rgba(244,63,94,0.85)]',
+          badgeBg: 'bg-rose-500/20 text-rose-300 border-rose-500/50',
+          textClass: 'text-rose-400',
+          pulse: true,
+          label: `Riego atrasado: la ventana estimada terminó el ${windowEndText}.`,
+          alertTitle: `¡Riego atrasado en ${cultivation.name}!`,
+          alertMessage: `La ventana estimada para revisar la maceta terminó el ${windowEndText}. Revisá el sustrato y regá si hace falta.`,
+          notificationMessage: `Riego atrasado en "${cultivation.name}": la ventana estimada terminó el ${windowEndText}.`,
+        };
+      }
+
+      if (nowMs >= windowStartMs) {
+        return {
+          ...base,
+          isOverdue: false,
+          isDueToday: true,
+          isUpcoming: false,
+          isOptimal: false,
+          daysOverdue: 0,
+          urgencyLevel: 'warning',
+          badgeText: 'Toca Hoy',
+          dotClass: 'bg-amber-500 dot-orange',
+          glowClass: 'shadow-[0_0_8px_rgba(245,158,11,0.6)]',
+          badgeBg: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+          textClass: 'text-amber-400',
+          pulse: false,
+          label: `Dentro de la ventana estimada de riego (hasta ${windowEndText}).`,
+          alertTitle: `Toca revisar el riego (${cultivation.name})`,
+          alertMessage: `Estás dentro de la ventana estimada para revisar la maceta (hasta ${windowEndText}).`,
+          notificationMessage: `Toca revisar el riego de "${cultivation.name}".`,
+        };
+      }
+
+      return {
+        ...base,
+        isOverdue: false,
+        isDueToday: false,
+        isUpcoming: true,
+        isOptimal: true,
+        daysOverdue: 0,
+        urgencyLevel: 'optimal',
+        badgeText: 'Al día',
+        dotClass: 'bg-emerald-500 dot-green',
+        glowClass: 'shadow-[0_0_8px_rgba(16,185,129,0.6)]',
+        badgeBg: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30',
+        textClass: 'text-emerald-400',
+        pulse: false,
+        label: `Riego al día (la ventana estimada empieza el ${forecast.wateringWindowStart!.replace('T', ' ')}).`,
+        alertTitle: `Hidratación Óptima (${cultivation.name})`,
+        alertMessage: `El sustrato se encuentra en ciclo de secado normal.`,
+        notificationMessage: `Riego al día en "${cultivation.name}".`,
+      };
+    }
+
+    if (!hasWatering) {
+      // Sin riegos registrados no hay ventana real (el pronóstico es una estimación por etapa
+      // desde hoy): no se marca "atrasado", se pide el primer riego.
+      return {
+        cultivationId: cultivation.id,
+        cultivationName: cultivation.name,
+        currentStage: stage,
+        recommendedIntervalDays: recommendedInterval,
+        latestWateringDate: null,
+        daysSinceWatering: null,
+        isFinished: false,
+        isOverdue: false,
+        isDueToday: false,
+        isUpcoming: true,
+        isOptimal: false,
+        daysOverdue: 0,
+        urgencyLevel: 'warning',
+        badgeText: 'Pendiente',
+        dotClass: 'bg-amber-500 dot-orange',
+        glowClass: 'shadow-[0_0_8px_rgba(245,158,11,0.6)]',
+        badgeBg: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+        textClass: 'text-amber-400',
+        pulse: false,
+        label: 'Primer riego pendiente de anotar.',
+        alertTitle: `Primer riego pendiente (${cultivation.name})`,
+        alertMessage: `Anotá el primer riego de ${cultivation.name} para que el pronóstico empiece a aprender.`,
+        notificationMessage: `Pendiente de primer riego en "${cultivation.name}".`,
+      };
+    }
   }
 
   // Caso: Sin registros de riego históricos
@@ -292,7 +424,8 @@ export function analyzeWateringUrgency(
 export function getOverdueCultivations(
   cultivations: Cultivation[],
   waterings: Watering[],
-  currentDate: Date = new Date()
+  currentDate: Date = new Date(),
+  getForecast?: (cultivation: Cultivation) => IrrigationForecast | null
 ): Array<{
   cultivation: Cultivation;
   analysis: WateringAlertAnalysis;
@@ -314,7 +447,7 @@ export function getOverdueCultivations(
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
     const latest = cropWaterings[0] || null;
-    const analysis = analyzeWateringUrgency(crop, latest, currentDate);
+    const analysis = analyzeWateringUrgency(crop, latest, currentDate, getForecast ? getForecast(crop) : null);
 
     if (analysis.isOverdue) {
       results.push({

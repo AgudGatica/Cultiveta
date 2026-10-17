@@ -5,6 +5,7 @@ import { PhotoRecord, CultivationStageName, PhotoCategory, PhotoSyncStatus, Phot
 import { localStore } from './localStore';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
 import { getPhotoStoragePath } from '../firebase/paths';
+import { getLocalTodayDateOnly } from '../utils/growthStageUtils';
 
 export type QueuePhotoStatus = 'queued' | 'uploading' | 'saving_metadata' | 'waiting_network' | 'synced' | 'failed';
 
@@ -329,7 +330,7 @@ function normalizeRecord(raw: any): QueuedOfflinePhoto {
     storagePath,
     cloudDownloadUrl: raw.cloudDownloadUrl,
     stagePending,
-    date: raw.date || (raw.createdAt ? raw.createdAt.split('T')[0] : new Date().toISOString().split('T')[0]),
+    date: raw.date || (raw.createdAt ? raw.createdAt.split('T')[0] : getLocalTodayDateOnly()),
     dayOfCultivation: raw.dayOfCultivation || 1,
     stage: raw.stage || 'Vegetativo',
     category: raw.category || 'planta completa',

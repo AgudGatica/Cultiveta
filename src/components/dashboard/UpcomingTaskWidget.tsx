@@ -101,23 +101,21 @@ export const UpcomingTaskWidget: React.FC<UpcomingTaskWidgetProps> = ({
     setIsProcessing(true);
     setJustCompletedId(task.id);
     try {
-      const res = await taskService.completeTask(task, userId, {
-        logWateringRecord: autoLogWatering && task.type === 'watering',
-        potSizeLiters: targetCrop?.substrate?.potVolumeLiters,
-        stage: targetCrop?.currentStage,
-      });
-
-      if (res.wateringCreated && onWateringAdded) {
-        onWateringAdded(res.wateringCreated);
-      }
+      await taskService.completeTask(task, userId);
 
       setTasksVersion((v) => v + 1);
 
+      // El riego se anota solo con los datos que carga la persona: abrimos el formulario vacío.
+      const shouldOpenWateringForm = task.type === 'watering' && autoLogWatering && Boolean(onOpenWateringModal);
+      if (shouldOpenWateringForm && onOpenWateringModal) {
+        const crop = cultivations.find((c) => c.id === task.cultivationId);
+        onOpenWateringModal(crop);
+      }
+
       if (onTaskCompletedFeedback) {
-        const msg =
-          task.type === 'watering' && autoLogWatering
-            ? `¡Riego completado y registrado para "${task.cultivationName}"!`
-            : `¡Tarea "${task.title}" marcada como completada!`;
+        const msg = shouldOpenWateringForm
+          ? `Tarea marcada. Anotá los datos del riego de "${task.cultivationName}".`
+          : `Tarea "${task.title}" marcada como completada.`;
         onTaskCompletedFeedback(msg);
       }
     } catch (err) {
@@ -359,16 +357,16 @@ export const UpcomingTaskWidget: React.FC<UpcomingTaskWidgetProps> = ({
             {/* Quick watering auto-log toggle for watering tasks */}
             {activeTask.type === 'watering' && (
               <label
-                className="flex items-center gap-1.5 text-[11px] text-ink-muted hover:text-ink cursor-pointer select-none px-2.5 py-1.5 bg-surface rounded-xl border border-line"
-                title="Registrar automáticamente el riego en el historial con dosis y pH estándar"
+                className="min-h-11 flex items-center gap-2 text-xs text-ink-muted hover:text-ink cursor-pointer select-none px-3 py-2 bg-surface rounded-xl border border-line"
+                title="Al completar la tarea se abre el formulario de riego para que anotes los datos reales"
               >
                 <input
                   type="checkbox"
                   checked={autoLogWatering}
                   onChange={(e) => setAutoLogWatering(e.target.checked)}
-                  className="rounded border-line text-ok focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer"
+                  className="rounded border-line text-ok w-4 h-4 cursor-pointer"
                 />
-                <span>Auto-anotar en bitácora</span>
+                <span>Anotar el riego al completarla</span>
               </label>
             )}
 

@@ -147,6 +147,67 @@
   box-shadow: 0 10px 28px rgba(41, 32, 47, 0.10), 0 2px 6px rgba(41, 32, 47, 0.05);
 }
 
+/* Modales: estas clases se usaban en 9 modales pero no estaban definidas (el modal quedaba en el flujo de la página). */
+.cultiveta-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 1rem;
+  background-color: rgba(41, 32, 47, 0.45);
+}
+
+.cultiveta-modal-container {
+  position: relative;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  background-color: var(--color-card);
+  border: 1px solid rgba(41, 32, 47, 0.10);
+  border-radius: var(--radius-card);
+  box-shadow: 0 20px 48px rgba(41, 32, 47, 0.18);
+}
+
+/* Botones base */
+.cultiveta-btn-primary,
+.cultiveta-btn-green,
+.cultiveta-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 2.75rem; /* 44px */
+  padding: 0.625rem 1.25rem;
+  border-radius: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.15s ease, background-color 0.15s ease;
+}
+
+.cultiveta-btn-primary,
+.cultiveta-btn-green {
+  background-color: var(--color-primary);
+  color: var(--color-ink);
+}
+
+.cultiveta-btn-primary:hover,
+.cultiveta-btn-green:hover {
+  filter: brightness(0.95);
+}
+
+.cultiveta-btn-secondary {
+  background-color: var(--color-card);
+  color: var(--color-ink);
+  border: 1px solid var(--color-chip-line);
+}
+
+.cultiveta-btn-secondary:hover {
+  background-color: var(--color-surface);
+}
+
 /* Superficie interior editorial */
 .cultiveta-editorial-surface {
   background-color: var(--color-surface);

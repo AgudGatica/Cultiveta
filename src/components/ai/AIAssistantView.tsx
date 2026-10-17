@@ -27,6 +27,7 @@ import {
 import { aiService } from '../../services/aiService';
 import { condenseRecordsToKeyPoints } from '../../utils/condenseRecords';
 import { buildCultivationIntelligenceContext } from '../../services/cultivationIntelligenceService';
+import { SafeMarkdown } from './SafeMarkdown';
 
 export interface AIAssistantViewProps {
   cultivations: Cultivation[];
@@ -387,13 +388,13 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
             </div>
 
             <div
-              className={`p-4 rounded-3xl text-xs sm:text-sm leading-relaxed whitespace-pre-wrap ${
+              className={`p-4 rounded-3xl text-xs sm:text-sm leading-relaxed ${
                 msg.sender === 'user'
-                  ? 'bg-ok text-white rounded-tr-xs shadow-xs'
+                  ? 'bg-ok text-white rounded-tr-xs shadow-xs whitespace-pre-wrap'
                   : 'bg-surface text-ink rounded-tl-xs border border-chip-line shadow-2xs font-medium'
               }`}
             >
-              {msg.text}
+              {msg.sender === 'user' ? msg.text : <SafeMarkdown text={msg.text} />}
 
               {/* Tag indicating that this message included a condensed summary */}
               {msg.summaryModeActive && msg.sender === 'user' && (

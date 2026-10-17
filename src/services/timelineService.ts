@@ -9,12 +9,12 @@ import { aiService } from './aiService';
 export const timelineService = {
   async getCultivationTimeline(cultivation: Cultivation): Promise<TimelineEvent[]> {
     const [waterings, envRecords, photos, notes, harvest, aiAnalyses] = await Promise.all([
-      wateringService.getWateringsByCultivation(cultivation.id).catch(() => []),
-      environmentService.getEnvironmentRecordsByCultivation(cultivation.id).catch(() => []),
+      wateringService.getWateringsByCultivation(cultivation.id, cultivation.userId).catch(() => []),
+      environmentService.getEnvironmentRecordsByCultivation(cultivation.id, cultivation.userId).catch(() => []),
       photoService.getPhotosByCultivation(cultivation.id).catch(() => []),
-      diaryService.getDiaryEntriesByCultivation(cultivation.id).catch(() => []),
-      harvestService.getHarvestByCultivationId(cultivation.id).catch(() => null),
-      aiService.getAnalysesByCultivation(cultivation.id).catch(() => []),
+      diaryService.getDiaryEntriesByCultivation(cultivation.id, cultivation.userId).catch(() => []),
+      harvestService.getHarvestByCultivationId(cultivation.id, cultivation.userId).catch(() => null),
+      aiService.getAnalysesByCultivation(cultivation.id, cultivation.userId).catch(() => []),
     ]);
 
     const events: TimelineEvent[] = [];

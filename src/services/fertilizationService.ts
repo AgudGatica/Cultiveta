@@ -391,7 +391,8 @@ export const fertilizationService = {
     try {
       const q = query(
         collection(db, 'fertilizationSchedules'),
-        where('cultivationId', '==', cultivationId)
+        where('cultivationId', '==', cultivationId),
+        where('userId', '==', targetUserId)
       );
       const snap = await getDocs(q);
       if (!snap.empty) {

@@ -61,7 +61,8 @@ export const harvestService = {
     try {
       const q = query(
         collection(db, 'harvests'),
-        where('cultivationId', '==', cultivationId)
+        where('cultivationId', '==', cultivationId),
+        where('userId', '==', targetUserId)
       );
       const snap = await getDocs(q);
       return snap.empty ? null : ({ id: snap.docs[0].id, ...snap.docs[0].data() } as Harvest);

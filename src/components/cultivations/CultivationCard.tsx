@@ -341,12 +341,12 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
       {/* Modal de confirmación para eliminar cultivo */}
       <ConfirmModal
         isOpen={isDeleteModalOpen}
-        onClose={() => setIsDeleteModalOpen(false)}
+        onCancel={() => setIsDeleteModalOpen(false)}
         onConfirm={handleDeleteCultivation}
         title="¿Eliminar este cultivo?"
         message={`Esta acción borrará definitivamente "${cultivation.name}" y todos sus riegos, mediciones y fotos asociadas. Esta acción no se puede deshacer.`}
-        confirmText={isDeleting ? 'Eliminando...' : 'Eliminar cultivo'}
-        confirmVariant="danger"
+        confirmLabel={isDeleting ? 'Eliminando...' : 'Eliminar cultivo'}
+        isDestructive
       />
     </div>
   );

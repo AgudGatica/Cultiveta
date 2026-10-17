@@ -288,7 +288,7 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
                   <div>
                     <h4 className="text-xs font-extrabold text-amber-950 flex items-center gap-2">
                       <span>Fotoperíodo de Iluminación</span>
-                      {isFloweringStage ? (
+                      {isFloweringStage(selectedStageName) ? (
                         <span className="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 text-[10px] font-black uppercase tracking-wider">
                           Floración (12-12 Sugerido)
                         </span>
@@ -299,9 +299,9 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
                       )}
                     </h4>
                     <p className="text-[11px] text-amber-800 font-medium">
-                      {isFloweringStage
-                        ? 'Al pasar a floración se ajusta a 12-12 por defecto. Puedes editar las horas (ej. 13 de luz y 11 de oscuridad).'
-                        : 'Ajusta las horas de luz y oscuridad para esta fase del cultivo.'}
+                      {isFloweringStage(selectedStageName)
+                        ? 'Al pasar a floración se ajusta a 12-12 por defecto. Podés editar las horas (ej. 13 de luz y 11 de oscuridad).'
+                        : 'Ajustá las horas de luz y oscuridad para esta fase del cultivo.'}
                     </p>
                   </div>
                 </div>

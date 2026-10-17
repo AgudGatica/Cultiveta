@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, BookOpen, Save, Tag } from 'lucide-react';
 import { Cultivation, DiaryEntry } from '../../types';
 import { diaryService } from '../../services/diaryService';
+import { getLocalTodayDateOnly } from '../../utils/growthStageUtils';
 
 interface DiaryNoteModalProps {
   isOpen: boolean;
@@ -21,7 +22,7 @@ export const DiaryNoteModal: React.FC<DiaryNoteModalProps> = ({
   onNoteAdded,
 }) => {
   const [cultivationId, setCultivationId] = useState(defaultCultivationId || (cultivations[0]?.id || ''));
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(getLocalTodayDateOnly());
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [tagInput, setTagInput] = useState('');

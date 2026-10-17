@@ -53,6 +53,7 @@ import { PhotoDiagnosisModal } from './components/ai/PhotoDiagnosisModal';
 import { GoogleCalendarModal } from './components/calendar/GoogleCalendarModal';
 import { CropComparisonView } from './components/harvests/CropComparisonView';
 import { getOverdueCultivations } from './utils/wateringAlertUtils';
+import { calculateIrrigationForecast } from './services/irrigationForecastService';
 import { browserNotificationService } from './services/browserNotificationService';
 import { NotificationCenterModal } from './components/notifications/NotificationCenterModal';
 import { UserPreferencesModal } from './components/user/UserPreferencesModal';
@@ -247,7 +248,9 @@ export default function App() {
     const alertPrefs = userProfile?.preferences?.alertTypes;
     if (alertPrefs && alertPrefs.wateringAlerts === false) return;
 
-    const overdueList = getOverdueCultivations(cultivations, waterings);
+    const overdueList = getOverdueCultivations(cultivations, waterings, new Date(), (crop) =>
+      calculateIrrigationForecast(crop, waterings, envRecords)
+    );
     if (overdueList.length === 0) return;
 
     // Detectar si hay cultivos con riego Overdue que no hayan sido notificados en la sesión actual
@@ -259,16 +262,12 @@ export default function App() {
       unnotified.forEach((item) => notifiedOverdueRef.current.add(item.cultivation.id));
       const first = unnotified[0];
       if (unnotified.length === 1) {
-        showToast(
-          `⚠️ Riego atrasado: "${first.cultivation.name}" superó el ciclo de riego (${first.analysis.recommendedIntervalDays}d en ${first.cultivation.currentStage}).`
-        );
+        showToast(`"${first.cultivation.name}": ${first.analysis.label}`);
       } else {
-        showToast(
-          `⚠️ Riego atrasado: ${unnotified.length} cultivos superan el período de riego recomendado.`
-        );
+        showToast(`Riego atrasado en ${unnotified.length} cultivos: pasó la ventana estimada de revisión.`);
       }
     }
-  }, [currentUser, cultivations, waterings, userProfile]);
+  }, [currentUser, cultivations, waterings, envRecords, userProfile]);
 
   // 1.3 Inicializar servicio de Notificaciones de Navegador / Push para alertas 'env_alert' del cron job
   useEffect(() => {

@@ -12,6 +12,7 @@ import {
 import { PhotoRecord, Cultivation, AIPhotoAnalysisResult } from '../../types';
 import { aiService } from '../../services/aiService';
 import { diaryService } from '../../services/diaryService';
+import { getLocalTodayDateOnly } from '../../utils/growthStageUtils';
 
 interface PhotoDiagnosisModalProps {
   isOpen: boolean;
@@ -88,7 +89,7 @@ export const PhotoDiagnosisModal: React.FC<PhotoDiagnosisModalProps> = ({
       await diaryService.addDiaryEntry({
         userId,
         cultivationId: cultivation.id,
-        date: photo.date || new Date().toISOString().split('T')[0],
+        date: photo.date || getLocalTodayDateOnly(),
         title: `Diagnóstico IA: ${analysisResult.diagnosis}`,
         content: noteContent,
         tags: ['Diagnóstico IA', analysisResult.severity],

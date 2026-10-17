@@ -57,6 +57,7 @@ import {
   formatFriendlyDate,
 } from '../../utils/growthStageUtils';
 import { analyzeWateringUrgency } from '../../utils/wateringAlertUtils';
+import { calculateIrrigationForecast } from '../../services/irrigationForecastService';
 import { resolveCultivationDisplayPhoto } from '../../utils/cultivationPhotoResolver';
 import { useGeneticsCatalogPhotos } from '../../hooks/useGeneticsCatalogPhotos';
 import { GeneticsHeaderPhoto } from './GeneticsHeaderPhoto';
@@ -142,8 +143,13 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
   const lastEnv = cropEnv[0];
 
   const wateringAnalysis = React.useMemo(() => {
-    return analyzeWateringUrgency(cultivation, lastWatering || null);
-  }, [cultivation, lastWatering]);
+    return analyzeWateringUrgency(
+      cultivation,
+      lastWatering || null,
+      new Date(),
+      calculateIrrigationForecast(cultivation, waterings, envRecords)
+    );
+  }, [cultivation, lastWatering, waterings, envRecords]);
 
   const isHealthy = !wateringAnalysis.isOverdue && (!lastEnv || (lastEnv.temperatureC >= 18 && lastEnv.temperatureC <= 29 && lastEnv.humidityPct >= 40 && lastEnv.humidityPct <= 70));
   const subscribedPhotos = useGeneticsCatalogPhotos();

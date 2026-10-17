@@ -35,7 +35,8 @@ export const diaryService = {
     try {
       const q = query(
         collection(db, 'diaryEntries'),
-        where('cultivationId', '==', cultivationId)
+        where('cultivationId', '==', cultivationId),
+        where('userId', '==', targetUserId)
       );
       const snap = await getDocs(q);
       const cloud = snap.docs

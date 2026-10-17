@@ -34,7 +34,8 @@ export const wateringService = {
     try {
       const q = query(
         collection(db, 'waterings'),
-        where('cultivationId', '==', cultivationId)
+        where('cultivationId', '==', cultivationId),
+        where('userId', '==', targetUserId)
       );
       const snap = await getDocs(q);
       const cloud = snap.docs

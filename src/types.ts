@@ -2,6 +2,7 @@ export type CultivationType = 'Indoor' | 'Outdoor' | 'Invernadero';
 export type PhotoperiodType = 'Fotoperiódica' | 'Automática' | 'CBD' | 'Regular';
 export type PotType = 'Geotextil' | 'Plástico' | 'Airpot' | 'Tierra madre' | 'Hidropónico' | 'Otro';
 export type PotLiftFeeling = 'heavy' | 'medium' | 'light' | 'very_light';
+export type DrainageLevel = 'none' | 'low' | 'normal' | 'high';
 export type StageDateKnowledge = 'actual' | 'projected' | 'unknown';
 
 export type CultivationStageName =
@@ -262,6 +263,9 @@ export interface Watering {
   createdAt: string;
   // Percepción subjetiva levantando la maceta a mano antes de regar (sin balanza)
   potLiftBeforeWatering?: PotLiftFeeling;
+  // Drenaje observado a simple vista (opcional). Todavía NO es una señal de calculateIrrigationForecast:
+  // solo se guarda; el motor usa runoffVolumeLiters cuando la persona mide los litros.
+  drainageLevel?: DrainageLevel;
   // Backward-compatible optional technical fields for precision dryback estimation
   runoffVolumeLiters?: number;
   /** @deprecated Conservado por retrocompatibilidad con registros antiguos. La experiencia actual usa potLiftBeforeWatering. */

@@ -1,8 +1,14 @@
 import { Cultivation, Watering, EnvironmentRecord, CultivationTask, TaskUrgency, TaskPriority, Genetics } from '../types';
-import { wateringService } from './wateringService';
 import { localStore } from './localStore';
 import { analyzeWateringUrgency, getRecommendedWateringIntervalDays } from '../utils/wateringAlertUtils';
-import { buildCultivationStageSchedule } from '../utils/growthStageUtils';
+import { calculateIrrigationForecast } from './irrigationForecastService';
+import { buildCultivationStageSchedule, getLocalTodayDateOnly } from '../utils/growthStageUtils';
+import {
+  TASK_TEMP_HIGH_ALERT_C,
+  TASK_FLOWER_HUMIDITY_HIGH_PCT,
+  TASK_TARGET_PH_FLOWER,
+  TASK_TARGET_PH_DEFAULT,
+} from '../utils/agronomicThresholds';
 
 const COMPLETED_TASKS_KEY_PREFIX = 'cultiveta_completed_tasks_';
 
@@ -76,7 +82,7 @@ export const taskService = {
   ): CultivationTask[] {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = getLocalTodayDateOnly(today);
 
     const completedMap = this.getCompletedTaskMap(userId);
     const activeCrops = cultivations.filter((c) => !c.isFinished);
@@ -102,7 +108,13 @@ export const taskService = {
       const isWateringManuallyCompleted = !!completedMap[wateringTaskId];
       const isWateringDone = wateredToday || isWateringManuallyCompleted;
 
-      const wateringAnalysis = analyzeWateringUrgency(crop, latestWatering || null, today);
+      // "Atrasado" se decide con la ventana de calculateIrrigationForecast (no con un plazo fijo).
+      const wateringAnalysis = analyzeWateringUrgency(
+        crop,
+        latestWatering || null,
+        new Date(),
+        calculateIrrigationForecast(crop, waterings, envRecords)
+      );
       const intervalDays = wateringAnalysis.recommendedIntervalDays;
 
       let nextWateringDate = new Date(today);
@@ -113,7 +125,7 @@ export const taskService = {
         nextWateringDate.setDate(nextWateringDate.getDate() + intervalDays);
       }
 
-      const nextWateringStr = nextWateringDate.toISOString().split('T')[0];
+      const nextWateringStr = getLocalTodayDateOnly(nextWateringDate);
 
       let wateringUrgency: TaskUrgency = 'upcoming';
       let wateringPriority: TaskPriority = 'medium';
@@ -124,7 +136,7 @@ export const taskService = {
         ? Math.round(crop.substrate.potVolumeLiters * 0.15 * 10) / 10
         : 2;
 
-      const targetPh = crop.currentStage === 'Floración' ? '6.2 - 6.5' : '5.8 - 6.2';
+      const targetPh = crop.currentStage === 'Floración' ? TASK_TARGET_PH_FLOWER : TASK_TARGET_PH_DEFAULT;
 
       if (isWateringDone) {
         wateringUrgency = 'today';
@@ -144,7 +156,7 @@ export const taskService = {
       } else {
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
-        const tomorrowStr = tomorrow.toISOString().split('T')[0];
+        const tomorrowStr = getLocalTodayDateOnly(tomorrow);
         if (nextWateringStr === tomorrowStr) {
           wateringUrgency = 'tomorrow';
           wateringPriority = 'high';
@@ -299,7 +311,7 @@ export const taskService = {
 
       if (cropEnv) {
         // High humidity in flower risk (Botrytis alert)
-        if (crop.currentStage === 'Floración' && cropEnv.humidityPct >= 65) {
+        if (crop.currentStage === 'Floración' && cropEnv.humidityPct >= TASK_FLOWER_HUMIDITY_HIGH_PCT) {
           const envHumTaskId = `env_hum_alert_${crop.id}_${todayStr}`;
           const isEnvHumCompleted = !!completedMap[envHumTaskId];
           tasks.push({
@@ -322,7 +334,7 @@ export const taskService = {
         }
 
         // High temperature stress
-        if (cropEnv.temperatureC >= 29) {
+        if (cropEnv.temperatureC >= TASK_TEMP_HIGH_ALERT_C) {
           const envTempTaskId = `env_temp_alert_${crop.id}_${todayStr}`;
           const isEnvTempCompleted = !!completedMap[envTempTaskId];
           tasks.push({
@@ -396,46 +408,13 @@ export const taskService = {
   },
 
   /**
-   * Completes a task directly from the widget.
-   * If it's a watering task and logWateringRecord is true, it automatically saves a watering record.
+   * Marca una tarea como completada desde el widget.
+   * No crea registros de riego: un riego solo se guarda con los datos que informa la persona
+   * en el formulario de riego (sin volumen, pH ni EC supuestos).
    */
-  async completeTask(
-    task: CultivationTask,
-    userId: string,
-    options?: {
-      logWateringRecord?: boolean;
-      potSizeLiters?: number;
-      stage?: string;
-    }
-  ): Promise<{ success: boolean; wateringCreated?: Watering }> {
+  async completeTask(task: CultivationTask, userId: string): Promise<{ success: boolean }> {
     this.saveCompletedTask(task.id, userId);
-
-    let wateringCreated: Watering | undefined;
-
-    if (task.type === 'watering' && options?.logWateringRecord) {
-      try {
-        const todayStr = new Date().toISOString().split('T')[0];
-        const defaultVolume = options.potSizeLiters
-          ? Math.round(options.potSizeLiters * 0.15 * 10) / 10
-          : 2;
-        const defaultPh = task.stage === 'Floración' ? 6.4 : 6.0;
-
-        wateringCreated = await wateringService.addWatering({
-          userId,
-          cultivationId: task.cultivationId,
-          date: todayStr,
-          time: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
-          volumeLiters: defaultVolume,
-          phIn: defaultPh,
-          ecIn: 1.2,
-          observations: 'Riego completado directamente desde el widget de tareas del Dashboard.',
-        });
-      } catch (err) {
-        console.warn('Could not auto-log watering record for completed task:', err);
-      }
-    }
-
-    return { success: true, wateringCreated };
+    return { success: true };
   },
 
   /**

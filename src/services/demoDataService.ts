@@ -12,6 +12,7 @@ import { db } from '../firebase/config';
 import { Cultivation, Genetics, Watering, EnvironmentRecord, PhotoRecord, DiaryEntry, Harvest, AIPhotoAnalysis, FertilizationSchedule, WateringProductItem } from '../types';
 import { localStore } from './localStore';
 import { fertilizationService } from './fertilizationService';
+import { getLocalTodayDateOnly } from '../utils/growthStageUtils';
 
 function saveDemoItem(collectionName: string, item: any) {
   localStore.saveItem(collectionName, item);
@@ -42,7 +43,7 @@ export const demoDataService = {
     const formatDate = (daysAgo: number) => {
       const d = new Date(today);
       d.setDate(d.getDate() - daysAgo);
-      return d.toISOString().split('T')[0];
+      return getLocalTodayDateOnly(d);
     };
 
     // 1. Seed Genetics

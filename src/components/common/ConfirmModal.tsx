@@ -26,7 +26,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in"
+      className="cultiveta-modal-overlay items-center animate-in fade-in"
       onClick={(e) => {
         e.stopPropagation();
         onCancel();
@@ -34,31 +34,36 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
     >
       <div
         id="confirm-modal-box"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="confirm-modal-title"
+        aria-describedby="confirm-modal-message"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md bg-[#0F0F0F] rounded-[32px] p-6 sm:p-7 shadow-2xl border border-zinc-800"
+        className="cultiveta-modal-container max-w-md p-6 sm:p-7 my-auto"
       >
         <div className="flex items-start justify-between gap-4 mb-4">
           <div className="flex items-center gap-3">
-            <div className={`p-3 rounded-2xl ${isDestructive ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'}`}>
-              <AlertTriangle className="w-5 h-5" />
+            <div className={`p-3 rounded-2xl border ${isDestructive ? 'bg-error/10 text-error border-error/20' : 'bg-warn-bg text-warn-ink border-warn-line'}`}>
+              <AlertTriangle className="w-5 h-5" aria-hidden="true" />
             </div>
-            <h3 className="text-lg font-bold text-white">{title}</h3>
+            <h3 id="confirm-modal-title" className="text-lg font-bold text-ink">{title}</h3>
           </div>
           <button
             type="button"
             onClick={onCancel}
-            className="p-1.5 text-zinc-400 hover:text-white rounded-full hover:bg-zinc-800 transition-colors"
+            aria-label="Cerrar"
+            className="min-h-11 min-w-11 flex items-center justify-center text-ink-muted hover:text-ink rounded-full hover:bg-track transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
-        <p className="text-xs sm:text-sm text-zinc-400 mb-6 leading-relaxed">{message}</p>
+        <p id="confirm-modal-message" className="text-sm text-ink-muted mb-6 leading-relaxed">{message}</p>
         <div className="flex items-center justify-end gap-3">
           <button
             type="button"
             id="confirm-modal-cancel-btn"
             onClick={onCancel}
-            className="px-5 py-2.5 text-xs font-semibold text-zinc-300 hover:bg-zinc-800 rounded-2xl transition-colors cursor-pointer border border-zinc-800"
+            className="cultiveta-btn-secondary text-sm"
           >
             {cancelLabel}
           </button>
@@ -66,9 +71,11 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             type="button"
             id="confirm-modal-submit-btn"
             onClick={onConfirm}
-            className={`px-5 py-2.5 text-xs font-bold rounded-2xl text-white shadow-lg transition-colors cursor-pointer ${
-              isDestructive ? 'bg-rose-600 hover:bg-rose-500 shadow-rose-600/20' : 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-emerald-500/20'
-            }`}
+            className={
+              isDestructive
+                ? 'inline-flex items-center justify-center min-h-11 px-5 py-2.5 text-sm font-bold rounded-2xl text-white bg-error hover:brightness-110 transition-all cursor-pointer'
+                : 'cultiveta-btn-primary text-sm'
+            }
           >
             {confirmLabel}
           </button>
@@ -77,4 +84,3 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
     </div>
   );
 };
-

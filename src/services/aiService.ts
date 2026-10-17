@@ -60,10 +60,13 @@ async function getAuthHeaders(): Promise<{ Authorization: string; 'Content-Type'
 }
 
 export const aiService = {
-  async getAnalysesByCultivation(cultivationId: string): Promise<AIPhotoAnalysis[]> {
+  async getAnalysesByCultivation(cultivationId: string, userId?: string): Promise<AIPhotoAnalysis[]> {
+    const uid = userId || auth.currentUser?.uid;
+    if (!uid) return [];
     const q = query(
       collection(db, 'photoAnalyses'),
-      where('cultivationId', '==', cultivationId)
+      where('cultivationId', '==', cultivationId),
+      where('userId', '==', uid)
     );
     const snap = await getDocs(q);
     return snap.docs

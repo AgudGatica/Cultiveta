@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { X, Droplets, Plus, Trash2, Save, Sparkles, FlaskConical, ChevronDown } from 'lucide-react';
-import { Cultivation, Watering, WateringProductItem, FertilizationSchedule, PotLiftFeeling } from '../../types';
+import { X, Droplets, Plus, Trash2, Save, FlaskConical, ChevronDown } from 'lucide-react';
+import { Cultivation, Watering, WateringProductItem, FertilizationSchedule, PotLiftFeeling, DrainageLevel } from '../../types';
 import { wateringService } from '../../services/wateringService';
 import { fertilizationService } from '../../services/fertilizationService';
+import { getLocalTodayDateOnly } from '../../utils/growthStageUtils';
 
 interface WateringModalProps {
   isOpen: boolean;
@@ -17,6 +18,30 @@ interface WateringModalProps {
   onWateringAdded: (watering: Watering) => void;
 }
 
+const DRAINAGE_OPTIONS: Array<{ value: DrainageLevel; label: string }> = [
+  { value: 'none', label: 'No drenó' },
+  { value: 'low', label: 'Poco' },
+  { value: 'normal', label: 'Normal' },
+  { value: 'high', label: 'Mucho' },
+];
+
+const POT_LIFT_OPTIONS: Array<{ value: PotLiftFeeling; testId: string; label: string; hint: string }> = [
+  { value: 'heavy', testId: 'pot-lift-heavy', label: 'Pesada', hint: 'Todavía conserva bastante agua.' },
+  { value: 'medium', testId: 'pot-lift-medium', label: 'Normal', hint: 'Perdió parte del agua, pero todavía pesa.' },
+  { value: 'light', testId: 'pot-lift-light', label: 'Liviana', hint: 'Perdió buena parte del agua.' },
+  { value: 'very_light', testId: 'pot-lift-very-light', label: 'Muy liviana', hint: 'El sustrato parece bastante seco.' },
+];
+
+const fieldClass =
+  'w-full min-h-11 px-3.5 py-2.5 rounded-2xl bg-surface border border-line text-sm text-ink focus:outline-hidden focus:border-brand focus:bg-white';
+
+const chipClass = (selected: boolean) =>
+  `min-h-11 px-3 py-2 rounded-xl border text-sm font-bold transition-all cursor-pointer ${
+    selected ? 'bg-brand-deep text-white border-brand-deep' : 'bg-white text-ink border-chip-line hover:bg-surface'
+  }`;
+
+const parseNumber = (value: string): number | '' => (value === '' ? '' : parseFloat(value));
+
 export const WateringModal: React.FC<WateringModalProps> = ({
   isOpen,
   onClose,
@@ -30,19 +55,22 @@ export const WateringModal: React.FC<WateringModalProps> = ({
   onWateringAdded,
 }) => {
   const [cultivationId, setCultivationId] = useState(defaultCultivationId || (cultivations[0]?.id || ''));
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(getLocalTodayDateOnly());
   const [time, setTime] = useState(
     new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
   );
-  const [volumeLiters, setVolumeLiters] = useState<number | ''>(5);
+  // Sin valores supuestos: todo arranca vacío y se guarda solo lo que la persona informa.
+  const [volumeLiters, setVolumeLiters] = useState<number | ''>('');
   const [usedNutrients, setUsedNutrients] = useState<boolean>(Boolean(initialProducts && initialProducts.length > 0));
-  const [showTechnicalDetails, setShowTechnicalDetails] = useState<boolean>(Boolean(initialPh !== undefined || initialEc !== undefined));
-  const [phIn, setPhIn] = useState<number | ''>(initialPh ?? 6.2);
-  const [ecIn, setEcIn] = useState<number | ''>(initialEc ?? 1.6);
+  const [phIn, setPhIn] = useState<number | ''>(initialPh ?? '');
+  const [ecIn, setEcIn] = useState<number | ''>(initialEc ?? '');
+  const [drainageLevel, setDrainageLevel] = useState<DrainageLevel | undefined>(undefined);
+  const [potLiftBeforeWatering, setPotLiftBeforeWatering] = useState<PotLiftFeeling | undefined>(undefined);
+  const [observations, setObservations] = useState('');
+  const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
   const [phRunoff, setPhRunoff] = useState<number | ''>('');
   const [ecRunoff, setEcRunoff] = useState<number | ''>('');
   const [runoffVolumeLiters, setRunoffVolumeLiters] = useState<number | ''>('');
-  const [potLiftBeforeWatering, setPotLiftBeforeWatering] = useState<PotLiftFeeling | undefined>(undefined);
   const [substrateMoistureBeforePct, setSubstrateMoistureBeforePct] = useState<number | ''>('');
   const [substrateMoistureAfterPct, setSubstrateMoistureAfterPct] = useState<number | ''>('');
   const [waterTempC, setWaterTempC] = useState<number | ''>('');
@@ -51,7 +79,6 @@ export const WateringModal: React.FC<WateringModalProps> = ({
   const [newProductName, setNewProductName] = useState('');
   const [newProductBrand, setNewProductBrand] = useState('');
   const [newProductDosage, setNewProductDosage] = useState<number | ''>('');
-  const [observations, setObservations] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cropSchedule, setCropSchedule] = useState<FertilizationSchedule | null>(null);
@@ -69,29 +96,24 @@ export const WateringModal: React.FC<WateringModalProps> = ({
       setProducts(initialProducts);
       setUsedNutrients(true);
     }
-    if (initialPh !== undefined) {
-      setPhIn(initialPh);
-      setShowTechnicalDetails(true);
-    }
-    if (initialEc !== undefined) {
-      setEcIn(initialEc);
-      setShowTechnicalDetails(true);
-    }
+    if (initialPh !== undefined) setPhIn(initialPh);
+    if (initialEc !== undefined) setEcIn(initialEc);
     if (initialWeekNumber !== undefined) setFertilizationWeekNumber(initialWeekNumber);
   }, [initialProducts, initialPh, initialEc, initialWeekNumber]);
+
+  const currentVolume = typeof volumeLiters === 'number' && volumeLiters > 0 ? volumeLiters : null;
 
   const handleApplyScheduleWeek = (weekNumber: number) => {
     if (!cropSchedule) return;
     const week = cropSchedule.weeks.find((w) => w.weekNumber === weekNumber);
     if (!week) return;
 
-    const vol = typeof volumeLiters === 'number' && volumeLiters > 0 ? volumeLiters : 5;
     const mapped: WateringProductItem[] = week.products.map((p) => ({
       name: p.name,
       brand: p.brand || cropSchedule.brand,
       dosageMlPerL: p.dosageMlPerL,
       category: p.category,
-      totalAmountMl: Number((p.dosageMlPerL * vol).toFixed(1)),
+      totalAmountMl: currentVolume ? Number((p.dosageMlPerL * currentVolume).toFixed(1)) : undefined,
     }));
 
     setProducts(mapped);
@@ -104,14 +126,13 @@ export const WateringModal: React.FC<WateringModalProps> = ({
   const handleAddProduct = () => {
     if (!newProductName.trim()) return;
     const dosage = newProductDosage !== '' ? Number(newProductDosage) : undefined;
-    const vol = typeof volumeLiters === 'number' && volumeLiters > 0 ? volumeLiters : 5;
     setProducts([
       ...products,
       {
         name: newProductName.trim(),
         brand: newProductBrand.trim() || undefined,
         dosageMlPerL: dosage,
-        totalAmountMl: dosage ? Number((dosage * vol).toFixed(1)) : undefined,
+        totalAmountMl: dosage && currentVolume ? Number((dosage * currentVolume).toFixed(1)) : undefined,
       },
     ]);
     setNewProductName('');
@@ -126,11 +147,11 @@ export const WateringModal: React.FC<WateringModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!cultivationId) {
-      setError('Por favor seleccioná un cultivo.');
+      setError('Elegí un cultivo.');
       return;
     }
     if (!volumeLiters || Number(volumeLiters) <= 0) {
-      setError('Por favor indicá los litros de agua.');
+      setError('Indicá cuántos litros regaste.');
       return;
     }
 
@@ -141,7 +162,7 @@ export const WateringModal: React.FC<WateringModalProps> = ({
       const targetCrop = cultivations.find((c) => c.id === cultivationId);
       const vol = Number(volumeLiters);
 
-      // Recalculate totalAmountMl with the final volume
+      // Recalcular totalAmountMl con el volumen final
       const finalProducts = usedNutrients
         ? products.map((p) => ({
             ...p,
@@ -159,6 +180,7 @@ export const WateringModal: React.FC<WateringModalProps> = ({
         ecIn: ecIn !== '' ? Number(ecIn) : undefined,
         phRunoff: phRunoff !== '' ? Number(phRunoff) : undefined,
         ecRunoff: ecRunoff !== '' ? Number(ecRunoff) : undefined,
+        drainageLevel,
         runoffVolumeLiters: runoffVolumeLiters !== '' ? Number(runoffVolumeLiters) : undefined,
         potLiftBeforeWatering: potLiftBeforeWatering || undefined,
         potWeightBeforeWateringKg: undefined,
@@ -176,7 +198,7 @@ export const WateringModal: React.FC<WateringModalProps> = ({
       onClose();
     } catch (err: any) {
       console.error('Error adding watering', err);
-      setError(err?.message || 'No se pudo guardar el registro de riego.');
+      setError(err?.message || 'No se pudo guardar el riego.');
     } finally {
       setLoading(false);
     }
@@ -185,47 +207,53 @@ export const WateringModal: React.FC<WateringModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="cultiveta-modal-overlay animate-in fade-in">
+    <div className="cultiveta-modal-overlay animate-in fade-in" role="presentation">
       <div
         id="watering-modal-box"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="watering-modal-title"
         className="cultiveta-modal-container max-w-xl p-6 sm:p-8 my-auto"
       >
         <div className="flex items-center justify-between pb-4 border-b border-line mb-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-ok/15 text-ok">
-              <Droplets className="w-6 h-6" />
+            <div className="p-3 rounded-2xl bg-icon-bg text-brand">
+              <Droplets className="w-6 h-6" aria-hidden="true" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-ink">¿Regaste? 💧</h2>
-              <p className="text-xs text-ink-muted">Anotá el riego para llevar el control de tus plantas</p>
+              <h2 id="watering-modal-title" className="text-xl font-black text-ink">Anotá el riego</h2>
+              <p className="text-sm text-ink-muted">Cargá solo lo que mediste u observaste.</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-ink-subtle hover:text-ink rounded-full hover:bg-track transition-colors cursor-pointer"
+            aria-label="Cerrar"
+            className="min-h-11 min-w-11 flex items-center justify-center text-ink-muted hover:text-ink rounded-full hover:bg-track transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3.5 rounded-2xl bg-coral/10 border border-coral/30 text-coral text-xs font-semibold">
+          <div role="alert" className="mb-4 p-3.5 rounded-2xl bg-error/10 border border-error/30 text-error text-sm font-semibold">
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5 max-h-[70vh] overflow-y-auto pr-1">
-          {/* Crop Selector & Date */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="sm:col-span-3">
-              <label className="block text-xs font-bold text-ink mb-1">Cultivo *</label>
+        <form onSubmit={handleSubmit} className="space-y-5 max-h-[70vh] overflow-y-auto pr-1" noValidate>
+          {/* Cultivo, fecha y hora */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="sm:col-span-2">
+              <label htmlFor="watering-crop-select" className="block text-sm font-bold text-ink mb-1">
+                Cultivo
+              </label>
               <select
                 id="watering-crop-select"
                 value={cultivationId}
                 onChange={(e) => setCultivationId(e.target.value)}
                 required
-                className="w-full px-3.5 py-2.5 rounded-2xl bg-surface border border-line text-ink text-sm focus:outline-hidden focus:border-ok focus:bg-white cursor-pointer font-medium"
+                className={`${fieldClass} cursor-pointer font-medium`}
               >
                 {cultivations.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -236,112 +264,98 @@ export const WateringModal: React.FC<WateringModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-ink mb-1">Fecha</label>
+              <label htmlFor="watering-date-input" className="block text-sm font-bold text-ink mb-1">
+                Fecha
+              </label>
               <input
                 id="watering-date-input"
                 type="date"
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-2xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok focus:bg-white font-medium"
+                className={fieldClass}
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-ink mb-1">Hora</label>
+              <label htmlFor="watering-time-input" className="block text-sm font-bold text-ink mb-1">
+                Hora
+              </label>
               <input
                 id="watering-time-input"
                 type="time"
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
-                className="w-full px-3 py-2 rounded-2xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok focus:bg-white font-medium"
+                className={fieldClass}
               />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-ink mb-1">¿Cuánto regaste? *</label>
-              <div className="relative">
-                <input
-                  id="watering-volume-input"
-                  type="number"
-                  step="0.1"
-                  min="0.1"
-                  required
-                  placeholder="ej. 5.0"
-                  value={volumeLiters}
-                  onChange={(e) => setVolumeLiters(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                  className="w-full px-3.5 py-2 rounded-2xl bg-ok/10 border border-ok/40 font-black text-sm text-ink focus:outline-hidden focus:border-ok focus:bg-white pr-8"
-                />
-                <span className="absolute right-3 top-2 text-xs font-bold text-ok">L</span>
-              </div>
             </div>
           </div>
 
-          {/* Nutrientes Toggle */}
-          <div className="p-4 rounded-2xl bg-surface border border-line space-y-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-xs font-extrabold text-ink block">¿Usaste nutrientes?</span>
-                <span className="text-[11px] text-ink-muted block">Fertilizantes, estimuladores o aditivos</span>
-              </div>
-              <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-line">
-                <button
-                  type="button"
-                  onClick={() => setUsedNutrients(false)}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    !usedNutrients
-                      ? 'bg-ink text-white shadow-2xs'
-                      : 'text-ink-muted hover:text-ink'
-                  }`}
-                >
-                  No
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setUsedNutrients(true)}
-                  className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    usedNutrients
-                      ? 'bg-ok text-white shadow-2xs'
-                      : 'text-ink-muted hover:text-ink'
-                  }`}
-                >
-                  Sí
-                </button>
-              </div>
+          {/* Cantidad */}
+          <div>
+            <label htmlFor="watering-volume-input" className="block text-sm font-bold text-ink mb-1">
+              Cantidad (litros)
+            </label>
+            <input
+              id="watering-volume-input"
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              min="0.1"
+              required
+              value={volumeLiters}
+              onChange={(e) => setVolumeLiters(parseNumber(e.target.value))}
+              className={`${fieldClass} font-black`}
+            />
+          </div>
+
+          {/* Con qué */}
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-bold text-ink mb-1">¿Con qué regaste?</legend>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                aria-pressed={!usedNutrients}
+                onClick={() => setUsedNutrients(false)}
+                className={chipClass(!usedNutrients)}
+              >
+                Agua sola
+              </button>
+              <button
+                type="button"
+                aria-pressed={usedNutrients}
+                onClick={() => setUsedNutrients(true)}
+                className={chipClass(usedNutrients)}
+              >
+                Con nutrientes
+              </button>
             </div>
 
-            {/* Products & Fertilizers if used */}
             {usedNutrients && (
-              <div className="pt-3 border-t border-line space-y-3 animate-in fade-in duration-200">
+              <div className="p-4 rounded-2xl bg-surface border border-line space-y-3 animate-in fade-in duration-200">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-ink">Productos aplicados</label>
+                  <span className="text-sm font-bold text-ink">Productos</span>
                   {fertilizationWeekNumber && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-ok/15 text-ok border border-ok/30">
-                      Receta Semana {fertilizationWeekNumber}
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-ok-bg text-ok-ink border border-ok-line">
+                      Tabla, semana {fertilizationWeekNumber}
                     </span>
                   )}
                 </div>
 
-                {/* Quick load from fertilization schedule */}
                 {cropSchedule && cropSchedule.weeks.length > 0 && (
-                  <div className="p-3 rounded-2xl bg-ok/10 border border-ok/25 space-y-2">
-                    <div className="flex items-center justify-between text-xs font-bold text-ink">
-                      <span className="flex items-center gap-1.5">
-                        <FlaskConical className="w-4 h-4 text-ok" />
-                        Cargar desde Tabla ({cropSchedule.brand || cropSchedule.name}):
-                      </span>
-                    </div>
+                  <div className="space-y-2">
+                    <span className="flex items-center gap-1.5 text-xs font-bold text-ink">
+                      <FlaskConical className="w-4 h-4 text-brand" aria-hidden="true" />
+                      Cargar desde la tabla ({cropSchedule.brand || cropSchedule.name}):
+                    </span>
                     <div className="flex flex-wrap gap-1.5">
                       {cropSchedule.weeks.map((w) => (
                         <button
                           key={w.weekNumber}
                           type="button"
+                          aria-pressed={fertilizationWeekNumber === w.weekNumber && products.length > 0}
                           onClick={() => handleApplyScheduleWeek(w.weekNumber)}
-                          className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer border ${
-                            fertilizationWeekNumber === w.weekNumber && products.length > 0
-                              ? 'bg-ok text-white border-ok shadow-2xs'
-                              : 'bg-white text-ink hover:bg-track border-line'
-                          }`}
+                          className={chipClass(fertilizationWeekNumber === w.weekNumber && products.length > 0)}
                         >
                           Sem {w.weekNumber}
                         </button>
@@ -351,334 +365,223 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                 )}
 
                 {products.map((p, idx) => {
-                  const totalMl = p.dosageMlPerL && typeof volumeLiters === 'number' && volumeLiters > 0
-                    ? (p.dosageMlPerL * volumeLiters).toFixed(1)
-                    : null;
-
+                  const totalMl = p.dosageMlPerL && currentVolume ? (p.dosageMlPerL * currentVolume).toFixed(1) : null;
                   return (
-                    <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-line text-xs shadow-2xs">
+                    <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-line text-sm">
                       <div>
                         <span className="font-bold text-ink block">
                           {p.name} {p.dosageMlPerL ? `(${p.dosageMlPerL} ml/L)` : ''}
                         </span>
                         {totalMl && (
-                          <span className="text-[10px] text-ok font-semibold">
-                            Total para {volumeLiters}L: <strong>{totalMl} ml</strong>
+                          <span className="text-xs text-ok-ink font-semibold">
+                            Total para {currentVolume} L: <strong>{totalMl} ml</strong>
                           </span>
                         )}
                       </div>
                       <button
                         type="button"
                         onClick={() => handleRemoveProduct(idx)}
-                        className="text-ink-subtle hover:text-coral cursor-pointer p-1"
-                        title="Quitar producto"
+                        aria-label={`Quitar ${p.name}`}
+                        className="min-h-11 min-w-11 flex items-center justify-center text-ink-muted hover:text-error cursor-pointer"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   );
                 })}
 
-                <div className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    placeholder="Nombre (ej. CalMag, Flora)"
-                    value={newProductName}
-                    onChange={(e) => setNewProductName(e.target.value)}
-                    className="flex-1 px-3 py-2 rounded-xl bg-white border border-line text-xs text-ink focus:outline-hidden focus:border-ok"
-                  />
-                  <input
-                    type="number"
-                    step="0.1"
-                    placeholder="ml/L"
-                    value={newProductDosage}
-                    onChange={(e) => setNewProductDosage(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                    className="w-20 px-3 py-2 rounded-xl bg-white border border-line text-xs text-ink focus:outline-hidden focus:border-ok"
-                  />
+                <div className="flex items-end gap-2">
+                  <div className="flex-1">
+                    <label htmlFor="watering-new-product-name" className="block text-xs font-bold text-ink mb-1">
+                      Producto
+                    </label>
+                    <input
+                      id="watering-new-product-name"
+                      type="text"
+                      value={newProductName}
+                      onChange={(e) => setNewProductName(e.target.value)}
+                      className={fieldClass}
+                    />
+                  </div>
+                  <div className="w-24">
+                    <label htmlFor="watering-new-product-dosage" className="block text-xs font-bold text-ink mb-1">
+                      ml/L
+                    </label>
+                    <input
+                      id="watering-new-product-dosage"
+                      type="number"
+                      inputMode="decimal"
+                      step="0.1"
+                      value={newProductDosage}
+                      onChange={(e) => setNewProductDosage(parseNumber(e.target.value))}
+                      className={fieldClass}
+                    />
+                  </div>
                   <button
                     type="button"
                     onClick={handleAddProduct}
-                    className="p-2 rounded-xl bg-ok text-white hover:bg-[#52a44b] transition-colors cursor-pointer"
-                    title="Agregar producto"
+                    aria-label="Agregar producto"
+                    className="min-h-11 min-w-11 flex items-center justify-center rounded-xl bg-primary text-ink hover:brightness-95 transition-all cursor-pointer"
                   >
                     <Plus className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             )}
+          </fieldset>
+
+          {/* pH y EC opcionales */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {[
+              { id: 'watering-ph-in-input', label: 'pH', value: phIn, set: setPhIn, step: '0.05', min: '3', max: '9' },
+              { id: 'watering-ec-in-input', label: 'EC (mS/cm)', value: ecIn, set: setEcIn, step: '0.05', min: '0', max: '6' },
+            ].map((f) => (
+              <div key={f.id}>
+                <div className="flex items-center justify-between mb-1">
+                  <label htmlFor={f.id} className="block text-sm font-bold text-ink">
+                    {f.label} <span className="font-semibold text-ink-muted">(opcional)</span>
+                  </label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    id={f.id}
+                    type="number"
+                    inputMode="decimal"
+                    step={f.step}
+                    min={f.min}
+                    max={f.max}
+                    value={f.value}
+                    onChange={(e) => f.set(parseNumber(e.target.value))}
+                    className={fieldClass}
+                  />
+                  <button
+                    type="button"
+                    aria-pressed={f.value === ''}
+                    onClick={() => f.set('')}
+                    className={`${chipClass(f.value === '')} shrink-0 whitespace-nowrap`}
+                  >
+                    Sin medir
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
 
-          {/* Percepción de peso al levantar la maceta a mano (sin balanza) */}
-          <div className="p-4 rounded-2xl bg-white border border-line space-y-2.5">
-            <div className="flex items-center justify-between">
-              <h4 className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
-                Antes de regar, levantá la maceta
-              </h4>
-              <span className="text-[10px] text-ink-subtle font-semibold">Opcional</span>
+          {/* Drenaje */}
+          <fieldset>
+            <legend className="text-sm font-bold text-ink mb-1">
+              Drenaje <span className="font-semibold text-ink-muted">(opcional)</span>
+            </legend>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2" id="drainage-options-group">
+              {DRAINAGE_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  data-testid={`drainage-${opt.value}`}
+                  aria-pressed={drainageLevel === opt.value}
+                  onClick={() => setDrainageLevel(drainageLevel === opt.value ? undefined : opt.value)}
+                  className={chipClass(drainageLevel === opt.value)}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
-            <p className="text-xs font-semibold text-ink">
-              ¿Cómo la sentís?
-            </p>
+          </fieldset>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" id="pot-lift-options-group">
-              <button
-                type="button"
-                data-testid="pot-lift-heavy"
-                onClick={() => setPotLiftBeforeWatering(potLiftBeforeWatering === 'heavy' ? undefined : 'heavy')}
-                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                  potLiftBeforeWatering === 'heavy'
-                    ? 'bg-[#EBF7EB] border-ok text-ink shadow-xs ring-1 ring-ok'
-                    : 'bg-surface border-line text-ink-muted hover:border-ok/50'
-                }`}
-              >
-                <div className="text-xs font-bold text-ink">PESADA</div>
-                <div className="text-[11px] text-ink-muted mt-0.5 leading-tight">
-                  Todavía parece conservar bastante agua.
-                </div>
-              </button>
-
-              <button
-                type="button"
-                data-testid="pot-lift-medium"
-                onClick={() => setPotLiftBeforeWatering(potLiftBeforeWatering === 'medium' ? undefined : 'medium')}
-                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                  potLiftBeforeWatering === 'medium'
-                    ? 'bg-[#EBF7EB] border-ok text-ink shadow-xs ring-1 ring-ok'
-                    : 'bg-surface border-line text-ink-muted hover:border-ok/50'
-                }`}
-              >
-                <div className="text-xs font-bold text-ink">INTERMEDIA</div>
-                <div className="text-[11px] text-ink-muted mt-0.5 leading-tight">
-                  Ya perdió parte del agua, pero todavía tiene peso.
-                </div>
-              </button>
-
-              <button
-                type="button"
-                data-testid="pot-lift-light"
-                onClick={() => setPotLiftBeforeWatering(potLiftBeforeWatering === 'light' ? undefined : 'light')}
-                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                  potLiftBeforeWatering === 'light'
-                    ? 'bg-[#EBF7EB] border-ok text-ink shadow-xs ring-1 ring-ok'
-                    : 'bg-surface border-line text-ink-muted hover:border-ok/50'
-                }`}
-              >
-                <div className="text-xs font-bold text-ink">LIVIANA</div>
-                <div className="text-[11px] text-ink-muted mt-0.5 leading-tight">
-                  Ya perdió buena parte del agua.
-                </div>
-              </button>
-
-              <button
-                type="button"
-                data-testid="pot-lift-very-light"
-                onClick={() => setPotLiftBeforeWatering(potLiftBeforeWatering === 'very_light' ? undefined : 'very_light')}
-                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                  potLiftBeforeWatering === 'very_light'
-                    ? 'bg-[#EBF7EB] border-ok text-ink shadow-xs ring-1 ring-ok'
-                    : 'bg-surface border-line text-ink-muted hover:border-ok/50'
-                }`}
-              >
-                <div className="text-xs font-bold text-ink">MUY LIVIANA</div>
-                <div className="text-[11px] text-ink-muted mt-0.5 leading-tight">
-                  El sustrato parece bastante seco.
-                </div>
-              </button>
+          {/* Peso de la maceta antes de regar (percepción a mano, sin balanza) */}
+          <fieldset>
+            <legend className="text-sm font-bold text-ink mb-1">
+              Peso de la maceta antes de regar <span className="font-semibold text-ink-muted">(opcional)</span>
+            </legend>
+            <p className="text-xs text-ink-muted mb-2">Levantala a mano y comparala con cómo se siente recién regada.</p>
+            <div className="grid grid-cols-2 gap-2" id="pot-lift-options-group">
+              {POT_LIFT_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  data-testid={opt.testId}
+                  aria-pressed={potLiftBeforeWatering === opt.value}
+                  onClick={() => setPotLiftBeforeWatering(potLiftBeforeWatering === opt.value ? undefined : opt.value)}
+                  className={`${chipClass(potLiftBeforeWatering === opt.value)} text-left`}
+                >
+                  <span className="block">{opt.label}</span>
+                  <span
+                    className={`block text-xs font-medium mt-0.5 ${
+                      potLiftBeforeWatering === opt.value ? 'text-brand-soft' : 'text-ink-muted'
+                    }`}
+                  >
+                    {opt.hint}
+                  </span>
+                </button>
+              ))}
             </div>
+          </fieldset>
 
-            <p className="text-[11px] text-ink-subtle italic pt-0.5">
-              No hace falta usar una balanza. Comparala con cómo se siente recién regada.
-            </p>
+          {/* Notas */}
+          <div>
+            <label htmlFor="watering-observations-input" className="block text-sm font-bold text-ink mb-1">
+              Notas <span className="font-semibold text-ink-muted">(opcional)</span>
+            </label>
+            <textarea
+              id="watering-observations-input"
+              rows={2}
+              value={observations}
+              onChange={(e) => setObservations(e.target.value)}
+              className={fieldClass}
+            />
           </div>
 
-          {/* Progressive Disclosure: Agregar datos técnicos */}
+          {/* Más datos técnicos (campos existentes, todos opcionales) */}
           <div className="border border-line rounded-2xl overflow-hidden bg-surface">
             <button
               type="button"
               onClick={() => setShowTechnicalDetails((prev) => !prev)}
-              className="w-full p-4 flex items-center justify-between text-left text-xs font-bold text-brand hover:bg-track transition-colors cursor-pointer"
+              aria-expanded={showTechnicalDetails}
+              className="w-full min-h-11 p-4 flex items-center justify-between text-left text-sm font-bold text-brand hover:bg-track transition-colors cursor-pointer"
             >
-              <span>{showTechnicalDetails ? 'Ocultar datos técnicos' : 'Agregar datos técnicos (pH, EC, drenaje, temp)'}</span>
+              <span>Más datos técnicos (drenaje medido, temperatura, sensor)</span>
               <ChevronDown
-                className={`w-4 h-4 transition-transform duration-200 ${
-                  showTechnicalDetails ? 'rotate-180' : ''
-                }`}
+                aria-hidden="true"
+                className={`w-4 h-4 transition-transform duration-200 ${showTechnicalDetails ? 'rotate-180' : ''}`}
               />
             </button>
 
             {showTechnicalDetails && (
-              <div className="p-4 pt-0 space-y-4 animate-in fade-in duration-200">
-                {/* Water Input parameters */}
-                <div className="p-3.5 rounded-xl bg-white border border-line space-y-2.5">
-                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Agua de Entrada</h4>
-                  <div className="grid grid-cols-3 gap-2.5">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-ink-muted mb-1">pH entrada</label>
-                      <input
-                        id="watering-ph-in-input"
-                        type="number"
-                        step="0.05"
-                        min="3"
-                        max="9"
-                        placeholder="ej. 6.2"
-                        value={phIn}
-                        onChange={(e) => setPhIn(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                        className="w-full px-3 py-1.5 rounded-xl bg-surface border border-line text-xs text-ink font-semibold focus:outline-hidden focus:border-ok"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-semibold text-ink-muted mb-1">EC (mS/cm)</label>
-                      <input
-                        id="watering-ec-in-input"
-                        type="number"
-                        step="0.05"
-                        min="0"
-                        max="6"
-                        placeholder="ej. 1.6"
-                        value={ecIn}
-                        onChange={(e) => setEcIn(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                        className="w-full px-3 py-1.5 rounded-xl bg-surface border border-line text-xs text-ink font-semibold focus:outline-hidden focus:border-ok"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-semibold text-ink-muted mb-1">Temp (°C)</label>
-                      <input
-                        id="watering-temp-input"
-                        type="number"
-                        step="0.5"
-                        placeholder="ej. 20"
-                        value={waterTempC}
-                        onChange={(e) => setWaterTempC(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                        className="w-full px-3 py-1.5 rounded-xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Runoff Drainage */}
-                <div className="p-3.5 rounded-xl bg-white border border-line space-y-2.5">
-                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Drenaje / Runoff</h4>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-ink-muted mb-1">pH Drenaje</label>
-                      <input
-                        id="watering-ph-runoff-input"
-                        type="number"
-                        step="0.05"
-                        min="3"
-                        max="9"
-                        placeholder="ej. 6.4"
-                        value={phRunoff}
-                        onChange={(e) => setPhRunoff(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                        className="w-full px-3 py-1.5 rounded-xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-semibold text-ink-muted mb-1">EC Drenaje (mS/cm)</label>
-                      <input
-                        id="watering-ec-runoff-input"
-                        type="number"
-                        step="0.05"
-                        min="0"
-                        max="6"
-                        placeholder="ej. 1.9"
-                        value={ecRunoff}
-                        onChange={(e) => setEcRunoff(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                        className="w-full px-3 py-1.5 rounded-xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="pt-2 border-t border-line/60">
-                    <label className="block text-[11px] font-semibold text-ink-muted mb-1">Volumen de Drenaje / Runoff (L)</label>
+              <div className="p-4 pt-0 grid grid-cols-1 sm:grid-cols-2 gap-3 animate-in fade-in duration-200">
+                {[
+                  { id: 'watering-runoff-volume-input', label: 'Drenaje medido (L)', value: runoffVolumeLiters, set: setRunoffVolumeLiters, step: '0.05' },
+                  { id: 'watering-ph-runoff-input', label: 'pH del drenaje', value: phRunoff, set: setPhRunoff, step: '0.05' },
+                  { id: 'watering-ec-runoff-input', label: 'EC del drenaje (mS/cm)', value: ecRunoff, set: setEcRunoff, step: '0.05' },
+                  { id: 'watering-temp-input', label: 'Temperatura del agua (°C)', value: waterTempC, set: setWaterTempC, step: '0.5' },
+                  { id: 'watering-moisture-before-input', label: 'Humedad del sustrato antes (%)', value: substrateMoistureBeforePct, set: setSubstrateMoistureBeforePct, step: '1' },
+                  { id: 'watering-moisture-after-input', label: 'Humedad del sustrato después (%)', value: substrateMoistureAfterPct, set: setSubstrateMoistureAfterPct, step: '1' },
+                ].map((f) => (
+                  <div key={f.id}>
+                    <label htmlFor={f.id} className="block text-xs font-bold text-ink mb-1">
+                      {f.label}
+                    </label>
                     <input
-                      id="watering-runoff-volume-input"
+                      id={f.id}
                       type="number"
-                      step="0.05"
-                      min="0"
-                      max="50"
-                      placeholder="ej. 0.3 L recolectados"
-                      value={runoffVolumeLiters}
-                      onChange={(e) => setRunoffVolumeLiters(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                      className="w-full px-3 py-1.5 rounded-xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok"
+                      inputMode="decimal"
+                      step={f.step}
+                      value={f.value}
+                      onChange={(e) => f.set(parseNumber(e.target.value))}
+                      className={`${fieldClass} bg-white`}
                     />
                   </div>
-                </div>
-
-                {/* Sensores opcionales de humedad de sustrato */}
-                <div className="p-3.5 rounded-xl bg-white border border-line space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Sensor de Humedad en Sustrato</h4>
-                    <span className="text-[10px] text-ink-subtle font-semibold">Opcional</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2.5 pt-1">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-ink-muted mb-1">Humedad sustrato antes (%)</label>
-                      <input
-                        id="watering-moisture-before-input"
-                        type="number"
-                        step="1"
-                        min="0"
-                        max="100"
-                        placeholder="ej. 20%"
-                        value={substrateMoistureBeforePct}
-                        onChange={(e) => setSubstrateMoistureBeforePct(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                        className="w-full px-3 py-1.5 rounded-xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-semibold text-ink-muted mb-1">Humedad sustrato después (%)</label>
-                      <input
-                        id="watering-moisture-after-input"
-                        type="number"
-                        step="1"
-                        min="0"
-                        max="100"
-                        placeholder="ej. 85%"
-                        value={substrateMoistureAfterPct}
-                        onChange={(e) => setSubstrateMoistureAfterPct(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                        className="w-full px-3 py-1.5 rounded-xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Observations */}
-                <div>
-                  <label className="block text-xs font-bold text-ink mb-1">Observaciones</label>
-                  <textarea
-                    id="watering-observations-input"
-                    rows={2}
-                    placeholder="Absorción del sustrato, escurrimiento, respuesta de la planta..."
-                    value={observations}
-                    onChange={(e) => setObservations(e.target.value)}
-                    className="w-full px-3 py-2 rounded-2xl bg-white border border-line text-xs text-ink focus:outline-hidden focus:border-ok"
-                  />
-                </div>
+                ))}
               </div>
             )}
           </div>
 
-          {/* Actions */}
+          {/* Acciones */}
           <div className="pt-3 border-t border-line flex items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="cultiveta-btn-secondary text-xs"
-            >
+            <button type="button" onClick={onClose} className="cultiveta-btn-secondary text-sm">
               Cancelar
             </button>
-            <button
-              type="submit"
-              id="save-watering-btn"
-              disabled={loading}
-              className="cultiveta-btn-green text-xs disabled:opacity-50"
-            >
-              <Save className="w-4 h-4" />
+            <button type="submit" id="save-watering-btn" disabled={loading} className="cultiveta-btn-primary text-sm disabled:opacity-50">
+              <Save className="w-4 h-4" aria-hidden="true" />
               <span>Guardar riego</span>
             </button>
           </div>
@@ -687,4 +590,3 @@ export const WateringModal: React.FC<WateringModalProps> = ({
     </div>
   );
 };
-

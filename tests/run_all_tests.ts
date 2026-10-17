@@ -1,217 +1,130 @@
 /**
  * tests/run_all_tests.ts
- * 
+ *
  * Ejecutor Unificado de Pruebas de Cultiveta
- * 
- * Separa rigurosamente y reporta con precisión:
- * 1. MOCKS: Lógica de sincronización offline, colas, bloqueos y estados (sync_scenarios & new_sync_defects)
- * 2. JSDOM: Pruebas de componentes en DOM emulado con React act y binarios reales JPEG/PNG (component_gallery_real)
- * 3. NAVEGADOR E2E: Prueba con navegador real (Chrome / Playwright) si la infraestructura lo permite (e2e_browser_real)
- * 4. FIREBASE REAL DE PRUEBA:
- *    a. Cloud Firestore en vivo (firebase_live_check)
- *    b. Firebase Auth + Storage + Firestore en vivo (firebase_storage_real_e2e)
- * 
- * Cumple estrictamente:
- * - Distingue passed / failed / skipped en el resumen global.
- * - Un test omitido jamás incrementa totalPassed.
+ *
+ * - Descubre automáticamente todos los archivos tests/*.test.ts (no hay lista escrita a mano).
+ * - Cuenta los casos de cada suite a partir de su salida real:
+ *     pasados  -> "✓ [PASÓ]" o "✅ PASSED:"
+ *     fallidos -> "✗ [FALLÓ]", "❌ [FALLÓ]" o "❌ FAILED:"
+ *     omitidos -> "[OMITIDA]"
+ * - Códigos de salida de cada suite: 0 = pasó, 2 = omitida, otro = falló.
+ * - Distingue passed / failed / skipped en el resumen global; un test omitido jamás suma a passed.
  * - Termina con código de salida 1 si alguna suite falla.
  */
 
 import { spawnSync } from 'child_process';
+import fs from 'fs';
+import path from 'path';
 
-console.log('\n================================================================');
-console.log('   CULTIVETA: SUITE COMPLETA DE VERIFICACIÓN Y SINCRONIZACIÓN   ');
-console.log('================================================================\n');
+const TESTS_DIR = path.resolve(process.cwd(), 'tests');
+const TSX_CLI = path.resolve(process.cwd(), 'node_modules', 'tsx', 'dist', 'cli.mjs');
+// Una suite que no termina en este tiempo se reporta como fallida (evita que el runner quede colgado).
+const SUITE_TIMEOUT_MS = 10 * 60 * 1000;
 
-let totalPassed = 0;
-let totalFailed = 0;
-let totalSkipped = 0;
+const PASS_MARKER = /✓ \[PASÓ\]|✅ PASSED:/g;
+const FAIL_MARKER = /✗ \[FALLÓ\]|❌ \[FALLÓ\]|❌ FAILED:/g;
+const SKIP_MARKER = /\[OMITIDA\]/g;
 
-interface SuiteConfig {
-  id: string;
-  name: string;
-  category: 'mocks' | 'jsdom' | 'e2e' | 'firebase_real' | 'firebase_rules';
-  file: string;
-  expectedTests: number;
+export interface SuiteCounts {
+  passed: number;
+  failed: number;
+  skipped: number;
 }
 
-const suites: SuiteConfig[] = [
-  {
-    id: 'sync_scenarios',
-    name: 'Mocks: 7 Escenarios Base de Sincronización',
-    category: 'mocks',
-    file: 'tests/sync_scenarios.test.ts',
-    expectedTests: 7,
-  },
-  {
-    id: 'new_sync_defects',
-    name: 'Mocks: 8 Casos Críticos (Concurrencia, Cierre de Sesión, Contadores, Borrado, Backoff y Watchdog Stalled)',
-    category: 'mocks',
-    file: 'tests/new_sync_defects.test.ts',
-    expectedTests: 8,
-  },
-  {
-    id: 'firestore_tasks_isolation',
-    name: 'Seguridad y Aislamiento: Consulta estricta por UID de tareas y alertas',
-    category: 'mocks',
-    file: 'tests/firestore_tasks_isolation.test.ts',
-    expectedTests: 3,
-  },
-  {
-    id: 'sync_hardenings',
-    name: 'Hardenings: Limpieza de timers en stopAutoSync, consecutiveStallCount, scheduler prioritario y evaluador Storage',
-    category: 'mocks',
-    file: 'tests/sync_hardenings.test.ts',
-    expectedTests: 4,
-  },
-  {
-    id: 'timeline_calendar_hardening',
-    name: 'Etapas, Timeline y Google Calendar: 17 Hardenings Estrictos',
-    category: 'mocks',
-    file: 'tests/timeline_calendar_hardening.test.ts',
-    expectedTests: 17,
-  },
-  {
-    id: 'timeline_unknown_history_and_pot_lift',
-    name: 'Cronología Historial Desconocido, Pot Lift & IA: 20 Pruebas Específicas',
-    category: 'mocks',
-    file: 'tests/timeline_unknown_history_and_pot_lift.test.ts',
-    expectedTests: 20,
-  },
-  {
-    id: 'partial_timeline_history',
-    name: 'Historial Parcialmente Conocido, Fechas por Etapa & Resumen IA: 17 Pruebas Específicas',
-    category: 'mocks',
-    file: 'tests/partial_timeline_history.test.ts',
-    expectedTests: 17,
-  },
-  {
-    id: 'irrigation_forecast',
-    name: 'Inteligencia Hídrica: 18 Pruebas Matemáticas Deterministas de Riego',
-    category: 'mocks',
-    file: 'tests/irrigation_forecast.test.ts',
-    expectedTests: 18,
-  },
-  {
-    id: 'ai_intelligence_context',
-    name: 'Cultiveta IA: 10 Casos de Contexto Agronómico de Alta Precisión',
-    category: 'mocks',
-    file: 'tests/ai_intelligence_context.test.ts',
-    expectedTests: 10,
-  },
-  {
-    id: 'dashboard_mini_stats',
-    name: 'JSDOM: 5 Pruebas de Reorganización de Mini-Stats en Hero Card',
-    category: 'jsdom',
-    file: 'tests/dashboard_mini_stats.test.ts',
-    expectedTests: 5,
-  },
-  {
-    id: 'dashboard_lifecycle_progress',
-    name: 'Dashboard: Barra de Progreso del Ciclo y Desglose de Etapas en Historial Parcial (12 Casos)',
-    category: 'jsdom',
-    file: 'tests/dashboard_lifecycle_progress.test.ts',
-    expectedTests: 12,
-  },
-  {
-    id: 'component_gallery_real',
-    name: 'JSDOM: Pruebas de Componentes con React act y Binarios Reales JPEG/PNG',
-    category: 'jsdom',
-    file: 'tests/component_gallery_real.test.ts',
-    expectedTests: 5,
-  },
-  {
-    id: 'cultivation_visual_identity',
-    name: 'Cultivos: Identidad Visual de Genéticas y Catálogo Oficial (30 Casos)',
-    category: 'jsdom',
-    file: 'tests/cultivation_visual_identity.test.ts',
-    expectedTests: 30,
-  },
-  {
-    id: 'genetics_catalog_card_redesign',
-    name: 'Catálogo de Genéticas: Rediseño Editorial y Favoritos en Tarjeta (27 Casos)',
-    category: 'jsdom',
-    file: 'tests/genetics_catalog_card_redesign.test.ts',
-    expectedTests: 27,
-  },
-  {
-    id: 'genetics_admin_photos',
-    name: 'Genéticas: Administración Privada de Fotos Representativas por Creador/Admin (37 Casos)',
-    category: 'jsdom',
-    file: 'tests/genetics_admin_photos.test.ts',
-    expectedTests: 37,
-  },
-  {
-    id: 'ai_chat_rotation_and_fallback',
-    name: 'Cultiveta IA: Rotación Secuencial de Modelos y Fallback Botánico Real (18 Casos)',
-    category: 'mocks',
-    file: 'tests/ai_chat_rotation_and_fallback.test.ts',
-    expectedTests: 18,
-  },
-  {
-    id: 'firestore_admin_rules',
-    name: 'Firestore Rules: Admin Privilege Escalation & Genetics Catalog Isolation (7 Casos)',
-    category: 'firebase_rules',
-    file: 'tests/firestore_admin_rules.test.ts',
-    expectedTests: 7,
-  },
-  {
-    id: 'e2e_browser_real',
-    name: 'Navegador E2E: Chrome / Playwright Real (Condicional)',
-    category: 'e2e',
-    file: 'tests/e2e_browser_real.test.ts',
-    expectedTests: 1,
-  },
-  {
-    id: 'firebase_live_check',
-    name: 'Firebase Real de Prueba: Cloud Firestore en Vivo',
-    category: 'firebase_real',
-    file: 'tests/firebase_live_check.test.ts',
-    expectedTests: 1,
-  },
-  {
-    id: 'firebase_storage_real_e2e',
-    name: 'Firebase Real de Prueba: Auth + Storage + Firestore en Vivo',
-    category: 'firebase_real',
-    file: 'tests/firebase_storage_real_e2e.test.ts',
-    expectedTests: 1,
-  },
-];
+/** Cuenta los casos reportados por una suite a partir de su salida. */
+export function countSuiteResults(output: string): SuiteCounts {
+  return {
+    passed: (output.match(PASS_MARKER) || []).length,
+    failed: (output.match(FAIL_MARKER) || []).length,
+    skipped: (output.match(SKIP_MARKER) || []).length,
+  };
+}
 
-for (let i = 0; i < suites.length; i++) {
-  const s = suites[i];
-  console.log(`\n>>> [${i + 1}/${suites.length}] Ejecutando ${s.file} (${s.name}) ...`);
+/** Lista los archivos de test descubiertos (orden alfabético estable). */
+export function discoverTestFiles(dir: string = TESTS_DIR): string[] {
+  return fs
+    .readdirSync(dir)
+    .filter((name) => name.endsWith('.test.ts'))
+    .sort()
+    .map((name) => path.join('tests', name));
+}
 
-  const res = spawnSync('npx', ['tsx', s.file], {
-    stdio: 'inherit',
-    env: process.env,
+function runAll(): void {
+  console.log('\n================================================================');
+  console.log('   CULTIVETA: SUITE COMPLETA DE VERIFICACIÓN Y SINCRONIZACIÓN   ');
+  console.log('================================================================\n');
+
+  const files = discoverTestFiles();
+  let totalPassed = 0;
+  let totalFailedCases = 0;
+  let totalSkipped = 0;
+  let failedSuites = 0;
+
+  files.forEach((file, i) => {
+    console.log(`\n>>> [${i + 1}/${files.length}] Ejecutando ${file} ...`);
+
+    const res = spawnSync(process.execPath, [TSX_CLI, file], {
+      env: process.env,
+      encoding: 'utf8',
+      timeout: SUITE_TIMEOUT_MS,
+      maxBuffer: 64 * 1024 * 1024,
+    });
+
+    const output = `${res.stdout || ''}${res.stderr || ''}`;
+    if (res.stdout) process.stdout.write(res.stdout);
+    if (res.stderr) process.stderr.write(res.stderr);
+
+    const counts = countSuiteResults(output);
+
+    if (res.error) {
+      failedSuites++;
+      const reason = (res.error as NodeJS.ErrnoException).code === 'ETIMEDOUT'
+        ? `superó el tiempo máximo de ${SUITE_TIMEOUT_MS / 60000} min`
+        : res.error.message;
+      console.error(`\n❌ Fallo en suite ${file}: ${reason}`);
+      totalFailedCases += counts.failed;
+      return;
+    }
+
+    if (res.status === 0) {
+      totalPassed += counts.passed;
+      if (counts.passed === 0) {
+        console.log(`  ℹ️ Suite ${file} terminó bien pero no reportó casos con las marcas conocidas.`);
+      }
+    } else if (res.status === 2) {
+      // Código de salida 2 indica suite OMITIDA (por falta de credenciales, navegador o emulador).
+      // NUNCA se incrementa totalPassed.
+      totalSkipped += Math.max(1, counts.skipped);
+      console.log(`  ℹ️ Suite ${file} registrada como OMITIDA (skipped).`);
+    } else {
+      failedSuites++;
+      totalFailedCases += counts.failed;
+      console.error(`\n❌ Fallo en suite ${file} (código de salida: ${res.status})`);
+    }
   });
 
-  if (res.status === 0) {
-    totalPassed += s.expectedTests;
-  } else if (res.status === 2) {
-    // Código de salida 2 indica prueba OMITIDA (por falta de credenciales o bucket no aprovisionado)
-    // NUNCA se incrementa totalPassed
-    totalSkipped += s.expectedTests;
-    console.log(`  ℹ️ Suite [${s.id}] registrada como OMITIDA (skipped).`);
+  console.log('\n================================================================');
+  console.log('                 RESUMEN GLOBAL DE VERIFICACIÓN                 ');
+  console.log('================================================================');
+  console.log(`  * Suites descubiertas:          ${files.length}`);
+  console.log(`  * Pruebas PASADAS (passed):     ${totalPassed}`);
+  console.log(`  * Pruebas FALLIDAS (failed):    ${totalFailedCases}`);
+  console.log(`  * Pruebas OMITIDAS (skipped):   ${totalSkipped}`);
+  console.log(`  * Suites FALLIDAS:              ${failedSuites}`);
+  console.log('----------------------------------------------------------------');
+
+  if (failedSuites > 0) {
+    console.error('❌ ESTADO: FALLÓ la verificación global.');
+    process.exit(1);
   } else {
-    totalFailed++;
-    console.error(`\n❌ Fallo en suite ${s.file} (código de salida: ${res.status})`);
+    console.log('✅ ESTADO: TODAS las pruebas evaluadas pasaron exitosamente.');
+    process.exit(0);
   }
 }
 
-console.log('\n================================================================');
-console.log('                 RESUMEN GLOBAL DE VERIFICACIÓN                 ');
-console.log('================================================================');
-console.log(`  * Pruebas PASADAS (passed):   ${totalPassed}`);
-console.log(`  * Pruebas OMITIDAS (skipped): ${totalSkipped}`);
-console.log(`  * Suites FALLIDAS (failed):   ${totalFailed}`);
-console.log('----------------------------------------------------------------');
-
-if (totalFailed > 0) {
-  console.error('❌ ESTADO: FALLÓ la verificación global.');
-  process.exit(1);
-} else {
-  console.log('✅ ESTADO: TODAS las pruebas evaluadas pasaron exitosamente.');
-  process.exit(0);
+// Solo ejecuta cuando se invoca directamente (permite importar los helpers desde los tests).
+const invokedDirectly = process.argv[1] && path.resolve(process.argv[1]) === path.resolve(TESTS_DIR, 'run_all_tests.ts');
+if (invokedDirectly) {
+  runAll();
 }

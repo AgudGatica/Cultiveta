@@ -1,6 +1,7 @@
 import { CultivationTask } from '../types';
 import { db, auth } from '../firebase/config';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { getLocalTodayDateOnly } from '../utils/growthStageUtils';
 
 const NOTIFIED_TASKS_KEY = 'cultiveta_notified_env_alerts';
 
@@ -496,7 +497,7 @@ class BrowserNotificationService {
       isCompleted: false,
       title: '¡Prueba de Notificación de Alerta Climática!',
       description: 'Esta alerta te avisará incluso si estás en otra pestaña o con el navegador minimizado.',
-      dueDate: new Date().toISOString().split('T')[0],
+      dueDate: getLocalTodayDateOnly(),
       createdAt: new Date().toISOString(),
       categoryLabel: '🚨 Alerta Climática',
     };

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Thermometer, Save, SunMedium, Loader2, AlertCircle, ChevronDown, Sparkles } from 'lucide-react';
 import { Cultivation, EnvironmentRecord } from '../../types';
 import { environmentService } from '../../services/environmentService';
+import { getLocalTodayDateOnly } from '../../utils/growthStageUtils';
 
 interface EnvironmentModalProps {
   isOpen: boolean;
@@ -21,7 +22,7 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
   onRecordAdded,
 }) => {
   const [cultivationId, setCultivationId] = useState(defaultCultivationId || (cultivations[0]?.id || ''));
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(getLocalTodayDateOnly());
   const [time, setTime] = useState(
     new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
   );

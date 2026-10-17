@@ -222,8 +222,10 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const isWateringAlertsEnabled = userProfile?.preferences?.alertTypes?.wateringAlerts ?? true;
   const overdueCultivationsList = useMemo(() => {
     if (!isWateringAlertsEnabled) return [];
-    return getOverdueCultivations(cultivations, waterings);
-  }, [cultivations, waterings, isWateringAlertsEnabled]);
+    return getOverdueCultivations(cultivations, waterings, new Date(), (crop) =>
+      calculateIrrigationForecast(crop, waterings, envRecords)
+    );
+  }, [cultivations, waterings, envRecords, isWateringAlertsEnabled]);
 
   const primaryCropOverdueInfo = useMemo(() => {
     if (!primaryCrop) return null;
