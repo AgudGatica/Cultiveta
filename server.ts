@@ -3,7 +3,6 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import dotenv from 'dotenv';
-import cron from 'node-cron';
 import { GoogleGenAI } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
@@ -31,10 +30,50 @@ declare global {
 }
 
 const app = express();
-const PORT = 3000;
+// Cloud Run asigna el puerto por variable de entorno; 3000 queda para desarrollo local.
+const PORT = Number(process.env.PORT) || 3000;
 
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+// Zona horaria de los registros automáticos (fecha y hora que ve la persona).
+// El servidor corre en UTC en Cloud Run; sin esto, una medición de las 22 h de Argentina
+// quedaría con la fecha del día siguiente.
+const APP_TIMEZONE = process.env.APP_TIMEZONE || 'America/Argentina/Buenos_Aires';
+
+// Límite de cuerpo: las rutas de IA aceptan imágenes en base64 (máx. 10 MB de imagen ≈ 14 MB en base64);
+// el resto de la API no necesita más de 2 MB. El primer parser que procesa el cuerpo es el que aplica.
+app.use('/api/ai', express.json({ limit: '15mb' }));
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ extended: true, limit: '2mb' }));
+
+/** Fecha (YYYY-MM-DD), hora (HH:mm) y clave horaria (YYYYMMDDHH) en APP_TIMEZONE. */
+export function getZonedParts(date: Date = new Date(), timeZone: string = APP_TIMEZONE) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value || '00';
+  const dateStr = `${get('year')}-${get('month')}-${get('day')}`;
+  const timeStr = `${get('hour')}:${get('minute')}`;
+  return { dateStr, timeStr, hourKey: `${dateStr.replace(/-/g, '')}${get('hour')}`, dayKey: dateStr.replace(/-/g, '') };
+}
+
+/** Respuesta de error sin exponer detalles internos al cliente (el detalle queda en el log). */
+function sendServerError(res: express.Response, status: number, publicMessage: string, err: unknown, logTag: string) {
+  console.error(`[${logTag}]`, err);
+  return res.status(status).json({ error: publicMessage });
+}
+
+/** Agrega un elemento a un arreglo en memoria reemplazando por id y conservando solo los últimos `max`. */
+function upsertCapped<T extends { id: string }>(list: T[], item: T, max = 500) {
+  const idx = list.findIndex((x) => x.id === item.id);
+  if (idx >= 0) list[idx] = item;
+  else list.push(item);
+  if (list.length > max) list.splice(0, list.length - max);
+}
 
 export type FirebaseAdminAppWithFirestore = App & {
   firestore: () => Firestore;
@@ -249,6 +288,52 @@ app.get('/api/health', (req, res) => {
 
 // Proteger todas las rutas /api/ai/* con el middleware de Firebase Auth
 app.use('/api/ai', verifyFirebaseAuth);
+
+// Límite diario de consultas a la IA por persona (cada consulta tiene costo en Gemini).
+// Se cuenta en Firestore (colección reservada aiUsage, sin acceso desde el cliente) y,
+// sin credenciales de Admin (desarrollo local), en memoria.
+const AI_DAILY_LIMIT = Number(process.env.AI_DAILY_LIMIT) || 60;
+const localAiUsage = new Map<string, number>();
+
+async function consumeAiQuota(userId: string): Promise<{ allowed: boolean; used: number }> {
+  const { dateStr } = getZonedParts();
+  const key = `${userId}_${dateStr}`;
+
+  if (!hasAdminCredentials()) {
+    const used = (localAiUsage.get(key) || 0) + 1;
+    localAiUsage.set(key, used);
+    return { allowed: used <= AI_DAILY_LIMIT, used };
+  }
+
+  const db = getFirebaseAdmin().firestore();
+  const ref = db.collection('aiUsage').doc(key);
+  return db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const current = snap.exists ? Number(snap.data()?.count || 0) : 0;
+    if (current >= AI_DAILY_LIMIT) {
+      return { allowed: false, used: current };
+    }
+    tx.set(ref, { userId, date: dateStr, count: current + 1, updatedAt: new Date().toISOString() }, { merge: true });
+    return { allowed: true, used: current + 1 };
+  });
+}
+
+app.use('/api/ai', async (req, res, next) => {
+  try {
+    const quota = await consumeAiQuota(req.userId!);
+    if (!quota.allowed) {
+      return res.status(429).json({
+        error: `Llegaste al límite de ${AI_DAILY_LIMIT} consultas a Cultiveta IA por hoy. Probá de nuevo mañana.`,
+        code: 'ai/daily-limit',
+      });
+    }
+    return next();
+  } catch (err) {
+    // Si el contador falla no se bloquea a la persona: se registra y se continúa.
+    console.warn('[Cultiveta IA] No se pudo registrar el uso diario:', err);
+    return next();
+  }
+});
 
 // Helper para resolver de forma segura y tipada los bytes de una imagen para Gemini Multimodal
 // Previene vulnerabilidades SSRF (no descarga URLs externas no verificadas) y utiliza Firebase Admin Storage SDK
@@ -485,8 +570,7 @@ Responde estrictamente en formato JSON válido con las siguientes claves:
 
     res.json(validatedResult);
   } catch (error: any) {
-    console.error('Error in /api/ai/analyze-photo:', error);
-    res.status(500).json({ error: error?.message || 'Error procesando análisis con Cultiveta IA' });
+    return sendServerError(res, 500, 'Error procesando el análisis con Cultiveta IA.', error, 'ai/analyze-photo');
   }
 });
 
@@ -705,10 +789,15 @@ Responde en JSON con:
       },
     });
 
-    res.json(JSON.parse(response.text || '{}'));
+    let parsedSummary: any;
+    try {
+      parsedSummary = JSON.parse(response.text || '{}');
+    } catch (parseErr) {
+      return sendServerError(res, 502, 'La IA devolvió un resumen con formato inválido.', parseErr, 'ai/summary');
+    }
+    res.json(parsedSummary);
   } catch (error: any) {
-    console.error('Error in /api/ai/summary:', error);
-    res.status(500).json({ error: error?.message || 'Error generando resumen' });
+    return sendServerError(res, 500, 'Error generando el resumen.', error, 'ai/summary');
   }
 });
 
@@ -740,10 +829,15 @@ Responde en JSON con:
       },
     });
 
-    res.json(JSON.parse(response.text || '{}'));
+    let parsedWeekly: any;
+    try {
+      parsedWeekly = JSON.parse(response.text || '{}');
+    } catch (parseErr) {
+      return sendServerError(res, 502, 'La IA devolvió un resumen con formato inválido.', parseErr, 'ai/weekly-summary');
+    }
+    res.json(parsedWeekly);
   } catch (error: any) {
-    console.error('Error in /api/ai/weekly-summary:', error);
-    res.status(500).json({ error: error?.message || 'Error generando resumen semanal' });
+    return sendServerError(res, 500, 'Error generando el resumen semanal.', error, 'ai/weekly-summary');
   }
 });
 
@@ -833,8 +927,7 @@ Responde estrictamente en formato JSON válido con la siguiente estructura:
 
     res.json(parsed);
   } catch (error: any) {
-    console.error('Error in /api/ai/compare-photos:', error);
-    res.status(500).json({ error: error?.message || 'Error comparando fotografías' });
+    return sendServerError(res, 500, 'Error comparando las fotografías.', error, 'ai/compare-photos');
   }
 });
 
@@ -871,10 +964,12 @@ interface SSEClient {
 }
 const sseClients = new Map<string, SSEClient>();
 
-export function broadcastNotification(payload: any, targetUserId?: string) {
+/** Envía una notificación SSE solo a las conexiones del usuario indicado (nunca a todos). */
+export function broadcastNotification(payload: any, targetUserId: string) {
+  if (!targetUserId) return;
   const data = JSON.stringify(payload);
   sseClients.forEach((client) => {
-    if (!targetUserId || !client.userId || client.userId === 'system' || client.userId === targetUserId) {
+    if (client.userId === targetUserId) {
       try {
         client.res.write(`data: ${data}\n\n`);
       } catch (err) {
@@ -884,24 +979,17 @@ export function broadcastNotification(payload: any, targetUserId?: string) {
   });
 }
 
-// Sincronización horaria automática para cultivos Outdoor e Invernadero
-// Puede ejecutarse globalmente desde el cron o restringida a un usuario específico
+// Sincronización horaria de clima para cultivos Outdoor e Invernadero.
+// La dispara Cloud Scheduler (POST /api/internal/outdoor-weather) una vez por hora, o la persona
+// manualmente para sus propios cultivos. Es idempotente por cultivo y hora.
 export async function syncHourlyOutdoorWeather(targetUserId?: string) {
-  console.log(`[Cron Job] Ejecutando sincronización de clima exterior (Objetivo: ${targetUserId || 'todos'})...`);
+  console.log(`[Clima exterior] Sincronización (objetivo: ${targetUserId || 'todos'})...`);
   let isFirestoreAvailable = false;
   let firestore: Firestore | null = null;
   const outdoorCropsMap = new Map<string, { id: string; data: any }>();
 
-  // 1. Cargar cultivos registrados localmente en el servidor filtrando por targetUserId si aplica
-  outdoorCropsStore.forEach((crop, id) => {
-    if (!crop.isFinished && crop.locationCoordinates) {
-      if (!targetUserId || crop.userId === targetUserId) {
-        outdoorCropsMap.set(id, { id, data: crop });
-      }
-    }
-  });
-
-  // 2. Intentar consultar Cloud Firestore de manera segura
+  // 1. Fuente principal: Cloud Firestore. Si no está disponible (desarrollo local), se usa
+  //    el registro en memoria que completa POST /api/outdoor/cultivations.
   try {
     const adminApp = getFirebaseAdmin();
     firestore = adminApp.firestore();
@@ -924,11 +1012,12 @@ export async function syncHourlyOutdoorWeather(targetUserId?: string) {
         typeof data.locationCoordinates.lat === 'number' &&
         typeof data.locationCoordinates.lon === 'number';
 
-      if (isOutdoorOrGreenhouse && hasCoords) {
+      // Sin dueño no se procesa: nunca se generan registros "system" visibles para todos.
+      if (isOutdoorOrGreenhouse && hasCoords && data.userId) {
         outdoorCropsMap.set(doc.id, { id: doc.id, data });
         outdoorCropsStore.set(doc.id, {
           id: doc.id,
-          userId: data.userId || 'system',
+          userId: data.userId,
           name: data.name || 'Cultivo Exterior',
           type: data.type,
           geneticsName: data.geneticsName || data.genetics || 'No especificada',
@@ -948,6 +1037,16 @@ export async function syncHourlyOutdoorWeather(targetUserId?: string) {
     isFirestoreAvailable = false;
   }
 
+  if (!isFirestoreAvailable) {
+    outdoorCropsStore.forEach((crop, id) => {
+      if (!crop.isFinished && crop.locationCoordinates && crop.userId) {
+        if (!targetUserId || crop.userId === targetUserId) {
+          outdoorCropsMap.set(id, { id, data: crop });
+        }
+      }
+    });
+  }
+
   const outdoorCrops = Array.from(outdoorCropsMap.values());
   if (outdoorCrops.length === 0) {
     console.log('[Cron Job] No se encontraron cultivos activos Outdoor/Invernadero con coordenadas registradas.');
@@ -959,11 +1058,6 @@ export async function syncHourlyOutdoorWeather(targetUserId?: string) {
       isFirestoreAvailable ? 'Firestore + Local' : 'Local'
     }).`
   );
-
-  const now = new Date();
-  const dateStr = now.toISOString().split('T')[0];
-  const timeStr = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
-  const createdAtIso = now.toISOString();
 
   let syncedCount = 0;
   let alertsGenerated = 0;
@@ -993,12 +1087,13 @@ export async function syncHourlyOutdoorWeather(targetUserId?: string) {
 
         const now = new Date();
         const isoString = now.toISOString();
-        const dateStr = isoString.split('T')[0];
-        const timeStr = now.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+        const { dateStr, timeStr, hourKey, dayKey } = getZonedParts(now);
 
+        // Id por cultivo y hora: si la sincronización se repite en la misma hora, se reemplaza
+        // la medición en lugar de duplicarla.
         const newRecord = {
-          id: `auto-env-${crop.id}-${Date.now()}`,
-          userId: crop.data.userId || 'system',
+          id: `auto-env-${crop.id}-${hourKey}`,
+          userId: crop.data.userId,
           cultivationId: crop.id,
           date: dateStr,
           time: timeStr,
@@ -1011,7 +1106,7 @@ export async function syncHourlyOutdoorWeather(targetUserId?: string) {
           createdAt: isoString,
         };
 
-        outdoorRecordsStore.push(newRecord);
+        upsertCapped(outdoorRecordsStore, newRecord);
 
         if (isFirestoreAvailable && firestore) {
           try {
@@ -1077,7 +1172,26 @@ export async function syncHourlyOutdoorWeather(targetUserId?: string) {
 
         const isCritical = isHighTemp || isLowTemp || isCriticalHumidity;
 
-        if (isCritical) {
+        // Una sola alerta por cultivo, condición y día (evita repetir Gemini, tarea y notificación)
+        const conditionKey = [
+          isHighTemp && 'temp-alta',
+          isLowTemp && 'temp-baja',
+          isCriticalHumidityHigh && 'hum-alta',
+          isCriticalHumidityLow && 'hum-baja',
+        ]
+          .filter(Boolean)
+          .join('_');
+        const alertTaskId = `task-env-alert-${crop.id}-${conditionKey}-${dayKey}`;
+        let alreadyAlerted = outdoorTasksStore.some((t) => t.id === alertTaskId);
+        if (isCritical && !alreadyAlerted && isFirestoreAvailable && firestore) {
+          try {
+            alreadyAlerted = (await firestore.collection('tasks').doc(alertTaskId).get()).exists;
+          } catch (readErr: any) {
+            console.warn('[Clima exterior] No se pudo verificar si la alerta ya existía:', readErr?.message || readErr);
+          }
+        }
+
+        if (isCritical && !alreadyAlerted) {
           // Bloque try/catch INDEPENDIENTE para la fase de Cultiveta IA (Gemini) y creación de tarea
           // Garantiza que si Gemini falla, demora o no hay red, el cron job continúe sin colapsar
           try {
@@ -1199,7 +1313,7 @@ Devuelve ESTRICTAMENTE un objeto JSON válido con este formato:
             }
 
             // Generación del nuevo documento en la colección de tareas (CultivationTask)
-            const taskId = `task-env-alert-${crop.id}-${Date.now()}`;
+            const taskId = alertTaskId;
             const newTask: CultivationTask & {
               userId: string;
               createdAt: string;
@@ -1227,14 +1341,14 @@ Devuelve ESTRICTAMENTE un objeto JSON válido con este formato:
               urgency: 'today',
               priority: 'critical',
               isCompleted: false,
-              categoryLabel: '🚨 Alerta Climática',
+              categoryLabel: 'Alerta climática',
               title: alertTitle,
               description: alertDescription,
               dueDate: dateStr,
               actionHint: 'Revisar Cultivo',
               isDemo: Boolean(crop.data.isDemo),
               createdAt: isoString,
-              userId: crop.data.userId || 'system',
+              userId: crop.data.userId,
               criticalData: {
                 temperatureC: tempC,
                 humidityPct: humidity,
@@ -1267,7 +1381,7 @@ Devuelve ESTRICTAMENTE un objeto JSON válido con este formato:
             }
 
             // Guardar en el almacén en memoria del servidor para disponibilidad inmediata
-            outdoorTasksStore.push(newTask);
+            upsertCapped(outdoorTasksStore, newTask);
             alertsGenerated++;
 
             // Difundir notificación Push / SSE de alerta climática al navegador
@@ -1300,86 +1414,159 @@ Devuelve ESTRICTAMENTE un objeto JSON válido con este formato:
   return { syncedCount, alertsGenerated, totalDetected: outdoorCrops.length, mode: isFirestoreAvailable ? 'firestore' : 'local' };
 }
 
-// Programación de Cron Job: cada minuto (para pruebas y monitoreo activo)
-cron.schedule('* * * * *', async () => {
+// Disparo programado (Cloud Scheduler, 1 vez por hora). Ya no se usa node-cron: en Cloud Run el
+// proceso puede no estar corriendo (0 instancias) o haber varias instancias a la vez.
+// Requiere el header "x-cultiveta-cron-secret" igual a OUTDOOR_SYNC_SECRET.
+const OUTDOOR_SYNC_SECRET = process.env.OUTDOOR_SYNC_SECRET || '';
+
+function isValidCronSecret(provided: string | undefined): boolean {
+  if (!OUTDOOR_SYNC_SECRET || !provided) return false;
+  const a = Buffer.from(provided);
+  const b = Buffer.from(OUTDOOR_SYNC_SECRET);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+app.post('/api/internal/outdoor-weather', async (req, res) => {
+  if (!OUTDOOR_SYNC_SECRET) {
+    return res.status(503).json({ error: 'Sincronización programada no configurada.' });
+  }
+  if (!isValidCronSecret(req.get('x-cultiveta-cron-secret'))) {
+    return res.status(401).json({ error: 'No autorizado.' });
+  }
   try {
-    await syncHourlyOutdoorWeather();
-  } catch (e: any) {
-    console.warn('[Cron Job] Error controlado en la ejecución programada:', e?.message || e);
+    const result = await syncHourlyOutdoorWeather();
+    res.json({ success: true, ...result });
+  } catch (err) {
+    return sendServerError(res, 500, 'Error en la sincronización programada.', err, 'internal/outdoor-weather');
   }
 });
 
+// Desarrollo local: opcionalmente, sincronizar cada hora sin Cloud Scheduler (LOCAL_OUTDOOR_SYNC=1).
+if (process.env.NODE_ENV !== 'production' && process.env.LOCAL_OUTDOOR_SYNC === '1') {
+  setInterval(() => {
+    syncHourlyOutdoorWeather().catch((e) => console.warn('[Clima exterior] Error en sincronización local:', e?.message || e));
+  }, 60 * 60 * 1000);
+}
+
 // Endpoint para que el cliente registre cultivos Outdoor/Invernadero con coordenadas
-app.post('/api/outdoor/cultivations', verifyFirebaseAuth, (req, res) => {
+// Máximo de cultivos exteriores que una persona puede registrar en el servidor (cada uno genera
+// consultas de clima): evita que una cuenta dispare consultas sin límite.
+const MAX_OUTDOOR_CROPS_PER_USER = 20;
+
+app.post('/api/outdoor/cultivations', verifyFirebaseAuth, async (req, res) => {
   try {
-    const { id, name, type, geneticsName, currentStage, isFinished, locationCoordinates, isDemo } = req.body;
+    const { id } = req.body || {};
     const userId = req.userId!;
 
-    if (!id || !locationCoordinates || typeof locationCoordinates.lat !== 'number' || typeof locationCoordinates.lon !== 'number') {
-      return res.status(400).json({ error: 'Datos incompletos de cultivo o coordenadas inválidas.' });
+    if (!id || typeof id !== 'string') {
+      return res.status(400).json({ error: 'Falta el id del cultivo.' });
+    }
+
+    // Con Firestore disponible, los datos salen del documento real y se exige que sea de quien llama.
+    let source: any = null;
+    if (hasAdminCredentials()) {
+      try {
+        const snap = await getFirebaseAdmin().firestore().collection('cultivations').doc(id).get();
+        if (!snap.exists) {
+          return res.status(404).json({ error: 'Cultivo no encontrado.' });
+        }
+        source = snap.data();
+        if (source?.userId !== userId) {
+          return res.status(403).json({ error: 'El cultivo no pertenece a tu cuenta.' });
+        }
+      } catch (readErr) {
+        return sendServerError(res, 503, 'No se pudo verificar el cultivo.', readErr, 'outdoor/cultivations');
+      }
+    } else {
+      // Desarrollo local sin Firestore Admin: se usa el cuerpo, pero nunca se pisa un cultivo ajeno.
+      const existing = outdoorCropsStore.get(id);
+      if (existing && existing.userId !== userId) {
+        return res.status(403).json({ error: 'El cultivo no pertenece a tu cuenta.' });
+      }
+      source = req.body;
+    }
+
+    const coords = source?.locationCoordinates;
+    if (!coords || typeof coords.lat !== 'number' || typeof coords.lon !== 'number') {
+      return res.status(400).json({ error: 'El cultivo no tiene coordenadas válidas.' });
+    }
+    if (source.type !== 'Outdoor' && source.type !== 'Invernadero') {
+      return res.status(400).json({ error: 'Solo se registran cultivos de exterior o invernadero.' });
+    }
+
+    const ownCount = Array.from(outdoorCropsStore.values()).filter((c) => c.userId === userId && c.id !== id).length;
+    if (ownCount >= MAX_OUTDOOR_CROPS_PER_USER) {
+      return res.status(429).json({ error: `Podés registrar hasta ${MAX_OUTDOOR_CROPS_PER_USER} cultivos de exterior.` });
     }
 
     outdoorCropsStore.set(id, {
       id,
       userId,
-      name: name || 'Cultivo',
-      type: type || 'Outdoor',
-      geneticsName: geneticsName || 'No especificada',
-      currentStage: currentStage || 'Vegetativo',
-      isFinished: Boolean(isFinished),
-      locationCoordinates,
-      isDemo: Boolean(isDemo),
+      name: source.name || 'Cultivo',
+      type: source.type,
+      geneticsName: source.geneticsName || 'No especificada',
+      currentStage: source.currentStage || 'Vegetativo',
+      isFinished: Boolean(source.isFinished),
+      locationCoordinates: coords,
+      isDemo: Boolean(source.isDemo),
     });
 
-    res.json({ success: true, totalRegistered: outdoorCropsStore.size });
-  } catch (err: any) {
-    res.status(500).json({ error: err?.message || 'Error guardando cultivo exterior' });
+    res.json({ success: true });
+  } catch (err) {
+    return sendServerError(res, 500, 'Error guardando el cultivo de exterior.', err, 'outdoor/cultivations');
   }
 });
 
-// Endpoint para consultar registros ambientales generados automáticamente
+// Registros ambientales automáticos del usuario autenticado (solo los propios)
 app.get('/api/outdoor/environment-records', verifyFirebaseAuth, (req, res) => {
   try {
     const { cultivationId } = req.query;
     const userId = req.userId!;
-    let records = outdoorRecordsStore.filter((r) => r.userId === userId || r.userId === 'system');
+    let records = outdoorRecordsStore.filter((r) => r.userId === userId);
 
     if (cultivationId) {
       records = records.filter((r) => r.cultivationId === cultivationId);
     }
 
     res.json(records);
-  } catch (err: any) {
-    res.status(500).json({ error: err?.message || 'Error consultando registros ambientales' });
+  } catch (err) {
+    return sendServerError(res, 500, 'Error consultando registros ambientales.', err, 'outdoor/environment-records');
   }
 });
 
-// Endpoint para consultar tareas y alertas críticas generadas automáticamente por Sincronización Inversa
+// Tareas y alertas generadas automáticamente para el usuario autenticado (solo las propias)
 app.get('/api/outdoor/tasks', verifyFirebaseAuth, (req, res) => {
   try {
     const { cultivationId } = req.query;
     const userId = req.userId!;
-    let tasks = outdoorTasksStore.filter((t) => (t as any).userId === userId || (t as any).userId === 'system');
+    let tasks = outdoorTasksStore.filter((t) => (t as any).userId === userId);
 
     if (cultivationId) {
       tasks = tasks.filter((t) => t.cultivationId === cultivationId);
     }
 
     res.json(tasks);
-  } catch (err: any) {
-    res.status(500).json({ error: err?.message || 'Error consultando tareas de alerta' });
+  } catch (err) {
+    return sendServerError(res, 500, 'Error consultando tareas de alerta.', err, 'outdoor/tasks');
   }
 });
 
-// Endpoint para disparar manualmente la sincronización restringido al usuario autenticado
+// Disparo manual de la sincronización, limitado a los cultivos de quien llama y a 1 vez cada 10 minutos
+const MANUAL_SYNC_COOLDOWN_MS = 10 * 60 * 1000;
+const lastManualSyncByUser = new Map<string, number>();
+
 app.post('/api/cron/trigger-outdoor-weather', verifyFirebaseAuth, async (req, res) => {
   try {
     const userId = req.userId!;
+    const last = lastManualSyncByUser.get(userId) || 0;
+    if (Date.now() - last < MANUAL_SYNC_COOLDOWN_MS) {
+      return res.status(429).json({ error: 'Esperá unos minutos antes de volver a sincronizar el clima.' });
+    }
+    lastManualSyncByUser.set(userId, Date.now());
     const result = await syncHourlyOutdoorWeather(userId);
     res.json({ success: true, ...result });
-  } catch (error: any) {
-    console.warn('[Trigger Outdoor Weather] Error controlado:', error?.message || error);
-    res.status(500).json({ error: error?.message || 'Error ejecutando sincronización manual' });
+  } catch (err) {
+    return sendServerError(res, 500, 'Error ejecutando la sincronización manual.', err, 'cron/trigger-outdoor-weather');
   }
 });
 
@@ -1430,11 +1617,11 @@ app.post('/api/notifications/test', verifyFirebaseAuth, (req, res) => {
       urgency: 'today',
       priority: 'critical',
       isCompleted: false,
-      title: '🚨 Alerta Climática: Humedad Crítica (79%)',
-      description: 'El cron job detectó humedad de 79% en floración. Se recomienda ventilación máxima inmediata para evitar botrytis.',
-      dueDate: new Date().toISOString().split('T')[0],
+      title: 'Prueba de notificación de alerta climática',
+      description: 'Esta es una notificación de prueba. No corresponde a una medición real.',
+      dueDate: getZonedParts().dateStr,
       createdAt: new Date().toISOString(),
-      categoryLabel: '🚨 Alerta Climática',
+      categoryLabel: 'Alerta climática',
       userId,
     };
 
@@ -1449,24 +1636,146 @@ app.post('/api/notifications/test', verifyFirebaseAuth, (req, res) => {
 
     res.json({
       success: true,
-      message: 'Notificación de alerta enviada vía SSE al usuario autenticado',
-      clientsNotified: sseClients.size,
+      message: 'Notificación de prueba enviada a tus conexiones activas.',
+      clientsNotified: Array.from(sseClients.values()).filter((c) => c.userId === userId).length,
     });
-  } catch (err: any) {
-    res.status(500).json({ error: err?.message || 'Error emitiendo notificación de prueba' });
+  } catch (err) {
+    return sendServerError(res, 500, 'Error enviando la notificación de prueba.', err, 'notifications/test');
   }
 });
 
-// Endpoint para listar las alertas ambientales recientes del usuario autenticado
+// Alertas ambientales recientes del usuario autenticado (solo las propias)
 app.get('/api/notifications/recent', verifyFirebaseAuth, (req, res) => {
   try {
     const userId = req.userId!;
-    const alerts = outdoorTasksStore.filter(
-      (t) => t.type === 'env_alert' && ((t as any).userId === userId || (t as any).userId === 'system')
-    );
+    const alerts = outdoorTasksStore.filter((t) => t.type === 'env_alert' && (t as any).userId === userId);
     res.json(alerts.slice(-20).reverse());
-  } catch (err: any) {
-    res.status(500).json({ error: err?.message || 'Error consultando alertas recientes' });
+  } catch (err) {
+    return sendServerError(res, 500, 'Error consultando alertas recientes.', err, 'notifications/recent');
+  }
+});
+
+// =========================================================================
+// CUENTA: EXPORTACIÓN COMPLETA Y BORRADO COMPLETO DE DATOS
+// =========================================================================
+
+/** Colecciones de primer nivel con datos de la persona (campo userId). */
+export const USER_DATA_COLLECTIONS = [
+  'cultivations',
+  'waterings',
+  'environmentRecords',
+  'diaryEntries',
+  'harvests',
+  'photos',
+  'photoAnalyses',
+  'fertilizationSchedules',
+  'favoriteGenetics',
+  'genetics',
+  'tasks',
+  'aiUsage',
+] as const;
+
+function getStorageBucketName(): string {
+  return (
+    process.env.FIREBASE_STORAGE_BUCKET ||
+    appletFirebaseConfig.storageBucket ||
+    'gen-lang-client-0531791519.firebasestorage.app'
+  );
+}
+
+// Exportación: un JSON con todos los documentos de la persona.
+app.get('/api/account/export', verifyFirebaseAuth, async (req, res) => {
+  const userId = req.userId!;
+  if (!hasAdminCredentials()) {
+    return res.status(503).json({ error: 'La exportación no está disponible en este entorno.' });
+  }
+  try {
+    const db = getFirebaseAdmin().firestore();
+    const data: Record<string, any[]> = {};
+    for (const name of USER_DATA_COLLECTIONS) {
+      if (name === 'aiUsage') continue;
+      const snap = await db.collection(name).where('userId', '==', userId).get();
+      data[name] = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    }
+    const profileSnap = await db.collection('users').doc(userId).get();
+
+    const { dateStr } = getZonedParts();
+    res.setHeader('Content-Disposition', `attachment; filename="cultiveta-export-${dateStr}.json"`);
+    res.json({
+      exportedAt: new Date().toISOString(),
+      userId,
+      profile: profileSnap.exists ? profileSnap.data() : null,
+      collections: data,
+      note: 'Las fotos se incluyen como enlaces (campo de URL de cada registro en "photos").',
+    });
+  } catch (err) {
+    return sendServerError(res, 500, 'No se pudo generar la exportación.', err, 'account/export');
+  }
+});
+
+// Borrado: todos los documentos, archivos de Storage y el usuario de Firebase Auth.
+// Exige un inicio de sesión reciente (máx. 5 minutos) para evitar borrados con una sesión olvidada.
+const RECENT_LOGIN_MAX_AGE_S = 5 * 60;
+
+app.post('/api/account/delete', verifyFirebaseAuth, async (req, res) => {
+  const userId = req.userId!;
+  const authTime = Number(req.user?.auth_time || 0);
+  if (!authTime || Date.now() / 1000 - authTime > RECENT_LOGIN_MAX_AGE_S) {
+    return res.status(401).json({
+      error: 'Por seguridad, volvé a iniciar sesión antes de eliminar la cuenta.',
+      code: 'auth/requires-recent-login',
+    });
+  }
+  if (!hasAdminCredentials()) {
+    return res.status(503).json({ error: 'El borrado de cuenta no está disponible en este entorno.' });
+  }
+
+  const deleted: Record<string, number> = {};
+  try {
+    const adminApp = getFirebaseAdmin();
+    const db = adminApp.firestore();
+
+    // 1. Documentos de Firestore, en lotes de hasta 400
+    for (const name of USER_DATA_COLLECTIONS) {
+      const snap = await db.collection(name).where('userId', '==', userId).get();
+      deleted[name] = snap.size;
+      for (let i = 0; i < snap.docs.length; i += 400) {
+        const batch = db.batch();
+        snap.docs.slice(i, i + 400).forEach((d) => batch.delete(d.ref));
+        await batch.commit();
+      }
+    }
+    await db.collection('users').doc(userId).delete();
+
+    // 2. Archivos de Storage del usuario (fotos y avatar)
+    await getStorage(adminApp)
+      .bucket(getStorageBucketName())
+      .deleteFiles({ prefix: `users/${userId}/` });
+
+    // 3. Datos en memoria del servidor
+    Array.from(outdoorCropsStore.entries()).forEach(([id, crop]) => {
+      if (crop.userId === userId) outdoorCropsStore.delete(id);
+    });
+    for (let i = outdoorRecordsStore.length - 1; i >= 0; i--) {
+      if (outdoorRecordsStore[i].userId === userId) outdoorRecordsStore.splice(i, 1);
+    }
+    for (let i = outdoorTasksStore.length - 1; i >= 0; i--) {
+      if ((outdoorTasksStore[i] as any).userId === userId) outdoorTasksStore.splice(i, 1);
+    }
+
+    // 4. Por último, el usuario de Firebase Auth
+    await getAuth(adminApp).deleteUser(userId);
+
+    console.log(`[account/delete] Cuenta ${userId} eliminada:`, deleted);
+    res.json({ success: true, deleted });
+  } catch (err) {
+    return sendServerError(
+      res,
+      500,
+      'No se pudo completar el borrado. Volvé a intentarlo: lo que ya se borró no se recupera, pero el proceso se puede repetir.',
+      err,
+      'account/delete'
+    );
   }
 });
 
@@ -1505,7 +1814,7 @@ app.get('/api/admin/me', verifyFirebaseAuth, async (req, res) => {
       storageAvailable,
     });
   } catch (err: any) {
-    res.status(500).json({ error: err?.message || 'Error verificando estado administrativo' });
+    return sendServerError(res, 500, 'Error verificando el estado administrativo.', err, 'admin/me');
   }
 });
 
@@ -1805,7 +2114,7 @@ app.post(
 
       return res.json({ success: true, photo: publicDto });
     } catch (err: any) {
-      return res.status(500).json({ error: err?.message || 'Error procesando la fotografía de la genética' });
+      return sendServerError(res, 500, 'Error procesando la fotografía de la genética.', err, 'admin/genetics/upload-photo');
     }
   }
 );
@@ -1863,7 +2172,7 @@ app.delete('/api/admin/genetics/delete-photo', verifyFirebaseAuth, verifyAdminRo
 
     res.json({ success: true, key });
   } catch (err: any) {
-    res.status(500).json({ error: err?.message || 'Error eliminando la fotografía' });
+    return sendServerError(res, 500, 'Error eliminando la fotografía.', err, 'admin/genetics/delete-photo');
   }
 });
 

@@ -1,6 +1,31 @@
-# Fase 3 · Propuesta (sin implementar)
+# Fase 3 · Propuesta y estado
 
 Plan corto para cada punto: riesgo, archivos y orden. Al final, lo que encontré al leer `server.ts` completo.
+
+## Estado de la implementación
+
+| Punto | Estado |
+|-------|--------|
+| 1. Cron fuera de `node-cron` | Hecho. `POST /api/internal/outdoor-weather` con secreto; mediciones con id por cultivo y hora; una alerta por cultivo, condición y día; arreglos en memoria limitados a 500. **Falta crear el job en Cloud Scheduler** (pasos abajo). |
+| 2. Regla `update` con `userId` | Hecho en `firestore.rules` (+ colección reservada `aiUsage`). Tests 8–10 agregados; requieren el emulador de Firestore. **Falta desplegar las reglas** (`firebase deploy --only firestore:rules`). |
+| 3. Endurecer `/api/*` | Hecho: sin datos `system`, notificaciones solo al dueño, `/api/outdoor/cultivations` verifica el cultivo en Firestore, límite diario de IA (`AI_DAILY_LIMIT`), body de 2 MB (15 MB en `/api/ai`), errores 500 sin detalles internos, `PORT` desde el entorno, fechas en `APP_TIMEZONE`. |
+| 4. Borrado completo de cuenta | Hecho en la app (menú del usuario → "Tus datos y tu cuenta"). **Falta la página web pública de borrado** que pide Google Play (necesita un email de contacto). |
+| 5. Exportación de datos | Hecho (JSON con todas las colecciones; fotos como enlaces). El ZIP con fotos necesitaría una dependencia nueva. |
+| 6. Manifest y service worker | Hecho: íconos PNG 192/512/maskable y apple-touch, manifest con colores Océano, service worker con caché del shell (solo en producción). **Falta** `assetlinks.json` (necesita la huella SHA-256 de la firma de la app) y capturas para la tienda. |
+| 7. Carga diferida | Paso 1 hecho (`React.lazy`): JS inicial de 2.337 kB a 1.916 kB. El paso 2 (router con URLs) necesita `react-router` → pendiente de tu aprobación. |
+
+### Configurar Cloud Scheduler (una sola vez)
+
+1. Definí `OUTDOOR_SYNC_SECRET` en el servicio de Cloud Run (un valor largo y aleatorio).
+2. Creá el job (reemplazá la URL y el secreto):
+   ```
+   gcloud scheduler jobs create http cultiveta-clima-exterior \
+     --schedule="0 * * * *" --time-zone="America/Argentina/Buenos_Aires" \
+     --uri="https://TU-SERVICIO.run.app/api/internal/outdoor-weather" \
+     --http-method=POST \
+     --headers="x-cultiveta-cron-secret=TU_SECRETO"
+   ```
+3. Probalo con `gcloud scheduler jobs run cultiveta-clima-exterior` y revisá los logs del servicio.
 
 Escala de riesgo: **alto** = puede romper datos o el acceso de usuarios; **medio** = cambia comportamiento visible; **bajo** = interno o fácil de revertir.
 

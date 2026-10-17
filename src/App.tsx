@@ -31,7 +31,6 @@ import { QuickActionModal } from './components/common/QuickActionModal';
 import { AuthScreen } from './components/auth/AuthScreen';
 
 import { DashboardOverview } from './components/dashboard/DashboardOverview';
-import { CultivationDetailView } from './components/cultivations/CultivationDetailView';
 import { CultivationFormModal } from './components/cultivations/CultivationFormModal';
 import { CultivationCard } from './components/cultivations/CultivationCard';
 import {
@@ -45,20 +44,46 @@ import { WateringModal } from './components/logs/WateringModal';
 import { EnvironmentModal } from './components/logs/EnvironmentModal';
 import { PhotoUploadModal } from './components/logs/PhotoUploadModal';
 import { DiaryNoteModal } from './components/logs/DiaryNoteModal';
-import { GeneticsLibraryView } from './components/genetics/GeneticsLibraryView';
-import { HarvestsHistoryView } from './components/harvests/HarvestsHistoryView';
-import { AIAssistantView } from './components/ai/AIAssistantView';
-import { CalculatorsView } from './components/tools/CalculatorsView';
-import { PhotoDiagnosisModal } from './components/ai/PhotoDiagnosisModal';
-import { GoogleCalendarModal } from './components/calendar/GoogleCalendarModal';
-import { CropComparisonView } from './components/harvests/CropComparisonView';
 import { getOverdueCultivations } from './utils/wateringAlertUtils';
 import { calculateIrrigationForecast } from './services/irrigationForecastService';
 import { browserNotificationService } from './services/browserNotificationService';
 import { NotificationCenterModal } from './components/notifications/NotificationCenterModal';
 import { UserPreferencesModal } from './components/user/UserPreferencesModal';
+import { AccountModal } from './components/user/AccountModal';
 import { UserProfile } from './types';
 import { Sprout, Plus, SlidersHorizontal } from 'lucide-react';
+
+// Pantallas y modales pesados con carga diferida: se descargan recién cuando se abren.
+const CultivationDetailView = React.lazy(() =>
+  import('./components/cultivations/CultivationDetailView').then((m) => ({ default: m.CultivationDetailView }))
+);
+const GeneticsLibraryView = React.lazy(() =>
+  import('./components/genetics/GeneticsLibraryView').then((m) => ({ default: m.GeneticsLibraryView }))
+);
+const HarvestsHistoryView = React.lazy(() =>
+  import('./components/harvests/HarvestsHistoryView').then((m) => ({ default: m.HarvestsHistoryView }))
+);
+const CropComparisonView = React.lazy(() =>
+  import('./components/harvests/CropComparisonView').then((m) => ({ default: m.CropComparisonView }))
+);
+const AIAssistantView = React.lazy(() =>
+  import('./components/ai/AIAssistantView').then((m) => ({ default: m.AIAssistantView }))
+);
+const CalculatorsView = React.lazy(() =>
+  import('./components/tools/CalculatorsView').then((m) => ({ default: m.CalculatorsView }))
+);
+const PhotoDiagnosisModal = React.lazy(() =>
+  import('./components/ai/PhotoDiagnosisModal').then((m) => ({ default: m.PhotoDiagnosisModal }))
+);
+const GoogleCalendarModal = React.lazy(() =>
+  import('./components/calendar/GoogleCalendarModal').then((m) => ({ default: m.GoogleCalendarModal }))
+);
+
+const ViewLoading: React.FC = () => (
+  <div role="status" className="cultiveta-card p-8 text-center text-sm font-semibold text-ink-muted">
+    Cargando...
+  </div>
+);
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -104,6 +129,7 @@ export default function App() {
   } | null>(null);
   const [isNotificationCenterOpen, setIsNotificationCenterOpen] = useState(false);
   const [isPreferencesModalOpen, setIsPreferencesModalOpen] = useState(false);
+  const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [envAlertsCount, setEnvAlertsCount] = useState(0);
 
   // Notification / Toast
@@ -530,6 +556,7 @@ export default function App() {
         userProfile={userProfile}
         onOpenQuickAction={() => setIsQuickActionOpen(true)}
         onOpenPreferences={() => setIsPreferencesModalOpen(true)}
+        onOpenAccount={() => setIsAccountModalOpen(true)}
         onOpenNotifications={() => setIsNotificationCenterOpen(true)}
         notificationCount={envAlertsCount}
         onLogout={handleLogout}
@@ -563,6 +590,7 @@ export default function App() {
 
         {/* Content Area */}
         <main className="flex-1 min-w-0 pb-24 md:pb-8">
+          <React.Suspense fallback={<ViewLoading />}>
           {/* VIEW: DASHBOARD OVERVIEW */}
           {currentView === 'dashboard' && (
             <DashboardOverview
@@ -927,6 +955,7 @@ export default function App() {
 
           {/* VIEW: CALCULATORS */}
           {currentView === 'calculators' && <CalculatorsView />}
+          </React.Suspense>
         </main>
       </div>
 
@@ -1087,6 +1116,7 @@ export default function App() {
         />
       )}
 
+      <React.Suspense fallback={null}>
       {/* Instant AI Diagnosis Modal from Photo Upload */}
       {photoForInstantDiagnosis && (
         <PhotoDiagnosisModal
@@ -1118,6 +1148,7 @@ export default function App() {
           }}
         />
       )}
+      </React.Suspense>
 
       {/* Notification Center Modal for env_alert cron alerts */}
       {isNotificationCenterOpen && (
@@ -1138,6 +1169,25 @@ export default function App() {
           }}
         />
       )}
+
+      {/* Tus datos y tu cuenta: exportación y borrado completo */}
+      <AccountModal
+        isOpen={isAccountModalOpen}
+        onClose={() => setIsAccountModalOpen(false)}
+        onAccountDeleted={() => {
+          setIsAccountModalOpen(false);
+          setCultivations([]);
+          setWaterings([]);
+          setEnvRecords([]);
+          setPhotos([]);
+          setGeneticsList([]);
+          setHarvests([]);
+          setDiaryEntries([]);
+          setCurrentView('dashboard');
+          setSelectedCultivationId(null);
+          showToast('Tu cuenta y todos tus datos fueron eliminados.');
+        }}
+      />
 
       {/* User Preferences & Alert Types Configuration Modal */}
       {isPreferencesModalOpen && (

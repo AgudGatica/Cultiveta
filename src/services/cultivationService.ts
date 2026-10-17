@@ -18,6 +18,7 @@ import { cleanFirestoreData } from '../utils/firestoreUtils';
 import { localStore } from './localStore';
 import { subscribeCollection } from './dataSyncHelper';
 import { daysBetween, getLocalTodayDateOnly } from '../utils/growthStageUtils';
+import { authFetch } from './apiClient';
 
 export const cultivationService = {
   subscribeCultivations(userId: string, callback: (cultivations: Cultivation[]) => void): Unsubscribe {
@@ -35,7 +36,7 @@ export const cultivationService = {
             c.locationCoordinates &&
             (c.type === 'Outdoor' || c.type === 'Invernadero')
           ) {
-            fetch('/api/outdoor/cultivations', {
+            authFetch('/api/outdoor/cultivations', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(c),
@@ -102,23 +103,22 @@ export const cultivationService = {
     // 1. Immediately store in localStore (instant UI update & offline reliability)
     localStore.saveItem('cultivations', newCultivation as Cultivation);
 
-    // Si es un cultivo exterior/invernadero con coordenadas, registrarlo en el backend para el cron
-    if (
-      newCultivation.locationCoordinates &&
-      (newCultivation.type === 'Outdoor' || newCultivation.type === 'Invernadero')
-    ) {
-      fetch('/api/outdoor/cultivations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newCultivation),
-      }).catch(() => {});
-    }
-
     // 2. Cloud Firestore write with pending status update upon confirmation
     try {
       const cleaned = cleanFirestoreData(newCultivation);
       await setDoc(docRef, cleaned);
       localStore.saveItem('cultivations', { ...newCultivation, _isPendingLocal: false } as Cultivation);
+      // El servidor verifica el cultivo contra Firestore: se registra recién cuando ya existe allí.
+      if (
+        newCultivation.locationCoordinates &&
+        (newCultivation.type === 'Outdoor' || newCultivation.type === 'Invernadero')
+      ) {
+        authFetch('/api/outdoor/cultivations', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newCultivation),
+        }).catch(() => {});
+      }
     } catch (err: any) {
       console.warn('Cloud Firestore sync pending or unavailable (persisted locally):', err?.message || err);
     }
@@ -142,7 +142,7 @@ export const cultivationService = {
         updatedItem.locationCoordinates &&
         (updatedItem.type === 'Outdoor' || updatedItem.type === 'Invernadero')
       ) {
-        fetch('/api/outdoor/cultivations', {
+        authFetch('/api/outdoor/cultivations', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(updatedItem),

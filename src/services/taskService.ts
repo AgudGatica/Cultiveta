@@ -2,6 +2,7 @@ import { Cultivation, Watering, EnvironmentRecord, CultivationTask, TaskUrgency,
 import { localStore } from './localStore';
 import { analyzeWateringUrgency, getRecommendedWateringIntervalDays } from '../utils/wateringAlertUtils';
 import { calculateIrrigationForecast } from './irrigationForecastService';
+import { authFetch } from './apiClient';
 import { buildCultivationStageSchedule, getLocalTodayDateOnly } from '../utils/growthStageUtils';
 import {
   TASK_TEMP_HIGH_ALERT_C,
@@ -59,8 +60,9 @@ export const taskService = {
    */
   async fetchServerTasks(userId?: string): Promise<CultivationTask[]> {
     try {
-      const url = userId ? `/api/outdoor/tasks?userId=${encodeURIComponent(userId)}` : '/api/outdoor/tasks';
-      const response = await fetch(url);
+      // El servidor toma el usuario del token, no del parámetro.
+      if (!userId) return [];
+      const response = await authFetch('/api/outdoor/tasks');
       if (!response.ok) return [];
       return await response.json();
     } catch {

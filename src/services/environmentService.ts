@@ -15,6 +15,7 @@ import { EnvironmentRecord } from '../types';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
 import { localStore } from './localStore';
 import { subscribeCollection } from './dataSyncHelper';
+import { authFetch } from './apiClient';
 
 export const environmentService = {
   subscribeEnvironment(userId: string, callback: (records: EnvironmentRecord[]) => void): Unsubscribe {
@@ -31,7 +32,8 @@ export const environmentService = {
 
   async fetchServerRecords(userId: string): Promise<void> {
     try {
-      const res = await fetch(`/api/outdoor/environment-records?userId=${encodeURIComponent(userId)}`);
+      // El servidor toma el usuario del token, no del parámetro.
+      const res = await authFetch('/api/outdoor/environment-records');
       if (!res.ok) return;
       const serverRecords: EnvironmentRecord[] = await res.json();
       if (Array.isArray(serverRecords) && serverRecords.length > 0) {

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { CultivationTask } from '../../types';
 import { browserNotificationService } from '../../services/browserNotificationService';
+import { authFetch } from '../../services/apiClient';
 import { Settings } from 'lucide-react';
 
 interface NotificationCenterModalProps {
@@ -50,7 +51,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   const fetchRecentAlerts = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/notifications/recent${userId ? `?userId=${encodeURIComponent(userId)}` : ''}`);
+      const res = await authFetch('/api/notifications/recent');
       if (res.ok) {
         const data = await res.json();
         setRecentAlerts(data);
@@ -101,11 +102,7 @@ export const NotificationCenterModal: React.FC<NotificationCenterModalProps> = (
   const handleTriggerServerCronAlert = async () => {
     setCronTriggered(true);
     try {
-      const res = await fetch('/api/notifications/test', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId }),
-      });
+      const res = await authFetch('/api/notifications/test', { method: 'POST' });
       if (res.ok) {
         setTimeout(() => setCronTriggered(false), 3500);
       }

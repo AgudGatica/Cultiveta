@@ -248,12 +248,50 @@ async function run() {
       recordFail("7. Falló aislamiento de geneticsCatalogPhotos contra cliente / bypass de catch-all", err);
     }
 
+    // -------------------------------------------------------------
+    // CASO 8: usuario NO puede cambiar el userId de un documento propio (pasárselo a otra cuenta)
+    // -------------------------------------------------------------
+    const ownWateringRef = db.collection('waterings').doc('watering-own-1');
+    try {
+      await rulesTesting.assertSucceeds(
+        ownWateringRef.set({ userId: uid, cultivationId: 'crop-1', date: '2026-10-17', volumeLiters: 2 })
+      );
+      await rulesTesting.assertFails(ownWateringRef.update({ userId: otherUid }));
+      recordPass('8. Usuario NO puede cambiar el userId de un documento propio');
+    } catch (err) {
+      recordFail('8. Falló el bloqueo de cambio de userId en update', err);
+    }
+
+    // -------------------------------------------------------------
+    // CASO 9: usuario sí puede editar un documento propio sin cambiar el userId
+    // -------------------------------------------------------------
+    try {
+      await rulesTesting.assertSucceeds(ownWateringRef.update({ volumeLiters: 2.5 }));
+      recordPass('9. Usuario sí puede editar un documento propio conservando el userId');
+    } catch (err) {
+      recordFail('9. Falló una edición legítima de documento propio', err);
+    }
+
+    // -------------------------------------------------------------
+    // CASO 10: usuario NO puede leer ni escribir /aiUsage (contador de la IA), ni con su userId
+    // -------------------------------------------------------------
+    try {
+      const usageRef = db.collection('aiUsage').doc(`${uid}_2026-10-17`);
+      await Promise.all([
+        rulesTesting.assertFails(usageRef.get()),
+        rulesTesting.assertFails(usageRef.set({ userId: uid, count: 0 })),
+      ]);
+      recordPass('10. Usuario NO puede leer ni reiniciar su contador de /aiUsage');
+    } catch (err) {
+      recordFail('10. Falló el aislamiento de /aiUsage', err);
+    }
+
   } finally {
     await testEnv.cleanup();
   }
 
   console.log('\n----------------------------------------------------------------');
-  console.log(`TOTAL: 7 | PASARON: ${passed} | FALLARON: ${failed}`);
+  console.log(`TOTAL: ${passed + failed} | PASARON: ${passed} | FALLARON: ${failed}`);
   console.log('================================================================\n');
 
   if (failed > 0) {

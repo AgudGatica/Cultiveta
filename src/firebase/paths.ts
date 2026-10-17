@@ -25,7 +25,7 @@ export const FIRESTORE_COLLECTIONS = {
   PHOTO_ANALYSES: 'photoAnalyses',
   WATERINGS: 'waterings',
   ENVIRONMENT_RECORDS: 'environmentRecords',
-  DIARY: 'diary',
+  DIARY: 'diaryEntries',
   HARVESTS: 'harvests',
   TASKS: 'tasks',
   GENETICS: 'genetics',

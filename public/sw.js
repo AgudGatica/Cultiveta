@@ -1,35 +1,121 @@
-// Cultiveta Service Worker para Notificaciones de Navegador y Push
-// Permite al usuario recibir alertas críticas de 'env_alert' generadas por el cron job incluso fuera de la pestaña
+// Service Worker de Cultiveta
+// 1. Caché del "shell" de la app para que abra sin conexión (los datos ya son offline-first).
+// 2. Notificaciones del navegador para alertas climáticas.
+
+const CACHE_VERSION = 'cultiveta-v2';
+const SHELL_CACHE = `${CACHE_VERSION}-shell`;
+const ASSET_CACHE = `${CACHE_VERSION}-assets`;
+const SHELL_URLS = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/icons/icon.svg',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  '/icons/icon-maskable-512.png',
+  '/icons/apple-touch-icon.png',
+];
+const NOTIFICATION_ICON = '/icons/icon-192.png';
 
 self.addEventListener('install', (event) => {
-  self.skipWaiting();
+  event.waitUntil(
+    caches
+      .open(SHELL_CACHE)
+      .then((cache) => cache.addAll(SHELL_URLS))
+      .catch(() => {
+        // Si algún recurso falla, el SW se instala igual (se reintenta en la próxima carga)
+      })
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.filter((k) => !k.startsWith(CACHE_VERSION)).map((k) => caches.delete(k))))
+      .then(() => self.clients.claim())
+  );
 });
 
-// Manejo de mensajes directos desde la aplicación (por ejemplo, desde el listener de SSE o Firestore en segundo plano)
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
-    const { title, options } = event.data;
-    const notificationOptions = {
-      icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🌱</text></svg>',
-      badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🚨</text></svg>',
-      vibrate: [300, 100, 300, 100, 300],
-      requireInteraction: true,
-      tag: options?.tag || `env-alert-${Date.now()}`,
-      renotify: true,
-      ...options,
-    };
+self.addEventListener('fetch', (event) => {
+  const request = event.request;
+  if (request.method !== 'GET') return;
 
-    event.waitUntil(
-      self.registration.showNotification(title, notificationOptions)
+  const url = new URL(request.url);
+  // Solo recursos propios; nunca la API (datos privados y siempre frescos) ni Firebase.
+  if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
+
+  // Navegación: red primero; sin conexión, el index cacheado (la app es una SPA).
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(SHELL_CACHE).then((cache) => cache.put('/index.html', copy));
+          return response;
+        })
+        .catch(() => caches.match('/index.html'))
+    );
+    return;
+  }
+
+  // JS/CSS con hash del build: caché primero (el nombre cambia con cada versión).
+  if (url.pathname.startsWith('/assets/')) {
+    event.respondWith(
+      caches.match(request).then(
+        (cached) =>
+          cached ||
+          fetch(request).then((response) => {
+            if (response.ok) {
+              const copy = response.clone();
+              caches.open(ASSET_CACHE).then((cache) => cache.put(request, copy));
+            }
+            return response;
+          })
+      )
+    );
+    return;
+  }
+
+  // Íconos y manifest: se sirve lo cacheado y se actualiza en segundo plano.
+  if (url.pathname.startsWith('/icons/') || url.pathname === '/manifest.json') {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        const network = fetch(request)
+          .then((response) => {
+            if (response.ok) {
+              const copy = response.clone();
+              caches.open(SHELL_CACHE).then((cache) => cache.put(request, copy));
+            }
+            return response;
+          })
+          .catch(() => cached);
+        return cached || network;
+      })
     );
   }
 });
 
-// Manejo de eventos Push del navegador
+// Mensajes desde la app (por ejemplo, alertas recibidas por SSE o Firestore)
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    const { title, options } = event.data;
+    const notificationOptions = {
+      icon: NOTIFICATION_ICON,
+      badge: NOTIFICATION_ICON,
+      vibrate: [300, 100, 300, 100, 300],
+      requireInteraction: true,
+      tag: (options && options.tag) || `env-alert-${Date.now()}`,
+      renotify: true,
+      ...options,
+    };
+
+    event.waitUntil(self.registration.showNotification(title, notificationOptions));
+  }
+});
+
+// Eventos Push del navegador
 self.addEventListener('push', (event) => {
   let data = {};
   if (event.data) {
@@ -40,16 +126,16 @@ self.addEventListener('push', (event) => {
     }
   }
 
-  const title = data.title || '🚨 Alerta Climática Crítica (Cultiveta)';
+  const title = data.title || 'Alerta climática (Cultiveta)';
   const body =
     data.description ||
     data.body ||
-    (data.task ? `${data.task.cultivationName}: ${data.task.description}` : 'Alerta detectada por el cron job agronómico.');
+    (data.task ? `${data.task.cultivationName}: ${data.task.description}` : 'Revisá el estado de tu cultivo.');
 
   const options = {
     body,
-    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🌱</text></svg>',
-    badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🚨</text></svg>',
+    icon: NOTIFICATION_ICON,
+    badge: NOTIFICATION_ICON,
     vibrate: [300, 150, 300, 150, 400],
     requireInteraction: true,
     tag: data.id || (data.task && data.task.id) || `env-alert-${Date.now()}`,
@@ -60,13 +146,12 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
-// Al hacer clic en la notificación del sistema operativo: enfocar o reabrir la aplicación
+// Al tocar la notificación: enfocar la app o abrirla
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // Si la ventana ya existe (incluso en segundo plano), enfocarla y notificarla
       for (const client of clientList) {
         if ('focus' in client) {
           client.postMessage({
@@ -76,7 +161,6 @@ self.addEventListener('notificationclick', (event) => {
           return client.focus();
         }
       }
-      // Si no hay ventana abierta, abrir la aplicación
       if (self.clients.openWindow) {
         return self.clients.openWindow('/');
       }

@@ -28,6 +28,7 @@ interface HeaderProps {
   onToggleAdvancedMode?: () => void;
   onOpenQuickAction?: () => void;
   onOpenPreferences?: () => void;
+  onOpenAccount?: () => void;
   onOpenNotifications?: () => void;
   notificationCount?: number;
   onNavigate?: (view: string) => void;
@@ -48,6 +49,7 @@ export const Header: React.FC<HeaderProps> = ({
   isAdvancedMode,
   onToggleAdvancedMode,
   onOpenPreferences,
+  onOpenAccount,
   onOpenNotifications,
   notificationCount = 0,
   onNavigate,
@@ -365,6 +367,29 @@ export const Header: React.FC<HeaderProps> = ({
                       <span className="font-bold block">Preguntale a Cultiveta</span>
                       <span className="text-[10px] text-ink-muted block truncate">
                         Asistencia botánica y diagnóstico
+                      </span>
+                    </div>
+                  </button>
+                )}
+
+                {/* Opción: Tus datos y tu cuenta (exportación y borrado) */}
+                {onOpenAccount && (
+                  <button
+                    type="button"
+                    id="menu-open-account-btn"
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      onOpenAccount();
+                    }}
+                    className="w-full p-2.5 rounded-2xl hover:bg-track text-left transition-colors flex items-center gap-3 text-xs text-ink cursor-pointer group"
+                  >
+                    <div className="p-2 rounded-xl bg-icon-bg text-brand border border-brand/20">
+                      <Database className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="font-bold block">Tus datos y tu cuenta</span>
+                      <span className="text-[10px] text-ink-muted block truncate">
+                        Descargá tus datos o eliminá la cuenta
                       </span>
                     </div>
                   </button>

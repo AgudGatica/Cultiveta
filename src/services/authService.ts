@@ -9,10 +9,9 @@ import {
   onAuthStateChanged,
   User,
   updateProfile,
-  deleteUser,
   GoogleAuthProvider
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore';
 import { auth, googleProvider, calendarGoogleProvider, db } from '../firebase/config';
 import { UserProfile } from '../types';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
@@ -295,21 +294,7 @@ export const authService = {
     }
   },
 
-  async deleteAccount(): Promise<void> {
-    const user = auth.currentUser;
-    if (!user) throw new Error('No hay usuario autenticado');
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(`cultiveta_profile_${user.uid}`);
-    }
-    this.notifyListeners(null);
-    try {
-      const userRef = doc(db, 'users', user.uid);
-      await deleteDoc(userRef).catch(() => {});
-      await deleteUser(user);
-    } catch (e) {
-      console.warn('deleteUser error:', e);
-    }
-  },
+  // El borrado de cuenta vive en accountService.deleteAccount (borra todos los datos en el servidor).
 };
 
 if (typeof window !== 'undefined') {
