@@ -54,17 +54,18 @@ export const MobileNav: React.FC<MobileNavProps> = ({
     <>
       {/* Menú desplegable "Más" */}
       {isMoreMenuOpen && (
-        <div className="lg:hidden fixed inset-0 z-50 bg-[#29202F]/30 backdrop-blur-xs flex flex-col justify-end">
+        <div className="lg:hidden fixed inset-0 z-50 bg-ink/30 backdrop-blur-xs flex flex-col justify-end">
           <div
             ref={moreMenuRef}
-            className="bg-[#FFFDF7] rounded-t-[32px] border-t border-black/10 p-5 shadow-2xl space-y-4 animate-in slide-in-from-bottom duration-200"
+            className="bg-surface rounded-t-[32px] border-t border-black/10 p-5 shadow-2xl space-y-4 animate-in slide-in-from-bottom duration-200"
           >
             <div className="flex items-center justify-between pb-2 border-b border-black/10">
-              <span className="text-xs font-bold text-[#29202F]">Más herramientas</span>
+              <span className="text-xs font-bold text-ink">Más herramientas</span>
               <button
                 type="button"
                 onClick={() => setIsMoreMenuOpen(false)}
-                className="p-1 rounded-full hover:bg-[#FAF2E1] text-[#6E5D77] cursor-pointer"
+                aria-label="Cerrar menú"
+                className="min-h-11 min-w-11 flex items-center justify-center rounded-full hover:bg-track text-ink-muted cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -84,16 +85,16 @@ export const MobileNav: React.FC<MobileNavProps> = ({
                     }}
                     className={`flex items-center gap-3.5 p-3 rounded-2xl text-left transition-all cursor-pointer ${
                       isActive
-                        ? 'bg-[#6C45C7]/10 text-[#6C45C7] border border-[#6C45C7]/20 font-bold'
-                        : 'bg-white hover:bg-[#FAF2E1] text-[#29202F] border border-black/10'
+                        ? 'bg-brand-deep text-white border border-brand-deep font-bold'
+                        : 'bg-white hover:bg-track text-ink border border-black/10'
                     }`}
                   >
-                    <div className="p-2 rounded-xl bg-[#FFFDF7] text-[#6C45C7]">
+                    <div className="p-2 rounded-xl bg-icon-bg text-brand">
                       <Icon className="w-5 h-5" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <span className="text-xs font-bold block">{item.label}</span>
-                      <span className="text-[10px] text-[#6E5D77] block">{item.desc}</span>
+                      <span className="text-[10px] text-ink-muted block">{item.desc}</span>
                     </div>
                   </button>
                 );
@@ -116,10 +117,10 @@ export const MobileNav: React.FC<MobileNavProps> = ({
             setIsMoreMenuOpen(false);
             onNavigate('dashboard');
           }}
-          className={`flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition-colors cursor-pointer ${
+          className={`flex flex-col items-center justify-center gap-1 min-h-11 min-w-11 py-1 px-3 rounded-xl transition-colors cursor-pointer ${
             currentView === 'dashboard'
-              ? 'text-[#6C45C7] font-bold'
-              : 'text-[#6E5D77] hover:text-[#29202F]'
+              ? 'bg-brand-deep text-white font-bold'
+              : 'text-ink-muted hover:text-ink'
           }`}
         >
           <LayoutDashboard className="w-5 h-5" />
@@ -134,10 +135,10 @@ export const MobileNav: React.FC<MobileNavProps> = ({
             setIsMoreMenuOpen(false);
             onNavigate('cultivations');
           }}
-          className={`flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition-colors cursor-pointer ${
+          className={`flex flex-col items-center justify-center gap-1 min-h-11 min-w-11 py-1 px-3 rounded-xl transition-colors cursor-pointer ${
             currentView === 'cultivations' || currentView === 'cultivation_detail'
-              ? 'text-[#62B95B] font-bold'
-              : 'text-[#6E5D77] hover:text-[#29202F]'
+              ? 'bg-brand-deep text-white font-bold'
+              : 'text-ink-muted hover:text-ink'
           }`}
         >
           <Sprout className="w-5 h-5" />
@@ -150,7 +151,8 @@ export const MobileNav: React.FC<MobileNavProps> = ({
             type="button"
             id="mobile-nav-quick-action-btn"
             onClick={onOpenQuickAction}
-            className="w-13 h-13 rounded-full bg-[#62B95B] hover:bg-[#52A54C] text-white flex items-center justify-center shadow-lg shadow-[#62B95B]/30 transition-transform active:scale-95 cursor-pointer border-4 border-white"
+            aria-label="Anotar algo rápido"
+            className="w-13 h-13 rounded-full bg-primary hover:brightness-95 text-ink flex items-center justify-center shadow-lg shadow-primary/30 transition-transform active:scale-95 cursor-pointer border-4 border-white"
             title="Anotar algo rápido"
           >
             <Plus className="w-6 h-6 stroke-[3]" />
@@ -165,10 +167,10 @@ export const MobileNav: React.FC<MobileNavProps> = ({
             setIsMoreMenuOpen(false);
             onNavigate('ai_assistant');
           }}
-          className={`flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition-colors cursor-pointer ${
+          className={`flex flex-col items-center justify-center gap-1 min-h-11 min-w-11 py-1 px-3 rounded-xl transition-colors cursor-pointer ${
             currentView === 'ai_assistant'
-              ? 'text-[#6C45C7] font-bold'
-              : 'text-[#6E5D77] hover:text-[#29202F]'
+              ? 'bg-brand-deep text-white font-bold'
+              : 'text-ink-muted hover:text-ink'
           }`}
         >
           <Sparkles className="w-5 h-5" />
@@ -180,10 +182,11 @@ export const MobileNav: React.FC<MobileNavProps> = ({
           type="button"
           id="mobile-nav-more"
           onClick={() => setIsMoreMenuOpen((prev) => !prev)}
-          className={`flex flex-col items-center justify-center gap-1 py-1 px-3 rounded-xl transition-colors cursor-pointer ${
+          aria-expanded={isMoreMenuOpen}
+          className={`flex flex-col items-center justify-center gap-1 min-h-11 min-w-11 py-1 px-3 rounded-xl transition-colors cursor-pointer ${
             isSecondaryActive || isMoreMenuOpen
-              ? 'text-[#29202F] font-bold'
-              : 'text-[#6E5D77] hover:text-[#29202F]'
+              ? 'bg-brand-deep text-white font-bold'
+              : 'text-ink-muted hover:text-ink'
           }`}
         >
           <MoreHorizontal className="w-5 h-5" />

@@ -35,12 +35,12 @@ export const GeneticsHeaderPhoto: React.FC<GeneticsHeaderPhotoProps> = ({
       data-testid="cultivation-header-photo-container"
       className="w-full md:w-72 lg:w-80 shrink-0 self-center md:self-stretch"
     >
-      <div className="relative w-full aspect-[295/176] rounded-2xl overflow-hidden bg-[#FAF2E1] border border-[#EFE3CF] shadow-xs group">
+      <div className="relative w-full aspect-[295/176] rounded-2xl overflow-hidden bg-track border border-line shadow-xs group">
         {/* Si hay múltiples genéticas con varias fotos resueltas, composición de miniaturas */}
         {hasMultipleGenetics && individualGeneticsPhotos.length > 1 ? (
-          <div className="w-full h-full grid grid-cols-2 gap-0.5 bg-[#EFE3CF]">
+          <div className="w-full h-full grid grid-cols-2 gap-0.5 bg-line">
             {individualGeneticsPhotos.slice(0, 2).map((item, idx) => (
-              <div key={idx} className="relative w-full h-full overflow-hidden bg-[#FAF2E1]">
+              <div key={idx} className="relative w-full h-full overflow-hidden bg-track">
                 <img
                   src={item.photoUrl}
                   alt={`${item.name} (${item.seedBank || 'Genética'})`}
@@ -68,9 +68,9 @@ export const GeneticsHeaderPhoto: React.FC<GeneticsHeaderPhotoProps> = ({
         {isReferencePhoto && (
           <div
             data-testid="reference-photo-badge"
-            className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-[#29202F]/85 backdrop-blur-xs text-white text-[10px] font-bold tracking-wide flex items-center gap-1 shadow-xs"
+            className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-ink/85 backdrop-blur-xs text-white text-[10px] font-bold tracking-wide flex items-center gap-1 shadow-xs"
           >
-            <Sparkles className="w-3 h-3 text-[#F3C843]" />
+            <Sparkles className="w-3 h-3 text-warn-line" />
             <span>Foto de referencia</span>
           </div>
         )}
@@ -81,7 +81,7 @@ export const GeneticsHeaderPhoto: React.FC<GeneticsHeaderPhotoProps> = ({
             data-testid="multiple-genetics-badge"
             className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-lg bg-black/70 backdrop-blur-xs text-white text-[9px] font-bold flex items-center gap-1 shadow-xs"
           >
-            <Layers className="w-3 h-3 text-[#62B95B]" />
+            <Layers className="w-3 h-3 text-ok" />
             <span>
               {individualGeneticsPhotos.length > 0
                 ? `${individualGeneticsPhotos[0].name}${individualGeneticsPhotos.length > 1 ? ` +${resolution.totalGeneticsCount - 1}` : ''}`

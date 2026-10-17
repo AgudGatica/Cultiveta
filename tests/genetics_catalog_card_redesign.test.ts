@@ -151,8 +151,9 @@ export async function runGeneticsCatalogCardRedesignTests(): Promise<{ passed: n
   assert(imgEl?.classList.contains('group-hover:scale-[1.04]'), '2d. Imagen tiene efecto de hover zoom group-hover:scale-[1.04]');
 
   // 4 & 5. Rendimiento y Floración en violeta con texto e iconos en blanco
-  const violetPills = Array.from(cardEl.querySelectorAll('div')).filter((d) => d.className.includes('bg-[#6C45C7]'));
-  assert(violetPills.length === 2, '4a. Exactamente 2 pills con fondo violeta (bg-[#6C45C7])');
+  // El color de marca pasó a ser un token de Tailwind (bg-brand) en el rediseño "Océano".
+  const violetPills = Array.from(cardEl.querySelectorAll('div')).filter((d) => d.classList.contains('bg-brand'));
+  assert(violetPills.length === 2, '4a. Exactamente 2 pills con fondo de marca (bg-brand)');
   assert(violetPills.every((p) => p.classList.contains('text-white')), '4b. Pills de rendimiento y floración con texto en blanco (text-white)');
   const whiteIcons = violetPills.flatMap((p) => Array.from(p.querySelectorAll('svg'))).filter((svg) => svg.classList.contains('text-white'));
   assert(whiteIcons.length === 2, '4c. Iconos Scale y Clock con color blanco (text-white)');

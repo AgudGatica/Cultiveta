@@ -1,11 +1,16 @@
 import React, { useState } from 'react';
-import { Sprout, Mail, Lock, User, ArrowRight, Sparkles, CheckCircle2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import { Sprout, Mail, Lock, User, Sparkles, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { authService } from '../../services/authService';
 
 interface AuthScreenProps {
   onSuccess: () => void;
   onExploreDemo: () => void;
 }
+
+const inputClass =
+  'w-full min-h-11 pl-10 pr-4 py-2.5 rounded-2xl bg-surface border border-line text-ink text-sm focus:outline-hidden focus:border-brand focus:ring-2 focus:ring-brand/20 transition-all placeholder:text-ink-subtle';
+
+const linkClass = 'min-h-11 inline-flex items-center font-bold text-brand hover:underline cursor-pointer';
 
 export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, onExploreDemo }) => {
   const [isRegistering, setIsRegistering] = useState(false);
@@ -27,13 +32,13 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, onExploreDemo
     } catch (err: any) {
       console.error('Google login error', err);
       if (err?.code === 'auth/popup-blocked') {
-        setError('El navegador bloqueó la ventana emergente. Por favor habilita ventanas emergentes o usa tu email.');
+        setError('El navegador bloqueó la ventana emergente. Habilitá las ventanas emergentes o entrá con tu email.');
       } else if (err?.code === 'auth/popup-closed-by-user') {
-        setError('Se cerró la ventana de inicio de sesión de Google antes de finalizar.');
+        setError('Se cerró la ventana de inicio de sesión de Google antes de terminar.');
       } else if (err?.code === 'auth/cancelled-popup-request') {
-        setError('Operación cancelada. Intenta nuevamente.');
+        setError('Operación cancelada. Probá de nuevo.');
       } else if (err?.code === 'auth/unauthorized-domain') {
-        setError('Este dominio aún no está autorizado en Firebase Auth. Puedes iniciar sesión con email o Modo Demo.');
+        setError('Este dominio todavía no está autorizado en Firebase Auth. Podés entrar con tu email o en Modo Demo.');
       } else {
         setError(err?.message || 'No se pudo iniciar sesión con Google.');
       }
@@ -45,7 +50,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, onExploreDemo
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || (!isResettingPass && !password)) {
-      setError('Completa todos los campos obligatorios.');
+      setError('Completá todos los campos obligatorios.');
       return;
     }
 
@@ -79,150 +84,118 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, onExploreDemo
     }
   };
 
+  const title = isResettingPass ? 'Recuperá tu contraseña' : isRegistering ? 'Creá tu cuenta' : 'Entrá a tu diario';
+
   return (
-    <div className="min-h-screen bg-[#050505] flex flex-col justify-center items-center px-4 py-8 relative overflow-hidden">
-      {/* Background Bento glow elements */}
-      <div className="absolute top-[-10%] left-[-10%] w-96 h-96 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 rounded-full bg-zinc-800/30 blur-3xl pointer-events-none" />
-      <div className="absolute top-[40%] right-[15%] w-72 h-72 rounded-full bg-violet-500/10 blur-3xl pointer-events-none" />
-
-      <div className="w-full max-w-md bg-[#0F0F0F] rounded-[32px] p-8 sm:p-10 shadow-2xl border border-zinc-800 relative z-10">
-        {/* Brand Header */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-[22px] bg-emerald-500 text-black shadow-lg shadow-emerald-500/20 mb-4 transform -rotate-2 hover:rotate-0 transition-transform">
-            <span className="text-3xl">🌱</span>
-          </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-white lowercase">cultiveta</h1>
-          <p className="text-[10px] font-mono font-bold text-emerald-400 tracking-[0.25em] uppercase mt-1">
-            Diario Inteligente de Cultivo
-          </p>
-          <p className="text-zinc-400 text-xs sm:text-sm mt-3 font-medium">
-            Tu cultivo. Tu historial. Tu Cultiveta.
-          </p>
+    <div className="cultiveta-app-shell flex flex-col justify-center items-center px-4 py-8">
+      <div aria-hidden="true" className="cultiveta-page-background" />
+      {/* Marca sobre el fondo */}
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-12 h-12 rounded-2xl bg-primary text-ink flex items-center justify-center shadow-card">
+          <Sprout className="w-6 h-6 stroke-[2.5]" aria-hidden="true" />
         </div>
+        <span className="text-3xl font-extrabold tracking-tight text-white">
+          Cultiveta<span className="text-logo-dot">.</span>
+        </span>
+      </div>
 
-        {/* Error message */}
+      <main className="w-full max-w-md bg-card rounded-card shadow-card border border-ink/10 p-6 sm:p-8">
+        <h1 className="text-xl font-extrabold text-ink">{title}</h1>
+        <p className="text-sm text-ink-muted mt-1">Tu cultivo. Tu historial. Tu Cultiveta.</p>
+
         {error && (
-          <div className="mb-6 p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-medium leading-relaxed">
+          <div role="alert" className="mt-5 p-3.5 rounded-2xl bg-error/10 border border-error/30 text-error text-sm font-medium leading-relaxed">
             {error}
           </div>
         )}
 
-        {/* Reset password success */}
         {resetSent && (
-          <div className="mb-6 p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium leading-relaxed flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-            <span>Te enviamos un correo con las instrucciones para restablecer tu contraseña.</span>
+          <div role="status" className="mt-5 p-3.5 rounded-2xl bg-ok-bg border border-ok-line text-ok-ink text-sm font-medium leading-relaxed flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <span>Te mandamos un correo con los pasos para recuperar tu contraseña.</span>
           </div>
         )}
 
-        {/* Google sign-in */}
-        {!isResettingPass && (
-          <div className="space-y-4 mb-6">
-            <button
-              type="button"
-              id="google-signin-btn"
-              onClick={handleGoogleLogin}
-              disabled={loading}
-              className="w-full flex items-center justify-center gap-3 py-3 px-4 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 font-bold text-xs sm:text-sm border border-zinc-700 shadow-sm transition-all disabled:opacity-50 cursor-pointer"
-            >
-              <svg className="w-4 h-4" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.17 0 9.99 0 12s.45 3.83 1.25 5.42l4.03-3.15z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-                />
-              </svg>
-              <span>Continuar con Google</span>
-            </button>
-
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-zinc-800" />
-              <span className="text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-widest">o con email</span>
-              <div className="flex-1 h-px bg-zinc-800" />
-            </div>
-          </div>
-        )}
-
-        {/* Email Form */}
-        <form onSubmit={handleEmailAuth} className="space-y-4">
+        <form onSubmit={handleEmailAuth} className="space-y-4 mt-6" noValidate>
           {isRegistering && !isResettingPass && (
             <div>
-              <label className="block text-xs font-bold text-zinc-300 mb-1.5">Nombre o apodo</label>
+              <label htmlFor="auth-name-input" className="block text-sm font-bold text-ink mb-1.5">
+                Nombre o apodo
+              </label>
               <div className="relative">
-                <User className="w-4 h-4 text-zinc-500 absolute left-3.5 top-3.5" />
+                <User className="w-4 h-4 text-ink-subtle absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden="true" />
                 <input
                   id="auth-name-input"
                   type="text"
+                  autoComplete="nickname"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Tu nombre de cultivador"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-zinc-900 border border-zinc-800 text-white text-xs sm:text-sm focus:outline-hidden focus:border-emerald-500 transition-all placeholder:text-zinc-600"
+                  className={inputClass}
                 />
               </div>
             </div>
           )}
 
           <div>
-            <label className="block text-xs font-bold text-zinc-300 mb-1.5">Correo electrónico</label>
+            <label htmlFor="auth-email-input" className="block text-sm font-bold text-ink mb-1.5">
+              Email
+            </label>
             <div className="relative">
-              <Mail className="w-4 h-4 text-zinc-500 absolute left-3.5 top-3.5" />
+              <Mail className="w-4 h-4 text-ink-subtle absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden="true" />
               <input
                 id="auth-email-input"
                 type="email"
                 required
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="ejemplo@cultiveta.com"
-                className="w-full pl-10 pr-4 py-2.5 rounded-2xl bg-zinc-900 border border-zinc-800 text-white text-xs sm:text-sm focus:outline-hidden focus:border-emerald-500 transition-all placeholder:text-zinc-600"
+                placeholder="vos@ejemplo.com"
+                className={inputClass}
               />
             </div>
           </div>
 
           {!isResettingPass && (
             <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-zinc-300">Contraseña</label>
-                {!isRegistering && (
-                  <button
-                    type="button"
-                    onClick={() => setIsResettingPass(true)}
-                    className="text-[11px] font-semibold text-emerald-400 hover:underline cursor-pointer"
-                  >
-                    ¿Olvidaste tu clave?
-                  </button>
-                )}
-              </div>
+              <label htmlFor="auth-password-input" className="block text-sm font-bold text-ink mb-1.5">
+                Contraseña
+              </label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-zinc-500 absolute left-3.5 top-3.5" />
+                <Lock className="w-4 h-4 text-ink-subtle absolute left-3.5 top-1/2 -translate-y-1/2" aria-hidden="true" />
                 <input
                   id="auth-password-input"
                   type={showPassword ? 'text' : 'password'}
                   required
+                  autoComplete={isRegistering ? 'new-password' : 'current-password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full pl-10 pr-10 py-2.5 rounded-2xl bg-zinc-900 border border-zinc-800 text-white text-xs sm:text-sm focus:outline-hidden focus:border-emerald-500 transition-all placeholder:text-zinc-600"
+                  className={`${inputClass} pr-12`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3.5 top-3 text-zinc-500 hover:text-zinc-300"
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  aria-pressed={showPassword}
+                  className="absolute right-0 top-0 h-full min-w-11 flex items-center justify-center rounded-r-2xl text-ink-muted hover:text-ink cursor-pointer"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {!isRegistering && (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsResettingPass(true);
+                      setError(null);
+                    }}
+                    className={`${linkClass} text-sm`}
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
@@ -230,77 +203,82 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, onExploreDemo
             type="submit"
             id="auth-submit-btn"
             disabled={loading}
-            className="w-full py-3 px-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs sm:text-sm shadow-lg shadow-emerald-500/20 transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 mt-2"
+            className="w-full min-h-12 py-3 px-4 rounded-2xl bg-primary hover:brightness-95 text-ink font-bold text-sm transition-all cursor-pointer disabled:opacity-50"
           >
-            <span>
-              {isResettingPass
-                ? 'Enviar enlace de recuperación'
-                : isRegistering
-                ? 'Crear cuenta en Cultiveta'
-                : 'Iniciar Sesión'}
-            </span>
-            <ArrowRight className="w-4 h-4" />
+            {isResettingPass ? 'Mandarme el enlace' : isRegistering ? 'Crear cuenta' : 'Entrar'}
           </button>
         </form>
 
-        {/* Toggle between Login, Register, Reset */}
-        <div className="mt-6 text-center text-xs text-zinc-400">
+        {!isResettingPass && (
+          <button
+            type="button"
+            id="google-signin-btn"
+            onClick={handleGoogleLogin}
+            disabled={loading}
+            className="w-full min-h-11 mt-3 py-2.5 px-4 rounded-2xl bg-card border border-chip-line hover:bg-surface text-ink font-bold text-sm transition-all disabled:opacity-50 cursor-pointer"
+          >
+            Entrar con Google
+          </button>
+        )}
+
+        <div className="mt-5 text-center text-sm text-ink-muted">
           {isResettingPass ? (
             <button
               type="button"
               onClick={() => {
                 setIsResettingPass(false);
                 setResetSent(false);
+                setError(null);
               }}
-              className="font-bold text-emerald-400 hover:underline cursor-pointer"
+              className={linkClass}
             >
-              ← Volver al inicio de sesión
+              Volver a entrar
             </button>
           ) : isRegistering ? (
             <p>
-              ¿Ya tenés una cuenta?{' '}
+              ¿Ya tenés cuenta?{' '}
               <button
                 type="button"
                 id="toggle-to-login-btn"
-                onClick={() => setIsRegistering(false)}
-                className="font-bold text-emerald-400 hover:underline cursor-pointer ml-1"
+                onClick={() => {
+                  setIsRegistering(false);
+                  setError(null);
+                }}
+                className={linkClass}
               >
-                Iniciar sesión
+                Entrá
               </button>
             </p>
           ) : (
             <p>
-              ¿Aún no tenés cuenta?{' '}
+              ¿No tenés cuenta?{' '}
               <button
                 type="button"
                 id="toggle-to-register-btn"
-                onClick={() => setIsRegistering(true)}
-                className="font-bold text-emerald-400 hover:underline cursor-pointer ml-1"
+                onClick={() => {
+                  setIsRegistering(true);
+                  setError(null);
+                }}
+                className={linkClass}
               >
-                Crear cuenta gratis
+                Creá tu cuenta
               </button>
             </p>
           )}
         </div>
 
-        {/* Instant Demo Explorer Mode */}
-        <div className="mt-8 pt-6 border-t border-zinc-800 text-center">
+        <div className="mt-5 pt-5 border-t border-line">
           <button
             type="button"
             id="demo-mode-btn"
             onClick={onExploreDemo}
-            className="w-full py-2.5 px-3 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-zinc-200 text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-2 border border-zinc-800"
+            className="w-full min-h-11 py-2.5 px-3 rounded-2xl bg-surface hover:bg-track text-ink text-sm font-bold transition-colors cursor-pointer flex items-center justify-center gap-2 border border-line"
           >
-            <Sparkles className="w-4 h-4 text-amber-400" />
-            <span>Explorar Cultiveta en Modo Demo</span>
+            <Sparkles className="w-4 h-4 text-brand" aria-hidden="true" />
+            <span>Probar en Modo Demo</span>
           </button>
-          <p className="text-[10px] text-zinc-500 mt-2.5 flex items-center justify-center gap-1">
-            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            Seguimiento 100% privado y seguro bajo tu usuario.
-          </p>
         </div>
-      </div>
+      </main>
     </div>
   );
 };
-

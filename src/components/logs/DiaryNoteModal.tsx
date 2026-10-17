@@ -84,27 +84,27 @@ export const DiaryNoteModal: React.FC<DiaryNoteModalProps> = ({
         id="diary-note-modal-box"
         className="cultiveta-modal-container max-w-lg p-6 sm:p-8 my-auto"
       >
-        <div className="flex items-center justify-between pb-4 border-b border-[#EFE3CF] mb-5">
+        <div className="flex items-center justify-between pb-4 border-b border-line mb-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-[#6C45C7]/15 text-[#6C45C7]">
+            <div className="p-3 rounded-2xl bg-brand/15 text-brand">
               <BookOpen className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-[#29202F]">Anotá algo en el diario 📝</h2>
-              <p className="text-xs text-[#6E5D77]">Registrá podas, trasplantes o cómo viste tus plantas</p>
+              <h2 className="text-xl font-black text-ink">Anotá algo en el diario 📝</h2>
+              <p className="text-xs text-ink-muted">Registrá podas, trasplantes o cómo viste tus plantas</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-[#9887A2] hover:text-[#29202F] rounded-full hover:bg-[#FAF2E1] transition-colors cursor-pointer"
+            className="p-2 text-ink-subtle hover:text-ink rounded-full hover:bg-track transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3.5 rounded-2xl bg-[#EB7864]/10 border border-[#EB7864]/30 text-[#EB7864] text-xs font-semibold">
+          <div className="mb-4 p-3.5 rounded-2xl bg-coral/10 border border-coral/30 text-coral text-xs font-semibold">
             {error}
           </div>
         )}
@@ -112,13 +112,13 @@ export const DiaryNoteModal: React.FC<DiaryNoteModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-[#29202F] mb-1">Cultivo *</label>
+              <label className="block text-xs font-bold text-ink mb-1">Cultivo *</label>
               <select
                 id="diary-crop-select"
                 value={cultivationId}
                 onChange={(e) => setCultivationId(e.target.value)}
                 required
-                className="w-full px-3.5 py-2.5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-[#29202F] text-xs focus:outline-hidden focus:border-[#6C45C7] focus:bg-white cursor-pointer font-medium"
+                className="w-full px-3.5 py-2.5 rounded-2xl bg-surface border border-line text-ink text-xs focus:outline-hidden focus:border-brand focus:bg-white cursor-pointer font-medium"
               >
                 {cultivations.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -129,32 +129,32 @@ export const DiaryNoteModal: React.FC<DiaryNoteModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#29202F] mb-1">Fecha</label>
+              <label className="block text-xs font-bold text-ink mb-1">Fecha</label>
               <input
                 id="diary-date-input"
                 type="date"
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7] focus:bg-white font-medium"
+                className="w-full px-3 py-2 rounded-2xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-brand focus:bg-white font-medium"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#29202F] mb-1">Título de la nota (opcional)</label>
+            <label className="block text-xs font-bold text-ink mb-1">Título de la nota (opcional)</label>
             <input
               id="diary-title-input"
               type="text"
               placeholder="ej. Poda apical, defoliación de bajos, etc."
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7] focus:bg-white font-medium"
+              className="w-full px-3.5 py-2 rounded-2xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-brand focus:bg-white font-medium"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-[#29202F] mb-1">Detalle de la nota *</label>
+            <label className="block text-xs font-bold text-ink mb-1">Detalle de la nota *</label>
             <textarea
               id="diary-content-input"
               rows={4}
@@ -162,25 +162,25 @@ export const DiaryNoteModal: React.FC<DiaryNoteModalProps> = ({
               placeholder="Describí lo realizado o observado con el mayor detalle posible..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7] focus:bg-white leading-relaxed font-medium"
+              className="w-full px-3.5 py-2.5 rounded-2xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-brand focus:bg-white leading-relaxed font-medium"
             />
           </div>
 
           {/* Tags */}
-          <div className="space-y-2 p-3.5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF]">
-            <label className="block text-xs font-bold text-[#29202F]">Etiquetas</label>
+          <div className="space-y-2 p-3.5 rounded-2xl bg-surface border border-line">
+            <label className="block text-xs font-bold text-ink">Etiquetas</label>
             <div className="flex flex-wrap gap-1.5 mb-2">
               {tags.map((t) => (
                 <span
                   key={t}
-                  className="px-2.5 py-1 rounded-full text-xs font-bold bg-[#62B95B]/15 text-[#62B95B] border border-[#62B95B]/30 flex items-center gap-1.5"
+                  className="px-2.5 py-1 rounded-full text-xs font-bold bg-ok/15 text-ok border border-ok/30 flex items-center gap-1.5"
                 >
-                  <Tag className="w-3 h-3 text-[#62B95B]" />
+                  <Tag className="w-3 h-3 text-ok" />
                   {t}
                   <button
                     type="button"
                     onClick={() => handleRemoveTag(t)}
-                    className="hover:text-[#EB7864] cursor-pointer ml-0.5 text-sm leading-none"
+                    className="hover:text-coral cursor-pointer ml-0.5 text-sm leading-none"
                   >
                     ×
                   </button>
@@ -200,12 +200,12 @@ export const DiaryNoteModal: React.FC<DiaryNoteModalProps> = ({
                     handleAddTag();
                   }
                 }}
-                className="flex-1 px-3 py-1.5 rounded-xl bg-white border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7]"
+                className="flex-1 px-3 py-1.5 rounded-xl bg-white border border-line text-xs text-ink focus:outline-hidden focus:border-brand"
               />
               <button
                 type="button"
                 onClick={handleAddTag}
-                className="px-3.5 py-1.5 rounded-xl bg-[#FAF2E1] hover:bg-[#ebdcc0] text-xs font-bold text-[#29202F] border border-[#EFE3CF] transition-colors cursor-pointer"
+                className="px-3.5 py-1.5 rounded-xl bg-track hover:bg-[#ebdcc0] text-xs font-bold text-ink border border-line transition-colors cursor-pointer"
               >
                 Agregar
               </button>
@@ -213,7 +213,7 @@ export const DiaryNoteModal: React.FC<DiaryNoteModalProps> = ({
           </div>
 
           {/* Actions */}
-          <div className="pt-3 border-t border-[#EFE3CF] flex items-center justify-end gap-3">
+          <div className="pt-3 border-t border-line flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}

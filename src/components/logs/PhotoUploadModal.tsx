@@ -295,28 +295,28 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
         className="cultiveta-modal-container max-w-lg p-6 sm:p-8 my-auto"
       >
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-[#EFE3CF] mb-5">
+        <div className="flex items-center justify-between pb-4 border-b border-line mb-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-[#6C45C7]/15 text-[#6C45C7]">
+            <div className="p-3 rounded-2xl bg-brand/15 text-brand">
               <Camera className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-[#29202F]">Subir foto de seguimiento 📸</h2>
-              <p className="text-xs text-[#6E5D77]">Sacá una foto para ver la evolución de tus cogollos y hojas</p>
+              <h2 className="text-xl font-black text-ink">Subir foto de seguimiento 📸</h2>
+              <p className="text-xs text-ink-muted">Sacá una foto para ver la evolución de tus cogollos y hojas</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-[#9887A2] hover:text-[#29202F] rounded-full hover:bg-[#FAF2E1] transition-colors cursor-pointer"
+            className="p-2 text-ink-subtle hover:text-ink rounded-full hover:bg-track transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3.5 rounded-2xl bg-[#EB7864]/10 border border-[#EB7864]/30 text-[#EB7864] text-xs font-semibold flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0 text-[#EB7864]" />
+          <div className="mb-4 p-3.5 rounded-2xl bg-coral/10 border border-coral/30 text-coral text-xs font-semibold flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-coral" />
             <span>{error}</span>
           </div>
         )}
@@ -325,13 +325,13 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
           {/* Cultivo y Fecha de Evidencia */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-[#29202F] mb-1">Cultivo *</label>
+              <label className="block text-xs font-bold text-ink mb-1">Cultivo *</label>
               <select
                 id="photo-crop-select"
                 value={cultivationId}
                 onChange={(e) => setCultivationId(e.target.value)}
                 required
-                className="w-full px-3.5 py-2.5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-[#29202F] text-xs focus:outline-hidden focus:border-[#6C45C7] cursor-pointer font-medium"
+                className="w-full px-3.5 py-2.5 rounded-2xl bg-surface border border-line text-ink text-xs focus:outline-hidden focus:border-brand cursor-pointer font-medium"
               >
                 {cultivations.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -342,8 +342,8 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#29202F] mb-1">
-                Fecha de la foto * <span className="text-[11px] text-[#62B95B] font-bold">(Día {computedDay})</span>
+              <label className="block text-xs font-bold text-ink mb-1">
+                Fecha de la foto * <span className="text-[11px] text-ok font-bold">(Día {computedDay})</span>
               </label>
               <div className="relative">
                 <input
@@ -352,15 +352,15 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
                   required
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7] font-medium"
+                  className="w-full px-3.5 py-2 rounded-2xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-brand font-medium"
                 />
               </div>
             </div>
           </div>
 
           {dateWarning && (
-            <div className="p-3 rounded-2xl bg-[#F3C843]/20 border border-[#F3C843]/40 text-[#29202F] text-[11px] font-medium flex items-start gap-2">
-              <Info className="w-3.5 h-3.5 text-[#29202F] shrink-0 mt-0.5" />
+            <div className="p-3 rounded-2xl bg-warn-line/20 border border-warn-line/40 text-ink text-[11px] font-medium flex items-start gap-2">
+              <Info className="w-3.5 h-3.5 text-ink shrink-0 mt-0.5" />
               <span>{dateWarning}</span>
             </div>
           )}
@@ -368,14 +368,14 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
           {/* Etapa fenológica específica para esta fotografía */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-[#29202F] mb-1">
+              <label className="block text-xs font-bold text-ink mb-1">
                 Etapa en esta fecha *
               </label>
               <select
                 id="photo-stage-select"
                 value={stage}
                 onChange={(e) => setStage(e.target.value as CultivationStageName)}
-                className="w-full px-3.5 py-2 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-[#29202F] text-xs focus:outline-hidden focus:border-[#6C45C7] cursor-pointer font-medium"
+                className="w-full px-3.5 py-2 rounded-2xl bg-surface border border-line text-ink text-xs focus:outline-hidden focus:border-brand cursor-pointer font-medium"
               >
                 {STAGES.map((s) => (
                   <option key={s} value={s}>
@@ -386,12 +386,12 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#29202F] mb-1">Categoría</label>
+              <label className="block text-xs font-bold text-ink mb-1">Categoría</label>
               <select
                 id="photo-category-select"
                 value={category}
                 onChange={(e) => setCategory(e.target.value as PhotoCategory)}
-                className="w-full px-3.5 py-2 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-[#29202F] text-xs focus:outline-hidden focus:border-[#6C45C7] cursor-pointer font-medium"
+                className="w-full px-3.5 py-2 rounded-2xl bg-surface border border-line text-ink text-xs focus:outline-hidden focus:border-brand cursor-pointer font-medium"
               >
                 {CATEGORIES.map((cat) => (
                   <option key={cat.value} value={cat.value}>
@@ -404,39 +404,39 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
 
           {/* Dropzone de fotografía con previsualización segura */}
           <div>
-            <label className="block text-xs font-bold text-[#29202F] mb-1">Archivo de imagen *</label>
+            <label className="block text-xs font-bold text-ink mb-1">Archivo de imagen *</label>
             <div
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
-              className="border-2 border-dashed border-[#DECDB3] hover:border-[#6C45C7] rounded-3xl p-5 text-center transition-all relative overflow-hidden bg-[#FFFDF7] cursor-pointer group"
+              className="border-2 border-dashed border-line hover:border-brand rounded-3xl p-5 text-center transition-all relative overflow-hidden bg-surface cursor-pointer group"
             >
               {validatingImage ? (
                 <div className="py-8 flex flex-col items-center justify-center gap-2">
-                  <div className="w-8 h-8 rounded-full border-2 border-[#6C45C7] border-t-transparent animate-spin" />
-                  <p className="text-xs text-[#6E5D77]">Verificando resolución y formato...</p>
+                  <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
+                  <p className="text-xs text-ink-muted">Verificando resolución y formato...</p>
                 </div>
               ) : previewUrl ? (
                 <div className="flex flex-col items-center gap-2">
                   <img
                     src={previewUrl}
                     alt="Preview"
-                    className="max-h-52 rounded-2xl object-contain border border-[#EFE3CF] shadow-xs"
+                    className="max-h-52 rounded-2xl object-contain border border-line shadow-xs"
                   />
-                  <div className="flex items-center gap-2 text-xs font-bold text-[#62B95B]">
+                  <div className="flex items-center gap-2 text-xs font-bold text-ok">
                     <CheckCircle2 className="w-3.5 h-3.5" />
                     <span>{selectedFile?.name} ({(selectedFile ? selectedFile.size / 1024 : 0).toFixed(0)} KB)</span>
                   </div>
-                  <span className="text-[11px] text-[#6E5D77] group-hover:text-[#6C45C7] transition-colors">
+                  <span className="text-[11px] text-ink-muted group-hover:text-brand transition-colors">
                     Hacé clic o arrastrá para cambiar la foto
                   </span>
                 </div>
               ) : (
                 <div className="flex flex-col items-center gap-2 py-4">
-                  <div className="w-12 h-12 rounded-2xl bg-[#6C45C7]/10 text-[#6C45C7] flex items-center justify-center group-hover:scale-105 transition-transform">
+                  <div className="w-12 h-12 rounded-2xl bg-brand/10 text-brand flex items-center justify-center group-hover:scale-105 transition-transform">
                     <Upload className="w-5 h-5" />
                   </div>
-                  <p className="text-xs font-bold text-[#29202F]">Arrastrá una foto acá o hacé clic para explorar</p>
-                  <p className="text-[11px] text-[#9887A2]">Formatos soportados: JPG, PNG, WEBP (hasta 15 MB)</p>
+                  <p className="text-xs font-bold text-ink">Arrastrá una foto acá o hacé clic para explorar</p>
+                  <p className="text-[11px] text-ink-subtle">Formatos soportados: JPG, PNG, WEBP (hasta 15 MB)</p>
                 </div>
               )}
               <input
@@ -455,24 +455,24 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
 
           {/* Pie de foto / notas */}
           <div>
-            <label className="block text-xs font-bold text-[#29202F] mb-1">Notas o descripción</label>
+            <label className="block text-xs font-bold text-ink mb-1">Notas o descripción</label>
             <input
               id="photo-caption-input"
               type="text"
               placeholder="ej. Desarrollo foliar homogéneo, pistilos blancos en ramas bajas..."
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7] font-medium"
+              className="w-full px-3.5 py-2.5 rounded-2xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-brand font-medium"
             />
           </div>
 
           {/* Checkbox para análisis opcional e independiente con IA */}
-          <div className="p-3.5 rounded-2xl bg-[#6C45C7]/10 border border-[#6C45C7]/20 flex items-center justify-between">
+          <div className="p-3.5 rounded-2xl bg-brand/10 border border-brand/20 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <Sparkles className="w-4 h-4 text-[#6C45C7] shrink-0" />
+              <Sparkles className="w-4 h-4 text-brand shrink-0" />
               <div>
-                <div className="text-xs font-bold text-[#29202F]">Diagnóstico con Cultiveta IA</div>
-                <div className="text-[11px] text-[#6E5D77]">
+                <div className="text-xs font-bold text-ink">Diagnóstico con Cultiveta IA</div>
+                <div className="text-[11px] text-ink-muted">
                   Evaluá la salud de la planta y detectá carencias o plagas automáticamente.
                 </div>
               </div>
@@ -482,14 +482,14 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
               type="checkbox"
               checked={analyzeWithAI}
               onChange={(e) => setAnalyzeWithAI(e.target.checked)}
-              className="w-4 h-4 text-[#6C45C7] rounded-md focus:ring-[#6C45C7] cursor-pointer accent-[#6C45C7]"
+              className="w-4 h-4 text-brand rounded-md focus:ring-brand cursor-pointer accent-brand"
             />
           </div>
 
           {/* Indicador de red */}
           {!isOnline && (
-            <div className="p-3 rounded-2xl bg-[#F3C843]/20 border border-[#F3C843]/40 text-[#29202F] text-xs flex items-start gap-2.5">
-              <WifiOff className="w-4 h-4 text-[#29202F] shrink-0 mt-0.5" />
+            <div className="p-3 rounded-2xl bg-warn-line/20 border border-warn-line/40 text-ink text-xs flex items-start gap-2.5">
+              <WifiOff className="w-4 h-4 text-ink shrink-0 mt-0.5" />
               <div>
                 <span className="font-bold">Sin conexión a internet: </span>
                 <span>
@@ -500,7 +500,7 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
           )}
 
           {/* Botones de acción */}
-          <div className="pt-3 border-t border-[#EFE3CF] flex items-center justify-end gap-3">
+          <div className="pt-3 border-t border-line flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}

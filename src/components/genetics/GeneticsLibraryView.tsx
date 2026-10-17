@@ -625,7 +625,7 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                 return (
                   <article
                     key={`${item.seedBank}-${item.name}`}
-                    className="bg-white rounded-[30px] border border-[#D1EAEF] shadow-sm overflow-hidden p-4 space-y-4 w-full"
+                    className="bg-white rounded-[30px] border border-chip-line shadow-sm overflow-hidden p-4 space-y-4 w-full"
                   >
                     {/* 1. Fotografía grande con aspect-[295/176], rounded-[24px], hover zoom sutil, SIN DEGRADÉ NEGRO NI OVERLAY OSCURO */}
                     <div className="group relative w-full aspect-[295/176] rounded-[24px] overflow-hidden bg-stone-100 border border-stone-200/60">
@@ -667,13 +667,13 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                     {/* 3. Debajo de la fotografía: Fila de dos elementos en violeta elegante con texto e iconos en blanco */}
                     <div className="grid grid-cols-2 gap-3">
                       {/* Rendimiento */}
-                      <div className="flex items-center justify-center gap-2 rounded-full bg-[#6C45C7] px-3 py-2 text-white font-semibold text-xs sm:text-sm shadow-sm">
+                      <div className="flex items-center justify-center gap-2 rounded-full bg-brand px-3 py-2 text-white font-semibold text-xs sm:text-sm shadow-sm">
                         <Scale className="w-4 h-4 text-white shrink-0" />
                         <span className="truncate">{item.estimatedYield} g/m²</span>
                       </div>
 
                       {/* Floración */}
-                      <div className="flex items-center justify-center gap-2 rounded-full bg-[#6C45C7] px-3 py-2 text-white font-semibold text-xs sm:text-sm shadow-sm">
+                      <div className="flex items-center justify-center gap-2 rounded-full bg-brand px-3 py-2 text-white font-semibold text-xs sm:text-sm shadow-sm">
                         <Clock className="w-4 h-4 text-white shrink-0" />
                         <span className="truncate">{item.floweringDays} d</span>
                       </div>
@@ -699,7 +699,7 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                       <button
                         type="button"
                         onClick={() => onStartCropWithGenetics(converted)}
-                        className="bg-[#62B95B] hover:bg-[#52A54C] active:bg-[#459040] text-white font-bold rounded-full min-h-[52px] text-xs sm:text-sm shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                        className="bg-ok hover:bg-[#52A54C] active:bg-[#459040] text-white font-bold rounded-full min-h-[52px] text-xs sm:text-sm shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                         title={`Iniciar cultivo con ${item.name}`}
                       >
                         <Sprout className="w-4 h-4 shrink-0" />

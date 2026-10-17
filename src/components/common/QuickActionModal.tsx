@@ -90,25 +90,25 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-[#29202F]/40 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-ink/40 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className="w-full sm:max-w-md bg-[#FFFDF7] rounded-t-[32px] sm:rounded-[32px] border border-[#D1EAEF] shadow-2xl p-6 sm:p-7 space-y-5 animate-in slide-in-from-bottom duration-250 max-h-[90vh] overflow-y-auto"
+        className="w-full sm:max-w-md bg-surface rounded-t-[32px] sm:rounded-[32px] border border-chip-line shadow-2xl p-6 sm:p-7 space-y-5 animate-in slide-in-from-bottom duration-250 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Cabecera del modal */}
-        <div className="flex items-center justify-between pb-3 border-b border-[#D1EAEF]">
+        <div className="flex items-center justify-between pb-3 border-b border-chip-line">
           <div>
-            <h2 className="text-lg font-extrabold text-[#29202F]">
+            <h2 className="text-lg font-extrabold text-ink">
               ¿Qué anotamos hoy? 🌱
             </h2>
-            <p className="text-xs text-[#6E5D77] mt-0.5">
+            <p className="text-xs text-ink-muted mt-0.5">
               Registro rápido en un par de toques
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-[#FAF2E1] text-[#6E5D77] hover:text-[#29202F] transition-colors cursor-pointer"
+            className="p-2 rounded-full hover:bg-track text-ink-muted hover:text-ink transition-colors cursor-pointer"
             title="Cerrar"
           >
             <X className="w-5 h-5" />
@@ -122,13 +122,13 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
             type="button"
             id="quick-action-watering"
             onClick={() => handleActionClick('watering')}
-            className="flex flex-col items-start p-4 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] transition-all hover:scale-[1.02] active:scale-[0.98] text-left cursor-pointer shadow-xs group"
+            className="flex flex-col items-start p-4 rounded-2xl bg-white hover:bg-track border border-chip-line transition-all hover:scale-[1.02] active:scale-[0.98] text-left cursor-pointer shadow-xs group"
           >
-            <div className="w-10 h-10 rounded-xl bg-[#62B95B]/15 text-[#62B95B] flex items-center justify-center mb-2.5 group-hover:bg-[#62B95B] group-hover:text-white transition-colors">
+            <div className="w-10 h-10 rounded-xl bg-ok/15 text-ok flex items-center justify-center mb-2.5 group-hover:bg-ok group-hover:text-white transition-colors">
               <Droplets className="w-5 h-5 stroke-[2.2]" />
             </div>
-            <span className="text-sm font-bold text-[#29202F]">💧 Regué</span>
-            <span className="text-[11px] text-[#6E5D77] mt-0.5 line-clamp-1">
+            <span className="text-sm font-bold text-ink">💧 Regué</span>
+            <span className="text-[11px] text-ink-muted mt-0.5 line-clamp-1">
               Agua, pH, EC y fertis
             </span>
           </button>
@@ -138,13 +138,13 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
             type="button"
             id="quick-action-photo"
             onClick={() => handleActionClick('photo')}
-            className="flex flex-col items-start p-4 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] transition-all hover:scale-[1.02] active:scale-[0.98] text-left cursor-pointer shadow-xs group"
+            className="flex flex-col items-start p-4 rounded-2xl bg-white hover:bg-track border border-chip-line transition-all hover:scale-[1.02] active:scale-[0.98] text-left cursor-pointer shadow-xs group"
           >
-            <div className="w-10 h-10 rounded-xl bg-[#6C45C7]/15 text-[#6C45C7] flex items-center justify-center mb-2.5 group-hover:bg-[#6C45C7] group-hover:text-white transition-colors">
+            <div className="w-10 h-10 rounded-xl bg-brand/15 text-brand flex items-center justify-center mb-2.5 group-hover:bg-brand group-hover:text-white transition-colors">
               <Camera className="w-5 h-5 stroke-[2.2]" />
             </div>
-            <span className="text-sm font-bold text-[#29202F]">📷 Foto</span>
-            <span className="text-[11px] text-[#6E5D77] mt-0.5 line-clamp-1">
+            <span className="text-sm font-bold text-ink">📷 Foto</span>
+            <span className="text-[11px] text-ink-muted mt-0.5 line-clamp-1">
               Seguimiento visual
             </span>
           </button>
@@ -154,13 +154,13 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
             type="button"
             id="quick-action-note"
             onClick={() => handleActionClick('note')}
-            className="flex flex-col items-start p-4 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] transition-all hover:scale-[1.02] active:scale-[0.98] text-left cursor-pointer shadow-xs group"
+            className="flex flex-col items-start p-4 rounded-2xl bg-white hover:bg-track border border-chip-line transition-all hover:scale-[1.02] active:scale-[0.98] text-left cursor-pointer shadow-xs group"
           >
-            <div className="w-10 h-10 rounded-xl bg-[#F3C843]/25 text-[#29202F] flex items-center justify-center mb-2.5 group-hover:bg-[#F3C843] transition-colors">
+            <div className="w-10 h-10 rounded-xl bg-warn-line/25 text-ink flex items-center justify-center mb-2.5 group-hover:bg-warn-line transition-colors">
               <BookOpen className="w-5 h-5 stroke-[2.2]" />
             </div>
-            <span className="text-sm font-bold text-[#29202F]">📝 Anoté algo</span>
-            <span className="text-[11px] text-[#6E5D77] mt-0.5 line-clamp-1">
+            <span className="text-sm font-bold text-ink">📝 Anoté algo</span>
+            <span className="text-[11px] text-ink-muted mt-0.5 line-clamp-1">
               Poda, plaga, cambio de luz
             </span>
           </button>
@@ -170,13 +170,13 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
             type="button"
             id="quick-action-ai"
             onClick={() => handleActionClick('ai-analyze')}
-            className="flex flex-col items-start p-4 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] transition-all hover:scale-[1.02] active:scale-[0.98] text-left cursor-pointer shadow-xs group"
+            className="flex flex-col items-start p-4 rounded-2xl bg-white hover:bg-track border border-chip-line transition-all hover:scale-[1.02] active:scale-[0.98] text-left cursor-pointer shadow-xs group"
           >
-            <div className="w-10 h-10 rounded-xl bg-[#6C45C7]/15 text-[#6C45C7] flex items-center justify-center mb-2.5 group-hover:bg-[#6C45C7] group-hover:text-white transition-colors">
+            <div className="w-10 h-10 rounded-xl bg-brand/15 text-brand flex items-center justify-center mb-2.5 group-hover:bg-brand group-hover:text-white transition-colors">
               <Sparkles className="w-5 h-5 stroke-[2.2]" />
             </div>
-            <span className="text-sm font-bold text-[#29202F]">✨ Preguntale a Cultiveta</span>
-            <span className="text-[11px] text-[#6E5D77] mt-0.5 line-clamp-1">
+            <span className="text-sm font-bold text-ink">✨ Preguntale a Cultiveta</span>
+            <span className="text-[11px] text-ink-muted mt-0.5 line-clamp-1">
               Diagnóstico botánico IA
             </span>
           </button>
@@ -188,12 +188,12 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
             type="button"
             id="quick-action-more-toggle"
             onClick={() => setShowMoreActions((prev) => !prev)}
-            className="w-full py-2.5 px-3 rounded-2xl bg-[#FFFDF7] hover:bg-[#FAF2E1] border border-[#D1EAEF] flex items-center justify-between text-xs font-bold text-[#29202F] transition-colors cursor-pointer"
+            className="w-full py-2.5 px-3 rounded-2xl bg-surface hover:bg-track border border-chip-line flex items-center justify-between text-xs font-bold text-ink transition-colors cursor-pointer"
           >
             <span>Más registros técnicos</span>
             <ChevronDown
-              className={`w-4 h-4 text-[#6E5D77] transition-transform duration-200 ${
-                showMoreActions ? 'rotate-180 text-[#6C45C7]' : ''
+              className={`w-4 h-4 text-ink-muted transition-transform duration-200 ${
+                showMoreActions ? 'rotate-180 text-brand' : ''
               }`}
             />
           </button>
@@ -205,14 +205,14 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
                 type="button"
                 id="quick-action-environment"
                 onClick={() => handleActionClick('environment')}
-                className="flex items-center gap-2.5 p-3 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] text-left transition-all cursor-pointer shadow-2xs"
+                className="flex items-center gap-2.5 p-3 rounded-2xl bg-white hover:bg-track border border-chip-line text-left transition-all cursor-pointer shadow-2xs"
               >
-                <div className="p-2 rounded-xl bg-[#EB7864]/15 text-[#EB7864]">
+                <div className="p-2 rounded-xl bg-coral/15 text-coral">
                   <Thermometer className="w-4 h-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <span className="text-xs font-bold text-[#29202F] block">Ambiente</span>
-                  <span className="text-[10px] text-[#6E5D77] block">T°, HR, VPD</span>
+                  <span className="text-xs font-bold text-ink block">Ambiente</span>
+                  <span className="text-[10px] text-ink-muted block">T°, HR, VPD</span>
                 </div>
               </button>
 
@@ -221,14 +221,14 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
                 type="button"
                 id="quick-action-measurement"
                 onClick={() => handleActionClick('measurement')}
-                className="flex items-center gap-2.5 p-3 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] text-left transition-all cursor-pointer shadow-2xs"
+                className="flex items-center gap-2.5 p-3 rounded-2xl bg-white hover:bg-track border border-chip-line text-left transition-all cursor-pointer shadow-2xs"
               >
-                <div className="p-2 rounded-xl bg-[#62B95B]/15 text-[#62B95B]">
+                <div className="p-2 rounded-xl bg-ok/15 text-ok">
                   <FlaskConical className="w-4 h-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <span className="text-xs font-bold text-[#29202F] block">pH / EC</span>
-                  <span className="text-[10px] text-[#6E5D77] block">Escorrentía</span>
+                  <span className="text-xs font-bold text-ink block">pH / EC</span>
+                  <span className="text-[10px] text-ink-muted block">Escorrentía</span>
                 </div>
               </button>
             </div>
@@ -236,12 +236,12 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
         </div>
 
         {/* Footer: Crear nuevo cultivo como acceso secundario limpio */}
-        <div className="pt-2 border-t border-[#D1EAEF] text-center">
+        <div className="pt-2 border-t border-chip-line text-center">
           <button
             type="button"
             id="quick-action-new-crop"
             onClick={() => handleActionClick('new-crop')}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#6C45C7] hover:text-[#5B37AE] hover:underline cursor-pointer"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand hover:text-[#5B37AE] hover:underline cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>¿Querés sumar una carpa o planta nueva? Creá un nuevo cultivo</span>

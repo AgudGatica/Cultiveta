@@ -82,7 +82,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
       stageName: 'Floración Inicial (Sem. 1-2)',
       description: 'Aparición de primeros pistilos blancos y estiramiento vertical acelerado de ramas.',
       advice: 'Mantener balance nutricional, regular altura de luces para evitar espigado excesivo.',
-      badgeColor: 'bg-[#62B95B]/15 text-[#2d6b28] border-[#62B95B]/30',
+      badgeColor: 'bg-ok/15 text-ok-ink border-ok/30',
     };
 
     if (progressPercentage < 25) {
@@ -91,7 +91,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
         stageName: 'Floración Inicial (Sem. 1-2)',
         description: 'Aparición de primeros pistilos blancos y estiramiento vertical acelerado de ramas.',
         advice: 'Mantener balance nutricional, regular altura de luces para evitar espigado excesivo.',
-        badgeColor: 'bg-[#62B95B]/15 text-[#2d6b28] border-[#62B95B]/30',
+        badgeColor: 'bg-ok/15 text-ok-ink border-ok/30',
       };
     } else if (progressPercentage >= 25 && progressPercentage < 55) {
       subPhase = {
@@ -99,7 +99,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
         stageName: 'Floración Media (Sem. 3-5)',
         description: 'Detención del crecimiento vertical. Desarrollo masivo de flores y primeros tricomas.',
         advice: 'Pico de nutrición PK (Fósforo y Potasio), controlar humedad relativa (<55% HR) y realizar defoliación si corresponde.',
-        badgeColor: 'bg-[#F3C843]/25 text-[#735308] border-[#F3C843]/40',
+        badgeColor: 'bg-warn-line/25 text-[#735308] border-warn-line/40',
       };
     } else if (progressPercentage >= 55 && progressPercentage < 80) {
       subPhase = {
@@ -107,7 +107,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
         stageName: 'Floración Avanzada (Sem. 6-7)',
         description: 'Engorde final, proliferación de terpenos y tricomas volviéndose lechosos.',
         advice: 'Reducir nitrógeno, evitar mojar cogollos y asegurar ventilación continua para prevenir botrytis.',
-        badgeColor: 'bg-[#6C45C7]/15 text-[#6C45C7] border-[#6C45C7]/30',
+        badgeColor: 'bg-brand/15 text-brand border-brand/30',
       };
     } else if (progressPercentage >= 80 && (daysUntilHarvest === undefined || daysUntilHarvest > 2)) {
       subPhase = {
@@ -115,7 +115,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
         stageName: 'Maduración (Sem. 8+)',
         description: 'Pistilos oxidados en su mayoría. Consumo de reservas foliares.',
         advice: 'Regar con agua sola reposada/desclorada para limpiar sales acumuladas del sustrato.',
-        badgeColor: 'bg-[#EB7864]/15 text-[#EB7864] border-[#EB7864]/30',
+        badgeColor: 'bg-coral/15 text-coral border-coral/30',
       };
     } else if (daysUntilHarvest === 0) {
       // SOLO en día 0 de cosecha
@@ -124,7 +124,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
         stageName: 'Ventana de Cosecha',
         description: 'Confirmá madurez observando tricomas.',
         advice: 'Buscar 70-80% tricomas lechosos y 15-20% ámbar antes de cortar.',
-        badgeColor: 'bg-[#62B95B] text-white border-[#62B95B]',
+        badgeColor: 'bg-ok text-white border-ok',
       };
     } else {
       // Días 1 o 2 restantes
@@ -133,7 +133,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
         stageName: `Cosecha Próxima (~${daysUntilHarvest}d)`,
         description: 'Revisá tricomas antes de cortar.',
         advice: 'Confirmá madurez de resina con lupa o microscopio en cálices medios.',
-        badgeColor: 'bg-[#62B95B] text-white border-[#62B95B]',
+        badgeColor: 'bg-ok text-white border-ok',
       };
     }
 
@@ -198,49 +198,49 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
   return (
     <div
       id="flowering-progress-section"
-      className="bg-white rounded-[32px] p-6 sm:p-8 border border-[#EFE3CF] shadow-xs relative overflow-hidden space-y-5 text-[#29202F]"
+      className="bg-white rounded-[32px] p-6 sm:p-8 border border-line shadow-xs relative overflow-hidden space-y-5 text-ink"
     >
       {/* Primera Capa: Resumen Inmediato y Progreso Visual */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-[#EB7864]/15 text-[#EB7864] border border-[#EB7864]/30 flex items-center justify-center shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-coral/15 text-coral border border-coral/30 flex items-center justify-center shrink-0">
             <Flower2 className="w-6 h-6 stroke-[2.2]" />
           </div>
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-lg sm:text-xl font-black text-[#29202F]">
+              <h3 className="text-lg sm:text-xl font-black text-ink">
                 Floración 🌸
               </h3>
-              <span className="px-2.5 py-0.5 rounded-full bg-[#EB7864]/15 text-[#EB7864] border border-[#EB7864]/30 text-xs font-bold">
+              <span className="px-2.5 py-0.5 rounded-full bg-coral/15 text-coral border border-coral/30 text-xs font-bold">
                 Semana {analysis.currentWeekNumber} de ~{analysis.typicalFloweringWeeks}
               </span>
             </div>
-            <p className="text-xs text-[#6E5D77] mt-0.5">
+            <p className="text-xs text-ink-muted mt-0.5">
               {analysis.geneticsName} {analysis.seedBank ? `· ${analysis.seedBank}` : ''}
             </p>
           </div>
         </div>
 
         {/* Fechas de inicio y corte estimado en primera capa */}
-        <div className="flex items-center gap-4 text-xs font-semibold self-stretch sm:self-auto justify-between sm:justify-start pt-2 sm:pt-0 border-t sm:border-t-0 border-[#EFE3CF]">
+        <div className="flex items-center gap-4 text-xs font-semibold self-stretch sm:self-auto justify-between sm:justify-start pt-2 sm:pt-0 border-t sm:border-t-0 border-line">
           <div>
-            <span className="text-[10px] text-[#9887A2] block uppercase tracking-wider">
+            <span className="text-[10px] text-ink-subtle block uppercase tracking-wider">
               {analysis.startIsReal ? 'Inicio real' : 'Inicio estimado'}
             </span>
-            <span className="font-bold text-[#29202F] block">
+            <span className="font-bold text-ink block">
               {formatFriendlyDate(analysis.startDateStr, { isProjected: !analysis.startIsReal })}
             </span>
           </div>
-          <span className="text-[#DECDB3]">→</span>
+          <span className="text-line">→</span>
           <div>
-            <span className="text-[10px] text-[#9887A2] block uppercase tracking-wider">Corte estimado</span>
-            <span className="font-bold text-[#6C45C7] block">
+            <span className="text-[10px] text-ink-subtle block uppercase tracking-wider">Corte estimado</span>
+            <span className="font-bold text-brand block">
               {formatFriendlyDate(analysis.estimatedHarvestDate, { isProjected: true })}
             </span>
           </div>
-          <div className="text-right pl-2 sm:border-l sm:border-[#EFE3CF]">
-            <span className="text-[10px] text-[#9887A2] block uppercase tracking-wider">Faltan aprox.</span>
-            <span className="font-extrabold text-[#EB7864] block">
+          <div className="text-right pl-2 sm:border-l sm:border-line">
+            <span className="text-[10px] text-ink-subtle block uppercase tracking-wider">Faltan aprox.</span>
+            <span className="font-extrabold text-coral block">
               {analysis.daysRemaining === 0
                 ? 'Ventana de cosecha'
                 : analysis.daysRemaining <= 2
@@ -254,31 +254,31 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
       {/* Barra visual de progreso */}
       <div className="space-y-1.5 pt-1">
         <div className="flex justify-between items-baseline text-xs font-bold">
-          <span className="text-[#6E5D77]">
+          <span className="text-ink-muted">
             Día {analysis.floweringDaysElapsed} de ~{analysis.typicalFloweringDays} días florales
           </span>
-          <span className="text-sm font-black text-[#EB7864]">
+          <span className="text-sm font-black text-coral">
             {analysis.progressPercentage}%
           </span>
         </div>
-        <div className="w-full h-3 rounded-full bg-[#FAF2E1] border border-[#EFE3CF] overflow-hidden">
+        <div className="w-full h-3 rounded-full bg-track border border-line overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-[#62B95B] via-[#F3C843] to-[#EB7864] rounded-full transition-all duration-700"
+            className="h-full bg-gradient-to-r from-ok via-warn-line to-coral rounded-full transition-all duration-700"
             style={{ width: `${analysis.progressPercentage}%` }}
           />
         </div>
       </div>
 
       {/* Botón de Progressive Disclosure: Ver detalle de floración */}
-      <div className="pt-2 flex justify-between items-center border-t border-[#EFE3CF]">
-        <span className="text-xs font-semibold text-[#6E5D77]">
+      <div className="pt-2 flex justify-between items-center border-t border-line">
+        <span className="text-xs font-semibold text-ink-muted">
           {analysis.subPhase.title}
         </span>
         <button
           type="button"
           id="toggle-flowering-details-btn"
           onClick={() => setShowDetails((prev) => !prev)}
-          className="text-xs font-bold text-[#6C45C7] hover:underline cursor-pointer inline-flex items-center gap-1.5 py-1 px-2.5 rounded-xl hover:bg-[#6C45C7]/10 transition-colors"
+          className="text-xs font-bold text-brand hover:underline cursor-pointer inline-flex items-center gap-1.5 py-1 px-2.5 rounded-xl hover:bg-brand/10 transition-colors"
         >
           <span>{showDetails ? 'Ocultar detalle' : 'Ver detalle de floración'}</span>
           <ChevronDown
@@ -291,29 +291,29 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
 
       {/* Capa de Detalles de Floración Expandible */}
       {showDetails && (
-        <div className="pt-3 space-y-4 animate-in fade-in duration-200 border-t border-[#EFE3CF]">
+        <div className="pt-3 space-y-4 animate-in fade-in duration-200 border-t border-line">
           {/* Subfase actual y consejo botánico */}
-          <div className="p-4 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] space-y-2">
+          <div className="p-4 rounded-2xl bg-surface border border-line space-y-2">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <span className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${analysis.subPhase.badgeColor}`}>
                 {analysis.subPhase.stageName}
               </span>
-              <span className="text-xs text-[#9887A2] font-semibold">
+              <span className="text-xs text-ink-subtle font-semibold">
                 Día {analysis.currentDayInWeek} de la semana floral {analysis.currentWeekNumber}
               </span>
             </div>
-            <p className="text-xs text-[#29202F] leading-relaxed">
+            <p className="text-xs text-ink leading-relaxed">
               {analysis.subPhase.description}
             </p>
-            <div className="p-3 rounded-xl bg-white border border-[#EFE3CF] text-xs text-[#6E5D77] flex items-start gap-2 mt-1">
-              <Info className="w-4 h-4 text-[#F3C843] shrink-0 mt-0.5" />
+            <div className="p-3 rounded-xl bg-white border border-line text-xs text-ink-muted flex items-start gap-2 mt-1">
+              <Info className="w-4 h-4 text-warn-line shrink-0 mt-0.5" />
               <span><strong>Consejo botánico:</strong> {analysis.subPhase.advice}</span>
             </div>
           </div>
 
           {/* Hitos semanales de floración */}
           <div className="space-y-2">
-            <span className="text-xs font-extrabold text-[#29202F] uppercase tracking-wider block">
+            <span className="text-xs font-extrabold text-ink uppercase tracking-wider block">
               Hitos de la Floración
             </span>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
@@ -322,20 +322,20 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
                   key={idx}
                   className={`p-3 rounded-2xl border transition-all ${
                     m.isCurrent
-                      ? 'bg-[#EB7864]/10 border-[#EB7864]/40 text-[#29202F] font-bold shadow-2xs'
+                      ? 'bg-coral/10 border-coral/40 text-ink font-bold shadow-2xs'
                       : m.isPassed
-                      ? 'bg-[#FAF2E1] border-[#EFE3CF] text-[#29202F]'
-                      : 'bg-white border-[#EFE3CF] text-[#9887A2]'
+                      ? 'bg-track border-line text-ink'
+                      : 'bg-white border-line text-ink-subtle'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] uppercase font-bold text-[#9887A2]">
+                    <span className="text-[10px] uppercase font-bold text-ink-subtle">
                       Sem. {m.week}
                     </span>
-                    {m.isPassed && <CheckCircle2 className="w-3.5 h-3.5 text-[#62B95B]" />}
+                    {m.isPassed && <CheckCircle2 className="w-3.5 h-3.5 text-ok" />}
                   </div>
                   <span className="block font-bold text-xs truncate">{m.title}</span>
-                  <span className="text-[10px] text-[#6E5D77] block mt-0.5">{m.subtitle}</span>
+                  <span className="text-[10px] text-ink-muted block mt-0.5">{m.subtitle}</span>
                 </div>
               ))}
             </div>
@@ -347,9 +347,9 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
               <button
                 type="button"
                 onClick={onOpenWateringModal}
-                className="px-3.5 py-2 rounded-xl bg-white hover:bg-[#FAF2E1] border border-[#EFE3CF] text-xs font-bold text-[#29202F] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                className="px-3.5 py-2 rounded-xl bg-white hover:bg-track border border-line text-xs font-bold text-ink transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
-                <Droplets className="w-3.5 h-3.5 text-[#62B95B]" />
+                <Droplets className="w-3.5 h-3.5 text-ok" />
                 <span>Riego de Flora</span>
               </button>
             )}
@@ -358,9 +358,9 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
               <button
                 type="button"
                 onClick={onOpenPhotoModal}
-                className="px-3.5 py-2 rounded-xl bg-white hover:bg-[#FAF2E1] border border-[#EFE3CF] text-xs font-bold text-[#29202F] transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                className="px-3.5 py-2 rounded-xl bg-white hover:bg-track border border-line text-xs font-bold text-ink transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
-                <Camera className="w-3.5 h-3.5 text-[#6C45C7]" />
+                <Camera className="w-3.5 h-3.5 text-brand" />
                 <span>Foto de Cogollos</span>
               </button>
             )}
@@ -369,7 +369,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
               <button
                 type="button"
                 onClick={onOpenAIAssistant}
-                className="px-3.5 py-2 rounded-xl bg-[#6C45C7]/10 hover:bg-[#6C45C7]/20 text-[#6C45C7] text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+                className="px-3.5 py-2 rounded-xl bg-brand/10 hover:bg-brand/20 text-brand text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>Consultar por Tricomas</span>

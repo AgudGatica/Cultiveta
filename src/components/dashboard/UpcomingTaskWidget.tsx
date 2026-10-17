@@ -201,26 +201,26 @@ export const UpcomingTaskWidget: React.FC<UpcomingTaskWidgetProps> = ({
     return (
       <div
         id="dashboard-upcoming-task-widget"
-        className="relative overflow-hidden bg-white rounded-[28px] p-5 sm:p-6 border border-[#EFE3CF] shadow-xs transition-all"
+        className="relative overflow-hidden bg-white rounded-[28px] p-5 sm:p-6 border border-line shadow-xs transition-all"
       >
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="p-3 rounded-2xl bg-[#62B95B]/15 text-[#62B95B] border border-[#62B95B]/30 shrink-0">
-              <CheckCircle2 className="w-5 h-5 text-[#62B95B] stroke-[2.5]" />
+            <div className="p-3 rounded-2xl bg-ok/15 text-ok border border-ok/30 shrink-0">
+              <CheckCircle2 className="w-5 h-5 text-ok stroke-[2.5]" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#62B95B]">
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-ok">
                   Estado del Día
                 </span>
-                <span className="px-2 py-0.2 rounded-full bg-[#62B95B]/15 text-[#62B95B] text-[10px] font-extrabold">
+                <span className="px-2 py-0.2 rounded-full bg-ok/15 text-ok text-[10px] font-extrabold">
                   Al día
                 </span>
               </div>
-              <h3 className="text-sm sm:text-base font-extrabold text-[#29202F] mt-0.5">
+              <h3 className="text-sm sm:text-base font-extrabold text-ink mt-0.5">
                 ¡Todas las tareas de hoy están completadas! 🌿
               </h3>
-              <p className="text-xs text-[#6E5D77] mt-0.5">
+              <p className="text-xs text-ink-muted mt-0.5">
                 {lastDone
                   ? `Última tarea realizada: "${lastDone.title}" (${lastDone.cultivationName}). Todo tranqui por acá.`
                   : 'No tenés riegos pendientes ni alertas para la fecha de hoy.'}
@@ -233,7 +233,7 @@ export const UpcomingTaskWidget: React.FC<UpcomingTaskWidgetProps> = ({
               <button
                 type="button"
                 onClick={() => handleUncompleteTask(lastDone.id)}
-                className="px-3 py-1.5 rounded-xl bg-[#FAF2E1] border border-[#EFE3CF] hover:bg-[#EFE3CF] text-[#6E5D77] hover:text-[#29202F] text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-track border border-line hover:bg-line text-ink-muted hover:text-ink text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
                 title="Deshacer última tarea marcada"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
@@ -245,9 +245,9 @@ export const UpcomingTaskWidget: React.FC<UpcomingTaskWidgetProps> = ({
               <button
                 type="button"
                 onClick={() => setShowAllTasksModal(true)}
-                className="px-3 py-1.5 rounded-xl bg-[#FAF2E1] border border-[#EFE3CF] hover:bg-[#EFE3CF] text-[#29202F] text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-track border border-line hover:bg-line text-ink text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
               >
-                <ListTodo className="w-3.5 h-3.5 text-[#6C45C7]" />
+                <ListTodo className="w-3.5 h-3.5 text-brand" />
                 <span>Ver Historial ({completedTasks.length})</span>
               </button>
             )}
@@ -264,45 +264,45 @@ export const UpcomingTaskWidget: React.FC<UpcomingTaskWidgetProps> = ({
       id="dashboard-upcoming-task-widget"
       className={`relative overflow-hidden rounded-[28px] p-5 sm:p-6 border transition-all duration-300 shadow-xs ${
         activeTask.urgency === 'overdue'
-          ? 'bg-[#FDF2F0] border-[#EB7864]/40'
+          ? 'bg-[#FDF2F0] border-coral/40'
           : activeTask.urgency === 'today'
-          ? 'bg-[#FDF7E3] border-[#F3C843]/40'
-          : 'bg-white border-[#EFE3CF]'
+          ? 'bg-[#FDF7E3] border-warn-line/40'
+          : 'bg-white border-line'
       }`}
     >
       <div className="relative z-10 flex flex-col gap-4">
         {/* Header Strip */}
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-[#FFFDF7] border border-[#EFE3CF] flex items-center justify-center">
+            <div className="p-1.5 rounded-lg bg-surface border border-line flex items-center justify-center">
               {getTaskIcon(activeTask.type)}
             </div>
-            <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#6E5D77]">
+            <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-ink-muted">
               {activeTask.categoryLabel}
             </span>
-            <span className="text-[#DECDB3]">·</span>
+            <span className="text-line">·</span>
             {getUrgencyBadge(activeTask.urgency, activeTask.priority)}
           </div>
 
           {/* Stepper Navigation (if multiple tasks) */}
           <div className="flex items-center gap-2">
             {pendingTasks.length > 1 && (
-              <div className="flex items-center bg-[#FFFDF7] border border-[#EFE3CF] rounded-xl p-0.5 text-xs font-mono">
+              <div className="flex items-center bg-surface border border-line rounded-xl p-0.5 text-xs font-mono">
                 <button
                   type="button"
                   onClick={() => setCurrentIndex((prev) => (prev > 0 ? prev - 1 : pendingTasks.length - 1))}
-                  className="p-1 text-[#6E5D77] hover:text-[#29202F] rounded-lg hover:bg-[#FAF2E1] transition-colors cursor-pointer"
+                  className="p-1 text-ink-muted hover:text-ink rounded-lg hover:bg-track transition-colors cursor-pointer"
                   title="Tarea anterior"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                 </button>
-                <span className="px-2 text-[10px] text-[#29202F] font-bold">
+                <span className="px-2 text-[10px] text-ink font-bold">
                   {currentIndex + 1} / {pendingTasks.length}
                 </span>
                 <button
                   type="button"
                   onClick={() => setCurrentIndex((prev) => (prev < pendingTasks.length - 1 ? prev + 1 : 0))}
-                  className="p-1 text-[#6E5D77] hover:text-[#29202F] rounded-lg hover:bg-[#FAF2E1] transition-colors cursor-pointer"
+                  className="p-1 text-ink-muted hover:text-ink rounded-lg hover:bg-track transition-colors cursor-pointer"
                   title="Siguiente tarea"
                 >
                   <ChevronRight className="w-3.5 h-3.5" />
@@ -313,7 +313,7 @@ export const UpcomingTaskWidget: React.FC<UpcomingTaskWidgetProps> = ({
             <button
               type="button"
               onClick={() => setShowAllTasksModal(true)}
-              className="p-1.5 rounded-xl bg-[#FFFDF7] border border-[#EFE3CF] hover:bg-[#FAF2E1] text-[#6E5D77] hover:text-[#29202F] text-xs transition-colors cursor-pointer"
+              className="p-1.5 rounded-xl bg-surface border border-line hover:bg-track text-ink-muted hover:text-ink text-xs transition-colors cursor-pointer"
               title="Ver todas las tareas"
             >
               <ListTodo className="w-3.5 h-3.5" />
@@ -325,48 +325,48 @@ export const UpcomingTaskWidget: React.FC<UpcomingTaskWidgetProps> = ({
         <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
           <div className="space-y-1.5 max-w-2xl">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-base sm:text-lg font-extrabold text-[#29202F] tracking-tight">
+              <h3 className="text-base sm:text-lg font-extrabold text-ink tracking-tight">
                 {activeTask.title}
               </h3>
               {targetCrop && (
                 <button
                   type="button"
                   onClick={() => onSelectCultivation && onSelectCultivation(targetCrop)}
-                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#6C45C7]/10 border border-[#6C45C7]/20 text-[#6C45C7] text-xs font-semibold hover:bg-[#6C45C7]/20 transition-colors cursor-pointer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-xs font-semibold hover:bg-brand/20 transition-colors cursor-pointer"
                   title="Ver ficha de cultivo"
                 >
-                  <Sprout className="w-3 h-3 text-[#62B95B]" />
+                  <Sprout className="w-3 h-3 text-ok" />
                   <span>{activeTask.cultivationName}</span>
-                  {activeTask.stage && <span className="text-[10px] text-[#6E5D77]">({activeTask.stage})</span>}
+                  {activeTask.stage && <span className="text-[10px] text-ink-muted">({activeTask.stage})</span>}
                 </button>
               )}
             </div>
 
-            <p className="text-xs sm:text-sm text-[#6E5D77] leading-relaxed">
+            <p className="text-xs sm:text-sm text-ink-muted leading-relaxed">
               {activeTask.description}
             </p>
 
             {activeTask.actionHint && (
-              <div className="text-[11px] text-[#6E5D77] flex items-center gap-1.5">
-                <Clock className="w-3 h-3 text-[#9887A2]" />
-                <span>Fecha sugerida: <strong className="text-[#29202F]">{activeTask.dueDate}</strong></span>
+              <div className="text-[11px] text-ink-muted flex items-center gap-1.5">
+                <Clock className="w-3 h-3 text-ink-subtle" />
+                <span>Fecha sugerida: <strong className="text-ink">{activeTask.dueDate}</strong></span>
               </div>
             )}
           </div>
 
           {/* Action Button Section */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-[#EFE3CF]">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-line">
             {/* Quick watering auto-log toggle for watering tasks */}
             {activeTask.type === 'watering' && (
               <label
-                className="flex items-center gap-1.5 text-[11px] text-[#6E5D77] hover:text-[#29202F] cursor-pointer select-none px-2.5 py-1.5 bg-[#FFFDF7] rounded-xl border border-[#EFE3CF]"
+                className="flex items-center gap-1.5 text-[11px] text-ink-muted hover:text-ink cursor-pointer select-none px-2.5 py-1.5 bg-surface rounded-xl border border-line"
                 title="Registrar automáticamente el riego en el historial con dosis y pH estándar"
               >
                 <input
                   type="checkbox"
                   checked={autoLogWatering}
                   onChange={(e) => setAutoLogWatering(e.target.checked)}
-                  className="rounded border-[#DECDB3] text-[#62B95B] focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer"
+                  className="rounded border-line text-ok focus:ring-0 focus:ring-offset-0 w-3.5 h-3.5 cursor-pointer"
                 />
                 <span>Auto-anotar en bitácora</span>
               </label>
@@ -377,10 +377,10 @@ export const UpcomingTaskWidget: React.FC<UpcomingTaskWidgetProps> = ({
               <button
                 type="button"
                 onClick={() => onOpenWateringModal(targetCrop)}
-                className="px-3.5 py-2.5 rounded-2xl bg-[#FFFDF7] hover:bg-[#FAF2E1] text-[#29202F] border border-[#EFE3CF] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                className="px-3.5 py-2.5 rounded-2xl bg-surface hover:bg-track text-ink border border-line text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 title="Abrir formulario completo para especificar nutrientes, pH medido y EC"
               >
-                <Droplets className="w-3.5 h-3.5 text-[#6C45C7]" />
+                <Droplets className="w-3.5 h-3.5 text-brand" />
                 <span>Ver Detalles</span>
               </button>
             )}
@@ -393,10 +393,10 @@ export const UpcomingTaskWidget: React.FC<UpcomingTaskWidgetProps> = ({
               disabled={isProcessing || justCompletedId === activeTask.id}
               className={`px-5 py-2.5 rounded-2xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md ${
                 justCompletedId === activeTask.id
-                  ? 'bg-[#62B95B] text-white'
+                  ? 'bg-ok text-white'
                   : activeTask.urgency === 'overdue'
-                  ? 'bg-[#EB7864] hover:bg-[#d96551] text-white shadow-[#EB7864]/20'
-                  : 'bg-[#62B95B] hover:bg-[#52A54C] text-white shadow-[#62B95B]/20'
+                  ? 'bg-coral hover:bg-[#d96551] text-white shadow-coral/20'
+                  : 'bg-ok hover:bg-[#52A54C] text-white shadow-ok/20'
               } disabled:opacity-50`}
             >
               {justCompletedId === activeTask.id ? (
@@ -417,16 +417,16 @@ export const UpcomingTaskWidget: React.FC<UpcomingTaskWidgetProps> = ({
 
       {/* Modal / Sheet showing all pending and completed tasks */}
       {showAllTasksModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#29202F]/40 backdrop-blur-xs animate-in fade-in">
-          <div className="relative w-full max-w-xl bg-white rounded-[32px] border border-[#EFE3CF] shadow-2xl p-6 sm:p-7 space-y-5 max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between pb-3 border-b border-[#EFE3CF]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ink/40 backdrop-blur-xs animate-in fade-in">
+          <div className="relative w-full max-w-xl bg-white rounded-[32px] border border-line shadow-2xl p-6 sm:p-7 space-y-5 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-line">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-[#62B95B]/15 text-[#62B95B] border border-[#62B95B]/20">
+                <div className="p-2 rounded-xl bg-ok/15 text-ok border border-ok/20">
                   <ListTodo className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-base font-extrabold text-[#29202F]">Agenda de Tareas y Riegos</h3>
-                  <p className="text-xs text-[#6E5D77]">
+                  <h3 className="text-base font-extrabold text-ink">Agenda de Tareas y Riegos</h3>
+                  <p className="text-xs text-ink-muted">
                     {pendingTasks.length} pendiente{pendingTasks.length !== 1 ? 's' : ''} · {completedTasks.length} completada{completedTasks.length !== 1 ? 's' : ''}
                   </p>
                 </div>
@@ -434,7 +434,7 @@ export const UpcomingTaskWidget: React.FC<UpcomingTaskWidgetProps> = ({
               <button
                 type="button"
                 onClick={() => setShowAllTasksModal(false)}
-                className="p-2 rounded-xl bg-[#FAF2E1] text-[#6E5D77] hover:text-[#29202F] hover:bg-[#EFE3CF] transition-colors cursor-pointer"
+                className="p-2 rounded-xl bg-track text-ink-muted hover:text-ink hover:bg-line transition-colors cursor-pointer"
               >
                 ✕
               </button>
@@ -443,12 +443,12 @@ export const UpcomingTaskWidget: React.FC<UpcomingTaskWidgetProps> = ({
             <div className="overflow-y-auto space-y-4 pr-1 flex-1">
               {/* Pending Section */}
               <div className="space-y-2.5">
-                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#9887A2] block">
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-ink-subtle block">
                   Pendientes ({pendingTasks.length})
                 </span>
 
                 {pendingTasks.length === 0 ? (
-                  <div className="p-4 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-center text-xs text-[#6E5D77]">
+                  <div className="p-4 rounded-2xl bg-surface border border-line text-center text-xs text-ink-muted">
                     No hay tareas pendientes en este momento. ¡Todo tranqui! 🌱
                   </div>
                 ) : (
@@ -457,25 +457,25 @@ export const UpcomingTaskWidget: React.FC<UpcomingTaskWidgetProps> = ({
                       key={task.id}
                       className={`p-3.5 rounded-2xl border transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 ${
                         task.urgency === 'overdue'
-                          ? 'bg-[#EB7864]/10 border-[#EB7864]/30'
+                          ? 'bg-coral/10 border-coral/30'
                           : task.urgency === 'today'
-                          ? 'bg-[#F3C843]/15 border-[#F3C843]/30'
-                          : 'bg-[#FFFDF7] border-[#EFE3CF]'
+                          ? 'bg-warn-line/15 border-warn-line/30'
+                          : 'bg-surface border-line'
                       }`}
                     >
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-xs text-[#29202F]">{task.title}</span>
-                          <span className="text-[10px] text-[#6C45C7] font-semibold">({task.cultivationName})</span>
+                          <span className="font-bold text-xs text-ink">{task.title}</span>
+                          <span className="text-[10px] text-brand font-semibold">({task.cultivationName})</span>
                           {getUrgencyBadge(task.urgency, task.priority)}
                         </div>
-                        <p className="text-[11px] text-[#6E5D77]">{task.description}</p>
+                        <p className="text-[11px] text-ink-muted">{task.description}</p>
                       </div>
 
                       <button
                         type="button"
                         onClick={() => handleCompleteTask(task)}
-                        className="px-3 py-1.5 rounded-xl bg-[#62B95B] hover:bg-[#52A54C] text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 self-end sm:self-center shadow-xs"
+                        className="px-3 py-1.5 rounded-xl bg-ok hover:bg-[#52A54C] text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 self-end sm:self-center shadow-xs"
                       >
                         <Check className="w-3.5 h-3.5 stroke-[2.5]" />
                         <span>Completar</span>
@@ -487,22 +487,22 @@ export const UpcomingTaskWidget: React.FC<UpcomingTaskWidgetProps> = ({
 
               {/* Completed Section */}
               {completedTasks.length > 0 && (
-                <div className="space-y-2.5 pt-2 border-t border-[#EFE3CF]">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#9887A2] block">
+                <div className="space-y-2.5 pt-2 border-t border-line">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-ink-subtle block">
                     Completadas Recientes ({completedTasks.length})
                   </span>
                   {completedTasks.map((task) => (
                     <div
                       key={task.id}
-                      className="p-3 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] flex items-center justify-between gap-3 opacity-80 hover:opacity-100 transition-opacity"
+                      className="p-3 rounded-2xl bg-surface border border-line flex items-center justify-between gap-3 opacity-80 hover:opacity-100 transition-opacity"
                     >
                       <div className="flex items-center gap-2.5">
-                        <CheckCircle2 className="w-4 h-4 text-[#62B95B] shrink-0" />
+                        <CheckCircle2 className="w-4 h-4 text-ok shrink-0" />
                         <div>
-                          <div className="text-xs font-medium text-[#6E5D77] line-through">
+                          <div className="text-xs font-medium text-ink-muted line-through">
                             {task.title} ({task.cultivationName})
                           </div>
-                          <div className="text-[10px] text-[#9887A2]">
+                          <div className="text-[10px] text-ink-subtle">
                             {task.completedAt ? `Completada el ${new Date(task.completedAt).toLocaleDateString()}` : 'Completada'}
                           </div>
                         </div>
@@ -511,7 +511,7 @@ export const UpcomingTaskWidget: React.FC<UpcomingTaskWidgetProps> = ({
                       <button
                         type="button"
                         onClick={() => handleUncompleteTask(task.id)}
-                        className="p-1.5 rounded-lg text-[#9887A2] hover:text-[#29202F] hover:bg-[#FAF2E1] text-xs transition-colors cursor-pointer"
+                        className="p-1.5 rounded-lg text-ink-subtle hover:text-ink hover:bg-track text-xs transition-colors cursor-pointer"
                         title="Restaurar tarea a pendiente"
                       >
                         <RotateCcw className="w-3.5 h-3.5" />
@@ -522,11 +522,11 @@ export const UpcomingTaskWidget: React.FC<UpcomingTaskWidgetProps> = ({
               )}
             </div>
 
-            <div className="pt-2 border-t border-[#EFE3CF] flex justify-end">
+            <div className="pt-2 border-t border-line flex justify-end">
               <button
                 type="button"
                 onClick={() => setShowAllTasksModal(false)}
-                className="px-5 py-2 rounded-xl bg-[#FAF2E1] hover:bg-[#EFE3CF] text-[#29202F] text-xs font-bold transition-colors cursor-pointer"
+                className="px-5 py-2 rounded-xl bg-track hover:bg-line text-ink text-xs font-bold transition-colors cursor-pointer"
               >
                 Cerrar
               </button>

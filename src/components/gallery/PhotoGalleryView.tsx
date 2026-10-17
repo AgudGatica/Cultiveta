@@ -178,15 +178,15 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
       )}
 
       {/* Gallery Header & Controls */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white rounded-3xl p-5 sm:p-6 border border-[#EFE3CF] shadow-xs">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white rounded-3xl p-5 sm:p-6 border border-line shadow-xs">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="font-extrabold text-base sm:text-lg text-[#29202F]">Galería Cronológica de Fotos 📸</h3>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-[#62B95B]/15 text-[#62B95B] border border-[#62B95B]/30">
+            <h3 className="font-extrabold text-base sm:text-lg text-ink">Galería Cronológica de Fotos 📸</h3>
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-ok/15 text-ok border border-ok/30">
               {photos.length}
             </span>
           </div>
-          <p className="text-xs text-[#6E5D77] mt-0.5">
+          <p className="text-xs text-ink-muted mt-0.5">
             Registro visual y cronológico de {cultivation.name}
           </p>
         </div>
@@ -197,9 +197,9 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
               type="button"
               id="open-photo-compare-btn"
               onClick={() => setIsCompareOpen(true)}
-              className="px-3.5 py-2 rounded-2xl bg-[#6C45C7]/10 hover:bg-[#6C45C7]/20 text-[#6C45C7] border border-[#6C45C7]/30 text-xs font-bold transition-colors flex items-center gap-2 cursor-pointer shadow-2xs"
+              className="px-3.5 py-2 rounded-2xl bg-brand/10 hover:bg-brand/20 text-brand border border-brand/30 text-xs font-bold transition-colors flex items-center gap-2 cursor-pointer shadow-2xs"
             >
-              <Scale className="w-3.5 h-3.5 text-[#6C45C7]" />
+              <Scale className="w-3.5 h-3.5 text-brand" />
               <span>Comparar 2 Fotos</span>
             </button>
           )}
@@ -220,36 +220,36 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
       {queuedPhotos.length > 0 && (
         <div
           id="gallery-offline-queue-banner"
-          className="bg-[#F3C843]/15 border border-[#F3C843]/40 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-[#29202F] shadow-xs"
+          className="bg-warn-line/15 border border-warn-line/40 rounded-3xl p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-ink shadow-xs"
         >
           <div className="flex items-start sm:items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-[#F3C843]/30 text-[#29202F] shrink-0">
+            <div className="p-2.5 rounded-2xl bg-warn-line/30 text-ink shrink-0">
               {uploadingPhotos.length > 0 || savingMetaPhotos.length > 0 ? (
-                <Loader2 className="w-5 h-5 animate-spin text-[#6C45C7]" />
+                <Loader2 className="w-5 h-5 animate-spin text-brand" />
               ) : failedPhotos.length > 0 ? (
-                <AlertTriangle className="w-5 h-5 text-[#EB7864]" />
+                <AlertTriangle className="w-5 h-5 text-coral" />
               ) : (
-                <HardDrive className="w-5 h-5 text-[#29202F]" />
+                <HardDrive className="w-5 h-5 text-ink" />
               )}
             </div>
             <div>
               <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-xs sm:text-sm font-bold text-[#29202F]">
+                <p className="text-xs sm:text-sm font-bold text-ink">
                   {queuedPhotos.length} fotografía{queuedPhotos.length === 1 ? '' : 's'} guardada{queuedPhotos.length === 1 ? '' : 's'} en este dispositivo
                 </p>
                 {failedPhotos.length > 0 && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#EB7864]/20 text-[#EB7864] border border-[#EB7864]/30">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-coral/20 text-coral border border-coral/30">
                     {failedPhotos.length} requiere atención
                   </span>
                 )}
                 {uploadingPhotos.length > 0 && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#6C45C7]/15 text-[#6C45C7] border border-[#6C45C7]/30 flex items-center gap-1">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand/15 text-brand border border-brand/30 flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" />
                     Subiendo binario
                   </span>
                 )}
                 {savingMetaPhotos.length > 0 && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#62B95B]/20 text-[#62B95B] border border-[#62B95B]/30 flex items-center gap-1">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-ok/20 text-ok border border-ok/30 flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" />
                     Confirmando en servidor
                   </span>
@@ -257,7 +257,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
               </div>
 
               {/* Mensaje descriptivo derivado del estado real de la cola */}
-              <p className="text-[11px] text-[#6E5D77] mt-0.5">
+              <p className="text-[11px] text-ink-muted mt-0.5">
                 {!isOnline || waitingNetworkPhotos.length > 0
                   ? 'Sin conexión a internet. Los archivos están a salvo en tu dispositivo y se sincronizarán al volver la red.'
                   : uploadingPhotos.length > 0
@@ -282,7 +282,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                 id="gallery-manual-sync-btn"
                 disabled={isSyncing}
                 onClick={handleManualSync}
-                className="px-4 py-2 rounded-2xl bg-[#6C45C7] hover:bg-[#5835ab] text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+                className="px-4 py-2 rounded-2xl bg-brand hover:bg-brand-deep text-white text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {isSyncing ? (
                   <>
@@ -297,7 +297,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                 )}
               </button>
             ) : (
-              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-[#FAF2E1] text-[#6E5D77] border border-[#EFE3CF] text-xs font-semibold">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-track text-ink-muted border border-line text-xs font-semibold">
                 <WifiOff className="w-3.5 h-3.5" />
                 <span>Esperando red</span>
               </div>
@@ -315,8 +315,8 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
             onClick={() => setSelectedCategory(c.value)}
             className={`px-3.5 py-1.5 rounded-2xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
               selectedCategory === c.value
-                ? 'bg-[#6C45C7] text-white shadow-xs'
-                : 'bg-white border border-[#EFE3CF] text-[#6E5D77] hover:text-[#29202F] hover:bg-[#FAF2E1]'
+                ? 'bg-brand text-white shadow-xs'
+                : 'bg-white border border-line text-ink-muted hover:text-ink hover:bg-track'
             }`}
           >
             {c.label}
@@ -326,18 +326,18 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
 
       {/* Grid de Fotografías */}
       {filteredPhotos.length === 0 ? (
-        <div className="bg-white rounded-3xl p-10 border border-[#EFE3CF] text-center space-y-3">
-          <div className="w-14 h-14 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-[#6C45C7] flex items-center justify-center mx-auto">
+        <div className="bg-white rounded-3xl p-10 border border-line text-center space-y-3">
+          <div className="w-14 h-14 rounded-2xl bg-surface border border-line text-brand flex items-center justify-center mx-auto">
             <Camera className="w-7 h-7" />
           </div>
-          <h4 className="font-bold text-[#29202F] text-base">No hay fotografías registradas en esta categoría</h4>
-          <p className="text-xs text-[#6E5D77] max-w-sm mx-auto">
+          <h4 className="font-bold text-ink text-base">No hay fotografías registradas en esta categoría</h4>
+          <p className="text-xs text-ink-muted max-w-sm mx-auto">
             Documentá tu cultivo semana a semana con fotos fechadas para ver el avance botánico y diagnosticar carencias.
           </p>
           <button
             type="button"
             onClick={onUploadClick}
-            className="mt-2 px-5 py-2.5 rounded-2xl bg-[#6C45C7] hover:bg-[#5835ab] text-white text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-2 shadow-xs"
+            className="mt-2 px-5 py-2.5 rounded-2xl bg-brand hover:bg-brand-deep text-white text-xs font-bold transition-all cursor-pointer inline-flex items-center gap-2 shadow-xs"
           >
             <Plus className="w-4 h-4" />
             <span>Subir primera foto</span>
@@ -360,13 +360,13 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
             return (
               <div
                 key={photo.id}
-                className="bg-white rounded-3xl overflow-hidden border border-[#EFE3CF] shadow-2xs hover:shadow-xs transition-all group flex flex-col justify-between"
+                className="bg-white rounded-3xl overflow-hidden border border-line shadow-2xs hover:shadow-xs transition-all group flex flex-col justify-between"
               >
                 {/* Photo Area */}
                 <div
                   id={`photo-card-${photo.id}`}
                   onClick={() => openLightbox(photo.id)}
-                  className="relative aspect-4/3 bg-[#FFFDF7] overflow-hidden cursor-pointer group/photo"
+                  className="relative aspect-4/3 bg-surface overflow-hidden cursor-pointer group/photo"
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
@@ -386,7 +386,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                   />
 
                   {/* Day Badge */}
-                  <div className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full bg-black/80 bg-white/90 backdrop-blur-xs text-[#29202F] text-[11px] font-bold shadow-xs border border-[#EFE3CF]">
+                  <div className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full bg-black/80 bg-white/90 backdrop-blur-xs text-ink text-[11px] font-bold shadow-xs border border-line">
                     Día {photo.dayOfCultivation}
                   </div>
 
@@ -394,9 +394,9 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                   {isSynced && (
                     <div
                       title="Fotografía confirmada en Storage y Firestore"
-                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-[#62B95B]/20 backdrop-blur-xs text-[#62B95B] border border-[#62B95B]/40 text-[10px] font-bold flex items-center gap-1 shadow-2xs"
+                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-ok/20 backdrop-blur-xs text-ok border border-ok/40 text-[10px] font-bold flex items-center gap-1 shadow-2xs"
                     >
-                      <Cloud className="w-3 h-3 text-[#62B95B]" />
+                      <Cloud className="w-3 h-3 text-ok" />
                       <span>Sincronizada</span>
                     </div>
                   )}
@@ -404,9 +404,9 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                   {isUploading && (
                     <div
                       title={`Subiendo archivo binario a Storage (${queueItem?.progressPercent || 0}%)...`}
-                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-[#6C45C7]/20 backdrop-blur-xs text-[#6C45C7] border border-[#6C45C7]/30 text-[10px] font-bold flex items-center gap-1 shadow-2xs animate-pulse"
+                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-brand/20 backdrop-blur-xs text-brand border border-brand/30 text-[10px] font-bold flex items-center gap-1 shadow-2xs animate-pulse"
                     >
-                      <Loader2 className="w-3 h-3 text-[#6C45C7] animate-spin" />
+                      <Loader2 className="w-3 h-3 text-brand animate-spin" />
                       <span>{queueItem?.progressPercent ? `${queueItem.progressPercent}%` : 'Subiendo...'}</span>
                     </div>
                   )}
@@ -414,9 +414,9 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                   {isSavingMeta && (
                     <div
                       title="Subida a Storage finalizada. Confirmando en servidor..."
-                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-[#62B95B]/20 backdrop-blur-xs text-[#62B95B] border border-[#62B95B]/30 text-[10px] font-bold flex items-center gap-1 shadow-2xs"
+                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-ok/20 backdrop-blur-xs text-ok border border-ok/30 text-[10px] font-bold flex items-center gap-1 shadow-2xs"
                     >
-                      <Loader2 className="w-3 h-3 text-[#62B95B] animate-spin" />
+                      <Loader2 className="w-3 h-3 text-ok animate-spin" />
                       <span>Pendiente de confirmación</span>
                     </div>
                   )}
@@ -424,9 +424,9 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                   {isWaitingNetwork && (
                     <div
                       title="Esperando conexión a internet para sincronizar"
-                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-[#F3C843]/30 backdrop-blur-xs text-[#29202F] border border-[#F3C843]/40 text-[10px] font-bold flex items-center gap-1 shadow-2xs"
+                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-warn-line/30 backdrop-blur-xs text-ink border border-warn-line/40 text-[10px] font-bold flex items-center gap-1 shadow-2xs"
                     >
-                      <WifiOff className="w-3 h-3 text-[#29202F]" />
+                      <WifiOff className="w-3 h-3 text-ink" />
                       <span>Esperando red</span>
                     </div>
                   )}
@@ -434,9 +434,9 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                   {isFailed && (
                     <div
                       title={`Fallo de sincronización: ${queueItem?.lastError || photo.syncError || 'Desconocido'}`}
-                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-[#EB7864]/20 backdrop-blur-xs text-[#EB7864] border border-[#EB7864]/40 text-[10px] font-bold flex items-center gap-1 shadow-2xs"
+                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-coral/20 backdrop-blur-xs text-coral border border-coral/40 text-[10px] font-bold flex items-center gap-1 shadow-2xs"
                     >
-                      <AlertTriangle className="w-3 h-3 text-[#EB7864]" />
+                      <AlertTriangle className="w-3 h-3 text-coral" />
                       <span>Requiere atención</span>
                     </div>
                   )}
@@ -444,30 +444,30 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                   {isPending && !isUploading && !isSavingMeta && !isFailed && !isWaitingNetwork && (
                     <div
                       title="Fotografía guardada en este dispositivo (IndexedDB). Pendiente de sincronización."
-                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-[#FAF2E1] backdrop-blur-xs text-[#6E5D77] border border-[#EFE3CF] text-[10px] font-bold flex items-center gap-1 shadow-2xs"
+                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-track backdrop-blur-xs text-ink-muted border border-line text-[10px] font-bold flex items-center gap-1 shadow-2xs"
                     >
-                      <HardDrive className="w-3 h-3 text-[#6E5D77]" />
+                      <HardDrive className="w-3 h-3 text-ink-muted" />
                       <span>En dispositivo</span>
                     </div>
                   )}
 
                   {/* Category Pill */}
-                  <div className="absolute bottom-2 left-2 px-2.5 py-0.5 rounded-full bg-white/90 backdrop-blur-xs text-[#6E5D77] border border-[#EFE3CF] text-[10px] font-bold uppercase tracking-wider shadow-2xs">
+                  <div className="absolute bottom-2 left-2 px-2.5 py-0.5 rounded-full bg-white/90 backdrop-blur-xs text-ink-muted border border-line text-[10px] font-bold uppercase tracking-wider shadow-2xs">
                     {photo.category}
                   </div>
 
                   {/* Quick hover overlay */}
-                  <div className="absolute inset-0 bg-[#29202F]/40 opacity-0 group-hover/photo:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[1px]">
+                  <div className="absolute inset-0 bg-ink/40 opacity-0 group-hover/photo:opacity-100 transition-opacity flex items-center justify-center gap-2 backdrop-blur-[1px]">
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         openLightbox(photo.id);
                       }}
-                      className="p-2.5 rounded-2xl bg-white hover:bg-[#FAF2E1] text-[#29202F] border border-[#EFE3CF] transition-transform hover:scale-105 cursor-pointer flex items-center gap-1.5 text-xs font-bold shadow-xs"
+                      className="p-2.5 rounded-2xl bg-white hover:bg-track text-ink border border-line transition-transform hover:scale-105 cursor-pointer flex items-center gap-1.5 text-xs font-bold shadow-xs"
                       title="Ver en pantalla completa"
                     >
-                      <Maximize2 className="w-3.5 h-3.5 text-[#6C45C7]" />
+                      <Maximize2 className="w-3.5 h-3.5 text-brand" />
                       <span>Ampliar</span>
                     </button>
 
@@ -477,7 +477,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                         e.stopPropagation();
                         onAnalyzePhoto(photo);
                       }}
-                      className="p-2.5 rounded-2xl bg-[#6C45C7] hover:bg-[#5835ab] text-white transition-transform hover:scale-105 cursor-pointer shadow-md"
+                      className="p-2.5 rounded-2xl bg-brand hover:bg-brand-deep text-white transition-transform hover:scale-105 cursor-pointer shadow-md"
                       title="Analizar con Cultiveta IA"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
@@ -487,22 +487,22 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
 
                 {/* Metadata & Actions */}
                 <div className="p-3.5 space-y-2">
-                  <div className="flex items-center justify-between text-xs text-[#6E5D77]">
-                    <span className="font-bold text-[#29202F]">{photo.date}</span>
-                    <span className="text-[11px] px-2 py-0.5 rounded-lg bg-[#FAF2E1] border border-[#EFE3CF] text-[#6E5D77] font-semibold">
+                  <div className="flex items-center justify-between text-xs text-ink-muted">
+                    <span className="font-bold text-ink">{photo.date}</span>
+                    <span className="text-[11px] px-2 py-0.5 rounded-lg bg-track border border-line text-ink-muted font-semibold">
                       {photo.stage}
                     </span>
                   </div>
 
                   {photo.caption && (
-                    <p className="text-xs text-[#6E5D77] line-clamp-2 italic font-normal">
+                    <p className="text-xs text-ink-muted line-clamp-2 italic font-normal">
                       "{photo.caption}"
                     </p>
                   )}
 
                   {/* Si falló o está pendiente, mostrar opciones de reintento, diagnóstico y exportación */}
                   {isFailed && (
-                    <div className="p-2 rounded-2xl bg-[#EB7864]/10 border border-[#EB7864]/20 text-[#EB7864] text-[11px] space-y-1.5">
+                    <div className="p-2 rounded-2xl bg-coral/10 border border-coral/20 text-coral text-[11px] space-y-1.5">
                       <p className="line-clamp-1 font-mono text-[10px]">
                         {queueItem?.lastError || photo.syncError || 'Error de sincronización'}
                       </p>
@@ -510,7 +510,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                         <button
                           type="button"
                           onClick={() => handleRetryPhoto(photo.id)}
-                          className="px-2 py-1 rounded-lg bg-[#EB7864] hover:bg-[#d66450] text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                          className="px-2 py-1 rounded-lg bg-coral hover:bg-[#d66450] text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer"
                         >
                           <RotateCcw className="w-3 h-3" />
                           <span>Reintentar</span>
@@ -518,16 +518,16 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                         <button
                           type="button"
                           onClick={() => openDiagnostic(photo.id)}
-                          className="px-2 py-1 rounded-lg bg-white hover:bg-[#FAF2E1] text-[#29202F] text-[10px] font-bold flex items-center gap-1 cursor-pointer border border-[#EFE3CF]"
+                          className="px-2 py-1 rounded-lg bg-white hover:bg-track text-ink text-[10px] font-bold flex items-center gap-1 cursor-pointer border border-line"
                           title="Ver diagnóstico seguro"
                         >
-                          <Activity className="w-3 h-3 text-[#F3C843]" />
+                          <Activity className="w-3 h-3 text-warn-line" />
                           <span>Diagnóstico</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => handleExportPhoto(photo.id)}
-                          className="px-2 py-1 rounded-lg bg-white hover:bg-[#FAF2E1] text-[#29202F] text-[10px] font-bold flex items-center gap-1 cursor-pointer border border-[#EFE3CF]"
+                          className="px-2 py-1 rounded-lg bg-white hover:bg-track text-ink text-[10px] font-bold flex items-center gap-1 cursor-pointer border border-line"
                         >
                           <Download className="w-3 h-3" />
                           <span>Exportar</span>
@@ -537,11 +537,11 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                   )}
 
                   {/* Card bottom actions */}
-                  <div className="pt-2 border-t border-[#EFE3CF] flex items-center justify-between">
+                  <div className="pt-2 border-t border-line flex items-center justify-between">
                     <button
                       type="button"
                       onClick={() => onAnalyzePhoto(photo)}
-                      className="text-xs font-bold text-[#6C45C7] hover:underline inline-flex items-center gap-1 cursor-pointer"
+                      className="text-xs font-bold text-brand hover:underline inline-flex items-center gap-1 cursor-pointer"
                     >
                       <Sparkles className="w-3 h-3" />
                       <span>Diagnóstico IA</span>
@@ -553,7 +553,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                           <button
                             type="button"
                             onClick={() => openDiagnostic(photo.id)}
-                            className="text-[#9887A2] hover:text-[#6C45C7] transition-colors p-1 cursor-pointer"
+                            className="text-ink-subtle hover:text-brand transition-colors p-1 cursor-pointer"
                             title="Diagnóstico de sincronización"
                           >
                             <Activity className="w-3.5 h-3.5" />
@@ -561,7 +561,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                           <button
                             type="button"
                             onClick={() => handleExportPhoto(photo.id)}
-                            className="text-[#9887A2] hover:text-[#29202F] transition-colors p-1 cursor-pointer"
+                            className="text-ink-subtle hover:text-ink transition-colors p-1 cursor-pointer"
                             title="Descargar respaldo local (archivo original)"
                           >
                             <Download className="w-3.5 h-3.5" />
@@ -578,7 +578,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                             }
                             onDeletePhoto(photo.id);
                           }}
-                          className="text-[#9887A2] hover:text-[#EB7864] transition-colors p-1 cursor-pointer"
+                          className="text-ink-subtle hover:text-coral transition-colors p-1 cursor-pointer"
                           title="Eliminar foto"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -597,41 +597,41 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
       {diagnosticModalOpen && diagnosticInfo && (
         <div className="cultiveta-modal-overlay animate-in fade-in">
           <div className="cultiveta-modal-container max-w-md p-6 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-[#EFE3CF]">
+            <div className="flex items-center justify-between pb-3 border-b border-line">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-2xl bg-[#F3C843]/20 text-[#29202F]">
-                  <Activity className="w-4 h-4 text-[#6C45C7]" />
+                <div className="p-2 rounded-2xl bg-warn-line/20 text-ink">
+                  <Activity className="w-4 h-4 text-brand" />
                 </div>
-                <h4 className="font-extrabold text-sm text-[#29202F]">Diagnóstico de Fotografía</h4>
+                <h4 className="font-extrabold text-sm text-ink">Diagnóstico de Fotografía</h4>
               </div>
               <button
                 type="button"
                 onClick={() => setDiagnosticModalOpen(false)}
-                className="p-1.5 text-[#9887A2] hover:text-[#29202F] rounded-lg hover:bg-[#FAF2E1] cursor-pointer"
+                className="p-1.5 text-ink-subtle hover:text-ink rounded-lg hover:bg-track cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-2 text-xs font-mono bg-[#FFFDF7] p-3.5 rounded-2xl border border-[#EFE3CF] overflow-x-auto text-[#29202F] leading-relaxed">
-              <div><span className="text-[#9887A2]">ID:</span> {diagnosticInfo.photoId}</div>
-              <div><span className="text-[#9887A2]">Fase actual:</span> <span className="text-[#6C45C7] font-semibold">{diagnosticInfo.phase}</span></div>
-              <div><span className="text-[#9887A2]">Estado:</span> {diagnosticInfo.status}</div>
-              <div><span className="text-[#9887A2]">Progreso:</span> {diagnosticInfo.progressPercent}% ({diagnosticInfo.bytesTransferred} / {diagnosticInfo.totalBytes} B)</div>
-              <div><span className="text-[#9887A2]">Último avance:</span> {diagnosticInfo.lastProgressAt || 'Ninguno'}</div>
-              <div><span className="text-[#9887A2]">Tiempo activo:</span> {diagnosticInfo.elapsedSeconds ? `${diagnosticInfo.elapsedSeconds}s` : '0s'}</div>
-              <div><span className="text-[#9887A2]">Intentos:</span> {diagnosticInfo.retryCount}</div>
+            <div className="space-y-2 text-xs font-mono bg-surface p-3.5 rounded-2xl border border-line overflow-x-auto text-ink leading-relaxed">
+              <div><span className="text-ink-subtle">ID:</span> {diagnosticInfo.photoId}</div>
+              <div><span className="text-ink-subtle">Fase actual:</span> <span className="text-brand font-semibold">{diagnosticInfo.phase}</span></div>
+              <div><span className="text-ink-subtle">Estado:</span> {diagnosticInfo.status}</div>
+              <div><span className="text-ink-subtle">Progreso:</span> {diagnosticInfo.progressPercent}% ({diagnosticInfo.bytesTransferred} / {diagnosticInfo.totalBytes} B)</div>
+              <div><span className="text-ink-subtle">Último avance:</span> {diagnosticInfo.lastProgressAt || 'Ninguno'}</div>
+              <div><span className="text-ink-subtle">Tiempo activo:</span> {diagnosticInfo.elapsedSeconds ? `${diagnosticInfo.elapsedSeconds}s` : '0s'}</div>
+              <div><span className="text-ink-subtle">Intentos:</span> {diagnosticInfo.retryCount}</div>
               {diagnosticInfo.lastErrorCode && (
-                <div><span className="text-[#9887A2]">Código SDK:</span> <span className="text-[#EB7864]">{diagnosticInfo.lastErrorCode}</span></div>
+                <div><span className="text-ink-subtle">Código SDK:</span> <span className="text-coral">{diagnosticInfo.lastErrorCode}</span></div>
               )}
               {diagnosticInfo.lastError && (
-                <div><span className="text-[#9887A2]">Mensaje:</span> <span className="text-[#EB7864]">{diagnosticInfo.lastError}</span></div>
+                <div><span className="text-ink-subtle">Mensaje:</span> <span className="text-coral">{diagnosticInfo.lastError}</span></div>
               )}
-              <div className="pt-2 border-t border-[#EFE3CF] mt-2 text-[11px] text-[#6E5D77] space-y-0.5">
-                <div><span className="text-[#9887A2]">Proyecto:</span> {diagnosticInfo.effectiveProjectId}</div>
-                <div><span className="text-[#9887A2]">Base Firestore:</span> {diagnosticInfo.effectiveDatabaseId}</div>
-                <div><span className="text-[#9887A2]">Bucket Storage:</span> {diagnosticInfo.effectiveBucket}</div>
-                <div><span className="text-[#9887A2]">Bloqueo:</span> {diagnosticInfo.lockActive ? `Activo (${diagnosticInfo.lockOwner})` : 'Inactivo'}</div>
+              <div className="pt-2 border-t border-line mt-2 text-[11px] text-ink-muted space-y-0.5">
+                <div><span className="text-ink-subtle">Proyecto:</span> {diagnosticInfo.effectiveProjectId}</div>
+                <div><span className="text-ink-subtle">Base Firestore:</span> {diagnosticInfo.effectiveDatabaseId}</div>
+                <div><span className="text-ink-subtle">Bucket Storage:</span> {diagnosticInfo.effectiveBucket}</div>
+                <div><span className="text-ink-subtle">Bloqueo:</span> {diagnosticInfo.lockActive ? `Activo (${diagnosticInfo.lockOwner})` : 'Inactivo'}</div>
               </div>
             </div>
 
@@ -639,9 +639,9 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
               <button
                 type="button"
                 onClick={handleCopyDiagnostic}
-                className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#FAF2E1] text-[#29202F] text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-[#EFE3CF]"
+                className="px-3 py-1.5 rounded-xl bg-white hover:bg-track text-ink text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-line"
               >
-                {copyFeedback ? <Check className="w-3.5 h-3.5 text-[#62B95B]" /> : <Copy className="w-3.5 h-3.5 text-[#6C45C7]" />}
+                {copyFeedback ? <Check className="w-3.5 h-3.5 text-ok" /> : <Copy className="w-3.5 h-3.5 text-brand" />}
                 <span>{copyFeedback ? 'Copiado al portapapeles' : 'Copiar Diagnóstico'}</span>
               </button>
 

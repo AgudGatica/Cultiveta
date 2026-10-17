@@ -193,45 +193,45 @@ export const DashboardEnvironmentChart: React.FC<DashboardEnvironmentChartProps>
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       return (
-        <div className="bg-white/95 backdrop-blur-md p-3.5 rounded-2xl border border-[#EFE3CF] shadow-xl text-xs space-y-2.5 min-w-[210px] pointer-events-none text-[#29202F]">
-          <div className="flex items-center justify-between gap-2 border-b border-[#EFE3CF] pb-2">
+        <div className="bg-white/95 backdrop-blur-md p-3.5 rounded-2xl border border-line shadow-xl text-xs space-y-2.5 min-w-[210px] pointer-events-none text-ink">
+          <div className="flex items-center justify-between gap-2 border-b border-line pb-2">
             <div>
-              <span className="font-bold text-[#29202F] block text-xs">{data.displayDate}</span>
-              {data.time && <span className="text-[10px] text-[#9887A2]">{data.time} hs</span>}
+              <span className="font-bold text-ink block text-xs">{data.displayDate}</span>
+              {data.time && <span className="text-[10px] text-ink-subtle">{data.time} hs</span>}
             </div>
-            <span className="text-[10px] font-semibold text-[#6C45C7] bg-[#6C45C7]/10 px-2 py-0.5 rounded-md border border-[#6C45C7]/20 truncate max-w-[110px]">
+            <span className="text-[10px] font-semibold text-brand bg-brand/10 px-2 py-0.5 rounded-md border border-brand/20 truncate max-w-[110px]">
               {data.cropName}
             </span>
           </div>
 
           <div className="space-y-1.5 pt-0.5">
             {showTemp && data.temp !== undefined && (
-              <div className="flex items-center justify-between text-[#29202F]">
-                <span className="flex items-center gap-1.5 text-[#6E5D77]">
-                  <Thermometer className="w-3.5 h-3.5 text-[#EB7864]" />
+              <div className="flex items-center justify-between text-ink">
+                <span className="flex items-center gap-1.5 text-ink-muted">
+                  <Thermometer className="w-3.5 h-3.5 text-coral" />
                   Temperatura:
                 </span>
-                <span className="font-bold text-[#EB7864]">{data.temp} °C</span>
+                <span className="font-bold text-coral">{data.temp} °C</span>
               </div>
             )}
 
             {showHumidity && data.humidity !== undefined && (
-              <div className="flex items-center justify-between text-[#29202F]">
-                <span className="flex items-center gap-1.5 text-[#6E5D77]">
-                  <Droplets className="w-3.5 h-3.5 text-[#62B95B]" />
+              <div className="flex items-center justify-between text-ink">
+                <span className="flex items-center gap-1.5 text-ink-muted">
+                  <Droplets className="w-3.5 h-3.5 text-ok" />
                   Humedad:
                 </span>
-                <span className="font-bold text-[#62B95B]">{data.humidity} % HR</span>
+                <span className="font-bold text-ok">{data.humidity} % HR</span>
               </div>
             )}
 
             {showVpd && data.vpd !== undefined && (
-              <div className="flex items-center justify-between text-[#29202F]">
-                <span className="flex items-center gap-1.5 text-[#6E5D77]">
-                  <Gauge className="w-3.5 h-3.5 text-[#6C45C7]" />
+              <div className="flex items-center justify-between text-ink">
+                <span className="flex items-center gap-1.5 text-ink-muted">
+                  <Gauge className="w-3.5 h-3.5 text-brand" />
                   Déficit (VPD):
                 </span>
-                <span className="font-bold text-[#6C45C7]">{data.vpd} kPa</span>
+                <span className="font-bold text-brand">{data.vpd} kPa</span>
               </div>
             )}
           </div>
@@ -244,34 +244,34 @@ export const DashboardEnvironmentChart: React.FC<DashboardEnvironmentChartProps>
   return (
     <div
       id="dashboard-environment-chart-card"
-      className="bg-white text-[#29202F] rounded-[32px] p-5 sm:p-7 border border-[#EFE3CF] shadow-xs relative overflow-hidden space-y-6"
+      className="bg-white text-ink rounded-[32px] p-5 sm:p-7 border border-line shadow-xs relative overflow-hidden space-y-6"
     >
       {/* Header section with active crop information & controls */}
-      <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pb-4 border-b border-[#EFE3CF]">
+      <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pb-4 border-b border-line">
         <div>
           <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-            <div className="p-1.5 rounded-xl bg-[#62B95B]/15 text-[#62B95B] border border-[#62B95B]/30">
+            <div className="p-1.5 rounded-xl bg-ok/15 text-ok border border-ok/30">
               <Activity className="w-4 h-4" />
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#62B95B]">
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-ok">
               Telemetría Botánica
             </span>
 
             {activeCrop && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-[#FAF2E1] text-[#29202F] border border-[#EFE3CF]">
-                <Sprout className="w-3 h-3 text-[#62B95B]" />
-                Cultivo Activo: <strong className="text-[#29202F]">{activeCrop.name}</strong>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-track text-ink border border-line">
+                <Sprout className="w-3 h-3 text-ok" />
+                Cultivo Activo: <strong className="text-ink">{activeCrop.name}</strong>
                 {activeCrop.currentStage && (
-                  <span className="text-[#6C45C7] ml-0.5">({activeCrop.currentStage})</span>
+                  <span className="text-brand ml-0.5">({activeCrop.currentStage})</span>
                 )}
               </span>
             )}
           </div>
 
-          <h2 className="text-lg sm:text-xl font-extrabold text-[#29202F] tracking-tight flex items-center gap-2">
+          <h2 className="text-lg sm:text-xl font-extrabold text-ink tracking-tight flex items-center gap-2">
             Tendencia Ambiental (Últimos 7 Días)
           </h2>
-          <p className="text-xs text-[#6E5D77] mt-0.5">
+          <p className="text-xs text-ink-muted mt-0.5">
             Curva de temperatura (°C) y humedad relativa (% HR) registrada para el cultivo activo
           </p>
         </div>
@@ -280,26 +280,26 @@ export const DashboardEnvironmentChart: React.FC<DashboardEnvironmentChartProps>
         <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto">
           {/* Active Cultivations Selector (when multiple active crops exist) */}
           {activeCultivations.length > 1 && (
-            <div className="relative flex items-center bg-[#FFFDF7] border border-[#EFE3CF] px-3 py-1.5 rounded-2xl text-xs font-semibold hover:border-[#6C45C7] transition-colors">
+            <div className="relative flex items-center bg-surface border border-line px-3 py-1.5 rounded-2xl text-xs font-semibold hover:border-brand transition-colors">
               <select
                 id="crop-env-filter-select"
                 value={selectedCropId}
                 onChange={(e) => setSelectedCropId(e.target.value)}
-                className="bg-transparent text-[#29202F] outline-none cursor-pointer pr-4 appearance-none text-xs font-medium"
+                className="bg-transparent text-ink outline-none cursor-pointer pr-4 appearance-none text-xs font-medium"
                 title="Seleccionar cultivo activo para visualizar tendencia"
               >
                 {activeCultivations.map((crop) => (
-                  <option key={crop.id} value={crop.id} className="bg-white text-[#29202F]">
+                  <option key={crop.id} value={crop.id} className="bg-white text-ink">
                     🌱 {crop.name} ({crop.currentStage || 'Activo'})
                   </option>
                 ))}
               </select>
-              <ChevronDown className="w-3.5 h-3.5 text-[#6E5D77] absolute right-2.5 pointer-events-none" />
+              <ChevronDown className="w-3.5 h-3.5 text-ink-muted absolute right-2.5 pointer-events-none" />
             </div>
           )}
 
           {/* Time Range Pills (7D is default) */}
-          <div className="bg-[#FFFDF7] border border-[#EFE3CF] p-1 rounded-2xl flex items-center gap-1 text-xs font-semibold">
+          <div className="bg-surface border border-line p-1 rounded-2xl flex items-center gap-1 text-xs font-semibold">
             {(
               [
                 { key: '7d', label: '7 Días' },
@@ -314,8 +314,8 @@ export const DashboardEnvironmentChart: React.FC<DashboardEnvironmentChartProps>
                 onClick={() => setTimeRange(t.key)}
                 className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${
                   timeRange === t.key
-                    ? 'bg-[#6C45C7] text-white font-bold shadow-xs'
-                    : 'text-[#6E5D77] hover:text-[#29202F]'
+                    ? 'bg-brand text-white font-bold shadow-xs'
+                    : 'text-ink-muted hover:text-ink'
                 }`}
               >
                 {t.label}
@@ -330,12 +330,12 @@ export const DashboardEnvironmentChart: React.FC<DashboardEnvironmentChartProps>
               onClick={() => setShowTemp(!showTemp)}
               className={`px-3 py-1.5 rounded-2xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-1.5 ${
                 showTemp
-                  ? 'bg-[#F3C843]/20 text-[#29202F] border-[#F3C843] shadow-xs'
-                  : 'bg-[#FFFDF7] text-[#9887A2] border-[#EFE3CF] opacity-60'
+                  ? 'bg-warn-line/20 text-ink border-warn-line shadow-xs'
+                  : 'bg-surface text-ink-subtle border-line opacity-60'
               }`}
               title="Alternar curva de temperatura"
             >
-              <span className="w-2 h-2 rounded-full bg-[#F3C843]" />
+              <span className="w-2 h-2 rounded-full bg-warn-line" />
               Temp (°C)
             </button>
 
@@ -344,12 +344,12 @@ export const DashboardEnvironmentChart: React.FC<DashboardEnvironmentChartProps>
               onClick={() => setShowHumidity(!showHumidity)}
               className={`px-3 py-1.5 rounded-2xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-1.5 ${
                 showHumidity
-                  ? 'bg-[#62B95B]/20 text-[#29202F] border-[#62B95B] shadow-xs'
-                  : 'bg-[#FFFDF7] text-[#9887A2] border-[#EFE3CF] opacity-60'
+                  ? 'bg-ok/20 text-ink border-ok shadow-xs'
+                  : 'bg-surface text-ink-subtle border-line opacity-60'
               }`}
               title="Alternar curva de humedad"
             >
-              <span className="w-2 h-2 rounded-full bg-[#62B95B]" />
+              <span className="w-2 h-2 rounded-full bg-ok" />
               Humedad (%)
             </button>
 
@@ -358,12 +358,12 @@ export const DashboardEnvironmentChart: React.FC<DashboardEnvironmentChartProps>
               onClick={() => setShowVpd(!showVpd)}
               className={`px-3 py-1.5 rounded-2xl text-xs font-bold transition-all cursor-pointer border flex items-center gap-1.5 ${
                 showVpd
-                  ? 'bg-[#6C45C7]/15 text-[#6C45C7] border-[#6C45C7]/40 shadow-xs'
-                  : 'bg-[#FFFDF7] text-[#9887A2] border-[#EFE3CF] opacity-60'
+                  ? 'bg-brand/15 text-brand border-brand/40 shadow-xs'
+                  : 'bg-surface text-ink-subtle border-line opacity-60'
               }`}
               title="Alternar curva de VPD"
             >
-              <span className="w-2 h-2 rounded-full bg-[#6C45C7]" />
+              <span className="w-2 h-2 rounded-full bg-brand" />
               VPD
             </button>
           </div>
@@ -374,94 +374,94 @@ export const DashboardEnvironmentChart: React.FC<DashboardEnvironmentChartProps>
       {stats.count > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Average Temperature */}
-          <div className="bg-[#FFFDF7] border border-[#EFE3CF] rounded-2xl p-3.5 flex flex-col justify-between">
+          <div className="bg-surface border border-line rounded-2xl p-3.5 flex flex-col justify-between">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] uppercase tracking-wider text-[#9887A2] font-bold">
+              <span className="text-[10px] uppercase tracking-wider text-ink-subtle font-bold">
                 Temp. Promedio (7d)
               </span>
-              <Thermometer className="w-3.5 h-3.5 text-[#EB7864]" />
+              <Thermometer className="w-3.5 h-3.5 text-coral" />
             </div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-xl sm:text-2xl font-black text-[#29202F]">
+              <span className="text-xl sm:text-2xl font-black text-ink">
                 {stats.avgTemp}
               </span>
-              <span className="text-xs text-[#6E5D77]">°C</span>
+              <span className="text-xs text-ink-muted">°C</span>
             </div>
-            <div className="text-[10px] text-[#6E5D77] mt-1">
+            <div className="text-[10px] text-ink-muted mt-1">
               Rango: {stats.minTemp}°C — {stats.maxTemp}°C
             </div>
           </div>
 
           {/* Average Humidity */}
-          <div className="bg-[#FFFDF7] border border-[#EFE3CF] rounded-2xl p-3.5 flex flex-col justify-between">
+          <div className="bg-surface border border-line rounded-2xl p-3.5 flex flex-col justify-between">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] uppercase tracking-wider text-[#9887A2] font-bold">
+              <span className="text-[10px] uppercase tracking-wider text-ink-subtle font-bold">
                 Humedad Promedio (7d)
               </span>
-              <Droplets className="w-3.5 h-3.5 text-[#62B95B]" />
+              <Droplets className="w-3.5 h-3.5 text-ok" />
             </div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-xl sm:text-2xl font-black text-[#29202F]">
+              <span className="text-xl sm:text-2xl font-black text-ink">
                 {stats.avgHum}
               </span>
-              <span className="text-xs text-[#6E5D77]">% HR</span>
+              <span className="text-xs text-ink-muted">% HR</span>
             </div>
-            <div className="text-[10px] text-[#6E5D77] mt-1">
+            <div className="text-[10px] text-ink-muted mt-1">
               Rango: {stats.minHum}% — {stats.maxHum}%
             </div>
           </div>
 
           {/* Estimated VPD or Stability Status */}
-          <div className="bg-[#FFFDF7] border border-[#EFE3CF] rounded-2xl p-3.5 flex flex-col justify-between">
+          <div className="bg-surface border border-line rounded-2xl p-3.5 flex flex-col justify-between">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] uppercase tracking-wider text-[#9887A2] font-bold">
+              <span className="text-[10px] uppercase tracking-wider text-ink-subtle font-bold">
                 Estado Agronómico
               </span>
               {stats.isStable ? (
-                <CheckCircle2 className="w-3.5 h-3.5 text-[#62B95B]" />
+                <CheckCircle2 className="w-3.5 h-3.5 text-ok" />
               ) : (
-                <AlertTriangle className="w-3.5 h-3.5 text-[#EB7864]" />
+                <AlertTriangle className="w-3.5 h-3.5 text-coral" />
               )}
             </div>
             <div className="flex items-baseline gap-1.5">
               <span
                 className={`text-base sm:text-lg font-extrabold truncate ${
-                  stats.isStable ? 'text-[#62B95B]' : 'text-[#EB7864]'
+                  stats.isStable ? 'text-ok' : 'text-coral'
                 }`}
               >
                 {stats.isStable ? 'Ambiente Óptimo' : 'Revisar Clima'}
               </span>
             </div>
-            <div className="text-[10px] text-[#6E5D77] mt-1 truncate">
+            <div className="text-[10px] text-ink-muted mt-1 truncate">
               {stats.avgVpd ? `VPD prom: ${stats.avgVpd} kPa` : 'Temp/Humedad dentro de rango'}
             </div>
           </div>
 
           {/* Sample count & quick action */}
-          <div className="bg-[#FFFDF7] border border-[#EFE3CF] rounded-2xl p-3.5 flex flex-col justify-between">
+          <div className="bg-surface border border-line rounded-2xl p-3.5 flex flex-col justify-between">
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] uppercase tracking-wider text-[#9887A2] font-bold">
+              <span className="text-[10px] uppercase tracking-wider text-ink-subtle font-bold">
                 Muestras en Período
               </span>
-              <TrendingUp className="w-3.5 h-3.5 text-[#6C45C7]" />
+              <TrendingUp className="w-3.5 h-3.5 text-brand" />
             </div>
             <div className="flex items-baseline gap-1.5">
-              <span className="text-xl sm:text-2xl font-black text-[#29202F]">
+              <span className="text-xl sm:text-2xl font-black text-ink">
                 {stats.count}
               </span>
-              <span className="text-xs text-[#6E5D77]">registros</span>
+              <span className="text-xs text-ink-muted">registros</span>
             </div>
             {onOpenEnvModal ? (
               <button
                 type="button"
                 onClick={() => onOpenEnvModal(activeCrop || undefined)}
-                className="mt-1 text-[11px] font-bold text-[#62B95B] hover:underline transition-colors inline-flex items-center gap-1 cursor-pointer"
+                className="mt-1 text-[11px] font-bold text-ok hover:underline transition-colors inline-flex items-center gap-1 cursor-pointer"
               >
                 <Plus className="w-3 h-3 stroke-[2.5]" />
                 <span>Nueva lectura</span>
               </button>
             ) : (
-              <div className="text-[10px] text-[#6E5D77] mt-1">
+              <div className="text-[10px] text-ink-muted mt-1">
                 Frecuencia regular
               </div>
             )}

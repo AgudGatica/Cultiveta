@@ -215,24 +215,24 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
   };
 
   return (
-    <div className="bg-white rounded-3xl border border-[#D1EAEF] shadow-xs flex flex-col h-[calc(100vh-140px)] min-h-[500px]">
+    <div className="bg-white rounded-3xl border border-chip-line shadow-xs flex flex-col h-[calc(100vh-140px)] min-h-[500px]">
       {/* Chat Top Header with Crop Context Selector and Summary Mode Switch */}
-      <div className="p-4 sm:p-5 border-b border-[#D1EAEF] flex flex-col md:flex-row items-start md:items-center justify-between gap-3 cultiveta-gradient-ai cultiveta-grain rounded-t-3xl">
+      <div className="p-4 sm:p-5 border-b border-chip-line flex flex-col md:flex-row items-start md:items-center justify-between gap-3 cultiveta-gradient-ai cultiveta-grain rounded-t-3xl">
         <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-2xl bg-[#6C45C7]/15 text-[#6C45C7]">
+          <div className="p-2.5 rounded-2xl bg-brand/15 text-brand">
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
-            <h3 className="font-extrabold text-[#29202F] text-sm sm:text-base flex items-center gap-2">
+            <h3 className="font-extrabold text-ink text-sm sm:text-base flex items-center gap-2">
               <span>Asistente Cultiveta IA 🌱</span>
               {isSummaryMode && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#6C45C7]/15 text-[#6C45C7] border border-[#6C45C7]/30">
-                  <Zap className="w-3 h-3 text-[#6C45C7]" />
+                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand/15 text-brand border border-brand/30">
+                  <Zap className="w-3 h-3 text-brand" />
                   Modo Resumen
                 </span>
               )}
             </h3>
-            <p className="text-xs text-[#6E5D77]">
+            <p className="text-xs text-ink-muted">
               Respuestas agronómicas con contexto en tiempo real
             </p>
           </div>
@@ -243,12 +243,12 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
           {/* Crop Selector */}
           {cultivations.length > 0 && (
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-[#6E5D77] shrink-0">Carpa:</span>
+              <span className="text-xs font-bold text-ink-muted shrink-0">Carpa:</span>
               <select
                 id="ai-crop-select"
                 value={selectedCropId}
                 onChange={(e) => setSelectedCropId(e.target.value)}
-                className="px-3 py-1.5 rounded-2xl bg-white border border-[#D1EAEF] text-xs font-bold text-[#29202F] focus:outline-hidden focus:border-[#6C45C7] cursor-pointer shadow-2xs"
+                className="px-3 py-1.5 rounded-2xl bg-white border border-chip-line text-xs font-bold text-ink focus:outline-hidden focus:border-brand cursor-pointer shadow-2xs"
               >
                 <option value="">Pregunta general</option>
                 {cultivations.map((c) => (
@@ -261,13 +261,13 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
           )}
 
           {/* Summary Mode Switch */}
-          <div className="flex items-center gap-2.5 bg-white px-3 py-1.5 rounded-2xl border border-[#D1EAEF] shadow-2xs">
+          <div className="flex items-center gap-2.5 bg-white px-3 py-1.5 rounded-2xl border border-chip-line shadow-2xs">
             <div className="flex flex-col text-right">
-              <span className="text-xs font-bold text-[#29202F] flex items-center justify-end gap-1">
-                <FileText className={`w-3.5 h-3.5 ${isSummaryMode ? 'text-[#6C45C7]' : 'text-[#9887A2]'}`} />
+              <span className="text-xs font-bold text-ink flex items-center justify-end gap-1">
+                <FileText className={`w-3.5 h-3.5 ${isSummaryMode ? 'text-brand' : 'text-ink-subtle'}`} />
                 Modo Resumen
               </span>
-              <span className="text-[10px] text-[#6E5D77] hidden sm:inline">
+              <span className="text-[10px] text-ink-muted hidden sm:inline">
                 {isSummaryMode ? 'Condensando datos' : 'Condensar registros'}
               </span>
             </div>
@@ -278,7 +278,7 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
               aria-checked={isSummaryMode}
               onClick={() => setIsSummaryMode(!isSummaryMode)}
               className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden ${
-                isSummaryMode ? 'bg-[#6C45C7]' : 'bg-[#DECDB3]'
+                isSummaryMode ? 'bg-brand' : 'bg-line'
               }`}
               title={
                 isSummaryMode
@@ -298,20 +298,20 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
 
       {/* Summary Mode Banner with Condensed Key Points */}
       {isSummaryMode && (
-        <div className="bg-[#6C45C7]/10 border-b border-[#6C45C7]/20 px-4 sm:px-6 py-3 transition-all">
+        <div className="bg-brand/10 border-b border-brand/20 px-4 sm:px-6 py-3 transition-all">
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2 text-[#29202F]">
-              <div className="p-1.5 rounded-xl bg-[#6C45C7]/20 text-[#6C45C7] shrink-0">
+            <div className="flex items-center gap-2 text-ink">
+              <div className="p-1.5 rounded-xl bg-brand/20 text-brand shrink-0">
                 <FileText className="w-4 h-4" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-[#29202F]">Modo Resumen Activo</span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#6C45C7]/20 text-[#6C45C7]">
+                  <span className="text-xs font-bold text-ink">Modo Resumen Activo</span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand/20 text-brand">
                     {condensedSummary.envRecordsCount} registros de ambiente • {condensedSummary.wateringsCount} riegos
                   </span>
                 </div>
-                <p className="text-[11px] text-[#6E5D77]">
+                <p className="text-[11px] text-ink-muted">
                   Los registros se condensan en puntos clave y se envían como base antes de cada consulta.
                 </p>
               </div>
@@ -321,7 +321,7 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
               type="button"
               id="toggle-summary-preview-btn"
               onClick={() => setShowSummaryPreview(!showSummaryPreview)}
-              className="flex items-center gap-1 text-xs font-bold text-[#6C45C7] hover:bg-[#6C45C7]/15 px-2.5 py-1 rounded-xl transition-colors cursor-pointer shrink-0"
+              className="flex items-center gap-1 text-xs font-bold text-brand hover:bg-brand/15 px-2.5 py-1 rounded-xl transition-colors cursor-pointer shrink-0"
             >
               <span>{showSummaryPreview ? 'Ocultar puntos clave' : 'Ver puntos clave'}</span>
               {showSummaryPreview ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
@@ -330,9 +330,9 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
 
           {/* Expanded preview of condensed key points */}
           {showSummaryPreview && (
-            <div className="mt-3 pt-3 border-t border-[#6C45C7]/20 space-y-2">
-              <div className="text-[11px] font-bold text-[#29202F] uppercase tracking-wide flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-[#6C45C7]" />
+            <div className="mt-3 pt-3 border-t border-brand/20 space-y-2">
+              <div className="text-[11px] font-bold text-ink uppercase tracking-wide flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-brand" />
                 Puntos clave condensados para el asistente:
               </div>
 
@@ -340,9 +340,9 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
                 {condensedSummary.keyPoints.map((point, idx) => (
                   <div
                     key={idx}
-                    className="bg-white rounded-2xl p-2.5 border border-[#D1EAEF] text-xs text-[#29202F] flex items-start gap-2 shadow-2xs font-medium"
+                    className="bg-white rounded-2xl p-2.5 border border-chip-line text-xs text-ink flex items-start gap-2 shadow-2xs font-medium"
                   >
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#6C45C7] mt-1.5 shrink-0" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-brand mt-1.5 shrink-0" />
                     <span className="leading-relaxed">{point}</span>
                   </div>
                 ))}
@@ -350,13 +350,13 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
 
               {condensedSummary.alerts.length > 0 && (
                 <div className="mt-2 pt-1 flex flex-wrap items-center gap-1.5">
-                  <span className="text-[10px] font-bold text-[#EB7864] uppercase">Alertas clave:</span>
+                  <span className="text-[10px] font-bold text-coral uppercase">Alertas clave:</span>
                   {condensedSummary.alerts.map((alt, idx) => (
                     <span
                       key={idx}
-                      className="inline-flex items-center gap-1 text-[11px] bg-[#EB7864]/15 text-[#EB7864] border border-[#EB7864]/30 px-2.5 py-0.5 rounded-full font-bold"
+                      className="inline-flex items-center gap-1 text-[11px] bg-coral/15 text-coral border border-coral/30 px-2.5 py-0.5 rounded-full font-bold"
                     >
-                      <AlertTriangle className="w-3 h-3 text-[#EB7864] shrink-0" />
+                      <AlertTriangle className="w-3 h-3 text-coral shrink-0" />
                       {alt}
                     </span>
                   ))}
@@ -379,8 +379,8 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
             <div
               className={`w-8 h-8 rounded-2xl flex items-center justify-center shrink-0 text-xs font-bold ${
                 msg.sender === 'user'
-                  ? 'bg-[#62B95B] text-white shadow-2xs'
-                  : 'bg-[#6C45C7]/15 text-[#6C45C7]'
+                  ? 'bg-ok text-white shadow-2xs'
+                  : 'bg-brand/15 text-brand'
               }`}
             >
               {msg.sender === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
@@ -389,8 +389,8 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
             <div
               className={`p-4 rounded-3xl text-xs sm:text-sm leading-relaxed whitespace-pre-wrap ${
                 msg.sender === 'user'
-                  ? 'bg-[#62B95B] text-white rounded-tr-xs shadow-xs'
-                  : 'bg-[#FFFDF7] text-[#29202F] rounded-tl-xs border border-[#D1EAEF] shadow-2xs font-medium'
+                  ? 'bg-ok text-white rounded-tr-xs shadow-xs'
+                  : 'bg-surface text-ink rounded-tl-xs border border-chip-line shadow-2xs font-medium'
               }`}
             >
               {msg.text}
@@ -405,7 +405,7 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
 
               <div
                 className={`text-[10px] mt-2 font-semibold ${
-                  msg.sender === 'user' ? 'text-white/80' : 'text-[#9887A2]'
+                  msg.sender === 'user' ? 'text-white/80' : 'text-ink-subtle'
                 }`}
               >
                 {msg.timestamp}
@@ -416,10 +416,10 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
 
         {loading && (
           <div className="flex items-start gap-3 mr-auto max-w-xl">
-            <div className="w-8 h-8 rounded-2xl bg-[#6C45C7]/15 text-[#6C45C7] flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-2xl bg-brand/15 text-brand flex items-center justify-center shrink-0">
               <Sparkles className="w-4 h-4 animate-spin" />
             </div>
-            <div className="p-4 rounded-3xl rounded-tl-xs bg-[#FFFDF7] border border-[#D1EAEF] text-[#6E5D77] text-xs flex items-center gap-2">
+            <div className="p-4 rounded-3xl rounded-tl-xs bg-surface border border-chip-line text-ink-muted text-xs flex items-center gap-2">
               <span>
                 {isSummaryMode
                   ? 'Analizando puntos clave de ambiente y riegos...'
@@ -433,14 +433,14 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
       </div>
 
       {/* Quick Prompt Chips */}
-      <div className="px-4 py-2 bg-[#FFFDF7] border-t border-[#D1EAEF] flex items-center gap-2 overflow-x-auto scrollbar-none">
-        <span className="text-[11px] font-bold text-[#9887A2] shrink-0">Sugerencias:</span>
+      <div className="px-4 py-2 bg-surface border-t border-chip-line flex items-center gap-2 overflow-x-auto scrollbar-none">
+        <span className="text-[11px] font-bold text-ink-subtle shrink-0">Sugerencias:</span>
         {quickQuestions.map((q, idx) => (
           <button
             key={idx}
             type="button"
             onClick={() => handleSendMessage(q)}
-            className="px-3 py-1.5 rounded-full bg-white hover:bg-[#FAF2E1] text-[#29202F] hover:text-[#6C45C7] border border-[#D1EAEF] text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer shadow-2xs"
+            className="px-3 py-1.5 rounded-full bg-white hover:bg-track text-ink hover:text-brand border border-chip-line text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer shadow-2xs"
           >
             {q}
           </button>
@@ -448,7 +448,7 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
       </div>
 
       {/* Chat Input Bar */}
-      <div className="p-4 border-t border-[#D1EAEF] bg-white rounded-b-3xl">
+      <div className="p-4 border-t border-chip-line bg-white rounded-b-3xl">
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -467,13 +467,13 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
             disabled={loading}
-            className="flex-1 px-4 py-2.5 rounded-2xl bg-[#FFFDF7] border border-[#D1EAEF] text-[#29202F] text-xs sm:text-sm focus:outline-hidden focus:border-[#6C45C7] focus:bg-white font-medium"
+            className="flex-1 px-4 py-2.5 rounded-2xl bg-surface border border-chip-line text-ink text-xs sm:text-sm focus:outline-hidden focus:border-brand focus:bg-white font-medium"
           />
           <button
             type="submit"
             id="send-ai-chat-btn"
             disabled={!inputMessage.trim() || loading}
-            className="p-3 rounded-2xl bg-[#6C45C7] hover:bg-[#5835ab] text-white transition-all disabled:opacity-40 cursor-pointer shadow-md shadow-[#6C45C7]/20"
+            className="p-3 rounded-2xl bg-brand hover:bg-brand-deep text-white transition-all disabled:opacity-40 cursor-pointer shadow-md shadow-brand/20"
           >
             <Send className="w-4 h-4" />
           </button>

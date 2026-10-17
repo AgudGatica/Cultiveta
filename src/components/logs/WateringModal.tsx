@@ -190,27 +190,27 @@ export const WateringModal: React.FC<WateringModalProps> = ({
         id="watering-modal-box"
         className="cultiveta-modal-container max-w-xl p-6 sm:p-8 my-auto"
       >
-        <div className="flex items-center justify-between pb-4 border-b border-[#EFE3CF] mb-5">
+        <div className="flex items-center justify-between pb-4 border-b border-line mb-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-[#62B95B]/15 text-[#62B95B]">
+            <div className="p-3 rounded-2xl bg-ok/15 text-ok">
               <Droplets className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-[#29202F]">¿Regaste? 💧</h2>
-              <p className="text-xs text-[#6E5D77]">Anotá el riego para llevar el control de tus plantas</p>
+              <h2 className="text-xl font-black text-ink">¿Regaste? 💧</h2>
+              <p className="text-xs text-ink-muted">Anotá el riego para llevar el control de tus plantas</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-[#9887A2] hover:text-[#29202F] rounded-full hover:bg-[#FAF2E1] transition-colors cursor-pointer"
+            className="p-2 text-ink-subtle hover:text-ink rounded-full hover:bg-track transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3.5 rounded-2xl bg-[#EB7864]/10 border border-[#EB7864]/30 text-[#EB7864] text-xs font-semibold">
+          <div className="mb-4 p-3.5 rounded-2xl bg-coral/10 border border-coral/30 text-coral text-xs font-semibold">
             {error}
           </div>
         )}
@@ -219,13 +219,13 @@ export const WateringModal: React.FC<WateringModalProps> = ({
           {/* Crop Selector & Date */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-3">
-              <label className="block text-xs font-bold text-[#29202F] mb-1">Cultivo *</label>
+              <label className="block text-xs font-bold text-ink mb-1">Cultivo *</label>
               <select
                 id="watering-crop-select"
                 value={cultivationId}
                 onChange={(e) => setCultivationId(e.target.value)}
                 required
-                className="w-full px-3.5 py-2.5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-[#29202F] text-sm focus:outline-hidden focus:border-[#62B95B] focus:bg-white cursor-pointer font-medium"
+                className="w-full px-3.5 py-2.5 rounded-2xl bg-surface border border-line text-ink text-sm focus:outline-hidden focus:border-ok focus:bg-white cursor-pointer font-medium"
               >
                 {cultivations.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -236,30 +236,30 @@ export const WateringModal: React.FC<WateringModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#29202F] mb-1">Fecha</label>
+              <label className="block text-xs font-bold text-ink mb-1">Fecha</label>
               <input
                 id="watering-date-input"
                 type="date"
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#62B95B] focus:bg-white font-medium"
+                className="w-full px-3 py-2 rounded-2xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok focus:bg-white font-medium"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#29202F] mb-1">Hora</label>
+              <label className="block text-xs font-bold text-ink mb-1">Hora</label>
               <input
                 id="watering-time-input"
                 type="time"
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
-                className="w-full px-3 py-2 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#62B95B] focus:bg-white font-medium"
+                className="w-full px-3 py-2 rounded-2xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok focus:bg-white font-medium"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#29202F] mb-1">¿Cuánto regaste? *</label>
+              <label className="block text-xs font-bold text-ink mb-1">¿Cuánto regaste? *</label>
               <div className="relative">
                 <input
                   id="watering-volume-input"
@@ -270,28 +270,28 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                   placeholder="ej. 5.0"
                   value={volumeLiters}
                   onChange={(e) => setVolumeLiters(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                  className="w-full px-3.5 py-2 rounded-2xl bg-[#62B95B]/10 border border-[#62B95B]/40 font-black text-sm text-[#29202F] focus:outline-hidden focus:border-[#62B95B] focus:bg-white pr-8"
+                  className="w-full px-3.5 py-2 rounded-2xl bg-ok/10 border border-ok/40 font-black text-sm text-ink focus:outline-hidden focus:border-ok focus:bg-white pr-8"
                 />
-                <span className="absolute right-3 top-2 text-xs font-bold text-[#62B95B]">L</span>
+                <span className="absolute right-3 top-2 text-xs font-bold text-ok">L</span>
               </div>
             </div>
           </div>
 
           {/* Nutrientes Toggle */}
-          <div className="p-4 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] space-y-3">
+          <div className="p-4 rounded-2xl bg-surface border border-line space-y-3">
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-xs font-extrabold text-[#29202F] block">¿Usaste nutrientes?</span>
-                <span className="text-[11px] text-[#6E5D77] block">Fertilizantes, estimuladores o aditivos</span>
+                <span className="text-xs font-extrabold text-ink block">¿Usaste nutrientes?</span>
+                <span className="text-[11px] text-ink-muted block">Fertilizantes, estimuladores o aditivos</span>
               </div>
-              <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-[#EFE3CF]">
+              <div className="flex items-center gap-1.5 bg-white p-1 rounded-xl border border-line">
                 <button
                   type="button"
                   onClick={() => setUsedNutrients(false)}
                   className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     !usedNutrients
-                      ? 'bg-[#29202F] text-white shadow-2xs'
-                      : 'text-[#6E5D77] hover:text-[#29202F]'
+                      ? 'bg-ink text-white shadow-2xs'
+                      : 'text-ink-muted hover:text-ink'
                   }`}
                 >
                   No
@@ -301,8 +301,8 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                   onClick={() => setUsedNutrients(true)}
                   className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                     usedNutrients
-                      ? 'bg-[#62B95B] text-white shadow-2xs'
-                      : 'text-[#6E5D77] hover:text-[#29202F]'
+                      ? 'bg-ok text-white shadow-2xs'
+                      : 'text-ink-muted hover:text-ink'
                   }`}
                 >
                   Sí
@@ -312,11 +312,11 @@ export const WateringModal: React.FC<WateringModalProps> = ({
 
             {/* Products & Fertilizers if used */}
             {usedNutrients && (
-              <div className="pt-3 border-t border-[#EFE3CF] space-y-3 animate-in fade-in duration-200">
+              <div className="pt-3 border-t border-line space-y-3 animate-in fade-in duration-200">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-[#29202F]">Productos aplicados</label>
+                  <label className="block text-xs font-bold text-ink">Productos aplicados</label>
                   {fertilizationWeekNumber && (
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#62B95B]/15 text-[#62B95B] border border-[#62B95B]/30">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-ok/15 text-ok border border-ok/30">
                       Receta Semana {fertilizationWeekNumber}
                     </span>
                   )}
@@ -324,10 +324,10 @@ export const WateringModal: React.FC<WateringModalProps> = ({
 
                 {/* Quick load from fertilization schedule */}
                 {cropSchedule && cropSchedule.weeks.length > 0 && (
-                  <div className="p-3 rounded-2xl bg-[#62B95B]/10 border border-[#62B95B]/25 space-y-2">
-                    <div className="flex items-center justify-between text-xs font-bold text-[#29202F]">
+                  <div className="p-3 rounded-2xl bg-ok/10 border border-ok/25 space-y-2">
+                    <div className="flex items-center justify-between text-xs font-bold text-ink">
                       <span className="flex items-center gap-1.5">
-                        <FlaskConical className="w-4 h-4 text-[#62B95B]" />
+                        <FlaskConical className="w-4 h-4 text-ok" />
                         Cargar desde Tabla ({cropSchedule.brand || cropSchedule.name}):
                       </span>
                     </div>
@@ -339,8 +339,8 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                           onClick={() => handleApplyScheduleWeek(w.weekNumber)}
                           className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer border ${
                             fertilizationWeekNumber === w.weekNumber && products.length > 0
-                              ? 'bg-[#62B95B] text-white border-[#62B95B] shadow-2xs'
-                              : 'bg-white text-[#29202F] hover:bg-[#FAF2E1] border-[#EFE3CF]'
+                              ? 'bg-ok text-white border-ok shadow-2xs'
+                              : 'bg-white text-ink hover:bg-track border-line'
                           }`}
                         >
                           Sem {w.weekNumber}
@@ -356,13 +356,13 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                     : null;
 
                   return (
-                    <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-[#EFE3CF] text-xs shadow-2xs">
+                    <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-line text-xs shadow-2xs">
                       <div>
-                        <span className="font-bold text-[#29202F] block">
+                        <span className="font-bold text-ink block">
                           {p.name} {p.dosageMlPerL ? `(${p.dosageMlPerL} ml/L)` : ''}
                         </span>
                         {totalMl && (
-                          <span className="text-[10px] text-[#62B95B] font-semibold">
+                          <span className="text-[10px] text-ok font-semibold">
                             Total para {volumeLiters}L: <strong>{totalMl} ml</strong>
                           </span>
                         )}
@@ -370,7 +370,7 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                       <button
                         type="button"
                         onClick={() => handleRemoveProduct(idx)}
-                        className="text-[#9887A2] hover:text-[#EB7864] cursor-pointer p-1"
+                        className="text-ink-subtle hover:text-coral cursor-pointer p-1"
                         title="Quitar producto"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -385,7 +385,7 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                     placeholder="Nombre (ej. CalMag, Flora)"
                     value={newProductName}
                     onChange={(e) => setNewProductName(e.target.value)}
-                    className="flex-1 px-3 py-2 rounded-xl bg-white border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#62B95B]"
+                    className="flex-1 px-3 py-2 rounded-xl bg-white border border-line text-xs text-ink focus:outline-hidden focus:border-ok"
                   />
                   <input
                     type="number"
@@ -393,12 +393,12 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                     placeholder="ml/L"
                     value={newProductDosage}
                     onChange={(e) => setNewProductDosage(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                    className="w-20 px-3 py-2 rounded-xl bg-white border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#62B95B]"
+                    className="w-20 px-3 py-2 rounded-xl bg-white border border-line text-xs text-ink focus:outline-hidden focus:border-ok"
                   />
                   <button
                     type="button"
                     onClick={handleAddProduct}
-                    className="p-2 rounded-xl bg-[#62B95B] text-white hover:bg-[#52a44b] transition-colors cursor-pointer"
+                    className="p-2 rounded-xl bg-ok text-white hover:bg-[#52a44b] transition-colors cursor-pointer"
                     title="Agregar producto"
                   >
                     <Plus className="w-4 h-4" />
@@ -409,14 +409,14 @@ export const WateringModal: React.FC<WateringModalProps> = ({
           </div>
 
           {/* Percepción de peso al levantar la maceta a mano (sin balanza) */}
-          <div className="p-4 rounded-2xl bg-white border border-[#EFE3CF] space-y-2.5">
+          <div className="p-4 rounded-2xl bg-white border border-line space-y-2.5">
             <div className="flex items-center justify-between">
-              <h4 className="text-[11px] font-bold uppercase tracking-wider text-[#6E5D77]">
+              <h4 className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
                 Antes de regar, levantá la maceta
               </h4>
-              <span className="text-[10px] text-[#9887A2] font-semibold">Opcional</span>
+              <span className="text-[10px] text-ink-subtle font-semibold">Opcional</span>
             </div>
-            <p className="text-xs font-semibold text-[#29202F]">
+            <p className="text-xs font-semibold text-ink">
               ¿Cómo la sentís?
             </p>
 
@@ -427,12 +427,12 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                 onClick={() => setPotLiftBeforeWatering(potLiftBeforeWatering === 'heavy' ? undefined : 'heavy')}
                 className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                   potLiftBeforeWatering === 'heavy'
-                    ? 'bg-[#EBF7EB] border-[#62B95B] text-[#29202F] shadow-xs ring-1 ring-[#62B95B]'
-                    : 'bg-[#FFFDF7] border-[#EFE3CF] text-[#6E5D77] hover:border-[#62B95B]/50'
+                    ? 'bg-[#EBF7EB] border-ok text-ink shadow-xs ring-1 ring-ok'
+                    : 'bg-surface border-line text-ink-muted hover:border-ok/50'
                 }`}
               >
-                <div className="text-xs font-bold text-[#29202F]">PESADA</div>
-                <div className="text-[11px] text-[#6E5D77] mt-0.5 leading-tight">
+                <div className="text-xs font-bold text-ink">PESADA</div>
+                <div className="text-[11px] text-ink-muted mt-0.5 leading-tight">
                   Todavía parece conservar bastante agua.
                 </div>
               </button>
@@ -443,12 +443,12 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                 onClick={() => setPotLiftBeforeWatering(potLiftBeforeWatering === 'medium' ? undefined : 'medium')}
                 className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                   potLiftBeforeWatering === 'medium'
-                    ? 'bg-[#EBF7EB] border-[#62B95B] text-[#29202F] shadow-xs ring-1 ring-[#62B95B]'
-                    : 'bg-[#FFFDF7] border-[#EFE3CF] text-[#6E5D77] hover:border-[#62B95B]/50'
+                    ? 'bg-[#EBF7EB] border-ok text-ink shadow-xs ring-1 ring-ok'
+                    : 'bg-surface border-line text-ink-muted hover:border-ok/50'
                 }`}
               >
-                <div className="text-xs font-bold text-[#29202F]">INTERMEDIA</div>
-                <div className="text-[11px] text-[#6E5D77] mt-0.5 leading-tight">
+                <div className="text-xs font-bold text-ink">INTERMEDIA</div>
+                <div className="text-[11px] text-ink-muted mt-0.5 leading-tight">
                   Ya perdió parte del agua, pero todavía tiene peso.
                 </div>
               </button>
@@ -459,12 +459,12 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                 onClick={() => setPotLiftBeforeWatering(potLiftBeforeWatering === 'light' ? undefined : 'light')}
                 className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                   potLiftBeforeWatering === 'light'
-                    ? 'bg-[#EBF7EB] border-[#62B95B] text-[#29202F] shadow-xs ring-1 ring-[#62B95B]'
-                    : 'bg-[#FFFDF7] border-[#EFE3CF] text-[#6E5D77] hover:border-[#62B95B]/50'
+                    ? 'bg-[#EBF7EB] border-ok text-ink shadow-xs ring-1 ring-ok'
+                    : 'bg-surface border-line text-ink-muted hover:border-ok/50'
                 }`}
               >
-                <div className="text-xs font-bold text-[#29202F]">LIVIANA</div>
-                <div className="text-[11px] text-[#6E5D77] mt-0.5 leading-tight">
+                <div className="text-xs font-bold text-ink">LIVIANA</div>
+                <div className="text-[11px] text-ink-muted mt-0.5 leading-tight">
                   Ya perdió buena parte del agua.
                 </div>
               </button>
@@ -475,28 +475,28 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                 onClick={() => setPotLiftBeforeWatering(potLiftBeforeWatering === 'very_light' ? undefined : 'very_light')}
                 className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                   potLiftBeforeWatering === 'very_light'
-                    ? 'bg-[#EBF7EB] border-[#62B95B] text-[#29202F] shadow-xs ring-1 ring-[#62B95B]'
-                    : 'bg-[#FFFDF7] border-[#EFE3CF] text-[#6E5D77] hover:border-[#62B95B]/50'
+                    ? 'bg-[#EBF7EB] border-ok text-ink shadow-xs ring-1 ring-ok'
+                    : 'bg-surface border-line text-ink-muted hover:border-ok/50'
                 }`}
               >
-                <div className="text-xs font-bold text-[#29202F]">MUY LIVIANA</div>
-                <div className="text-[11px] text-[#6E5D77] mt-0.5 leading-tight">
+                <div className="text-xs font-bold text-ink">MUY LIVIANA</div>
+                <div className="text-[11px] text-ink-muted mt-0.5 leading-tight">
                   El sustrato parece bastante seco.
                 </div>
               </button>
             </div>
 
-            <p className="text-[11px] text-[#9887A2] italic pt-0.5">
+            <p className="text-[11px] text-ink-subtle italic pt-0.5">
               No hace falta usar una balanza. Comparala con cómo se siente recién regada.
             </p>
           </div>
 
           {/* Progressive Disclosure: Agregar datos técnicos */}
-          <div className="border border-[#EFE3CF] rounded-2xl overflow-hidden bg-[#FFFDF7]">
+          <div className="border border-line rounded-2xl overflow-hidden bg-surface">
             <button
               type="button"
               onClick={() => setShowTechnicalDetails((prev) => !prev)}
-              className="w-full p-4 flex items-center justify-between text-left text-xs font-bold text-[#6C45C7] hover:bg-[#FAF2E1] transition-colors cursor-pointer"
+              className="w-full p-4 flex items-center justify-between text-left text-xs font-bold text-brand hover:bg-track transition-colors cursor-pointer"
             >
               <span>{showTechnicalDetails ? 'Ocultar datos técnicos' : 'Agregar datos técnicos (pH, EC, drenaje, temp)'}</span>
               <ChevronDown
@@ -509,11 +509,11 @@ export const WateringModal: React.FC<WateringModalProps> = ({
             {showTechnicalDetails && (
               <div className="p-4 pt-0 space-y-4 animate-in fade-in duration-200">
                 {/* Water Input parameters */}
-                <div className="p-3.5 rounded-xl bg-white border border-[#EFE3CF] space-y-2.5">
-                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-[#6E5D77]">Agua de Entrada</h4>
+                <div className="p-3.5 rounded-xl bg-white border border-line space-y-2.5">
+                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Agua de Entrada</h4>
                   <div className="grid grid-cols-3 gap-2.5">
                     <div>
-                      <label className="block text-[11px] font-semibold text-[#6E5D77] mb-1">pH entrada</label>
+                      <label className="block text-[11px] font-semibold text-ink-muted mb-1">pH entrada</label>
                       <input
                         id="watering-ph-in-input"
                         type="number"
@@ -523,12 +523,12 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                         placeholder="ej. 6.2"
                         value={phIn}
                         onChange={(e) => setPhIn(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                        className="w-full px-3 py-1.5 rounded-xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] font-semibold focus:outline-hidden focus:border-[#62B95B]"
+                        className="w-full px-3 py-1.5 rounded-xl bg-surface border border-line text-xs text-ink font-semibold focus:outline-hidden focus:border-ok"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-semibold text-[#6E5D77] mb-1">EC (mS/cm)</label>
+                      <label className="block text-[11px] font-semibold text-ink-muted mb-1">EC (mS/cm)</label>
                       <input
                         id="watering-ec-in-input"
                         type="number"
@@ -538,12 +538,12 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                         placeholder="ej. 1.6"
                         value={ecIn}
                         onChange={(e) => setEcIn(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                        className="w-full px-3 py-1.5 rounded-xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] font-semibold focus:outline-hidden focus:border-[#62B95B]"
+                        className="w-full px-3 py-1.5 rounded-xl bg-surface border border-line text-xs text-ink font-semibold focus:outline-hidden focus:border-ok"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-semibold text-[#6E5D77] mb-1">Temp (°C)</label>
+                      <label className="block text-[11px] font-semibold text-ink-muted mb-1">Temp (°C)</label>
                       <input
                         id="watering-temp-input"
                         type="number"
@@ -551,18 +551,18 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                         placeholder="ej. 20"
                         value={waterTempC}
                         onChange={(e) => setWaterTempC(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                        className="w-full px-3 py-1.5 rounded-xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#62B95B]"
+                        className="w-full px-3 py-1.5 rounded-xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok"
                       />
                     </div>
                   </div>
                 </div>
 
                 {/* Runoff Drainage */}
-                <div className="p-3.5 rounded-xl bg-white border border-[#EFE3CF] space-y-2.5">
-                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-[#6E5D77]">Drenaje / Runoff</h4>
+                <div className="p-3.5 rounded-xl bg-white border border-line space-y-2.5">
+                  <h4 className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Drenaje / Runoff</h4>
                   <div className="grid grid-cols-2 gap-2.5">
                     <div>
-                      <label className="block text-[11px] font-semibold text-[#6E5D77] mb-1">pH Drenaje</label>
+                      <label className="block text-[11px] font-semibold text-ink-muted mb-1">pH Drenaje</label>
                       <input
                         id="watering-ph-runoff-input"
                         type="number"
@@ -572,12 +572,12 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                         placeholder="ej. 6.4"
                         value={phRunoff}
                         onChange={(e) => setPhRunoff(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                        className="w-full px-3 py-1.5 rounded-xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#62B95B]"
+                        className="w-full px-3 py-1.5 rounded-xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-semibold text-[#6E5D77] mb-1">EC Drenaje (mS/cm)</label>
+                      <label className="block text-[11px] font-semibold text-ink-muted mb-1">EC Drenaje (mS/cm)</label>
                       <input
                         id="watering-ec-runoff-input"
                         type="number"
@@ -587,13 +587,13 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                         placeholder="ej. 1.9"
                         value={ecRunoff}
                         onChange={(e) => setEcRunoff(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                        className="w-full px-3 py-1.5 rounded-xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#62B95B]"
+                        className="w-full px-3 py-1.5 rounded-xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok"
                       />
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-[#EFE3CF]/60">
-                    <label className="block text-[11px] font-semibold text-[#6E5D77] mb-1">Volumen de Drenaje / Runoff (L)</label>
+                  <div className="pt-2 border-t border-line/60">
+                    <label className="block text-[11px] font-semibold text-ink-muted mb-1">Volumen de Drenaje / Runoff (L)</label>
                     <input
                       id="watering-runoff-volume-input"
                       type="number"
@@ -603,20 +603,20 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                       placeholder="ej. 0.3 L recolectados"
                       value={runoffVolumeLiters}
                       onChange={(e) => setRunoffVolumeLiters(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                      className="w-full px-3 py-1.5 rounded-xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#62B95B]"
+                      className="w-full px-3 py-1.5 rounded-xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok"
                     />
                   </div>
                 </div>
 
                 {/* Sensores opcionales de humedad de sustrato */}
-                <div className="p-3.5 rounded-xl bg-white border border-[#EFE3CF] space-y-2.5">
+                <div className="p-3.5 rounded-xl bg-white border border-line space-y-2.5">
                   <div className="flex items-center justify-between">
-                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-[#6E5D77]">Sensor de Humedad en Sustrato</h4>
-                    <span className="text-[10px] text-[#9887A2] font-semibold">Opcional</span>
+                    <h4 className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">Sensor de Humedad en Sustrato</h4>
+                    <span className="text-[10px] text-ink-subtle font-semibold">Opcional</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2.5 pt-1">
                     <div>
-                      <label className="block text-[11px] font-semibold text-[#6E5D77] mb-1">Humedad sustrato antes (%)</label>
+                      <label className="block text-[11px] font-semibold text-ink-muted mb-1">Humedad sustrato antes (%)</label>
                       <input
                         id="watering-moisture-before-input"
                         type="number"
@@ -626,12 +626,12 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                         placeholder="ej. 20%"
                         value={substrateMoistureBeforePct}
                         onChange={(e) => setSubstrateMoistureBeforePct(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                        className="w-full px-3 py-1.5 rounded-xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#62B95B]"
+                        className="w-full px-3 py-1.5 rounded-xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-semibold text-[#6E5D77] mb-1">Humedad sustrato después (%)</label>
+                      <label className="block text-[11px] font-semibold text-ink-muted mb-1">Humedad sustrato después (%)</label>
                       <input
                         id="watering-moisture-after-input"
                         type="number"
@@ -641,7 +641,7 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                         placeholder="ej. 85%"
                         value={substrateMoistureAfterPct}
                         onChange={(e) => setSubstrateMoistureAfterPct(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                        className="w-full px-3 py-1.5 rounded-xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#62B95B]"
+                        className="w-full px-3 py-1.5 rounded-xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok"
                       />
                     </div>
                   </div>
@@ -649,14 +649,14 @@ export const WateringModal: React.FC<WateringModalProps> = ({
 
                 {/* Observations */}
                 <div>
-                  <label className="block text-xs font-bold text-[#29202F] mb-1">Observaciones</label>
+                  <label className="block text-xs font-bold text-ink mb-1">Observaciones</label>
                   <textarea
                     id="watering-observations-input"
                     rows={2}
                     placeholder="Absorción del sustrato, escurrimiento, respuesta de la planta..."
                     value={observations}
                     onChange={(e) => setObservations(e.target.value)}
-                    className="w-full px-3 py-2 rounded-2xl bg-white border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#62B95B]"
+                    className="w-full px-3 py-2 rounded-2xl bg-white border border-line text-xs text-ink focus:outline-hidden focus:border-ok"
                   />
                 </div>
               </div>
@@ -664,7 +664,7 @@ export const WateringModal: React.FC<WateringModalProps> = ({
           </div>
 
           {/* Actions */}
-          <div className="pt-3 border-t border-[#EFE3CF] flex items-center justify-end gap-3">
+          <div className="pt-3 border-t border-line flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}

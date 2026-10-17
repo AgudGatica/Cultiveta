@@ -479,11 +479,11 @@ export default function App() {
     return (
       <div className="min-h-screen cultiveta-page-background flex items-center justify-center p-4">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-16 h-16 rounded-3xl bg-white border border-[#D1EAEF] shadow-md flex items-center justify-center text-3xl transition-transform animate-bounce">
+          <div className="w-16 h-16 rounded-3xl bg-white border border-chip-line shadow-md flex items-center justify-center text-3xl transition-transform animate-bounce">
             🌱
           </div>
-          <span className="text-xl font-black text-[#29202F] tracking-tight">Cultiveta</span>
-          <p className="text-xs font-bold text-[#6E5D77]">Preparando tu cultivo...</p>
+          <span className="text-xl font-black text-ink tracking-tight">Cultiveta</span>
+          <p className="text-xs font-bold text-ink-muted">Preparando tu cultivo...</p>
         </div>
       </div>
     );
@@ -513,14 +513,14 @@ export default function App() {
   }
 
   return (
-    <div className="cultiveta-app-shell text-[#29202F] flex flex-col selection:bg-[#5C4FCF] selection:text-white">
-      {/* Capa de fondo fija e inmutable: Degradado vertical continuo 100% liso (#D9C53A → #B9D146 → #6CCB63 → #42C98A → #4B7FC8 → #5B4CCB) */}
+    <div className="cultiveta-app-shell text-ink flex flex-col selection:bg-brand selection:text-white">
+      {/* Capa de fondo fija: degradado vertical "Océano" (tokens --color-ocean-* en index.css) */}
       <div aria-hidden="true" className="cultiveta-page-background" />
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed top-5 right-5 z-50 px-5 py-3 rounded-2xl bg-white text-[#29202F] text-xs font-bold shadow-xl border border-[#D1EAEF] animate-in slide-in-from-top duration-200 flex items-center gap-2.5">
-          <div className="w-2.5 h-2.5 rounded-full bg-[#62B95B] animate-ping" />
+        <div className="fixed top-5 right-5 z-50 px-5 py-3 rounded-2xl bg-white text-ink text-xs font-bold shadow-xl border border-chip-line animate-in slide-in-from-top duration-200 flex items-center gap-2.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-ok animate-ping" />
           <span>{toastMessage}</span>
         </div>
       )}
@@ -619,11 +619,11 @@ export default function App() {
           {/* VIEW: CULTIVATIONS LIST */}
           {currentView === 'cultivations' && (
             <div className="space-y-6">
-              <div className="flex items-center justify-between bg-white rounded-[32px] p-6 sm:p-8 border border-[#D1EAEF] shadow-xs relative overflow-hidden">
+              <div className="flex items-center justify-between bg-white rounded-[32px] p-6 sm:p-8 border border-chip-line shadow-xs relative overflow-hidden">
                 <div className="relative z-10">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#9887A2] mb-1 block">Gestión de Salas</span>
-                  <h2 className="font-extrabold text-2xl text-[#29202F]">Mis Cultivos 🌱</h2>
-                  <p className="text-xs text-[#6E5D77] mt-1">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-ink-subtle mb-1 block">Gestión de Salas</span>
+                  <h2 className="font-extrabold text-2xl text-ink">Mis Cultivos 🌱</h2>
+                  <p className="text-xs text-ink-muted mt-1">
                     Seguimiento individual de carpas, salas y plantas
                   </p>
                 </div>
@@ -635,7 +635,7 @@ export default function App() {
                     setCultivationToEdit(null);
                     setIsCultivationFormOpen(true);
                   }}
-                  className="relative z-10 px-6 py-3 rounded-2xl bg-[#62B95B] hover:bg-[#52A54C] text-white text-xs font-bold transition-all shadow-md shadow-[#62B95B]/20 flex items-center gap-2 cursor-pointer"
+                  className="relative z-10 px-6 py-3 rounded-2xl bg-ok hover:bg-[#52A54C] text-white text-xs font-bold transition-all shadow-md shadow-ok/20 flex items-center gap-2 cursor-pointer"
                 >
                   <Plus className="w-4 h-4 text-white stroke-[2.5]" />
                   <span>Nuevo Cultivo</span>
@@ -656,13 +656,13 @@ export default function App() {
               )}
 
               {cultivations.length === 0 ? (
-                <div className="bg-white rounded-[32px] p-12 border border-[#D1EAEF] text-center space-y-4 shadow-xs">
-                  <div className="w-16 h-16 rounded-2xl bg-[#FAF2E1] border border-[#D1EAEF] text-[#62B95B] flex items-center justify-center mx-auto">
+                <div className="bg-white rounded-[32px] p-12 border border-chip-line text-center space-y-4 shadow-xs">
+                  <div className="w-16 h-16 rounded-2xl bg-track border border-chip-line text-ok flex items-center justify-center mx-auto">
                     <Sprout className="w-8 h-8" />
                   </div>
                   <div>
-                    <h3 className="font-bold text-[#29202F] text-base">Todavía no anotaste ningún cultivo.</h3>
-                    <p className="text-xs text-[#6E5D77] max-w-sm mx-auto mt-1">
+                    <h3 className="font-bold text-ink text-base">Todavía no anotaste ningún cultivo.</h3>
+                    <p className="text-xs text-ink-muted max-w-sm mx-auto mt-1">
                       Creá tu primer cultivo para empezar a registrar riegos, parámetros y fotografías.
                     </p>
                   </div>
@@ -672,36 +672,36 @@ export default function App() {
                       setCultivationToEdit(null);
                       setIsCultivationFormOpen(true);
                     }}
-                    className="px-6 py-3 rounded-2xl bg-[#62B95B] hover:bg-[#52A54C] text-white font-bold text-xs transition-all shadow-lg shadow-[#62B95B]/20 cursor-pointer inline-flex items-center gap-2"
+                    className="px-6 py-3 rounded-2xl bg-ok hover:bg-[#52A54C] text-white font-bold text-xs transition-all shadow-lg shadow-ok/20 cursor-pointer inline-flex items-center gap-2"
                   >
                     <Plus className="w-4 h-4 stroke-[2.5]" />
                     Crear cultivo
                   </button>
                 </div>
               ) : filteredCultivations.length === 0 ? (
-                <div className="bg-white rounded-[32px] p-10 border border-[#D1EAEF] text-center space-y-4 shadow-xs">
-                  <div className="w-12 h-12 rounded-2xl bg-[#FAF2E1] border border-[#D1EAEF] text-[#9887A2] flex items-center justify-center mx-auto">
+                <div className="bg-white rounded-[32px] p-10 border border-chip-line text-center space-y-4 shadow-xs">
+                  <div className="w-12 h-12 rounded-2xl bg-track border border-chip-line text-ink-subtle flex items-center justify-center mx-auto">
                     <SlidersHorizontal className="w-6 h-6" />
                   </div>
                   <div>
                     {cultivationSearchQuery.trim() ? (
                       <>
-                        <h3 className="font-bold text-[#29202F] text-base">No hay cultivos que coincidan</h3>
-                        <p className="text-xs text-[#6E5D77] max-w-sm mx-auto mt-1">
-                          No encontramos plantas con el término &quot;<strong className="text-[#29202F]">{cultivationSearchQuery}</strong>&quot;.
+                        <h3 className="font-bold text-ink text-base">No hay cultivos que coincidan</h3>
+                        <p className="text-xs text-ink-muted max-w-sm mx-auto mt-1">
+                          No encontramos plantas con el término &quot;<strong className="text-ink">{cultivationSearchQuery}</strong>&quot;.
                         </p>
                         <button
                           type="button"
                           onClick={() => setCultivationSearchQuery('')}
-                          className="mt-3 px-4 py-2 rounded-xl bg-[#FAF2E1] hover:bg-[#EFE3CF] text-[#29202F] font-semibold text-xs transition-colors cursor-pointer inline-flex items-center gap-2"
+                          className="mt-3 px-4 py-2 rounded-xl bg-track hover:bg-line text-ink font-semibold text-xs transition-colors cursor-pointer inline-flex items-center gap-2"
                         >
                           Limpiar búsqueda
                         </button>
                       </>
                     ) : cultivationStatusFilter === 'active' ? (
                       <>
-                        <h3 className="font-bold text-[#29202F] text-base">No tenés cultivos activos ahora.</h3>
-                        <p className="text-xs text-[#6E5D77] max-w-sm mx-auto mt-1">
+                        <h3 className="font-bold text-ink text-base">No tenés cultivos activos ahora.</h3>
+                        <p className="text-xs text-ink-muted max-w-sm mx-auto mt-1">
                           Podés iniciar una nueva carpa o revisar tus cultivos finalizados.
                         </p>
                         <button
@@ -710,7 +710,7 @@ export default function App() {
                             setCultivationToEdit(null);
                             setIsCultivationFormOpen(true);
                           }}
-                          className="mt-3 px-5 py-2.5 rounded-2xl bg-[#62B95B] hover:bg-[#52A54C] text-white font-bold text-xs transition-all shadow-md shadow-[#62B95B]/20 cursor-pointer inline-flex items-center gap-2"
+                          className="mt-3 px-5 py-2.5 rounded-2xl bg-ok hover:bg-[#52A54C] text-white font-bold text-xs transition-all shadow-md shadow-ok/20 cursor-pointer inline-flex items-center gap-2"
                         >
                           <Plus className="w-4 h-4 stroke-[2.5]" />
                           Crear cultivo
@@ -718,15 +718,15 @@ export default function App() {
                       </>
                     ) : cultivationStatusFilter === 'finished' ? (
                       <>
-                        <h3 className="font-bold text-[#29202F] text-base">Todavía no terminaste ningún cultivo.</h3>
-                        <p className="text-xs text-[#6E5D77] max-w-sm mx-auto mt-1">
+                        <h3 className="font-bold text-ink text-base">Todavía no terminaste ningún cultivo.</h3>
+                        <p className="text-xs text-ink-muted max-w-sm mx-auto mt-1">
                           Cuando coseches un cultivo activo, aparecerá registrado aquí con su historial.
                         </p>
                       </>
                     ) : (
                       <>
-                        <h3 className="font-bold text-[#29202F] text-base">Todavía no anotaste ningún cultivo.</h3>
-                        <p className="text-xs text-[#6E5D77] max-w-sm mx-auto mt-1">
+                        <h3 className="font-bold text-ink text-base">Todavía no anotaste ningún cultivo.</h3>
+                        <p className="text-xs text-ink-muted max-w-sm mx-auto mt-1">
                           Iniciá tu primer cultivo para comenzar el seguimiento.
                         </p>
                         <button
@@ -735,7 +735,7 @@ export default function App() {
                             setCultivationToEdit(null);
                             setIsCultivationFormOpen(true);
                           }}
-                          className="mt-3 px-5 py-2.5 rounded-2xl bg-[#62B95B] hover:bg-[#52A54C] text-white font-bold text-xs transition-all shadow-md shadow-[#62B95B]/20 cursor-pointer inline-flex items-center gap-2"
+                          className="mt-3 px-5 py-2.5 rounded-2xl bg-ok hover:bg-[#52A54C] text-white font-bold text-xs transition-all shadow-md shadow-ok/20 cursor-pointer inline-flex items-center gap-2"
                         >
                           <Plus className="w-4 h-4 stroke-[2.5]" />
                           Crear cultivo

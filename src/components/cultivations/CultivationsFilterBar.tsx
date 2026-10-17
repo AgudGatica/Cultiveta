@@ -104,12 +104,12 @@ export const CultivationsFilterBar: React.FC<CultivationsFilterBarProps> = ({
   return (
     <div
       id="cultivations-filter-bar"
-      className="bg-white rounded-[32px] p-4 sm:p-6 border border-[#D1EAEF] shadow-xs space-y-4"
+      className="bg-white rounded-[32px] p-4 sm:p-6 border border-chip-line shadow-xs space-y-4"
     >
       {/* Nivel Superior: Selector de Estado (Activos / Finalizados / Todos) + Barra de Búsqueda */}
       <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         {/* Pestañas de Estado Principal */}
-        <div className="flex items-center gap-1.5 p-1 bg-[#FFFDF7] rounded-2xl border border-[#D1EAEF] self-start sm:self-auto">
+        <div className="flex items-center gap-1.5 p-1 bg-surface rounded-2xl border border-chip-line self-start sm:self-auto">
           {statusTabs.map((tab) => {
             const isSelected = statusFilter === tab.id;
             return (
@@ -120,14 +120,14 @@ export const CultivationsFilterBar: React.FC<CultivationsFilterBarProps> = ({
                 onClick={() => onStatusFilterChange?.(tab.id)}
                 className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
                   isSelected
-                    ? 'bg-[#6C45C7] text-white shadow-xs'
-                    : 'text-[#6E5D77] hover:text-[#29202F] hover:bg-[#FAF2E1]'
+                    ? 'bg-brand text-white shadow-xs'
+                    : 'text-ink-muted hover:text-ink hover:bg-track'
                 }`}
               >
                 <span>{tab.label}</span>
                 <span
                   className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                    isSelected ? 'bg-white/20 text-white' : 'bg-[#EFE3CF] text-[#29202F]'
+                    isSelected ? 'bg-white/20 text-white' : 'bg-line text-ink'
                   }`}
                 >
                   {tab.count}
@@ -140,20 +140,20 @@ export const CultivationsFilterBar: React.FC<CultivationsFilterBarProps> = ({
         {/* Input de Búsqueda */}
         <div className="flex items-center gap-2">
           <div className="relative flex-1 sm:w-72">
-            <Search className="w-4 h-4 text-[#9887A2] absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-ink-subtle absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
               id="cultivation-search-input"
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Buscar cultivo..."
-              className="w-full pl-10 pr-9 py-2 rounded-2xl bg-[#FFFDF7] border border-[#D1EAEF] text-xs font-medium text-[#29202F] placeholder-[#9887A2] focus:outline-hidden focus:border-[#6C45C7] focus:bg-white transition-colors"
+              className="w-full pl-10 pr-9 py-2 rounded-2xl bg-surface border border-chip-line text-xs font-medium text-ink placeholder-ink-subtle focus:outline-hidden focus:border-brand focus:bg-white transition-colors"
             />
             {searchQuery && (
               <button
                 type="button"
                 onClick={() => onSearchChange('')}
-                className="p-1 rounded-lg text-[#9887A2] hover:text-[#29202F] absolute right-2.5 top-1/2 -translate-y-1/2 transition-colors cursor-pointer"
+                className="p-1 rounded-lg text-ink-subtle hover:text-ink absolute right-2.5 top-1/2 -translate-y-1/2 transition-colors cursor-pointer"
                 title="Limpiar búsqueda"
               >
                 <X className="w-3.5 h-3.5" />
@@ -169,10 +169,10 @@ export const CultivationsFilterBar: React.FC<CultivationsFilterBarProps> = ({
                 onFilterChange('all');
                 onSearchChange('');
               }}
-              className="px-3 py-2 rounded-2xl bg-[#FAF2E1] hover:bg-[#EFE3CF] text-[#29202F] text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 border border-[#D1EAEF]"
+              className="px-3 py-2 rounded-2xl bg-track hover:bg-line text-ink text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 border border-chip-line"
               title="Restablecer filtros"
             >
-              <X className="w-3.5 h-3.5 text-[#6E5D77]" />
+              <X className="w-3.5 h-3.5 text-ink-muted" />
               <span className="hidden sm:inline">Limpiar</span>
             </button>
           )}
@@ -181,9 +181,9 @@ export const CultivationsFilterBar: React.FC<CultivationsFilterBarProps> = ({
 
       {/* Segundo Nivel: Filtro por Etapas (solo en modo 'Activos') */}
       {statusFilter === 'active' && (
-        <div className="pt-3 border-t border-[#D1EAEF] flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
-          <span className="flex items-center gap-1 text-[11px] font-bold text-[#9887A2] mr-1 shrink-0">
-            <SlidersHorizontal className="w-3 h-3 text-[#6C45C7]" />
+        <div className="pt-3 border-t border-chip-line flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+          <span className="flex items-center gap-1 text-[11px] font-bold text-ink-subtle mr-1 shrink-0">
+            <SlidersHorizontal className="w-3 h-3 text-brand" />
             Etapa:
           </span>
 
@@ -199,15 +199,15 @@ export const CultivationsFilterBar: React.FC<CultivationsFilterBarProps> = ({
                 onClick={() => onFilterChange(tab.id)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 border transition-all shrink-0 cursor-pointer ${
                   isSelected
-                    ? 'bg-[#62B95B]/15 text-[#2d6b28] border-[#62B95B] shadow-2xs'
-                    : 'bg-[#FFFDF7] hover:bg-[#FAF2E1] border-[#D1EAEF] text-[#6E5D77] hover:text-[#29202F]'
+                    ? 'bg-ok/15 text-ok-ink border-ok shadow-2xs'
+                    : 'bg-surface hover:bg-track border-chip-line text-ink-muted hover:text-ink'
                 }`}
               >
-                <span className={isSelected ? 'text-[#62B95B]' : 'text-[#9887A2]'}>{tab.icon}</span>
+                <span className={isSelected ? 'text-ok' : 'text-ink-subtle'}>{tab.icon}</span>
                 <span>{tab.label}</span>
                 <span
                   className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                    isSelected ? 'bg-[#62B95B] text-white' : 'bg-[#FAF2E1] text-[#6E5D77]'
+                    isSelected ? 'bg-ok text-white' : 'bg-track text-ink-muted'
                   }`}
                 >
                   {count}
@@ -220,17 +220,17 @@ export const CultivationsFilterBar: React.FC<CultivationsFilterBarProps> = ({
 
       {/* Indicador de resultados activos cuando hay filtros */}
       {hasActiveFilters && (
-        <div className="flex items-center justify-between text-[11px] text-[#6E5D77] px-1 pt-1 border-t border-[#D1EAEF]">
+        <div className="flex items-center justify-between text-[11px] text-ink-muted px-1 pt-1 border-t border-chip-line">
           <span>
-            Mostrando <strong className="text-[#29202F]">{totalFilteredCount}</strong> cultivo{totalFilteredCount !== 1 ? 's' : ''}
+            Mostrando <strong className="text-ink">{totalFilteredCount}</strong> cultivo{totalFilteredCount !== 1 ? 's' : ''}
             {hasStageFilter && (
-              <> en etapa de <strong className="text-[#62B95B] capitalize">{activeFilter}</strong></>
+              <> en etapa de <strong className="text-ok capitalize">{activeFilter}</strong></>
             )}
             {hasSearch && (
-              <> con búsqueda &quot;<strong className="text-[#29202F]">{searchQuery}</strong>&quot;</>
+              <> con búsqueda &quot;<strong className="text-ink">{searchQuery}</strong>&quot;</>
             )}
           </span>
-          <span className="text-[10px] text-[#9887A2]">
+          <span className="text-[10px] text-ink-subtle">
             {statusFilter === 'active' && `Activos: ${activeCrops.length}`}
             {statusFilter === 'finished' && `Finalizados: ${finishedCrops.length}`}
             {statusFilter === 'all' && `Total: ${cultivations.length}`}

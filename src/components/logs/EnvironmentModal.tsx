@@ -176,27 +176,27 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
         id="environment-modal-box"
         className="cultiveta-modal-container max-w-lg p-6 sm:p-8 my-auto"
       >
-        <div className="flex items-center justify-between pb-4 border-b border-[#EFE3CF] mb-5">
+        <div className="flex items-center justify-between pb-4 border-b border-line mb-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-[#F3C843]/20 text-[#EB7864]">
+            <div className="p-3 rounded-2xl bg-warn-line/20 text-coral">
               <Thermometer className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-[#29202F]">¿Cómo está el ambiente? 🌡️</h2>
-              <p className="text-xs text-[#6E5D77]">Anotá temperatura y humedad para cuidar tus plantas</p>
+              <h2 className="text-xl font-black text-ink">¿Cómo está el ambiente? 🌡️</h2>
+              <p className="text-xs text-ink-muted">Anotá temperatura y humedad para cuidar tus plantas</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-[#9887A2] hover:text-[#29202F] rounded-full hover:bg-[#FAF2E1] transition-colors cursor-pointer"
+            className="p-2 text-ink-subtle hover:text-ink rounded-full hover:bg-track transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3.5 rounded-2xl bg-[#EB7864]/10 border border-[#EB7864]/30 text-[#EB7864] text-xs font-semibold">
+          <div className="mb-4 p-3.5 rounded-2xl bg-coral/10 border border-coral/30 text-coral text-xs font-semibold">
             {error}
           </div>
         )}
@@ -205,13 +205,13 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
           {/* Crop & Date */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-3">
-              <label className="block text-xs font-bold text-[#29202F] mb-1">Cultivo *</label>
+              <label className="block text-xs font-bold text-ink mb-1">Cultivo *</label>
               <select
                 id="env-crop-select"
                 value={cultivationId}
                 onChange={(e) => setCultivationId(e.target.value)}
                 required
-                className="w-full px-3.5 py-2.5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-[#29202F] text-sm focus:outline-hidden focus:border-[#6C45C7] focus:bg-white cursor-pointer font-medium"
+                className="w-full px-3.5 py-2.5 rounded-2xl bg-surface border border-line text-ink text-sm focus:outline-hidden focus:border-brand focus:bg-white cursor-pointer font-medium"
               >
                 {cultivations.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -222,25 +222,25 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#29202F] mb-1">Fecha</label>
+              <label className="block text-xs font-bold text-ink mb-1">Fecha</label>
               <input
                 id="env-date-input"
                 type="date"
                 required
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
-                className="w-full px-3 py-2 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7] focus:bg-white font-medium"
+                className="w-full px-3 py-2 rounded-2xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-brand focus:bg-white font-medium"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-[#29202F] mb-1">Hora</label>
+              <label className="block text-xs font-bold text-ink mb-1">Hora</label>
               <input
                 id="env-time-input"
                 type="time"
                 value={time}
                 onChange={(e) => setTime(e.target.value)}
-                className="w-full px-3 py-2 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7] focus:bg-white font-medium"
+                className="w-full px-3 py-2 rounded-2xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-brand focus:bg-white font-medium"
               />
             </div>
           </div>
@@ -253,11 +253,11 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
                 id="env-fetch-local-weather-btn"
                 disabled={isFetchingWeather}
                 onClick={fetchLocalWeather}
-                className="w-full py-2.5 px-4 rounded-2xl bg-[#6C45C7]/10 hover:bg-[#6C45C7]/20 border border-[#6C45C7]/30 text-[#6C45C7] text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 shadow-2xs"
+                className="w-full py-2.5 px-4 rounded-2xl bg-brand/10 hover:bg-brand/20 border border-brand/30 text-brand text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-60 shadow-2xs"
               >
                 {isFetchingWeather ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin text-[#6C45C7]" />
+                    <Loader2 className="w-4 h-4 animate-spin text-brand" />
                     <span>Obteniendo clima local...</span>
                   </>
                 ) : (
@@ -268,9 +268,9 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
               {weatherError && (
                 <div
                   id="env-weather-error-box"
-                  className="p-3 rounded-2xl bg-[#EB7864]/10 border border-[#EB7864]/30 text-[#EB7864] text-xs font-medium flex items-start gap-2 animate-in fade-in"
+                  className="p-3 rounded-2xl bg-coral/10 border border-coral/30 text-coral text-xs font-medium flex items-start gap-2 animate-in fade-in"
                 >
-                  <AlertCircle className="w-4 h-4 shrink-0 text-[#EB7864] mt-0.5" />
+                  <AlertCircle className="w-4 h-4 shrink-0 text-coral mt-0.5" />
                   <span>{weatherError}</span>
                 </div>
               )}
@@ -278,10 +278,10 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
           )}
 
           {/* Primera capa esencial: Temp y Humedad */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-[#FFFDF7] border border-[#EFE3CF] space-y-4">
+          <div className="p-4 sm:p-5 rounded-2xl bg-surface border border-line space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-[#29202F] mb-1">Temperatura (°C) *</label>
+                <label className="block text-xs font-bold text-ink mb-1">Temperatura (°C) *</label>
                 <div className="relative">
                   <input
                     id="env-temp-input"
@@ -291,14 +291,14 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
                     placeholder="ej. 24.5"
                     value={temperatureC}
                     onChange={(e) => setTemperatureC(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                    className="w-full px-3.5 py-2.5 rounded-2xl bg-white border border-[#EFE3CF] font-black text-base text-[#29202F] focus:outline-hidden focus:border-[#EB7864] focus:ring-1 focus:ring-[#EB7864]/30 pr-8"
+                    className="w-full px-3.5 py-2.5 rounded-2xl bg-white border border-line font-black text-base text-ink focus:outline-hidden focus:border-coral focus:ring-1 focus:ring-coral/30 pr-8"
                   />
-                  <span className="absolute right-3 top-2.5 text-xs font-bold text-[#EB7864]">°C</span>
+                  <span className="absolute right-3 top-2.5 text-xs font-bold text-coral">°C</span>
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#29202F] mb-1">Humedad (% HR) *</label>
+                <label className="block text-xs font-bold text-ink mb-1">Humedad (% HR) *</label>
                 <div className="relative">
                   <input
                     id="env-humidity-input"
@@ -310,18 +310,18 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
                     placeholder="ej. 55"
                     value={humidityPct}
                     onChange={(e) => setHumidityPct(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                    className="w-full px-3.5 py-2.5 rounded-2xl bg-white border border-[#EFE3CF] font-black text-base text-[#29202F] focus:outline-hidden focus:border-[#6C45C7] focus:ring-1 focus:ring-[#6C45C7]/30 pr-8"
+                    className="w-full px-3.5 py-2.5 rounded-2xl bg-white border border-line font-black text-base text-ink focus:outline-hidden focus:border-brand focus:ring-1 focus:ring-brand/30 pr-8"
                   />
-                  <span className="absolute right-3 top-2.5 text-xs font-bold text-[#6C45C7]">%</span>
+                  <span className="absolute right-3 top-2.5 text-xs font-bold text-brand">%</span>
                 </div>
               </div>
             </div>
 
             {/* Live VPD preview badge */}
             {estimatedVpd !== null && (
-              <div className="flex items-center justify-between pt-2 border-t border-[#EFE3CF] text-xs">
-                <span className="text-[#6E5D77]">VPD estimado en aire:</span>
-                <span className="font-extrabold text-[#6C45C7] bg-[#6C45C7]/10 px-2.5 py-0.5 rounded-full border border-[#6C45C7]/20">
+              <div className="flex items-center justify-between pt-2 border-t border-line text-xs">
+                <span className="text-ink-muted">VPD estimado en aire:</span>
+                <span className="font-extrabold text-brand bg-brand/10 px-2.5 py-0.5 rounded-full border border-brand/20">
                   {estimatedVpd} kPa
                 </span>
               </div>
@@ -329,14 +329,14 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
           </div>
 
           {/* Progressive Disclosure: Agregar más datos */}
-          <div className="border border-[#EFE3CF] rounded-2xl overflow-hidden bg-[#FFFDF7]">
+          <div className="border border-line rounded-2xl overflow-hidden bg-surface">
             <button
               type="button"
               onClick={() => setShowAdvanced((prev) => !prev)}
-              className="w-full p-4 flex items-center justify-between text-left text-xs font-bold text-[#6C45C7] hover:bg-[#FAF2E1] transition-colors cursor-pointer"
+              className="w-full p-4 flex items-center justify-between text-left text-xs font-bold text-brand hover:bg-track transition-colors cursor-pointer"
             >
               <span className="flex items-center gap-1.5">
-                <SunMedium className="w-4 h-4 text-[#6C45C7]" />
+                <SunMedium className="w-4 h-4 text-brand" />
                 <span>{showAdvanced ? 'Ocultar datos avanzados' : 'Agregar más datos (Temp foliar, PPFD, CO₂, notas)'}</span>
               </span>
               <ChevronDown
@@ -350,7 +350,7 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
               <div className="p-4 pt-0 space-y-4 animate-in fade-in duration-200">
                 <div className="grid grid-cols-3 gap-2.5">
                   <div>
-                    <label className="block text-[11px] font-semibold text-[#6E5D77] mb-1">Temp Foliar (°C)</label>
+                    <label className="block text-[11px] font-semibold text-ink-muted mb-1">Temp Foliar (°C)</label>
                     <input
                       id="env-leaf-temp-input"
                       type="number"
@@ -358,12 +358,12 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
                       placeholder="ej. 22.8"
                       value={leafTempC}
                       onChange={(e) => setLeafTempC(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                      className="w-full px-3 py-1.5 rounded-xl bg-white border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7]"
+                      className="w-full px-3 py-1.5 rounded-xl bg-white border border-line text-xs text-ink focus:outline-hidden focus:border-brand"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-[#6E5D77] mb-1">PPFD (µmol)</label>
+                    <label className="block text-[11px] font-semibold text-ink-muted mb-1">PPFD (µmol)</label>
                     <input
                       id="env-ppfd-input"
                       type="number"
@@ -371,12 +371,12 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
                       placeholder="ej. 650"
                       value={ppfd}
                       onChange={(e) => setPpfd(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                      className="w-full px-3 py-1.5 rounded-xl bg-white border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7]"
+                      className="w-full px-3 py-1.5 rounded-xl bg-white border border-line text-xs text-ink focus:outline-hidden focus:border-brand"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-[#6E5D77] mb-1">CO₂ (ppm)</label>
+                    <label className="block text-[11px] font-semibold text-ink-muted mb-1">CO₂ (ppm)</label>
                     <input
                       id="env-co2-input"
                       type="number"
@@ -384,20 +384,20 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
                       placeholder="ej. 450"
                       value={co2Ppm}
                       onChange={(e) => setCo2Ppm(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                      className="w-full px-3 py-1.5 rounded-xl bg-white border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7]"
+                      className="w-full px-3 py-1.5 rounded-xl bg-white border border-line text-xs text-ink focus:outline-hidden focus:border-brand"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#29202F] mb-1">Notas del entorno</label>
+                  <label className="block text-xs font-bold text-ink mb-1">Notas del entorno</label>
                   <textarea
                     id="env-notes-input"
                     rows={2}
                     placeholder="Encendido de ventilador, extracción al 80%, calor exterior..."
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    className="w-full px-3 py-2 rounded-2xl bg-white border border-[#EFE3CF] text-xs text-[#29202F] focus:outline-hidden focus:border-[#6C45C7]"
+                    className="w-full px-3 py-2 rounded-2xl bg-white border border-line text-xs text-ink focus:outline-hidden focus:border-brand"
                   />
                 </div>
               </div>
@@ -405,7 +405,7 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
           </div>
 
           {/* Actions */}
-          <div className="pt-3 border-t border-[#EFE3CF] flex items-center justify-end gap-3">
+          <div className="pt-3 border-t border-line flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}

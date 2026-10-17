@@ -331,6 +331,29 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     };
   }, [primaryCrop, primaryCropOverdueInfo, envCondition]);
 
+  // Lista para "¿Hay algo que requiere atención?": reúne alertas ya calculadas arriba (sin reglas nuevas).
+  const attentionItems = useMemo(() => {
+    const items: Array<{ id: string; text: string }> = [];
+    if (primaryCrop && primaryCropOverdueInfo) {
+      items.push({
+        id: `overdue-${primaryCrop.id}`,
+        text: `${primaryCrop.name}: riego atrasado (+${primaryCropOverdueInfo.analysis.daysOverdue} d).`,
+      });
+    }
+    if (primaryCrop && !envCondition.isGood && envCondition.alertMsg) {
+      items.push({ id: `env-${primaryCrop.id}`, text: `${primaryCrop.name}: ${envCondition.alertMsg}` });
+    }
+    overdueCultivationsList
+      .filter((o) => !primaryCrop || o.cultivation.id !== primaryCrop.id)
+      .forEach((o) => {
+        items.push({
+          id: `overdue-${o.cultivation.id}`,
+          text: `${o.cultivation.name}: riego atrasado (+${o.analysis.daysOverdue} d).`,
+        });
+      });
+    return items;
+  }, [primaryCrop, primaryCropOverdueInfo, envCondition, overdueCultivationsList]);
+
   // Quick tasks for today
   const todayTasksList = useMemo(() => {
     const list: Array<{ id: string; text: string; action: () => void; isUrgent?: boolean }> = [];
@@ -339,7 +362,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     if (primaryCropOverdueInfo) {
       list.push({
         id: 'task-water',
-        text: `Revisar riego (+${primaryCropOverdueInfo.analysis.daysOverdue}d)`,
+        text: `Revisá el riego (+${primaryCropOverdueInfo.analysis.daysOverdue} d)`,
         action: () => onOpenWateringModal(primaryCrop),
         isUrgent: true,
       });
@@ -354,7 +377,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     if (daysSincePhoto >= 7) {
       list.push({
         id: 'task-photo',
-        text: 'Sacar foto semanal de seguimiento',
+        text: 'Sacá la foto semanal de seguimiento',
         action: () => onOpenPhotoModal(primaryCrop),
       });
     }
@@ -362,7 +385,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     if (list.length === 0) {
       list.push({
         id: 'task-check',
-        text: 'Revisar parámetros y salud general',
+        text: 'Revisá parámetros y salud general',
         action: () => onOpenEnvModal(primaryCrop),
       });
     }
@@ -454,35 +477,38 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
     return calculateIrrigationForecast(primaryCrop, waterings, envRecords);
   }, [primaryCrop, waterings, envRecords]);
 
+  // Presentación del pronóstico: solo formatea la salida de calculateIrrigationForecast (no calcula nada nuevo).
   const forecastDisplay = useMemo(() => {
     if (!primaryCropIrrigationForecast) return null;
     const f = primaryCropIrrigationForecast;
-    if (f.confidence === 'low') {
-      if (!f.lastWateringAt) {
-        return {
-          title: 'Estimación inicial',
-          text: 'Registrá un primer riego para activar el aprendizaje.',
-          isLowConfidence: true,
-        };
-      }
-      return {
-        title: 'Estimación por etapa',
-        text: 'Registrá algunos riegos más para personalizar la ventana.',
-        isLowConfidence: true,
-      };
-    }
 
     const startPart = f.wateringWindowStart ? f.wateringWindowStart.split('T')[0] : '';
     const endPart = f.wateringWindowEnd ? f.wateringWindowEnd.split('T')[0] : '';
     const startTime = f.wateringWindowStart && f.wateringWindowStart.includes('T') ? f.wateringWindowStart.split('T')[1] : '';
     const endTime = f.wateringWindowEnd && f.wateringWindowEnd.includes('T') ? f.wateringWindowEnd.split('T')[1] : '';
 
+    let windowText: string | null = null;
+    if (startPart && endPart) {
+      windowText = startPart === endPart
+        ? `${formatFriendlyDate(startPart)}${startTime ? `, de ${startTime} a ${endTime} hs` : ''}`
+        : `Entre ${formatFriendlyDate(startPart)}${startTime ? ` ${startTime} hs` : ''} y ${formatFriendlyDate(endPart)}${endTime ? ` ${endTime} hs` : ''}`;
+    }
+
+    const confidenceLabel = f.confidence === 'high' ? 'Alta' : f.confidence === 'medium' ? 'Media' : 'Baja';
+
+    let hint: string | null = null;
+    if (f.confidence === 'low') {
+      hint = f.lastWateringAt
+        ? 'Anotá algunos riegos más para personalizar la ventana.'
+        : 'Anotá un primer riego para que el pronóstico empiece a aprender.';
+    }
+
     return {
-      title: 'Ventana de revisión',
-      text: startPart === endPart
-        ? `Revisá la maceta el ${formatFriendlyDate(startPart)}${startTime ? ` (${startTime}–${endTime} hs)` : ''}`
-        : `Revisá la maceta entre ${formatFriendlyDate(startPart)} y ${formatFriendlyDate(endPart)}`,
-      isLowConfidence: false,
+      windowText,
+      confidenceLabel,
+      hint,
+      missingSignals: f.missingSignals,
+      factors: f.factors,
     };
   }, [primaryCropIrrigationForecast]);
 
@@ -523,12 +549,9 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
       {/* 1. Header con Saludo Cercano y Acciones Rápidas */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-1">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-[#29202F] tracking-tight">
-            {greetingData.timeGreeting}, {greetingData.firstName} 🌱
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+            {greetingData.timeGreeting}, {greetingData.firstName}
           </h1>
-          <p className="text-sm font-semibold text-[#6C45C7] mt-0.5">
-            ¿Cómo viene el cultivo?
-          </p>
         </div>
 
         {/* Botones de acción directos */}
@@ -539,10 +562,11 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               id="refresh-dashboard-btn"
               onClick={onRefreshData}
               disabled={isSyncing}
-              className="p-3 rounded-2xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] text-[#6E5D77] hover:text-[#29202F] transition-all cursor-pointer shadow-xs disabled:opacity-50"
+              className="min-h-11 min-w-11 p-3 rounded-2xl bg-white hover:bg-track border border-chip-line text-ink-muted hover:text-ink transition-all cursor-pointer shadow-xs disabled:opacity-50 flex items-center justify-center"
               title="Sincronizar datos"
+              aria-label="Sincronizar datos"
             >
-              <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin text-[#62B95B]' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin text-ok-ink' : ''}`} />
             </button>
           )}
 
@@ -550,7 +574,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             type="button"
             id="quick-ai-btn"
             onClick={() => onOpenAIAssistant(primaryCrop || undefined)}
-            className="flex-1 sm:flex-initial px-4 py-3 rounded-2xl bg-[#6C45C7]/10 hover:bg-[#6C45C7]/20 text-[#6C45C7] border border-[#6C45C7]/25 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+            className="flex-1 sm:flex-initial min-h-11 px-4 py-3 rounded-2xl bg-white hover:bg-surface text-brand border border-chip-line text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
           >
             <Sparkles className="w-4 h-4" />
             <span>Preguntale a Cultiveta</span>
@@ -560,19 +584,19 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             type="button"
             id="create-crop-hero-btn"
             onClick={onCreateCultivationClick}
-            className="flex-1 sm:flex-initial px-4 py-3 rounded-2xl bg-[#62B95B] hover:bg-[#52A54C] text-white text-xs font-bold transition-all shadow-md shadow-[#62B95B]/20 flex items-center justify-center gap-2 cursor-pointer"
+            className="flex-1 sm:flex-initial min-h-11 px-4 py-3 rounded-2xl bg-primary hover:brightness-95 text-ink text-xs font-bold transition-all shadow-md shadow-primary/20 flex items-center justify-center gap-2 cursor-pointer"
           >
-            <Plus className="w-4 h-4 stroke-[2.5]" />
-            <span>Nuevo Cultivo</span>
+            <Plus className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
+            <span>Nuevo cultivo</span>
           </button>
         </div>
       </div>
 
       {/* Sync Error Banner if any */}
       {syncError && (
-        <div className="p-3.5 rounded-2xl bg-[#EB7864]/10 border border-[#EB7864]/30 text-[#29202F] text-xs flex items-center justify-between gap-3 shadow-xs">
+        <div className="p-3.5 rounded-2xl bg-coral/10 border border-coral/30 text-ink text-xs flex items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-[#EB7864] shrink-0" />
+            <AlertTriangle className="w-4 h-4 text-error shrink-0" />
             <span>{syncError}</span>
           </div>
           {onRefreshData && (
@@ -580,7 +604,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               type="button"
               onClick={onRefreshData}
               disabled={isSyncing}
-              className="px-3 py-1.5 rounded-xl bg-[#EB7864] hover:bg-[#d96551] text-white font-bold cursor-pointer text-xs transition-colors shrink-0 disabled:opacity-50"
+              className="px-3 py-1.5 rounded-xl bg-coral hover:bg-[#d96551] text-white font-bold cursor-pointer text-xs transition-colors shrink-0 disabled:opacity-50"
             >
               Reintentar
             </button>
@@ -594,45 +618,51 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         <>
           {/* 2. Tarjeta Cultivo Principal (Responde: ¿Cómo está mi cultivo? ¿Qué tengo que hacer hoy? ¿Hay algo que mirar?) */}
           {activeCrops.length === 0 ? (
-            <div className="bg-white rounded-[32px] p-8 sm:p-12 border border-[#D1EAEF] text-center space-y-4 shadow-xs">
-              <div className="w-16 h-16 rounded-2xl bg-[#FAF2E1] border border-[#D1EAEF] text-[#62B95B] flex items-center justify-center mx-auto">
-                <Sprout className="w-8 h-8" />
+            <div className="cultiveta-card p-8 sm:p-12 text-center space-y-4">
+              <div className="w-16 h-16 rounded-2xl bg-icon-bg text-brand flex items-center justify-center mx-auto">
+                <Sprout className="w-8 h-8" aria-hidden="true" />
               </div>
               <div>
-                <h3 className="font-extrabold text-[#29202F] text-lg">Todavía no anotaste ningún cultivo 🌱</h3>
-                <p className="text-xs text-[#6E5D77] max-w-sm mx-auto mt-1">
-                  Creá tu primera carpa o planta para empezar a registrar riegos, parámetros ambientales y fotos.
+                <h2 className="font-extrabold text-ink text-lg">Todavía no anotaste ningún cultivo</h2>
+                <p className="text-sm text-ink-muted max-w-sm mx-auto mt-1">
+                  Creá tu primera carpa o planta para empezar a anotar riegos, ambiente y fotos.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={onCreateCultivationClick}
-                className="px-6 py-3 rounded-2xl bg-[#62B95B] hover:bg-[#52A54C] text-white font-bold text-xs transition-all shadow-md shadow-[#62B95B]/20 cursor-pointer inline-flex items-center gap-2"
+                className="min-h-11 px-6 py-3 rounded-2xl bg-primary hover:brightness-95 text-ink font-bold text-sm transition-all cursor-pointer inline-flex items-center gap-2"
               >
-                <Plus className="w-4 h-4 stroke-[2.5]" />
-                Crear Nuevo Cultivo
+                <Plus className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
+                Creá tu primer cultivo
               </button>
             </div>
           ) : (
             primaryCrop && (
-              <div
+              <>
+              {/* Bloque 1: ¿Cómo está mi cultivo? */}
+              <section
                 id="main-crop-hero-card"
-                className="bg-white rounded-[32px] p-6 sm:p-8 border border-[#D1EAEF] shadow-xs relative overflow-hidden space-y-6"
+                aria-labelledby="home-block-status-title"
+                className="cultiveta-card p-6 sm:p-8 relative overflow-hidden space-y-6"
               >
+                <h2 id="home-block-status-title" className="text-lg font-extrabold text-ink">
+                  ¿Cómo está mi cultivo?
+                </h2>
                 {/* 4 Mini-Stats en la parte superior izquierda, antes del selector Cultivos */}
                 <div className="grid grid-cols-2 sm:flex sm:flex-row sm:items-center gap-2">
                   <div
                     id="stat-active-crops"
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[#FAF2E1]/70 border border-[#D1EAEF]"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-track/70 border border-chip-line"
                   >
-                    <div className="p-1.5 rounded-xl bg-[#62B95B]/15 text-[#62B95B] shrink-0">
+                    <div className="p-1.5 rounded-xl bg-ok/15 text-ok-ink shrink-0">
                       <Sprout className="w-3.5 h-3.5" />
                     </div>
                     <div>
-                      <span className="text-lg sm:text-xl font-black text-[#29202F] leading-none block">
+                      <span className="text-lg sm:text-xl font-black text-ink leading-none block">
                         {activeCrops.length}
                       </span>
-                      <span className="text-[10px] font-bold text-[#6E5D77] uppercase tracking-wider block mt-0.5">
+                      <span className="text-[10px] font-bold text-ink-muted uppercase tracking-wider block mt-0.5">
                         Cultivos
                       </span>
                     </div>
@@ -640,16 +670,16 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
                   <div
                     id="stat-total-plants"
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[#FAF2E1]/70 border border-[#D1EAEF]"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-track/70 border border-chip-line"
                   >
-                    <div className="p-1.5 rounded-xl bg-[#FAF2E1] text-[#29202F] shrink-0">
+                    <div className="p-1.5 rounded-xl bg-track text-ink shrink-0">
                       <Layers className="w-3.5 h-3.5" />
                     </div>
                     <div>
-                      <span className="text-lg sm:text-xl font-black text-[#29202F] leading-none block">
+                      <span className="text-lg sm:text-xl font-black text-ink leading-none block">
                         {totalPlants}
                       </span>
-                      <span className="text-[10px] font-bold text-[#6E5D77] uppercase tracking-wider block mt-0.5">
+                      <span className="text-[10px] font-bold text-ink-muted uppercase tracking-wider block mt-0.5">
                         Plantas
                       </span>
                     </div>
@@ -657,16 +687,16 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
                   <div
                     id="stat-recent-waterings"
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[#FAF2E1]/70 border border-[#D1EAEF]"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-track/70 border border-chip-line"
                   >
-                    <div className="p-1.5 rounded-xl bg-[#6C45C7]/15 text-[#6C45C7] shrink-0">
+                    <div className="p-1.5 rounded-xl bg-brand/15 text-brand shrink-0">
                       <Droplets className="w-3.5 h-3.5" />
                     </div>
                     <div>
-                      <span className="text-lg sm:text-xl font-black text-[#6C45C7] leading-none block">
+                      <span className="text-lg sm:text-xl font-black text-brand leading-none block">
                         {recentWateringsCount}
                       </span>
-                      <span className="text-[10px] font-bold text-[#6E5D77] uppercase tracking-wider block mt-0.5">
+                      <span className="text-[10px] font-bold text-ink-muted uppercase tracking-wider block mt-0.5">
                         Riegos (7d)
                       </span>
                     </div>
@@ -674,16 +704,16 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
                   <div
                     id="stat-diary-photos"
-                    className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-[#FAF2E1]/70 border border-[#D1EAEF]"
+                    className="flex items-center gap-2.5 px-3 py-2 rounded-2xl bg-track/70 border border-chip-line"
                   >
-                    <div className="p-1.5 rounded-xl bg-[#F3C843]/25 text-[#29202F] shrink-0">
+                    <div className="p-1.5 rounded-xl bg-warn-line/25 text-ink shrink-0">
                       <Camera className="w-3.5 h-3.5" />
                     </div>
                     <div>
-                      <span className="text-lg sm:text-xl font-black text-[#29202F] leading-none block">
+                      <span className="text-lg sm:text-xl font-black text-ink leading-none block">
                         {photos.length}
                       </span>
-                      <span className="text-[10px] font-bold text-[#6E5D77] uppercase tracking-wider block mt-0.5">
+                      <span className="text-[10px] font-bold text-ink-muted uppercase tracking-wider block mt-0.5">
                         Fotos
                       </span>
                     </div>
@@ -692,8 +722,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
                 {/* Selector rápido entre carpas activas (si hay más de 1) */}
                 {activeCrops.length > 1 && (
-                  <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-                    <span className="text-[11px] font-bold text-[#9887A2] uppercase tracking-wider shrink-0 mr-1">
+                  <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1" role="group" aria-label="Elegí el cultivo">
+                    <span className="text-[11px] font-bold text-ink-muted uppercase tracking-wider shrink-0 mr-1">
                       Cultivos:
                     </span>
                     {activeCrops.map((crop) => (
@@ -701,10 +731,11 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                         key={crop.id}
                         type="button"
                         onClick={() => setSelectedCropId(crop.id)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 ${
+                        aria-pressed={crop.id === primaryCrop.id}
+                        className={`min-h-11 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer shrink-0 border ${
                           crop.id === primaryCrop.id
-                            ? 'bg-[#6C45C7] text-white shadow-xs'
-                            : 'bg-[#FAF2E1] text-[#6E5D77] hover:bg-[#EFE3CF]'
+                            ? 'bg-brand-deep text-white border-brand-deep shadow-xs'
+                            : 'bg-white text-ink-muted border-chip-line hover:bg-surface'
                         }`}
                       >
                         {crop.name}
@@ -714,182 +745,92 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 )}
 
                 {/* Cabecera del Cultivo: Nombre, Día, Etapa */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#D1EAEF]">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-line">
                   <div>
-                    <h2
-                      onClick={() => onSelectCultivation(primaryCrop)}
-                      className="text-2xl sm:text-3xl font-black text-[#29202F] tracking-tight hover:text-[#6C45C7] transition-colors cursor-pointer inline-flex items-center gap-2"
-                      title="Ver detalle del cultivo"
-                    >
-                      <span>{primaryCrop.name}</span>
-                      <ChevronRight className="w-5 h-5 text-[#9887A2]" />
-                    </h2>
+                    <h3 className="text-2xl sm:text-3xl font-black text-ink tracking-tight">
+                      <button
+                        type="button"
+                        onClick={() => onSelectCultivation(primaryCrop)}
+                        className="min-h-11 inline-flex items-center gap-2 hover:text-brand transition-colors cursor-pointer rounded-xl text-left"
+                        title="Ver detalle del cultivo"
+                      >
+                        <span>{primaryCrop.name}</span>
+                        <ChevronRight className="w-5 h-5 text-ink-muted" aria-hidden="true" />
+                      </button>
+                    </h3>
                     {/* Metadatos sin cajas píldora */}
-                    <div className="flex items-center gap-2 text-xs text-[#6E5D77] mt-1 flex-wrap">
+                    <div className="flex items-center gap-2 text-xs text-ink-muted mt-1 flex-wrap">
                       {primaryCropTimeline?.schedule.isCycleStartKnown ? (
                         <>
-                          <span className="font-bold text-[#29202F]">Día {primaryCropDays}</span>
-                          <span aria-hidden="true" className="text-[#DECDB3]">·</span>
-                          <span className="font-semibold text-[#6C45C7]">{primaryCrop.currentStage || 'Vegetativo'}</span>
+                          <span className="font-bold text-ink">Día {primaryCropDays}</span>
+                          <span aria-hidden="true" className="text-line">·</span>
+                          <span className="font-semibold text-brand">{primaryCrop.currentStage || 'Vegetativo'}</span>
                         </>
                       ) : (
-                        <span className="font-bold text-[#29202F]">
+                        <span className="font-bold text-ink">
                           Día {primaryCropTimeline?.schedule.activeStageElapsedDays || 1} de {primaryCrop.currentStage || primaryCropTimeline?.schedule.activeStage?.name || 'Floración'}
                         </span>
                       )}
                       {primaryCrop.geneticsName && (
                         <>
-                          <span aria-hidden="true" className="text-[#DECDB3]">·</span>
+                          <span aria-hidden="true" className="text-line">·</span>
                           <span>{primaryCrop.geneticsName}</span>
                         </>
                       )}
                     </div>
                   </div>
 
-                  {/* Estado global comprensible en 3 segundos */}
+                  {/* Estado global comprensible en 3 segundos (el detalle está en "¿Hay algo que requiere atención?") */}
                   <div
-                    className={`px-4 py-2.5 rounded-2xl flex items-center gap-3 shrink-0 ${
-                      cropOverallState.isAlert
-                        ? 'bg-[#EB7864]/10 border border-[#EB7864]/30'
-                        : 'bg-[#62B95B]/10 border border-[#62B95B]/25'
+                    className={`px-4 py-2.5 rounded-2xl flex items-center gap-3 shrink-0 border ${
+                      cropOverallState.isAlert ? 'bg-warn-bg border-warn-line' : 'bg-ok-bg border-ok-line'
                     }`}
                   >
-                    <div
-                      className={`w-3.5 h-3.5 rounded-full shrink-0 ${
-                        cropOverallState.isAlert ? 'bg-[#EB7864] animate-pulse' : 'bg-[#62B95B]'
-                      }`}
+                    <span
+                      aria-hidden="true"
+                      className={`w-3 h-3 rounded-full shrink-0 ${cropOverallState.isAlert ? 'bg-warn-line' : 'bg-ok'}`}
                     />
-                    <div>
-                      <span
-                        className={`text-sm font-extrabold block leading-tight ${
-                          cropOverallState.isAlert ? 'text-[#EB7864]' : 'text-[#62B95B]'
-                        }`}
-                      >
-                        &quot;{cropOverallState.title}&quot;
-                      </span>
-                      <span className="text-[11px] text-[#6E5D77] block mt-0.5">
-                        {cropOverallState.subtitle}
-                      </span>
-                    </div>
+                    <span
+                      className={`text-sm font-extrabold leading-tight ${
+                        cropOverallState.isAlert ? 'text-warn-ink' : 'text-ok-ink'
+                      }`}
+                    >
+                      {cropOverallState.title}
+                    </span>
                   </div>
                 </div>
 
-                {/* Grid de 3 Capas: Hoy, Ambiente, Último Riego */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {/* Columna 1: Hoy */}
-                  <div className="p-4 sm:p-5 rounded-2xl bg-[#FFFDF7] border border-[#D1EAEF] flex flex-col justify-between space-y-3">
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-[#9887A2]">
-                          Hoy
-                        </span>
-                        <Calendar className="w-4 h-4 text-[#6C45C7]" />
-                      </div>
-
-                      <div className="space-y-2">
-                        {todayTasksList.map((task) => (
-                          <div
-                            key={task.id}
-                            className="flex items-start gap-2 text-xs font-semibold text-[#29202F]"
-                          >
-                            <span className="text-[#62B95B] mt-0.5">•</span>
-                            <span className="flex-1">{task.text}</span>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Próximo Riego Forecast (Discreto en bloque Hoy) */}
-                      {forecastDisplay && (
-                        <div className="pt-2 border-t border-[#D1EAEF]/60 space-y-1">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="font-bold text-[#6E5D77] flex items-center gap-1">
-                              <Droplets className="w-3 h-3 text-[#62B95B]" />
-                              <span>{forecastDisplay.title}</span>
-                            </span>
-                            {!forecastDisplay.isLowConfidence && (
-                              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[#62B95B]/15 text-[#2D6B28]">
-                                {primaryCropIrrigationForecast?.confidence === 'high' ? 'Alta conf.' : 'Media conf.'}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs font-bold text-[#29202F]">
-                            {forecastDisplay.text}
-                          </p>
-                          {showWhyForecast ? (
-                            <div className="p-2 rounded-xl bg-[#FAF2E1] border border-[#D1EAEF] text-[10px] text-[#6E5D77] space-y-1">
-                              {primaryCropIrrigationForecast?.factors.slice(0, 3).map((f, i) => (
-                                <p key={i}>• {f}</p>
-                              ))}
-                              <button
-                                type="button"
-                                onClick={() => setShowWhyForecast(false)}
-                                className="text-[#6C45C7] font-bold hover:underline cursor-pointer pt-0.5 block"
-                              >
-                                Cerrar
-                              </button>
-                            </div>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => setShowWhyForecast(true)}
-                              className="text-[10px] text-[#6C45C7] hover:underline font-semibold cursor-pointer inline-flex items-center gap-0.5"
-                            >
-                              <span>¿Por qué?</span>
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2 pt-2 border-t border-[#D1EAEF]">
-                      <button
-                        type="button"
-                        onClick={() => onOpenWateringModal(primaryCrop)}
-                        className="flex-1 py-2 px-2.5 rounded-xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] text-[#29202F] font-bold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                      >
-                        <Droplets className="w-3.5 h-3.5 text-[#62B95B]" />
-                        <span>Regar</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onOpenPhotoModal(primaryCrop)}
-                        className="flex-1 py-2 px-2.5 rounded-xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] text-[#29202F] font-bold text-xs transition-colors flex items-center justify-center gap-1 cursor-pointer"
-                      >
-                        <Camera className="w-3.5 h-3.5 text-[#6C45C7]" />
-                        <span>Foto</span>
-                      </button>
-                    </div>
-                  </div>
-
+                {/* Ambiente y último riego */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Columna 2: Ambiente (Progressive Disclosure) */}
-                  <div className="p-4 sm:p-5 rounded-2xl bg-[#FFFDF7] border border-[#D1EAEF] flex flex-col justify-between space-y-3">
+                  <div className="p-4 sm:p-5 rounded-2xl bg-surface border border-chip-line flex flex-col justify-between space-y-3">
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-[#9887A2]">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
                           Ambiente
                         </span>
-                        <Thermometer className="w-4 h-4 text-[#EB7864]" />
+                        <Thermometer className="w-4 h-4 text-error" />
                       </div>
 
                       <div className="space-y-1">
                         <span
                           className={`text-sm font-extrabold block ${
-                            envCondition.isGood ? 'text-[#62B95B]' : 'text-[#EB7864]'
+                            envCondition.isGood ? 'text-ok-ink' : 'text-error'
                           }`}
                         >
                           &quot;{envCondition.label}&quot;
                         </span>
-                        <span className="text-lg font-black text-[#29202F] block">
+                        <span className="text-lg font-black text-ink block">
                           {envCondition.shortDesc}
                         </span>
                       </div>
                     </div>
 
-                    <div className="pt-2 border-t border-[#D1EAEF]">
+                    <div className="pt-2 border-t border-chip-line">
                       <button
                         type="button"
                         onClick={() => setShowEnvDetails((prev) => !prev)}
-                        className="w-full py-2 px-2.5 rounded-xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] text-[#6C45C7] font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="w-full min-h-11 py-2 px-2.5 rounded-xl bg-white hover:bg-track border border-chip-line text-brand font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <span>{showEnvDetails ? 'Ocultar detalles' : 'Ver detalles de ambiente'}</span>
                         <ChevronDown
@@ -902,20 +843,20 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                   </div>
 
                   {/* Columna 3: Último Riego (Progressive Disclosure) */}
-                  <div className="p-4 sm:p-5 rounded-2xl bg-[#FFFDF7] border border-[#D1EAEF] flex flex-col justify-between space-y-3">
+                  <div className="p-4 sm:p-5 rounded-2xl bg-surface border border-chip-line flex flex-col justify-between space-y-3">
                     <div>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-[11px] font-bold uppercase tracking-wider text-[#9887A2]">
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-ink-muted">
                           Último Riego
                         </span>
-                        <Droplets className="w-4 h-4 text-[#62B95B]" />
+                        <Droplets className="w-4 h-4 text-ok-ink" />
                       </div>
 
                       <div className="space-y-1">
-                        <span className="text-sm font-extrabold text-[#29202F] block">
+                        <span className="text-sm font-extrabold text-ink block">
                           {wateringTimeAgo}
                         </span>
-                        <span className="text-lg font-black text-[#29202F] block">
+                        <span className="text-lg font-black text-ink block">
                           {latestWateringForPrimary
                             ? `${latestWateringForPrimary.volumeLiters || 1.5} L`
                             : 'Anotá tu primer riego'}
@@ -923,11 +864,11 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                       </div>
                     </div>
 
-                    <div className="pt-2 border-t border-[#D1EAEF]">
+                    <div className="pt-2 border-t border-chip-line">
                       <button
                         type="button"
                         onClick={() => setShowWateringDetails((prev) => !prev)}
-                        className="w-full py-2 px-2.5 rounded-xl bg-white hover:bg-[#FAF2E1] border border-[#D1EAEF] text-[#6C45C7] font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                        className="w-full min-h-11 py-2 px-2.5 rounded-xl bg-white hover:bg-track border border-chip-line text-brand font-bold text-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                       >
                         <span>{showWateringDetails ? 'Ocultar' : 'Ver pH, EC y productos'}</span>
                         <ChevronDown
@@ -942,51 +883,51 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
                 {/* Detalles Expandidos de Ambiente */}
                 {showEnvDetails && (
-                  <div className="p-5 rounded-2xl bg-[#FFFDF7] border border-[#D1EAEF] space-y-4 animate-in fade-in duration-200">
-                    <div className="flex items-center justify-between pb-2 border-b border-[#D1EAEF]">
-                      <h4 className="text-sm font-extrabold text-[#29202F]">
+                  <div className="p-5 rounded-2xl bg-surface border border-chip-line space-y-4 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between pb-2 border-b border-chip-line">
+                      <h4 className="text-sm font-extrabold text-ink">
                         Parámetros Ambientales Detallados
                       </h4>
                       <button
                         type="button"
                         onClick={() => onOpenEnvModal(primaryCrop)}
-                        className="text-xs font-bold text-[#6C45C7] hover:underline cursor-pointer"
+                        className="min-h-11 inline-flex items-center text-xs font-bold text-brand hover:underline cursor-pointer"
                       >
                         + Medir ahora
                       </button>
                     </div>
 
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                      <div className="p-3 rounded-xl bg-white border border-[#D1EAEF]">
-                        <span className="text-[10px] text-[#9887A2] block">Temperatura</span>
-                        <span className="text-base font-black text-[#29202F] block mt-0.5">
+                      <div className="p-3 rounded-xl bg-white border border-chip-line">
+                        <span className="text-[10px] text-ink-muted block">Temperatura</span>
+                        <span className="text-base font-black text-ink block mt-0.5">
                           {latestEnvForPrimary?.temperature ?? latestEnvForPrimary?.temperatureC ?? '--'} °C
                         </span>
-                        <span className="text-[10px] text-[#6E5D77] block mt-0.5">Óptimo: 20-27 °C</span>
+                        <span className="text-[10px] text-ink-muted block mt-0.5">Óptimo: 20-27 °C</span>
                       </div>
 
-                      <div className="p-3 rounded-xl bg-white border border-[#D1EAEF]">
-                        <span className="text-[10px] text-[#9887A2] block">Humedad Relativa</span>
-                        <span className="text-base font-black text-[#29202F] block mt-0.5">
+                      <div className="p-3 rounded-xl bg-white border border-chip-line">
+                        <span className="text-[10px] text-ink-muted block">Humedad Relativa</span>
+                        <span className="text-base font-black text-ink block mt-0.5">
                           {latestEnvForPrimary?.humidity ?? latestEnvForPrimary?.humidityPct ?? '--'} %
                         </span>
-                        <span className="text-[10px] text-[#6E5D77] block mt-0.5">Óptimo: 45-65 %</span>
+                        <span className="text-[10px] text-ink-muted block mt-0.5">Óptimo: 45-65 %</span>
                       </div>
 
-                      <div className="p-3 rounded-xl bg-white border border-[#D1EAEF]">
-                        <span className="text-[10px] text-[#9887A2] block">VPD Estimado</span>
-                        <span className="text-base font-black text-[#6C45C7] block mt-0.5">
+                      <div className="p-3 rounded-xl bg-white border border-chip-line">
+                        <span className="text-[10px] text-ink-muted block">VPD Estimado</span>
+                        <span className="text-base font-black text-brand block mt-0.5">
                           {latestEnvForPrimary?.vpdKPa ?? latestEnvForPrimary?.vpd ?? '--'} kPa
                         </span>
-                        <span className="text-[10px] text-[#6E5D77] block mt-0.5">Déficit de presión</span>
+                        <span className="text-[10px] text-ink-muted block mt-0.5">Déficit de presión</span>
                       </div>
 
-                      <div className="p-3 rounded-xl bg-white border border-[#D1EAEF]">
-                        <span className="text-[10px] text-[#9887A2] block">Luz / PPFD</span>
-                        <span className="text-base font-black text-[#29202F] block mt-0.5">
+                      <div className="p-3 rounded-xl bg-white border border-chip-line">
+                        <span className="text-[10px] text-ink-muted block">Luz / PPFD</span>
+                        <span className="text-base font-black text-ink block mt-0.5">
                           {latestEnvForPrimary?.ppfdUmols ?? '--'} µmol
                         </span>
-                        <span className="text-[10px] text-[#6E5D77] block mt-0.5">Intensidad lumínica</span>
+                        <span className="text-[10px] text-ink-muted block mt-0.5">Intensidad lumínica</span>
                       </div>
                     </div>
 
@@ -994,7 +935,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                       <button
                         type="button"
                         onClick={() => setShowFullClimateChart((prev) => !prev)}
-                        className="text-xs font-bold text-[#6C45C7] hover:underline cursor-pointer inline-flex items-center gap-1"
+                        className="min-h-11 text-xs font-bold text-brand hover:underline cursor-pointer inline-flex items-center gap-1"
                       >
                         <span>{showFullClimateChart ? 'Ocultar gráfico climático' : 'Ver curvas y gráficos completos'}</span>
                         <ChevronRight className="w-3.5 h-3.5" />
@@ -1005,15 +946,15 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
                 {/* Detalles Expandidos de Último Riego */}
                 {showWateringDetails && (
-                  <div className="p-5 rounded-2xl bg-[#FFFDF7] border border-[#D1EAEF] space-y-4 animate-in fade-in duration-200">
-                    <div className="flex items-center justify-between pb-2 border-b border-[#D1EAEF]">
-                      <h4 className="text-sm font-extrabold text-[#29202F]">
+                  <div className="p-5 rounded-2xl bg-surface border border-chip-line space-y-4 animate-in fade-in duration-200">
+                    <div className="flex items-center justify-between pb-2 border-b border-chip-line">
+                      <h4 className="text-sm font-extrabold text-ink">
                         Detalle del Último Riego
                       </h4>
                       <button
                         type="button"
                         onClick={() => onOpenWateringModal(primaryCrop)}
-                        className="text-xs font-bold text-[#62B95B] hover:underline cursor-pointer"
+                        className="min-h-11 inline-flex items-center text-xs font-bold text-ok-ink hover:underline cursor-pointer"
                       >
                         + Nuevo riego
                       </button>
@@ -1021,27 +962,27 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
                     {latestWateringForPrimary ? (
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                        <div className="p-3 rounded-xl bg-white border border-[#D1EAEF]">
-                          <span className="text-[10px] text-[#9887A2] block">Volumen</span>
-                          <span className="text-base font-black text-[#29202F] block mt-0.5">
+                        <div className="p-3 rounded-xl bg-white border border-chip-line">
+                          <span className="text-[10px] text-ink-muted block">Volumen</span>
+                          <span className="text-base font-black text-ink block mt-0.5">
                             {latestWateringForPrimary.volumeLiters} L
                           </span>
                         </div>
-                        <div className="p-3 rounded-xl bg-white border border-[#D1EAEF]">
-                          <span className="text-[10px] text-[#9887A2] block">pH Entrada</span>
-                          <span className="text-base font-black text-[#6C45C7] block mt-0.5">
+                        <div className="p-3 rounded-xl bg-white border border-chip-line">
+                          <span className="text-[10px] text-ink-muted block">pH Entrada</span>
+                          <span className="text-base font-black text-brand block mt-0.5">
                             {latestWateringForPrimary.phIn || 's/d'}
                           </span>
                         </div>
-                        <div className="p-3 rounded-xl bg-white border border-[#D1EAEF]">
-                          <span className="text-[10px] text-[#9887A2] block">EC Entrada</span>
-                          <span className="text-base font-black text-[#62B95B] block mt-0.5">
+                        <div className="p-3 rounded-xl bg-white border border-chip-line">
+                          <span className="text-[10px] text-ink-muted block">EC Entrada</span>
+                          <span className="text-base font-black text-ok-ink block mt-0.5">
                             {latestWateringForPrimary.ecIn ? `${latestWateringForPrimary.ecIn} mS` : 's/d'}
                           </span>
                         </div>
-                        <div className="p-3 rounded-xl bg-white border border-[#D1EAEF]">
-                          <span className="text-[10px] text-[#9887A2] block">Fertilizantes</span>
-                          <span className="text-xs font-semibold text-[#29202F] block mt-0.5 truncate">
+                        <div className="p-3 rounded-xl bg-white border border-chip-line">
+                          <span className="text-[10px] text-ink-muted block">Fertilizantes</span>
+                          <span className="text-xs font-semibold text-ink block mt-0.5 truncate">
                             {latestWateringForPrimary.products && latestWateringForPrimary.products.length > 0
                               ? latestWateringForPrimary.products.map((p) => p.productName).join(', ')
                               : 'Solo agua regulada'}
@@ -1049,7 +990,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                         </div>
                       </div>
                     ) : (
-                      <p className="text-xs text-[#6E5D77]">
+                      <p className="text-xs text-ink-muted">
                         Aún no anotaste ningún riego para este cultivo. Tocá &quot;+ Nuevo riego&quot; para registrar el primero.
                       </p>
                     )}
@@ -1058,18 +999,18 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
                 {/* 4ta Capa: Ciclo del Cultivo del primaryCrop seleccionado */}
                 {primaryCropTimeline && (
-                  <div id="crop-lifecycle-card-section" className="pt-5 border-t border-[#D1EAEF] space-y-3">
+                  <div id="crop-lifecycle-card-section" className="pt-5 border-t border-chip-line space-y-3">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-sm font-extrabold text-[#29202F]">
+                        <h3 className="text-sm font-extrabold text-ink">
                           Ciclo del cultivo
                         </h3>
                         {primaryCropTimeline.progressPct !== null ? (
-                          <span className="text-xs font-bold text-[#62B95B]">
+                          <span className="text-xs font-bold text-ok-ink">
                             {primaryCropTimeline.progressPct}% del ciclo estimado
                           </span>
                         ) : (
-                          <span className="text-xs font-bold text-[#6C45C7]">
+                          <span className="text-xs font-bold text-brand">
                             Inicio de ciclo no registrado
                           </span>
                         )}
@@ -1077,11 +1018,11 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
                       <div className="flex items-center gap-3">
                         {primaryCropTimeline.elapsedDays !== null && primaryCropTimeline.totalCycleDays !== null ? (
-                          <span className="text-xs text-[#6E5D77] font-semibold">
+                          <span className="text-xs text-ink-muted font-semibold">
                             Día {primaryCropTimeline.elapsedDays} de ~{primaryCropTimeline.totalCycleDays}
                           </span>
                         ) : (
-                          <span className="text-xs text-[#6E5D77] font-semibold">
+                          <span className="text-xs text-ink-muted font-semibold">
                             Día {primaryCropTimeline.activeStageElapsedDays} en {primaryCropTimeline.currentStageName}
                           </span>
                         )}
@@ -1089,7 +1030,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                           type="button"
                           id="toggle-lifecycle-details-btn"
                           onClick={() => setShowLifecycleDetails((prev) => !prev)}
-                          className="text-xs font-bold text-[#6C45C7] hover:underline cursor-pointer flex items-center gap-1"
+                          className="min-h-11 text-xs font-bold text-brand hover:underline cursor-pointer flex items-center gap-1"
                         >
                           <span>{showLifecycleDetails ? 'Ocultar etapas' : 'Ver etapas'}</span>
                           <ChevronDown
@@ -1102,11 +1043,11 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                     </div>
 
                     {/* Barra de progreso visual orgánica */}
-                    <div className="relative w-full h-3 bg-[#FAF2E1] rounded-full overflow-hidden border border-[#D1EAEF]">
+                    <div className="relative w-full h-3 bg-track rounded-full overflow-hidden">
                       <motion.div
                         key={`cycle-progress-bar-${primaryCrop.id}`}
                         id="cycle-progress-bar-fill"
-                        className="h-full bg-gradient-to-r from-[#62B95B] via-[#F3C843] to-[#6C45C7] rounded-full"
+                        className="h-full cultiveta-stage-progress rounded-full"
                         initial={{ width: 0 }}
                         animate={{ width: `${primaryCropTimeline.roadmapProgressPct}%` }}
                         transition={{ duration: 0.8, ease: 'easeOut' }}
@@ -1114,32 +1055,32 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                     </div>
 
                     {/* Hitos botánicos principales: Siembra, Vegetativo, Floración, Cosecha */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-semibold text-[#6E5D77] pt-1 px-0.5">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-semibold text-ink-muted pt-1 px-0.5">
                       <div className="text-left">
-                        <span className="block font-bold text-[#29202F]">Siembra</span>
-                        <span className="text-[10px] text-[#9887A2] block mt-0.5">
+                        <span className="block font-bold text-ink">Siembra</span>
+                        <span className="text-[10px] text-ink-muted block mt-0.5">
                           {primaryCropTimeline.isCycleStartKnown ? primaryCropTimeline.startDateFormatted : 'Sin fecha registrada'}
                         </span>
                       </div>
                       <div className="text-left sm:text-center">
-                        <span className="block font-bold text-[#29202F]">Vegetativo</span>
+                        <span className="block font-bold text-ink">Vegetativo</span>
                         {primaryCropTimeline.vegeDates && (
-                          <span className="text-[10px] text-[#9887A2] block mt-0.5 truncate">
+                          <span className="text-[10px] text-ink-muted block mt-0.5 truncate">
                             {primaryCropTimeline.vegeDates}
                           </span>
                         )}
                       </div>
                       <div className="text-left sm:text-center">
-                        <span className="block font-bold text-[#29202F]">Floración</span>
+                        <span className="block font-bold text-ink">Floración</span>
                         {primaryCropTimeline.floraDates && (
-                          <span className="text-[10px] text-[#9887A2] block mt-0.5 truncate">
+                          <span className="text-[10px] text-ink-muted block mt-0.5 truncate">
                             {primaryCropTimeline.floraDates}
                           </span>
                         )}
                       </div>
                       <div className="text-left sm:text-right">
-                        <span className="block font-bold text-[#29202F]">Cosecha</span>
-                        <span className="text-[10px] text-[#9887A2] block mt-0.5">
+                        <span className="block font-bold text-ink">Cosecha</span>
+                        <span className="text-[10px] text-ink-muted block mt-0.5">
                           {primaryCropTimeline.harvestDate}
                         </span>
                       </div>
@@ -1147,7 +1088,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
                     {/* Progressive disclosure: Desglose detallado de etapas configuradas para primaryCrop */}
                     {showLifecycleDetails && (
-                      <div id="crop-lifecycle-stage-breakdown" className="pt-3 border-t border-[#D1EAEF] grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs animate-in fade-in duration-200">
+                      <div id="crop-lifecycle-stage-breakdown" className="pt-3 border-t border-chip-line grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs animate-in fade-in duration-200">
                         {primaryCropTimeline.milestones.map((m, mIdx) => {
                           let tag = 'Estimada';
                           if (m.isCurrent || mIdx === primaryCropTimeline.schedule.activeStageIndex) {
@@ -1173,25 +1114,25 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                               key={m.id}
                               className={`p-3 rounded-xl border transition-all ${
                                 m.isCurrent
-                                  ? 'bg-[#62B95B]/10 border-[#62B95B]/40 text-[#29202F] font-bold shadow-2xs'
+                                  ? 'bg-ok/10 border-ok/40 text-ink font-bold shadow-2xs'
                                   : m.isReached
-                                  ? 'bg-[#FAF2E1] border-[#D1EAEF] text-[#29202F]'
-                                  : 'bg-white border-[#D1EAEF] text-[#9887A2]'
+                                  ? 'bg-track border-chip-line text-ink'
+                                  : 'bg-white border-chip-line text-ink-muted'
                               }`}
                             >
                               <div className="flex items-center justify-between mb-1">
-                                <span className="text-[10px] text-[#9887A2] uppercase tracking-wider block">
+                                <span className="text-[10px] text-ink-muted uppercase tracking-wider block">
                                   {tag}
                                 </span>
                                 {m.isCurrent && (
-                                  <span className="w-2 h-2 rounded-full bg-[#62B95B] animate-pulse" title="Etapa actual" />
+                                  <span className="w-2 h-2 rounded-full bg-ok animate-pulse" title="Etapa actual" />
                                 )}
                               </div>
                               <span className="block font-bold truncate">{m.name}</span>
-                              <span className="text-[10px] text-[#6E5D77] block mt-0.5">
+                              <span className="text-[10px] text-ink-muted block mt-0.5">
                                 {dateText}
                               </span>
-                              <span className="text-[10px] text-[#9887A2] block mt-0.5">
+                              <span className="text-[10px] text-ink-muted block mt-0.5">
                                 {m.durationDays} días
                               </span>
                             </div>
@@ -1201,21 +1142,152 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                     )}
                   </div>
                 )}
-              </div>
+              </section>
+
+              {/* Bloque 2: ¿Qué tengo que hacer hoy? */}
+<section aria-labelledby="home-block-today-title" className="space-y-4">
+                <div className="cultiveta-card p-6 sm:p-8 space-y-5">
+                  <h2 id="home-block-today-title" className="text-lg font-extrabold text-ink">
+                    ¿Qué tengo que hacer hoy?
+                  </h2>
+
+                  <ul className="space-y-2">
+                    {todayTasksList.map((task) => (
+                      <li
+                        key={task.id}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-2xl border text-sm font-semibold ${
+                          task.isUrgent ? 'bg-warn-bg border-warn-line text-warn-ink' : 'bg-surface border-line text-ink'
+                        }`}
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`w-2 h-2 rounded-full shrink-0 ${task.isUrgent ? 'bg-warn-line' : 'bg-ok'}`}
+                        />
+                        <span className="flex-1">{task.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {forecastDisplay && (
+                    <div id="home-irrigation-forecast" className="rounded-2xl bg-brand-deep text-white p-5 space-y-3">
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <span className="text-xs font-bold uppercase tracking-wider text-brand-soft flex items-center gap-1.5">
+                          <Droplets className="w-4 h-4" aria-hidden="true" />
+                          Ventana para revisar la maceta
+                        </span>
+                        <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-white/10 text-brand-softer">
+                          Confianza: {forecastDisplay.confidenceLabel}
+                        </span>
+                      </div>
+
+                      <p className="text-lg font-extrabold leading-snug">
+                        {forecastDisplay.windowText ?? 'Todavía no hay una ventana estimada'}
+                      </p>
+
+                      {forecastDisplay.hint && (
+                        <p className="text-sm text-brand-soft">{forecastDisplay.hint}</p>
+                      )}
+
+                      {forecastDisplay.missingSignals.length > 0 && (
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-wider text-brand-soft">Falta medir</p>
+                          <ul className="mt-1.5 space-y-1 text-sm text-brand-softer list-disc pl-5">
+                            {forecastDisplay.missingSignals.map((signal) => (
+                              <li key={signal}>{signal}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {forecastDisplay.factors.length > 0 && (
+                        <div>
+                          <button
+                            type="button"
+                            onClick={() => setShowWhyForecast((prev) => !prev)}
+                            aria-expanded={showWhyForecast}
+                            className="min-h-11 inline-flex items-center gap-1 text-sm font-bold text-accent hover:underline cursor-pointer"
+                          >
+                            {showWhyForecast ? 'Ocultar el porqué' : '¿Por qué esta ventana?'}
+                            <ChevronDown
+                              aria-hidden="true"
+                              className={`w-4 h-4 transition-transform ${showWhyForecast ? 'rotate-180' : ''}`}
+                            />
+                          </button>
+                          {showWhyForecast && (
+                            <ul className="mt-1 space-y-1 text-sm text-brand-softer list-disc pl-5">
+                              {forecastDisplay.factors.map((factor, i) => (
+                                <li key={i}>{factor}</li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => onOpenWateringModal(primaryCrop)}
+                      className="min-h-11 py-2.5 px-3 rounded-2xl bg-primary hover:brightness-95 text-ink font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Droplets className="w-4 h-4" aria-hidden="true" />
+                      <span>Anotá un riego</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onOpenPhotoModal(primaryCrop)}
+                      className="min-h-11 py-2.5 px-3 rounded-2xl bg-white hover:bg-surface border border-chip-line text-ink font-bold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                    >
+                      <Camera className="w-4 h-4 text-brand" aria-hidden="true" />
+                      <span>Sacá una foto</span>
+                    </button>
+                  </div>
+                </div>
+
+                <UpcomingTaskWidget
+                  cultivations={cultivations}
+                  waterings={waterings}
+                  envRecords={envRecords}
+                  userId={userId}
+                  onSelectCultivation={onSelectCultivation}
+                  onOpenWateringModal={onOpenWateringModal}
+                  onWateringAdded={onWateringAdded}
+                  onTaskCompletedFeedback={onTaskCompletedFeedback}
+                />
+              </section>
+
+              {/* Bloque 3: ¿Hay algo que requiere atención? */}
+<section
+                id="home-attention-block"
+                aria-labelledby="home-block-attention-title"
+                className="cultiveta-card p-6 sm:p-8 space-y-4"
+              >
+                <h2 id="home-block-attention-title" className="text-lg font-extrabold text-ink">
+                  ¿Hay algo que requiere atención?
+                </h2>
+                {attentionItems.length === 0 ? (
+                  <p className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-ok-bg border border-ok-line text-ok-ink text-sm font-semibold">
+                    <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" />
+                    No hay nada urgente para revisar.
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {attentionItems.map((item) => (
+                      <li
+                        key={item.id}
+                        className="flex items-start gap-2 px-4 py-3 rounded-2xl bg-warn-bg border border-warn-line text-warn-ink text-sm font-semibold"
+                      >
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" aria-hidden="true" />
+                        <span>{item.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+              </>
             )
           )}
-
-          {/* 3. Tareas Críticas del Cultivo (UpcomingTaskWidget con estilo cálido) */}
-          <UpcomingTaskWidget
-            cultivations={cultivations}
-            waterings={waterings}
-            envRecords={envRecords}
-            userId={userId}
-            onSelectCultivation={onSelectCultivation}
-            onOpenWateringModal={onOpenWateringModal}
-            onWateringAdded={onWateringAdded}
-            onTaskCompletedFeedback={onTaskCompletedFeedback}
-          />
 
           {/* 4. Curvas Climáticas Históricas (DashboardEnvironmentChart desplegable) */}
           {showFullClimateChart && (
@@ -1229,17 +1301,17 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           )}
 
           {/* 9. Asistente Botánico: Preguntale a Cultiveta */}
-          <div className="bg-white rounded-[32px] p-6 sm:p-8 border border-[#D1EAEF] shadow-xs relative overflow-hidden space-y-4">
+          <div className="cultiveta-card p-6 sm:p-8 relative overflow-hidden space-y-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex items-center gap-3.5">
-                <div className="p-3.5 rounded-2xl bg-[#6C45C7]/15 text-[#6C45C7]">
+                <div className="p-3.5 rounded-2xl bg-icon-bg text-brand">
                   <Sparkles className="w-6 h-6 stroke-[2.2]" />
                 </div>
                 <div>
-                  <h3 className="text-base sm:text-lg font-extrabold text-[#29202F]">
-                    Preguntale a Cultiveta ✨
+                  <h3 className="text-base sm:text-lg font-extrabold text-ink">
+                    Preguntale a Cultiveta
                   </h3>
-                  <p className="text-xs text-[#6E5D77]">
+                  <p className="text-xs text-ink-muted">
                     Análisis botánico inteligente de tu cultivo, salud foliar y recomendaciones
                   </p>
                 </div>
@@ -1250,14 +1322,14 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                 id="generate-summary-btn"
                 onClick={handleGenerateWeeklySummary}
                 disabled={loadingSummary}
-                className="px-5 py-2.5 rounded-2xl bg-[#6C45C7] hover:bg-[#5835ab] text-white font-bold text-xs transition-colors shadow-md shadow-[#6C45C7]/20 cursor-pointer disabled:opacity-50 shrink-0"
+                className="min-h-11 px-5 py-2.5 rounded-2xl bg-primary hover:brightness-95 text-ink font-bold text-sm transition-all cursor-pointer disabled:opacity-50 shrink-0"
               >
-                {loadingSummary ? 'Consultando a Cultiveta...' : 'Generar Resumen Semanal'}
+                {loadingSummary ? 'Consultando a Cultiveta...' : 'Generá el resumen semanal'}
               </button>
             </div>
 
             {weeklySummary && (
-              <div className="p-5 rounded-2xl bg-[#FFFDF7] border border-[#D1EAEF] text-xs sm:text-sm leading-relaxed text-[#29202F]">
+              <div className="p-5 rounded-2xl bg-surface border border-chip-line text-xs sm:text-sm leading-relaxed text-ink">
                 {weeklySummary}
               </div>
             )}
@@ -1266,15 +1338,15 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           {/* 10. Listado de Cultivos en Curso */}
           <div className="space-y-4">
             <div className="flex items-center justify-between px-1">
-              <h2 className="text-lg font-extrabold text-[#29202F] flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-[#62B95B]" />
+              <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
+                <span aria-hidden="true" className="w-2.5 h-2.5 rounded-full bg-logo-dot" />
                 <span>Cultivos en Curso ({activeCrops.length})</span>
               </h2>
 
               <button
                 type="button"
                 onClick={onCreateCultivationClick}
-                className="text-xs font-bold text-[#62B95B] hover:underline cursor-pointer flex items-center gap-1"
+                className="min-h-11 text-sm font-bold text-white hover:underline cursor-pointer flex items-center gap-1"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Sumar cultivo</span>
