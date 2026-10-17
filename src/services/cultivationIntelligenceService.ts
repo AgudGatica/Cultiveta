@@ -66,11 +66,12 @@ export function buildCultivationIntelligenceContext(params: {
   // 2. Chronological context strictly derived from buildCultivationStageSchedule
   const schedule = buildCultivationStageSchedule(cultivation, geneticsList);
   const todayStr = getLocalTodayDateOnly(evalDate);
-  const realDaysElapsed = Math.max(1, daysBetween(schedule.cropStartDate, todayStr));
+  // Conteo inclusivo (el día de inicio es "Día 1"), igual que cultivationService.calculateDays
+  const realDaysElapsed = Math.max(1, daysBetween(schedule.cropStartDate, todayStr) + 1);
 
   const activeStage = schedule.activeStage;
   const stageStart = activeStage?.actualStartDate || cultivation.stageStartDate || activeStage?.startDate;
-  const daysInActiveStage = stageStart ? Math.max(1, daysBetween(stageStart, todayStr)) : 1;
+  const daysInActiveStage = stageStart ? Math.max(1, daysBetween(stageStart, todayStr) + 1) : 1;
 
   const completedStages = schedule.stages
     .filter((s) => s.status === 'completed')

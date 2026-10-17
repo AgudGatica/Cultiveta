@@ -260,7 +260,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
           />
           <div className="space-y-2 flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <StatusPill status={cultivation.status} />
+              <StatusPill status={isCosechado ? 'COSECHADO' : isHealthy ? 'ESTABLE' : 'REVISAR'} />
               <span className="text-xs font-bold px-3 py-1 rounded-full bg-[#FAF2E1] text-[#29202F] border border-[#EFE3CF]">
                 {cultivation.type}
               </span>
@@ -782,7 +782,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="px-2 py-0.5 rounded-full bg-[#EB7864] text-white font-mono font-bold text-[10px] tracking-wider uppercase">
-                      OVERDUE
+                      ATRASADO
                     </span>
                     <h4 className="font-bold text-sm text-[#29202F]">
                       Alerta de Riego Atrasado (+{wateringAnalysis.daysOverdue}d)
@@ -816,7 +816,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                 <span className="text-xs font-semibold text-[#9887A2] block">Último Riego</span>
                 {wateringAnalysis.isOverdue && (
                   <span className="px-2 py-0.5 rounded-full bg-[#EB7864]/15 text-[#EB7864] font-mono font-bold text-[10px] tracking-wider uppercase">
-                    OVERDUE
+                    ATRASADO
                   </span>
                 )}
               </div>

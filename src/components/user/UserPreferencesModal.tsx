@@ -330,7 +330,7 @@ export const UserPreferencesModal: React.FC<UserPreferencesModalProps> = ({
                     <div className="space-y-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-bold text-white">
-                          Alertas de Riego (Riegos Pendientes & Overdue)
+                          Alertas de Riego (Riegos pendientes y atrasados)
                         </span>
                         <span
                           className={`text-[9px] font-mono font-bold px-2 py-0.5 rounded-full border ${

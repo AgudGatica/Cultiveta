@@ -260,11 +260,11 @@ export default function App() {
       const first = unnotified[0];
       if (unnotified.length === 1) {
         showToast(
-          `⚠️ Alerta Overdue: "${first.cultivation.name}" superó el ciclo de riego (${first.analysis.recommendedIntervalDays}d en ${first.cultivation.currentStage}).`
+          `⚠️ Riego atrasado: "${first.cultivation.name}" superó el ciclo de riego (${first.analysis.recommendedIntervalDays}d en ${first.cultivation.currentStage}).`
         );
       } else {
         showToast(
-          `⚠️ Alerta Overdue: ${unnotified.length} cultivos superan el período de riego recomendado.`
+          `⚠️ Riego atrasado: ${unnotified.length} cultivos superan el período de riego recomendado.`
         );
       }
     }
@@ -1030,7 +1030,7 @@ export default function App() {
           onWateringAdded={(w) => {
             setWaterings((prev) => [w, ...prev.filter((x) => x.id !== w.id)]);
             notifiedOverdueRef.current.delete(w.cultivationId);
-            showToast('💧 Riego registrado con éxito. ¡Alerta Overdue resuelta!');
+            showToast('💧 Riego registrado con éxito. ¡Alerta de riego atrasado resuelta!');
             setWateringModalInitialRecipe(null);
           }}
         />

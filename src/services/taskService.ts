@@ -134,7 +134,7 @@ export const taskService = {
       } else if (wateringAnalysis.isOverdue) {
         wateringUrgency = 'overdue';
         wateringPriority = 'critical';
-        wateringTitle = `¡Riego Overdue Atrasado!`;
+        wateringTitle = `¡Riego atrasado!`;
         wateringDesc = `${wateringAnalysis.alertMessage} Regar con pH ${targetPh} (~${estimatedLiters}L/planta).`;
       } else if (!latestWatering || nextWateringDate <= today || wateringAnalysis.isDueToday) {
         wateringUrgency = 'today';

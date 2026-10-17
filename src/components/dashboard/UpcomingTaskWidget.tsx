@@ -264,9 +264,9 @@ export const UpcomingTaskWidget: React.FC<UpcomingTaskWidgetProps> = ({
       id="dashboard-upcoming-task-widget"
       className={`relative overflow-hidden rounded-[28px] p-5 sm:p-6 border transition-all duration-300 shadow-xs ${
         activeTask.urgency === 'overdue'
-          ? 'bg-[#EB7864]/10 border-[#EB7864]/40'
+          ? 'bg-[#FDF2F0] border-[#EB7864]/40'
           : activeTask.urgency === 'today'
-          ? 'bg-[#F3C843]/15 border-[#F3C843]/40'
+          ? 'bg-[#FDF7E3] border-[#F3C843]/40'
           : 'bg-white border-[#EFE3CF]'
       }`}
     >

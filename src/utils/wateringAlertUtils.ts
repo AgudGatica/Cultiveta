@@ -154,16 +154,16 @@ export function analyzeWateringUrgency(
         isOptimal: false,
         daysOverdue,
         urgencyLevel: 'critical',
-        badgeText: 'Overdue',
+        badgeText: 'Atrasado',
         dotClass: 'bg-rose-500 dot-red',
         glowClass: 'shadow-[0_0_12px_rgba(244,63,94,0.85)]',
         badgeBg: 'bg-rose-500/20 text-rose-300 border-rose-500/50',
         textClass: 'text-rose-400',
         pulse: true,
-        label: `Riego Overdue: Sin registros desde el inicio (${daysSinceStart} días sin riego). Recomendado cada ${recommendedInterval} días en ${stage}.`,
-        alertTitle: `¡Alerta de Riego Overdue! (${cultivation.name})`,
+        label: `Riego atrasado: Sin registros desde el inicio (${daysSinceStart} días sin riego). Recomendado cada ${recommendedInterval} días en ${stage}.`,
+        alertTitle: `¡Alerta de riego atrasado! (${cultivation.name})`,
         alertMessage: `El cultivo "${cultivation.name}" no tiene riegos registrados y lleva ${daysSinceStart} días activo. El período recomendado para ${stage} es de ${recommendedInterval} días.`,
-        notificationMessage: `⚠️ Alerta Overdue: "${cultivation.name}" supera el período de riego recomendado (${recommendedInterval} días en ${stage}).`,
+        notificationMessage: `⚠️ Riego atrasado: "${cultivation.name}" supera el período de riego recomendado (${recommendedInterval} días en ${stage}).`,
       };
     }
 
@@ -213,16 +213,16 @@ export function analyzeWateringUrgency(
       isOptimal: false,
       daysOverdue,
       urgencyLevel: 'critical',
-      badgeText: 'Overdue',
+      badgeText: 'Atrasado',
       dotClass: 'bg-rose-500 dot-red',
       glowClass: 'shadow-[0_0_12px_rgba(244,63,94,0.85)]',
       badgeBg: 'bg-rose-500/20 text-rose-300 border-rose-500/50',
       textClass: 'text-rose-400',
       pulse: true,
-      label: `Riego Overdue: último riego hace ${daysSinceWatering} días. Período recomendado para ${stage}: cada ${recommendedInterval} días (${daysOverdue} d atrasado).`,
-      alertTitle: `¡Riego Overdue en ${cultivation.name}!`,
+      label: `Riego atrasado: último riego hace ${daysSinceWatering} días. Período recomendado para ${stage}: cada ${recommendedInterval} días (${daysOverdue} d atrasado).`,
+      alertTitle: `¡Riego atrasado en ${cultivation.name}!`,
       alertMessage: `El último riego fue hace ${daysSinceWatering} días. Para la etapa de ${stage} se recomienda regar cada ${recommendedInterval} días. ¡Atrasado por ${daysOverdue} día${daysOverdue > 1 ? 's' : ''}!`,
-      notificationMessage: `⚠️ Alerta Overdue en "${cultivation.name}": último riego hace ${daysSinceWatering} días (recomendado: ${recommendedInterval} días en ${stage}).`,
+      notificationMessage: `⚠️ Riego atrasado en "${cultivation.name}": último riego hace ${daysSinceWatering} días (recomendado: ${recommendedInterval} días en ${stage}).`,
     };
   }
 

@@ -894,14 +894,15 @@ export function buildCultivationStageSchedule(
 
   if (isCycleStartKnown && (scheduleItems[0]?.actualStartDate || scheduleItems[0]?.startDate)) {
     const cycleStart = scheduleItems[0].actualStartDate || scheduleItems[0].startDate!;
-    totalElapsedDays = Math.max(1, daysBetween(cycleStart, todayStr));
+    // Conteo inclusivo (el día de inicio es "Día 1"), igual que cultivationService.calculateDays
+    totalElapsedDays = Math.max(1, daysBetween(cycleStart, todayStr) + 1);
     totalCycleDays = Math.max(1, daysBetween(cycleStart, estimatedHarvestDate));
     overallProgressPct = Math.min(100, Math.round((totalElapsedDays / totalCycleDays) * 100));
   }
 
   const activeStageItem = scheduleItems[activeStageIndex] || scheduleItems[0];
   const activeStageStart = activeStageItem?.startDate || todayStr;
-  const activeStageElapsedDays = Math.max(1, daysBetween(activeStageStart, todayStr));
+  const activeStageElapsedDays = Math.max(1, daysBetween(activeStageStart, todayStr) + 1);
 
   // 7. Roadmap progress calculation (centralized for dashboard slider and timeline views)
   let harvestIdx = scheduleItems.findIndex(
@@ -1122,7 +1123,7 @@ export function calculateTimelineMetrics(
       ? cultivation.floweringStartDate || schedule.activeStage.startDate
       : schedule.activeStage.startDate);
 
-  const daysInActiveStage = Math.max(1, daysBetween(stageStartDate, todayStr));
+  const daysInActiveStage = Math.max(1, daysBetween(stageStartDate, todayStr) + 1);
   const expectedStageDuration = schedule.activeStage.expectedDurationDays || 1;
   const activeStageProgressPct = Math.min(
     100,

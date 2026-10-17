@@ -61,6 +61,31 @@ try {
   console.warn('[server.ts] No se pudo leer firebase-applet-config.json:', cfgErr);
 }
 
+// Indica si hay credenciales de Firebase Admin disponibles (Cloud Run / ADC / cuenta de servicio).
+// Sin ellas (p. ej. desarrollo local en una PC), las consultas de Firestore Admin fallan de forma
+// asíncrona fuera del try/catch y tiran abajo el proceso.
+export function hasAdminCredentials(): boolean {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT || process.env.GOOGLE_APPLICATION_CREDENTIALS) return true;
+  if (process.env.K_SERVICE || process.env.FUNCTION_TARGET) return true;
+  const adcPath = process.env.APPDATA
+    ? path.join(process.env.APPDATA, 'gcloud', 'application_default_credentials.json')
+    : path.join(process.env.HOME || '', '.config', 'gcloud', 'application_default_credentials.json');
+  return fs.existsSync(adcPath);
+}
+
+// Red de seguridad para desarrollo local: Storage Admin también puede lanzar el error de
+// credenciales de forma asíncrona y no capturable. Fuera de producción, se registra y el
+// servidor sigue funcionando.
+if (process.env.NODE_ENV !== 'production' && !hasAdminCredentials()) {
+  process.on('uncaughtException', (err) => {
+    if (err?.message?.includes('Could not load the default credentials')) {
+      console.warn('[Firebase Admin] Operación omitida: sin credenciales en desarrollo local.');
+      return;
+    }
+    throw err;
+  });
+}
+
 // 1. Inicialización segura y perezosa de Firebase Admin SDK
 let firebaseAdminApp: App | null = null;
 export function getFirebaseAdmin(): FirebaseAdminAppWithFirestore {
@@ -96,6 +121,11 @@ export function getFirebaseAdmin(): FirebaseAdminAppWithFirestore {
 
   // Vincular método .firestore() con soporte para base de datos nombrada (firestoreDatabaseId)
   (firebaseAdminApp as any).firestore = () => {
+    // Fallar de forma síncrona (capturable por los try/catch de cada ruta) en vez de dejar que
+    // google-auth-library lance el error de credenciales fuera de la cadena de promesas.
+    if (!hasAdminCredentials()) {
+      throw new Error('Sin credenciales de Firebase Admin (desarrollo local)');
+    }
     const databaseId =
       process.env.FIRESTORE_DATABASE_ID ||
       appletFirebaseConfig.firestoreDatabaseId;
