@@ -10,6 +10,7 @@ import {
   Scale,
   Calculator,
   X,
+  Trophy,
 } from 'lucide-react';
 
 interface MobileNavProps {
@@ -42,13 +43,15 @@ export const MobileNav: React.FC<MobileNavProps> = ({
   }, [isMoreMenuOpen]);
 
   const secondaryNavItems = [
+    { id: 'profile', label: 'Mi perfil', icon: Trophy, desc: 'Tu nivel, tu racha y tus logros' },
     { id: 'genetics', label: 'Genéticas', icon: Dna, desc: 'Banco de semillas y cepas' },
     { id: 'harvests', label: 'Cosechas', icon: Award, desc: 'Historial de cortes y secado' },
     { id: 'compare_crops', label: 'Comparador', icon: Scale, desc: 'Curvas de cosechas anteriores' },
     { id: 'calculators', label: 'Calculadoras', icon: Calculator, desc: 'VPD, luz PPFD y mezclas' },
   ];
 
-  const isSecondaryActive = secondaryNavItems.some((item) => item.id === currentView);
+  const isSecondaryActive =
+    secondaryNavItems.some((item) => item.id === currentView) || currentView === 'achievements';
 
   return (
     <>
@@ -74,7 +77,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
             <div className="grid grid-cols-1 gap-2">
               {secondaryNavItems.map((item) => {
                 const Icon = item.icon;
-                const isActive = currentView === item.id;
+                const isActive = currentView === item.id || (item.id === 'profile' && currentView === 'achievements');
                 return (
                   <button
                     key={item.id}

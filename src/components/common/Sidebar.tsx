@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Plus,
   Scale,
+  Trophy,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -47,6 +48,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'compare_crops', label: 'Comparador', icon: Scale, badge: '' },
     { id: 'calculators', label: 'Calculadoras', icon: Calculator, badge: '' },
     { id: 'ai_assistant', label: 'Cultiveta IA', icon: Sparkles, isAI: true, badge: '✨' },
+    { id: 'profile', label: 'Mi perfil', icon: Trophy, badge: '' },
   ];
 
   return (
@@ -95,7 +97,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <nav className="space-y-1 pt-1">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = currentView === item.id;
+            const isActive = currentView === item.id || (item.id === 'profile' && currentView === 'achievements');
             return (
               <button
                 key={item.id}

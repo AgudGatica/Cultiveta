@@ -12,6 +12,7 @@ import {
   Settings,
   ChevronDown,
   ShieldCheck,
+  Trophy,
 } from 'lucide-react';
 import { Cultivation, UserProfile } from '../../types';
 import { User } from 'firebase/auth';
@@ -297,6 +298,29 @@ export const Header: React.FC<HeaderProps> = ({
                     </span>
                   </div>
                 </div>
+
+                {/* Perfil, nivel y logros */}
+                {onNavigate && (
+                  <button
+                    type="button"
+                    id="menu-open-profile-btn"
+                    onClick={() => {
+                      setIsUserMenuOpen(false);
+                      onNavigate('profile');
+                    }}
+                    className="w-full p-2.5 rounded-2xl hover:bg-track text-left transition-colors flex items-center gap-3 text-xs text-ink cursor-pointer group"
+                  >
+                    <div className="p-2 rounded-xl bg-brand/10 text-brand border border-brand/20 group-hover:bg-brand/20 transition-colors">
+                      <Trophy className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="font-bold block">Mi perfil</span>
+                      <span className="text-[10px] text-ink-muted block truncate">
+                        Tu nivel, tu racha y tus logros
+                      </span>
+                    </div>
+                  </button>
+                )}
 
                 {/* Opción 1: Preferencias y Configuración de Alertas */}
                 <button

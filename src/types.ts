@@ -42,6 +42,9 @@ export interface UserProfile {
   email: string | null;
   displayName: string | null;
   photoURL?: string | null;
+  /** Nombre de usuario visible en el perfil (sin @). */
+  username?: string;
+  bio?: string;
   createdAt: string;
   role?: 'admin' | 'user';
   isCreator?: boolean;

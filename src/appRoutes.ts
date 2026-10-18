@@ -9,7 +9,9 @@ export type AppView =
   | 'harvests'
   | 'compare_crops'
   | 'ai_assistant'
-  | 'calculators';
+  | 'calculators'
+  | 'profile'
+  | 'achievements';
 
 const VIEW_PATHS: Record<Exclude<AppView, 'cultivation_detail'>, string> = {
   dashboard: '/',
@@ -19,6 +21,8 @@ const VIEW_PATHS: Record<Exclude<AppView, 'cultivation_detail'>, string> = {
   compare_crops: '/comparador',
   ai_assistant: '/ia',
   calculators: '/calculadoras',
+  profile: '/perfil',
+  achievements: '/perfil/logros',
 };
 
 /** URL de una pantalla (para el detalle de cultivo usar /cultivos/:id). Desconocida → Inicio. */

@@ -1698,6 +1698,12 @@ app.get('/api/account/export', verifyFirebaseAuth, async (req, res) => {
       data[name] = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     }
     const profileSnap = await db.collection('users').doc(userId).get();
+    // Subcolecciones del perfil (por ejemplo, progress: logros ganados y nivel festejado)
+    const profileSubcollections: Record<string, any[]> = {};
+    for (const sub of await db.collection('users').doc(userId).listCollections()) {
+      const subSnap = await sub.get();
+      profileSubcollections[sub.id] = subSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    }
 
     const { dateStr } = getZonedParts();
     res.setHeader('Content-Disposition', `attachment; filename="cultiveta-export-${dateStr}.json"`);
@@ -1705,6 +1711,7 @@ app.get('/api/account/export', verifyFirebaseAuth, async (req, res) => {
       exportedAt: new Date().toISOString(),
       userId,
       profile: profileSnap.exists ? profileSnap.data() : null,
+      profileSubcollections,
       collections: data,
       note: 'Las fotos se incluyen como enlaces (campo de URL de cada registro en "photos").',
     });
@@ -1745,7 +1752,8 @@ app.post('/api/account/delete', verifyFirebaseAuth, async (req, res) => {
         await batch.commit();
       }
     }
-    await db.collection('users').doc(userId).delete();
+    // recursiveDelete: el perfil y sus subcolecciones (progress, etc.); delete() las dejaba huérfanas
+    await db.recursiveDelete(db.collection('users').doc(userId));
 
     // 2. Archivos de Storage del usuario (fotos y avatar)
     await getStorage(adminApp)

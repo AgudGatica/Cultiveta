@@ -179,6 +179,7 @@ export const demoDataService = {
     // Waterings for cult 1
     const wateringsCult1: Array<{
       date: string;
+      time?: string;
       volumeLiters: number;
       phIn: number;
       ecIn: number;
@@ -190,6 +191,7 @@ export const demoDataService = {
     }> = [
       {
         date: formatDate(1),
+        time: '07:30',
         volumeLiters: 6,
         phIn: 6.3,
         ecIn: 1.8,
@@ -268,7 +270,8 @@ export const demoDataService = {
     // Demo fertilization schedule for cult 1
     const schedCult1 = fertilizationService.getPresetSchedule('biobizz_organic', cult1Id, userId);
     schedCult1.isDemo = true;
-    saveDemoItem('fertilization_schedules', schedCult1);
+    // Misma colección que usa fertilizationService (antes se guardaba en 'fertilization_schedules' y no se veía)
+    saveDemoItem('fertilizationSchedules', schedCult1);
 
     // Environment records for cult 1 (last 10 days)
     for (let i = 10; i >= 0; i--) {
@@ -629,6 +632,8 @@ export const demoDataService = {
       'photos',
       'diaryEntries',
       'harvests',
+      'fertilizationSchedules',
+      // Nombre viejo: limpia los ejemplos guardados antes de la corrección
       'fertilization_schedules',
     ];
 

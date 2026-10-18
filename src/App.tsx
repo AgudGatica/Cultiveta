@@ -53,6 +53,8 @@ import { NotificationCenterModal } from './components/notifications/Notification
 import { UserPreferencesModal } from './components/user/UserPreferencesModal';
 import { AccountModal } from './components/user/AccountModal';
 import { UserProfile } from './types';
+import { useGrowerProgress } from './hooks/useGrowerProgress';
+import { CelebrationLayer } from './components/profile/CelebrationLayer';
 import { Sprout, Plus, SlidersHorizontal } from 'lucide-react';
 
 // Pantallas y modales pesados con carga diferida: se descargan recién cuando se abren.
@@ -77,6 +79,8 @@ const CalculatorsView = React.lazy(() =>
 const PhotoDiagnosisModal = React.lazy(() =>
   import('./components/ai/PhotoDiagnosisModal').then((m) => ({ default: m.PhotoDiagnosisModal }))
 );
+const ProfileView = React.lazy(() => import('./components/profile/ProfileView'));
+const AchievementsView = React.lazy(() => import('./components/profile/AchievementsView'));
 const GoogleCalendarModal = React.lazy(() =>
   import('./components/calendar/GoogleCalendarModal').then((m) => ({ default: m.GoogleCalendarModal }))
 );
@@ -182,6 +186,13 @@ export default function App() {
   const [cultivationStatusFilter, setCultivationStatusFilter] = useState<CultivationStatusFilter>('active');
   const [stageFilter, setStageFilter] = useState<StageFilterCategory>('all');
   const [cultivationSearchQuery, setCultivationSearchQuery] = useState('');
+
+  // Nivel, XP, logros y racha: se calculan de los datos en vivo; los festejos salen de comparar cambios.
+  const progressData = useMemo(
+    () => ({ cultivations, waterings, environmentRecords: envRecords, photos, diaryEntries, harvests }),
+    [cultivations, waterings, envRecords, photos, diaryEntries, harvests]
+  );
+  const growerProgress = useGrowerProgress(currentUser?.uid, progressData, Boolean(currentUser) && !isInitialLoading);
 
   // ─────────────────────────────────────────────────────────────
   // CULTIVETA DESIGN SYSTEM: ATMÓSFERA VISUAL SEGÚN VIEW ACTIVA
@@ -599,7 +610,7 @@ export default function App() {
         onSeedDemoData={handleSeedDemoData}
         onClearDemoData={handleClearDemoData}
         onNavigate={(view) => {
-          if (view === 'profile' || view === 'preferences') {
+          if (view === 'preferences') {
             setIsPreferencesModalOpen(true);
           } else {
             setCurrentView(view as any);
@@ -991,9 +1002,37 @@ export default function App() {
 
           {/* VIEW: CALCULATORS */}
           {currentView === 'calculators' && <CalculatorsView />}
+
+          {/* VIEW: PERFIL Y LOGROS */}
+          {currentView === 'profile' && (
+            <ProfileView
+              currentUser={currentUser}
+              userProfile={userProfile}
+              progress={growerProgress.progress}
+              onOpenAchievements={() => setCurrentView('achievements')}
+              onProfileUpdated={(info) => setUserProfile((prev) => (prev ? { ...prev, ...info } : prev))}
+              showToast={showToast}
+            />
+          )}
+          {currentView === 'achievements' && (
+            <AchievementsView
+              progress={growerProgress.progress}
+              badgeDates={growerProgress.badgeDates}
+              onBack={() => setCurrentView('profile')}
+            />
+          )}
           </React.Suspense>
         </main>
       </div>
+
+      {/* Festejos de nivel y logros, y avisos de XP */}
+      <CelebrationLayer
+        celebrations={growerProgress.celebrations}
+        onDismissCelebration={growerProgress.dismissCelebration}
+        xpToasts={growerProgress.xpToasts}
+        onDismissXpToast={growerProgress.dismissXpToast}
+        onOpenAchievements={() => setCurrentView('achievements')}
+      />
 
       {/* Mobile Bottom Navigation */}
       <MobileNav
