@@ -178,7 +178,7 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
                   onClick={() => handleApplyWeekFromSchedule(w.weekNumber)}
                   className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1 border ${
                     selectedWeekNum === w.weekNumber && products.length > 0
-                      ? 'bg-ok text-white border-ok shadow-2xs font-black'
+                      ? 'bg-ok-ink text-white border-ok shadow-2xs font-black'
                       : 'bg-white text-ink hover:bg-surface border-chip-line'
                   }`}
                 >
@@ -291,7 +291,7 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
                 <button
                   type="button"
                   onClick={handleAddManualProduct}
-                  className="px-3.5 py-2 rounded-xl bg-ok text-white font-bold text-xs hover:bg-[#53a44d] transition-colors flex items-center gap-1 cursor-pointer shrink-0"
+                  className="px-3.5 py-2 rounded-xl bg-primary text-ink font-bold text-xs hover:brightness-95 transition-all flex items-center gap-1 cursor-pointer shrink-0"
                 >
                   <Plus className="w-3.5 h-3.5" />
                   <span>Añadir</span>

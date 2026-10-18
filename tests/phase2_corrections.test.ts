@@ -238,11 +238,20 @@ export async function runPhase2CorrectionsTests(): Promise<{ passed: number; fai
     if (f.netWaterLiters !== 1.6) throw new Error(`netWaterLiters esperado 1.6, obtenido ${f.netWaterLiters}`);
   });
 
-  await assert('9. Drenaje por categoría: el motor todavía no lo usa (misma ventana)', () => {
+  await assert('9. Drenaje por categoría: es señal (factor) pero no cambia la ventana', () => {
     const withLevel = calculateIrrigationForecast(crop, [baseWatering({ drainageLevel: 'high' })], [], evalDate);
     const without = calculateIrrigationForecast(crop, [baseWatering({})], [], evalDate);
     if (withLevel.wateringWindowStart !== without.wateringWindowStart || withLevel.wateringWindowEnd !== without.wateringWindowEnd) {
-      throw new Error('drainageLevel cambió la ventana: si el motor empezó a usarlo, actualizá este test y la documentación');
+      throw new Error('drainageLevel no debe cambiar la ventana (decisión: solo señal)');
+    }
+    if (!withLevel.factors.some((f) => f.includes('Drenaje observado'))) {
+      throw new Error('Falta el factor "Drenaje observado"');
+    }
+    if (withLevel.missingSignals.includes('Volumen de drenaje (runoff) no registrado')) {
+      throw new Error('Con drenaje observado no debería figurar como señal faltante');
+    }
+    if (!without.missingSignals.includes('Volumen de drenaje (runoff) no registrado')) {
+      throw new Error('Sin drenaje sí debe figurar como señal faltante');
     }
   });
 

@@ -124,7 +124,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
         stageName: 'Ventana de Cosecha',
         description: 'Confirmá madurez observando tricomas.',
         advice: 'Buscar 70-80% tricomas lechosos y 15-20% ámbar antes de cortar.',
-        badgeColor: 'bg-ok text-white border-ok',
+        badgeColor: 'bg-ok-ink text-white border-ok',
       };
     } else {
       // Días 1 o 2 restantes
@@ -133,7 +133,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
         stageName: `Cosecha Próxima (~${daysUntilHarvest}d)`,
         description: 'Revisá tricomas antes de cortar.',
         advice: 'Confirmá madurez de resina con lupa o microscopio en cálices medios.',
-        badgeColor: 'bg-ok text-white border-ok',
+        badgeColor: 'bg-ok-ink text-white border-ok',
       };
     }
 

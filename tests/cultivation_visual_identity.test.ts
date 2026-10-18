@@ -1,23 +1,7 @@
-import { JSDOM } from 'jsdom';
+import './helpers/setupDom';
 import 'fake-indexeddb/auto';
 
-const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>', {
-  url: 'http://localhost:3000',
-  pretendToBeVisual: true,
-});
 
-globalThis.window = dom.window as any;
-globalThis.document = dom.window.document;
-globalThis.Event = dom.window.Event as any;
-globalThis.CustomEvent = dom.window.CustomEvent as any;
-globalThis.localStorage = dom.window.localStorage as any;
-Object.defineProperty(globalThis, 'navigator', {
-  value: dom.window.navigator,
-  writable: true,
-  configurable: true,
-});
-
-(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';

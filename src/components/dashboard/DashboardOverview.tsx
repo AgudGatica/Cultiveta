@@ -46,8 +46,17 @@ import {
   formatFriendlyDate,
   isFloweringStage,
   isPreFloweringStage,
+  parseLocalDate,
 } from '../../utils/growthStageUtils';
 import { calculateIrrigationForecast } from '../../services/irrigationForecastService';
+import {
+  evaluateEnvironmentReading,
+  isFlowerOrRipeningStage,
+  TEMP_LOW_ALERT_C,
+  TEMP_HIGH_ALERT_C,
+  FLOWER_HUMIDITY_HIGH_PCT,
+  VEG_HUMIDITY_LOW_PCT,
+} from '../../utils/agronomicThresholds';
 import { cultivationService } from '../../services/cultivationService';
 
 interface DashboardOverviewProps {
@@ -166,7 +175,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
 
   // Greetings logic in Argentine Spanish
   const greetingData = useMemo(() => {
-    const rawName = userProfile?.displayName || userProfile?.name || 'Cultivador';
+    const rawName = userProfile?.displayName || 'Cultivador';
     const firstName = rawName.split(' ')[0] || 'Cultivador';
     const hour = new Date().getHours();
     let timeGreeting = 'Buen día';
@@ -216,7 +225,11 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   const now = new Date();
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(now.getDate() - 7);
-  const recentWateringsCount = waterings.filter((w) => new Date(w.date) >= sevenDaysAgo).length;
+  // Fechas de riego interpretadas en hora local (new Date('YYYY-MM-DD') usaría UTC)
+  const recentWateringsCount = waterings.filter((w) => {
+    const d = parseLocalDate(w.date);
+    return d !== null && d >= sevenDaysAgo;
+  }).length;
 
   // Overdue watering detection
   const isWateringAlertsEnabled = userProfile?.preferences?.alertTypes?.wateringAlerts ?? true;
@@ -261,40 +274,50 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         alertMsg: null,
       };
     }
-    const temp = latestEnvForPrimary.temperature ?? latestEnvForPrimary.temperatureC ?? 24;
-    const hum = latestEnvForPrimary.humidity ?? latestEnvForPrimary.humidityPct ?? 55;
-    const isFlower =
-      isFloweringStage(primaryCrop?.currentStage) ||
-      primaryCrop?.currentStage?.toLowerCase().includes('madur');
+    // Solo se evalúan los valores medidos: si falta uno, se muestra "s/d" (no se supone nada).
+    const rawTemp = latestEnvForPrimary.temperatureC;
+    const rawHum = latestEnvForPrimary.humidityPct;
+    const temp = typeof rawTemp === 'number' ? rawTemp : null;
+    const hum = typeof rawHum === 'number' ? rawHum : null;
+    const shortDesc = `${temp !== null ? `${temp} °C` : 's/d °C'} · ${hum !== null ? `${hum} %` : 's/d %'}`;
+    const check = evaluateEnvironmentReading({ temperatureC: temp, humidityPct: hum }, primaryCrop?.currentStage);
 
-    if (isFlower && hum > 68) {
+    if (check.humidityHigh) {
       return {
         label: 'Humedad alta en floración',
         isGood: false,
-        shortDesc: `${temp} °C · ${hum} %`,
+        shortDesc,
         alertMsg: 'Humedad alta en floración. Conviene revisarla ahora para prevenir hongos.',
       };
     }
-    if (temp > 31) {
+    if (check.tempHigh) {
       return {
         label: 'Temperatura elevada',
         isGood: false,
-        shortDesc: `${temp} °C · ${hum} %`,
+        shortDesc,
         alertMsg: `Temperatura en ${temp} °C. Conviene mejorar la extracción de aire.`,
       };
     }
-    if (temp < 17) {
+    if (check.tempLow) {
       return {
         label: 'Temperatura baja',
         isGood: false,
-        shortDesc: `${temp} °C · ${hum} %`,
+        shortDesc,
         alertMsg: `Temperatura en ${temp} °C. Muy baja para desarrollo óptimo.`,
       };
     }
+    if (check.humidityLow) {
+      return {
+        label: 'Humedad baja',
+        isGood: false,
+        shortDesc,
+        alertMsg: `Humedad en ${hum} %. Conviene subirla para evitar estrés.`,
+      };
+    }
     return {
-      label: 'Está joya',
+      label: temp === null && hum === null ? 'Sin mediciones' : 'Está joya',
       isGood: true,
-      shortDesc: `${temp} °C · ${hum} %`,
+      shortDesc,
       alertMsg: null,
     };
   }, [latestEnvForPrimary, primaryCrop]);
@@ -522,12 +545,14 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
         cultivations: activeCrops.map((c) => ({
           name: c.name,
           stage: c.currentStage,
-          genetics: c.genetics,
+          genetics: c.geneticsName,
         })),
-        wateringsCount: waterings.length,
+        // El servidor lo presenta como "riegos en los últimos 7 días"
+        wateringsCount: recentWateringsCount,
+        // Sin medición no se envía un valor supuesto: el servidor muestra "N/D"
         recentEnvAvg: {
-          tempC: latestEnvForPrimary?.temperature ?? latestEnvForPrimary?.temperatureC ?? 24,
-          humidityPct: latestEnvForPrimary?.humidity ?? latestEnvForPrimary?.humidityPct ?? 58,
+          tempC: typeof latestEnvForPrimary?.temperatureC === 'number' ? latestEnvForPrimary.temperatureC : null,
+          humidityPct: typeof latestEnvForPrimary?.humidityPct === 'number' ? latestEnvForPrimary.humidityPct : null,
         },
       });
       setWeeklySummary(res);
@@ -860,7 +885,9 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                         </span>
                         <span className="text-lg font-black text-ink block">
                           {latestWateringForPrimary
-                            ? `${latestWateringForPrimary.volumeLiters || 1.5} L`
+                            ? latestWateringForPrimary.volumeLiters
+                              ? `${latestWateringForPrimary.volumeLiters} L`
+                              : 'Cantidad sin registrar'
                             : 'Anotá tu primer riego'}
                         </span>
                       </div>
@@ -903,23 +930,29 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                       <div className="p-3 rounded-xl bg-white border border-chip-line">
                         <span className="text-[10px] text-ink-muted block">Temperatura</span>
                         <span className="text-base font-black text-ink block mt-0.5">
-                          {latestEnvForPrimary?.temperature ?? latestEnvForPrimary?.temperatureC ?? '--'} °C
+                          {latestEnvForPrimary?.temperatureC ?? '--'} °C
                         </span>
-                        <span className="text-[10px] text-ink-muted block mt-0.5">Óptimo: 20-27 °C</span>
+                        <span className="text-[10px] text-ink-muted block mt-0.5">
+                          Rango sin alertas: {TEMP_LOW_ALERT_C}–{TEMP_HIGH_ALERT_C} °C
+                        </span>
                       </div>
 
                       <div className="p-3 rounded-xl bg-white border border-chip-line">
                         <span className="text-[10px] text-ink-muted block">Humedad Relativa</span>
                         <span className="text-base font-black text-ink block mt-0.5">
-                          {latestEnvForPrimary?.humidity ?? latestEnvForPrimary?.humidityPct ?? '--'} %
+                          {latestEnvForPrimary?.humidityPct ?? '--'} %
                         </span>
-                        <span className="text-[10px] text-ink-muted block mt-0.5">Óptimo: 45-65 %</span>
+                        <span className="text-[10px] text-ink-muted block mt-0.5">
+                          {isFlowerOrRipeningStage(primaryCrop.currentStage)
+                            ? `En floración: hasta ${FLOWER_HUMIDITY_HIGH_PCT} %`
+                            : `Mínimo en vegetativo: ${VEG_HUMIDITY_LOW_PCT} %`}
+                        </span>
                       </div>
 
                       <div className="p-3 rounded-xl bg-white border border-chip-line">
                         <span className="text-[10px] text-ink-muted block">VPD Estimado</span>
                         <span className="text-base font-black text-brand block mt-0.5">
-                          {latestEnvForPrimary?.vpdKPa ?? latestEnvForPrimary?.vpd ?? '--'} kPa
+                          {latestEnvForPrimary?.vpdKPa ?? '--'} kPa
                         </span>
                         <span className="text-[10px] text-ink-muted block mt-0.5">Déficit de presión</span>
                       </div>
@@ -927,7 +960,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                       <div className="p-3 rounded-xl bg-white border border-chip-line">
                         <span className="text-[10px] text-ink-muted block">Luz / PPFD</span>
                         <span className="text-base font-black text-ink block mt-0.5">
-                          {latestEnvForPrimary?.ppfdUmols ?? '--'} µmol
+                          {latestEnvForPrimary?.ppfd ?? '--'} µmol
                         </span>
                         <span className="text-[10px] text-ink-muted block mt-0.5">Intensidad lumínica</span>
                       </div>
@@ -985,8 +1018,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                         <div className="p-3 rounded-xl bg-white border border-chip-line">
                           <span className="text-[10px] text-ink-muted block">Fertilizantes</span>
                           <span className="text-xs font-semibold text-ink block mt-0.5 truncate">
-                            {latestWateringForPrimary.products && latestWateringForPrimary.products.length > 0
-                              ? latestWateringForPrimary.products.map((p) => p.productName).join(', ')
+                            {latestWateringForPrimary.productsUsed && latestWateringForPrimary.productsUsed.length > 0
+                              ? latestWateringForPrimary.productsUsed.map((p) => p.name).join(', ')
                               : 'Solo agua regulada'}
                           </span>
                         </div>

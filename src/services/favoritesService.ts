@@ -84,7 +84,7 @@ export const favoritesService = {
       photoperiodType?: string;
       dominance?: string;
       floweringDays?: string | number;
-      estimatedYield?: number;
+      estimatedYield?: string | number;
       organolepticProfile?: string;
     }
   ): Promise<FavoriteGenetic> {
@@ -158,7 +158,7 @@ export const favoritesService = {
       photoperiodType?: string;
       dominance?: string;
       floweringDays?: string | number;
-      estimatedYield?: number;
+      estimatedYield?: string | number;
       organolepticProfile?: string;
     }
   ): Promise<boolean> {

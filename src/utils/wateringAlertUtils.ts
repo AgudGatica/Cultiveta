@@ -1,5 +1,6 @@
 import { Cultivation, Watering, IrrigationForecast } from '../types';
 import { WATERING_INTERVAL_DAYS } from './agronomicThresholds';
+import { daysBetween, getLocalTodayDateOnly } from './growthStageUtils';
 
 const DAY_MS = 1000 * 60 * 60 * 24;
 
@@ -142,9 +143,8 @@ export function analyzeWateringUrgency(
   // Cálculo de días desde el último riego
   let daysSinceWatering: number | null = null;
   if (latestWatering?.date) {
-    const lastDate = new Date(latestWatering.date);
-    const diffMs = currentDate.getTime() - lastDate.getTime();
-    daysSinceWatering = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+    // Días de calendario local (la fecha se guarda como YYYY-MM-DD, sin zona horaria)
+    daysSinceWatering = Math.max(0, daysBetween(latestWatering.date, getLocalTodayDateOnly(currentDate)));
   }
 
   // Caso con pronóstico: la ventana estimada reemplaza al plazo fijo por etapa
@@ -265,9 +265,7 @@ export function analyzeWateringUrgency(
 
   // Caso: Sin registros de riego históricos
   if (daysSinceWatering === null) {
-    const startDate = new Date(cultivation.startDate);
-    const diffMs = currentDate.getTime() - startDate.getTime();
-    const daysSinceStart = Math.max(0, Math.floor(diffMs / (1000 * 60 * 60 * 24)));
+    const daysSinceStart = Math.max(0, daysBetween(cultivation.startDate, getLocalTodayDateOnly(currentDate)));
 
     // Si pasaron más días que el período recomendado sin registrar ningún riego: OVERDUE
     if (daysSinceStart >= recommendedInterval) {

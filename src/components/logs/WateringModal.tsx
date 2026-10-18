@@ -25,11 +25,12 @@ const DRAINAGE_OPTIONS: Array<{ value: DrainageLevel; label: string }> = [
   { value: 'high', label: 'Mucho' },
 ];
 
+// Tres niveles (decisión del 2026-10-17). 'very_light' sigue siendo un valor válido en registros
+// anteriores y el motor lo interpreta, pero ya no se ofrece al cargar un riego nuevo.
 const POT_LIFT_OPTIONS: Array<{ value: PotLiftFeeling; testId: string; label: string; hint: string }> = [
-  { value: 'heavy', testId: 'pot-lift-heavy', label: 'Pesada', hint: 'Todavía conserva bastante agua.' },
-  { value: 'medium', testId: 'pot-lift-medium', label: 'Normal', hint: 'Perdió parte del agua, pero todavía pesa.' },
   { value: 'light', testId: 'pot-lift-light', label: 'Liviana', hint: 'Perdió buena parte del agua.' },
-  { value: 'very_light', testId: 'pot-lift-very-light', label: 'Muy liviana', hint: 'El sustrato parece bastante seco.' },
+  { value: 'medium', testId: 'pot-lift-medium', label: 'Normal', hint: 'Perdió parte del agua, pero todavía pesa.' },
+  { value: 'heavy', testId: 'pot-lift-heavy', label: 'Pesada', hint: 'Todavía conserva bastante agua.' },
 ];
 
 const fieldClass =
@@ -494,7 +495,7 @@ export const WateringModal: React.FC<WateringModalProps> = ({
               Peso de la maceta antes de regar <span className="font-semibold text-ink-muted">(opcional)</span>
             </legend>
             <p className="text-xs text-ink-muted mb-2">Levantala a mano y comparala con cómo se siente recién regada.</p>
-            <div className="grid grid-cols-2 gap-2" id="pot-lift-options-group">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2" id="pot-lift-options-group">
               {POT_LIFT_OPTIONS.map((opt) => (
                 <button
                   key={opt.value}

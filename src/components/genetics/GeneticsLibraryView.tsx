@@ -179,7 +179,7 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
     photoperiodType?: string;
     dominance?: string;
     floweringDays?: string | number;
-    estimatedYield?: number;
+    estimatedYield?: string | number;
     organolepticProfile?: string;
   }) => {
     const key = getGeneticsKey(data.name, data.seedBank);
@@ -699,7 +699,7 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                       <button
                         type="button"
                         onClick={() => onStartCropWithGenetics(converted)}
-                        className="bg-ok hover:bg-[#52A54C] active:bg-[#459040] text-white font-bold rounded-full min-h-[52px] text-xs sm:text-sm shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer active:scale-98"
+                        className="bg-primary hover:brightness-95 text-ink font-bold rounded-full min-h-[52px] text-xs sm:text-sm shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer active:scale-98"
                         title={`Iniciar cultivo con ${item.name}`}
                       >
                         <Sprout className="w-4 h-4 shrink-0" />

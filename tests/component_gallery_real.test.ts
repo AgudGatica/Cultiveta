@@ -17,26 +17,12 @@
  * 7. Mostrar "Pendiente de confirmación" sin anunciar éxito prematuro, y confirmar al final.
  */
 
-import { JSDOM } from 'jsdom';
+import './helpers/setupDom';
+import { dom } from './helpers/setupDom';
 import 'fake-indexeddb/auto';
 
 // Configurar entorno DOM seguro
-const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>', {
-  url: 'http://localhost:3000',
-  pretendToBeVisual: true,
-});
 
-globalThis.window = dom.window as any;
-globalThis.document = dom.window.document;
-globalThis.Event = dom.window.Event as any;
-globalThis.CustomEvent = dom.window.CustomEvent as any;
-globalThis.localStorage = dom.window.localStorage as any;
-Object.defineProperty(globalThis, 'navigator', {
-  value: dom.window.navigator,
-  configurable: true,
-  writable: true,
-});
-(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 // Polyfill de Object URL y decodificación de imagen en JSDOM
 const blobStore = new Map<string, Blob>();

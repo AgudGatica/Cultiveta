@@ -3,12 +3,12 @@ import { localStore } from './localStore';
 import { analyzeWateringUrgency, getRecommendedWateringIntervalDays } from '../utils/wateringAlertUtils';
 import { calculateIrrigationForecast } from './irrigationForecastService';
 import { authFetch } from './apiClient';
-import { buildCultivationStageSchedule, getLocalTodayDateOnly } from '../utils/growthStageUtils';
+import { buildCultivationStageSchedule, getLocalTodayDateOnly, parseLocalDate } from '../utils/growthStageUtils';
 import {
-  TASK_TEMP_HIGH_ALERT_C,
-  TASK_FLOWER_HUMIDITY_HIGH_PCT,
-  TASK_TARGET_PH_FLOWER,
-  TASK_TARGET_PH_DEFAULT,
+  TEMP_HIGH_ALERT_C,
+  FLOWER_HUMIDITY_HIGH_PCT,
+  PH_TARGET_TEXT,
+  isFlowerOrRipeningStage,
 } from '../utils/agronomicThresholds';
 
 const COMPLETED_TASKS_KEY_PREFIX = 'cultiveta_completed_tasks_';
@@ -121,8 +121,7 @@ export const taskService = {
 
       let nextWateringDate = new Date(today);
       if (latestWatering?.date) {
-        const lastDate = new Date(latestWatering.date);
-        lastDate.setHours(0, 0, 0, 0);
+        const lastDate = parseLocalDate(latestWatering.date) || new Date(today);
         nextWateringDate = new Date(lastDate);
         nextWateringDate.setDate(nextWateringDate.getDate() + intervalDays);
       }
@@ -134,11 +133,13 @@ export const taskService = {
       let wateringTitle = `Riego Programado`;
       let wateringDesc = `Comprobar humedad del sustrato y peso de la maceta.`;
 
-      const estimatedLiters = crop.substrate?.potVolumeLiters
-        ? Math.round(crop.substrate.potVolumeLiters * 0.15 * 10) / 10
-        : 2;
+      // Referencia orientativa (15 % del volumen de la maceta) solo si se conoce la maceta;
+      // sin ese dato no se sugiere una cantidad.
+      const litersHint = crop.substrate?.potVolumeLiters
+        ? `, ~${Math.round(crop.substrate.potVolumeLiters * 0.15 * 10) / 10} L por planta como referencia`
+        : '';
 
-      const targetPh = crop.currentStage === 'Floración' ? TASK_TARGET_PH_FLOWER : TASK_TARGET_PH_DEFAULT;
+      const targetPh = PH_TARGET_TEXT;
 
       if (isWateringDone) {
         wateringUrgency = 'today';
@@ -149,12 +150,12 @@ export const taskService = {
         wateringUrgency = 'overdue';
         wateringPriority = 'critical';
         wateringTitle = `¡Riego atrasado!`;
-        wateringDesc = `${wateringAnalysis.alertMessage} Regar con pH ${targetPh} (~${estimatedLiters}L/planta).`;
+        wateringDesc = `${wateringAnalysis.alertMessage} pH recomendado ${targetPh}${litersHint}.`;
       } else if (!latestWatering || nextWateringDate <= today || wateringAnalysis.isDueToday) {
         wateringUrgency = 'today';
         wateringPriority = 'critical';
         wateringTitle = `Riego Programado para Hoy`;
-        wateringDesc = `Toca hidratación para ${crop.name}. Preparar solución nutritiva (pH ${targetPh}, ~${estimatedLiters}L/planta). Ciclo: cada ${intervalDays} días.`;
+        wateringDesc = `Revisá la maceta de ${crop.name} y regá si hace falta (pH recomendado ${targetPh}${litersHint}).`;
       } else {
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
@@ -191,8 +192,7 @@ export const taskService = {
       });
 
       // 2. Critical Stage Milestones based on days
-      const startDate = new Date(crop.startDate);
-      startDate.setHours(0, 0, 0, 0);
+      const startDate = parseLocalDate(crop.startDate) || new Date(today);
       const totalDays = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
       const floweringWeeks = crop.declaredFloweringWeeks || 9;
 
@@ -313,7 +313,7 @@ export const taskService = {
 
       if (cropEnv) {
         // High humidity in flower risk (Botrytis alert)
-        if (crop.currentStage === 'Floración' && cropEnv.humidityPct >= TASK_FLOWER_HUMIDITY_HIGH_PCT) {
+        if (isFlowerOrRipeningStage(crop.currentStage) && cropEnv.humidityPct > FLOWER_HUMIDITY_HIGH_PCT) {
           const envHumTaskId = `env_hum_alert_${crop.id}_${todayStr}`;
           const isEnvHumCompleted = !!completedMap[envHumTaskId];
           tasks.push({
@@ -336,7 +336,7 @@ export const taskService = {
         }
 
         // High temperature stress
-        if (cropEnv.temperatureC >= TASK_TEMP_HIGH_ALERT_C) {
+        if (cropEnv.temperatureC > TEMP_HIGH_ALERT_C) {
           const envTempTaskId = `env_temp_alert_${crop.id}_${todayStr}`;
           const isEnvTempCompleted = !!completedMap[envTempTaskId];
           tasks.push({
@@ -347,7 +347,7 @@ export const taskService = {
             stage: crop.currentStage,
             type: 'env_alert',
             title: `Alerta Crítica: Temperatura Alta (${cropEnv.temperatureC}°C)`,
-            description: `Temperaturas sobre 28°C evaporan terpenos y causan estrés por calor. Elevar luminaria o aumentar extracción de aire.`,
+            description: `Temperaturas sobre ${TEMP_HIGH_ALERT_C} °C evaporan terpenos y causan estrés por calor. Subí la luminaria o aumentá la extracción de aire.`,
             dueDate: todayStr,
             urgency: 'today',
             priority: 'critical',

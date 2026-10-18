@@ -189,7 +189,7 @@ export const HarvestProjectionSection: React.FC<HarvestProjectionSectionProps> =
                     <span
                       className={`text-[9px] uppercase font-bold px-1.5 py-0.2 rounded-full ${
                         st.status === 'active'
-                          ? 'bg-ok text-white'
+                          ? 'bg-ok-ink text-white'
                           : st.status === 'completed' && st.isActual
                           ? 'bg-track text-ink'
                           : 'bg-stone-100 text-ink-subtle'

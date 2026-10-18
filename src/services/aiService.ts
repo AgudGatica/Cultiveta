@@ -33,8 +33,9 @@ export interface CultivationAnalysisContext {
   type?: string;
   substrate?: string;
   lighting?: string;
-  recentWaterings?: Watering[];
-  recentEnv?: EnvironmentRecord[];
+  /** Resúmenes de los últimos registros (no los documentos completos). */
+  recentWaterings?: Array<Partial<Watering> | Record<string, unknown>>;
+  recentEnv?: Array<Partial<EnvironmentRecord> | Record<string, unknown>>;
 }
 
 /**
@@ -289,7 +290,8 @@ export const aiService = {
   async getWeeklySummary(params: {
     cultivations: { name: string; stage: string; genetics?: string }[];
     wateringsCount: number;
-    recentEnvAvg: { tempC: number; humidityPct: number };
+    /** null cuando no hay medición: nunca se envía un valor supuesto. */
+    recentEnvAvg: { tempC: number | null; humidityPct: number | null };
   }): Promise<string> {
     const cropNames =
       params.cultivations.map((c) => `${c.name} (${c.stage || 'Sin etapa'})`).join(', ') ||
@@ -311,7 +313,9 @@ export const aiService = {
       // Continuar con fallback determinista basado exclusivamente en métricas reales
     }
 
-    return `Resumen semanal: ${params.cultivations.length} cultivo(s) en seguimiento (${cropNames}). Riegos registrados: ${params.wateringsCount}. Parámetros climáticos promedio: ${params.recentEnvAvg.tempC}°C y ${params.recentEnvAvg.humidityPct}% HR.`;
+    const tempText = params.recentEnvAvg.tempC !== null ? `${params.recentEnvAvg.tempC} °C` : 'temperatura sin medir';
+    const humText = params.recentEnvAvg.humidityPct !== null ? `${params.recentEnvAvg.humidityPct} % HR` : 'humedad sin medir';
+    return `Resumen semanal: ${params.cultivations.length} cultivo(s) en seguimiento (${cropNames}). Riegos en los últimos 7 días: ${params.wateringsCount}. Última medición: ${tempText} y ${humText}.`;
   },
 
   async comparePhotos(params: {

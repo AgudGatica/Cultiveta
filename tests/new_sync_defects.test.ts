@@ -354,8 +354,16 @@ export async function runNewDefectTests(): Promise<{ passed: number; failed: num
 
     const syncPromise = photoOfflineQueue.syncPendingPhotos(testUid);
 
-    // Esperar a que las fotos suban su binario y 3 entren a setDoc
-    await new Promise((r) => setTimeout(r, 90));
+    // Esperar a que las fotos suban su binario y 3 entren a setDoc.
+    // Antes era una espera fija de 90 ms: con la máquina cargada no alcanzaba y el caso fallaba
+    // de forma intermitente. Ahora se espera la condición real (con tope de 5 s).
+    const waitStart = Date.now();
+    while (setDocResolvers.length < 3 && Date.now() - waitStart < 5000) {
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    if (setDocResolvers.length < 3) {
+      throw new Error(`Solo ${setDocResolvers.length} confirmaciones llegaron a setDoc en 5 s`);
+    }
 
     // Cerrar sesión
     photoOfflineQueue.stopAutoSync();

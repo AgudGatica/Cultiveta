@@ -336,6 +336,16 @@ export function parseDateOnly(dateStr?: string | null): { year: number; month: n
   return { year: y, month: m, day: d };
 }
 
+/**
+ * Convierte "YYYY-MM-DD" (o un ISO con hora) en la medianoche LOCAL de ese día.
+ * `new Date('YYYY-MM-DD')` lo interpreta en UTC y en Argentina (UTC-3) queda el día anterior.
+ */
+export function parseLocalDate(dateStr?: string | null): Date | null {
+  const p = parseDateOnly(dateStr);
+  if (!p) return null;
+  return new Date(p.year, p.month - 1, p.day);
+}
+
 export function formatDateOnly(year: number, month: number, day: number): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${year}-${pad(month)}-${pad(day)}`;

@@ -45,7 +45,8 @@
  * 37. Firestore write sin merge:true asegura un estado limpio sin valores residuales.
  */
 
-import { JSDOM } from 'jsdom';
+import './helpers/setupDom';
+import { dom } from './helpers/setupDom';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import crypto from 'crypto';
@@ -64,22 +65,7 @@ import { UserProfile, GeneticsCatalogPhotoDTO } from '../src/types';
 import { cleanFirestoreData } from '../src/utils/firestoreUtils';
 
 // Configurar entorno JSDOM
-const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>', {
-  url: 'http://localhost:3000',
-  pretendToBeVisual: true,
-});
 
-globalThis.window = dom.window as any;
-globalThis.document = dom.window.document;
-globalThis.Event = dom.window.Event as any;
-globalThis.CustomEvent = dom.window.CustomEvent as any;
-globalThis.localStorage = dom.window.localStorage as any;
-Object.defineProperty(globalThis, 'navigator', {
-  value: dom.window.navigator,
-  configurable: true,
-  writable: true,
-});
-(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 async function run(): Promise<void> {
   console.log('\n================================================================');

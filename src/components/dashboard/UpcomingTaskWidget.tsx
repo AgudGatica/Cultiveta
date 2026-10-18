@@ -391,10 +391,10 @@ export const UpcomingTaskWidget: React.FC<UpcomingTaskWidgetProps> = ({
               disabled={isProcessing || justCompletedId === activeTask.id}
               className={`px-5 py-2.5 rounded-2xl font-bold text-xs transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md ${
                 justCompletedId === activeTask.id
-                  ? 'bg-ok text-white'
+                  ? 'bg-ok-ink text-white'
                   : activeTask.urgency === 'overdue'
                   ? 'bg-coral hover:bg-[#d96551] text-white shadow-coral/20'
-                  : 'bg-ok hover:bg-[#52A54C] text-white shadow-ok/20'
+                  : 'bg-primary hover:brightness-95 text-ink shadow-primary/20'
               } disabled:opacity-50`}
             >
               {justCompletedId === activeTask.id ? (
@@ -473,7 +473,7 @@ export const UpcomingTaskWidget: React.FC<UpcomingTaskWidgetProps> = ({
                       <button
                         type="button"
                         onClick={() => handleCompleteTask(task)}
-                        className="px-3 py-1.5 rounded-xl bg-ok hover:bg-[#52A54C] text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 self-end sm:self-center shadow-xs"
+                        className="px-3 py-1.5 rounded-xl bg-primary hover:brightness-95 text-ink text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 self-end sm:self-center shadow-xs"
                       >
                         <Check className="w-3.5 h-3.5 stroke-[2.5]" />
                         <span>Completar</span>

@@ -380,7 +380,7 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
             <div
               className={`w-8 h-8 rounded-2xl flex items-center justify-center shrink-0 text-xs font-bold ${
                 msg.sender === 'user'
-                  ? 'bg-ok text-white shadow-2xs'
+                  ? 'bg-ok-ink text-white shadow-2xs'
                   : 'bg-brand/15 text-brand'
               }`}
             >
@@ -390,7 +390,7 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
             <div
               className={`p-4 rounded-3xl text-xs sm:text-sm leading-relaxed ${
                 msg.sender === 'user'
-                  ? 'bg-ok text-white rounded-tr-xs shadow-xs whitespace-pre-wrap'
+                  ? 'bg-ok-ink text-white rounded-tr-xs shadow-xs whitespace-pre-wrap'
                   : 'bg-surface text-ink rounded-tl-xs border border-chip-line shadow-2xs font-medium'
               }`}
             >

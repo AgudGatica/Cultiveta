@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import { User } from 'firebase/auth';
+import { AppView, parseAppRoute, pathForView } from './appRoutes';
 import { authService } from './services/authService';
 import { cultivationService } from './services/cultivationService';
 import { wateringService } from './services/wateringService';
@@ -90,11 +92,47 @@ export default function App() {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
 
-  // App Navigation State
-  const [currentView, setCurrentView] = useState<
-    'dashboard' | 'cultivations' | 'cultivation_detail' | 'genetics' | 'harvests' | 'compare_crops' | 'ai_assistant' | 'calculators'
-  >('dashboard');
-  const [selectedCultivationId, setSelectedCultivationId] = useState<string | null>(null);
+  // Navegación: la pantalla actual sale de la URL (react-router), así funcionan el botón
+  // "atrás" de Android y los enlaces directos. setCurrentView navega a la URL de la pantalla.
+  const location = useLocation();
+  const navigate = useNavigate();
+  const route = useMemo(() => parseAppRoute(location.pathname), [location.pathname]);
+  const currentView: AppView = route.view;
+
+  // El cultivo seleccionado también se usa como contexto de los modales (riego, foto, etc.),
+  // por eso sigue siendo estado; en /cultivos/:id se sincroniza con la URL.
+  const [selectedCultivationId, setSelectedCultivationIdState] = useState<string | null>(route.cultivationId);
+  const latestSelectedIdRef = React.useRef<string | null>(route.cultivationId);
+  const setSelectedCultivationId = React.useCallback((id: string | null) => {
+    latestSelectedIdRef.current = id;
+    setSelectedCultivationIdState(id);
+  }, []);
+
+  useEffect(() => {
+    if (route.cultivationId && route.cultivationId !== latestSelectedIdRef.current) {
+      setSelectedCultivationId(route.cultivationId);
+    }
+  }, [route.cultivationId, setSelectedCultivationId]);
+
+  // Ruta desconocida: se muestra el Inicio y se corrige la URL (sin sumar una entrada al historial)
+  useEffect(() => {
+    if (route.view === 'dashboard' && location.pathname !== '/') {
+      navigate('/', { replace: true });
+    }
+  }, [route.view, location.pathname, navigate]);
+
+  const setCurrentView = React.useCallback(
+    (view: string) => {
+      const target =
+        view === 'cultivation_detail'
+          ? latestSelectedIdRef.current
+            ? `/cultivos/${encodeURIComponent(latestSelectedIdRef.current)}`
+            : '/cultivos'
+          : pathForView(view);
+      if (target !== location.pathname) navigate(target);
+    },
+    [navigate, location.pathname]
+  );
   const [comparisonCropAId, setComparisonCropAId] = useState<string | undefined>(undefined);
   const [comparisonCropBId, setComparisonCropBId] = useState<string | undefined>(undefined);
 
@@ -185,9 +223,7 @@ export default function App() {
         if (cultivationSearchQuery.trim()) {
           const q = cultivationSearchQuery.toLowerCase();
           const nameMatch = crop.name.toLowerCase().includes(q);
-          const geneticsMatch =
-            crop.geneticsName?.toLowerCase().includes(q) ||
-            (crop.genetics && crop.genetics.toLowerCase().includes(q));
+          const geneticsMatch = crop.geneticsName?.toLowerCase().includes(q);
           const stageMatch = crop.currentStage?.toLowerCase().includes(q);
           const typeMatch = crop.type?.toLowerCase().includes(q);
           if (!nameMatch && !geneticsMatch && !stageMatch && !typeMatch) {
@@ -662,7 +698,7 @@ export default function App() {
                     setCultivationToEdit(null);
                     setIsCultivationFormOpen(true);
                   }}
-                  className="relative z-10 px-6 py-3 rounded-2xl bg-ok hover:bg-[#52A54C] text-white text-xs font-bold transition-all shadow-md shadow-ok/20 flex items-center gap-2 cursor-pointer"
+                  className="relative z-10 px-6 py-3 rounded-2xl bg-primary hover:brightness-95 text-ink text-xs font-bold transition-all shadow-md shadow-primary/20 flex items-center gap-2 cursor-pointer"
                 >
                   <Plus className="w-4 h-4 text-white stroke-[2.5]" />
                   <span>Nuevo Cultivo</span>
@@ -699,7 +735,7 @@ export default function App() {
                       setCultivationToEdit(null);
                       setIsCultivationFormOpen(true);
                     }}
-                    className="px-6 py-3 rounded-2xl bg-ok hover:bg-[#52A54C] text-white font-bold text-xs transition-all shadow-lg shadow-ok/20 cursor-pointer inline-flex items-center gap-2"
+                    className="px-6 py-3 rounded-2xl bg-primary hover:brightness-95 text-ink font-bold text-xs transition-all shadow-lg shadow-primary/20 cursor-pointer inline-flex items-center gap-2"
                   >
                     <Plus className="w-4 h-4 stroke-[2.5]" />
                     Crear cultivo
@@ -737,7 +773,7 @@ export default function App() {
                             setCultivationToEdit(null);
                             setIsCultivationFormOpen(true);
                           }}
-                          className="mt-3 px-5 py-2.5 rounded-2xl bg-ok hover:bg-[#52A54C] text-white font-bold text-xs transition-all shadow-md shadow-ok/20 cursor-pointer inline-flex items-center gap-2"
+                          className="mt-3 px-5 py-2.5 rounded-2xl bg-primary hover:brightness-95 text-ink font-bold text-xs transition-all shadow-md shadow-primary/20 cursor-pointer inline-flex items-center gap-2"
                         >
                           <Plus className="w-4 h-4 stroke-[2.5]" />
                           Crear cultivo
@@ -762,7 +798,7 @@ export default function App() {
                             setCultivationToEdit(null);
                             setIsCultivationFormOpen(true);
                           }}
-                          className="mt-3 px-5 py-2.5 rounded-2xl bg-ok hover:bg-[#52A54C] text-white font-bold text-xs transition-all shadow-md shadow-ok/20 cursor-pointer inline-flex items-center gap-2"
+                          className="mt-3 px-5 py-2.5 rounded-2xl bg-primary hover:brightness-95 text-ink font-bold text-xs transition-all shadow-md shadow-primary/20 cursor-pointer inline-flex items-center gap-2"
                         >
                           <Plus className="w-4 h-4 stroke-[2.5]" />
                           Crear cultivo

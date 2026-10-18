@@ -11,7 +11,7 @@
  * 5. Los valores calculados son exactos según las métricas esperadas.
  */
 
-import { JSDOM } from 'jsdom';
+import './helpers/setupDom';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Cultivation, Watering, EnvironmentRecord, PhotoRecord } from '../src/types';
@@ -19,22 +19,7 @@ import { DashboardOverview } from '../src/components/dashboard/DashboardOverview
 import { getLocalTodayDateOnly } from '../src/utils/growthStageUtils';
 
 // Configurar JSDOM para renderizar React
-const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>', {
-  url: 'http://localhost:3000',
-  pretendToBeVisual: true,
-});
 
-globalThis.window = dom.window as any;
-globalThis.document = dom.window.document;
-globalThis.Event = dom.window.Event as any;
-globalThis.CustomEvent = dom.window.CustomEvent as any;
-globalThis.localStorage = dom.window.localStorage as any;
-Object.defineProperty(globalThis, 'navigator', {
-  value: dom.window.navigator,
-  configurable: true,
-  writable: true,
-});
-(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 export async function runDashboardMiniStatsTests(): Promise<{ passed: number; failed: number; skipped: number }> {
   console.log('\n================================================================');

@@ -17,7 +17,7 @@
  * 12. ciclo completo conserva: "Día X de ~Y" y overallProgressPct.
  */
 
-import { JSDOM } from 'jsdom';
+import './helpers/setupDom';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Cultivation } from '../src/types';
@@ -28,22 +28,7 @@ import {
 import { DashboardOverview } from '../src/components/dashboard/DashboardOverview';
 
 // Configurar JSDOM para ejecución React
-const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>', {
-  url: 'http://localhost:3000',
-  pretendToBeVisual: true,
-});
 
-globalThis.window = dom.window as any;
-globalThis.document = dom.window.document;
-globalThis.Event = dom.window.Event as any;
-globalThis.CustomEvent = dom.window.CustomEvent as any;
-globalThis.localStorage = dom.window.localStorage as any;
-Object.defineProperty(globalThis, 'navigator', {
-  value: dom.window.navigator,
-  configurable: true,
-  writable: true,
-});
-(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 async function run(): Promise<void> {
   console.log('\n================================================================');
@@ -236,15 +221,13 @@ async function run(): Promise<void> {
     root.render(
       React.createElement(DashboardOverview, {
         cultivations: [cropPartial],
-        selectedCultivation: cropPartial,
         waterings: [],
         envRecords: [],
         photos: [],
-        harvests: [],
         userId: 'user_1',
         geneticsList: [],
         onSelectCultivation: () => {},
-        onOpenNewCultivationModal: () => {},
+        onCreateCultivationClick: () => {},
         onOpenWateringModal: () => {},
         onOpenEnvModal: () => {},
         onOpenPhotoModal: () => {},
@@ -393,15 +376,13 @@ async function run(): Promise<void> {
       completeRoot.render(
         React.createElement(DashboardOverview, {
           cultivations: [cropComplete],
-          selectedCultivation: cropComplete,
           waterings: [],
           envRecords: [],
           photos: [],
-          harvests: [],
           userId: 'user_1',
           geneticsList: [],
           onSelectCultivation: () => {},
-          onOpenNewCultivationModal: () => {},
+          onCreateCultivationClick: () => {},
           onOpenWateringModal: () => {},
           onOpenEnvModal: () => {},
           onOpenPhotoModal: () => {},

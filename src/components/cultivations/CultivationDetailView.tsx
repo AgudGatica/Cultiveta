@@ -58,6 +58,7 @@ import {
 } from '../../utils/growthStageUtils';
 import { analyzeWateringUrgency } from '../../utils/wateringAlertUtils';
 import { calculateIrrigationForecast } from '../../services/irrigationForecastService';
+import { evaluateEnvironmentReading } from '../../utils/agronomicThresholds';
 import { resolveCultivationDisplayPhoto } from '../../utils/cultivationPhotoResolver';
 import { useGeneticsCatalogPhotos } from '../../hooks/useGeneticsCatalogPhotos';
 import { GeneticsHeaderPhoto } from './GeneticsHeaderPhoto';
@@ -151,7 +152,10 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
     );
   }, [cultivation, lastWatering, waterings, envRecords]);
 
-  const isHealthy = !wateringAnalysis.isOverdue && (!lastEnv || (lastEnv.temperatureC >= 18 && lastEnv.temperatureC <= 29 && lastEnv.humidityPct >= 40 && lastEnv.humidityPct <= 70));
+  const envCheck = lastEnv ? evaluateEnvironmentReading(lastEnv, cultivation.currentStage) : null;
+  const isHealthy =
+    !wateringAnalysis.isOverdue &&
+    (!envCheck || !(envCheck.tempHigh || envCheck.tempLow || envCheck.humidityHigh || envCheck.humidityLow));
   const subscribedPhotos = useGeneticsCatalogPhotos();
   const effectiveCatalogPhotos = catalogPhotosProp || subscribedPhotos;
   const photoResolution = React.useMemo(() => {
@@ -327,25 +331,27 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
               <div className="space-y-1">
                 {wateringAnalysis.isOverdue ? (
                   <>
-                    <span className="text-sm font-extrabold text-coral block">
-                      Revisar riego (+{wateringAnalysis.daysOverdue}d)
+                    <span className="text-sm font-extrabold text-error block">
+                      Revisá el riego (+{wateringAnalysis.daysOverdue} d)
                     </span>
                     <span className="text-xs text-ink-muted block">
-                      Conviene regar ahora para no estresar las raíces.
+                      Pasó la ventana estimada: revisá la maceta y regá si hace falta.
                     </span>
                   </>
-                ) : wateringAnalysis.urgency === 'soon' ? (
+                ) : wateringAnalysis.isDueToday ? (
                   <>
-                    <span className="text-sm font-extrabold text-warn-line block">
-                      Revisar riego pronto
+                    <span className="text-sm font-extrabold text-warn-ink block">
+                      Revisá el riego hoy
                     </span>
                     <span className="text-xs text-ink-muted block">
-                      Último riego hace {wateringAnalysis.daysSinceWatering} días.
+                      {wateringAnalysis.daysSinceWatering !== null
+                        ? `Último riego hace ${wateringAnalysis.daysSinceWatering} días.`
+                        : 'Todavía no hay riegos anotados.'}
                     </span>
                   </>
                 ) : (
                   <>
-                    <span className="text-sm font-extrabold text-ok block">
+                    <span className="text-sm font-extrabold text-ok-ink block">
                       Sin alertas pendientes
                     </span>
                     <span className="text-xs text-ink-muted block">
@@ -358,7 +364,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
 
             <div className="pt-2 border-t border-line">
               <span className="text-[11px] text-ink-subtle font-semibold">
-                Ciclo sugerido: cada {wateringAnalysis.recommendedIntervalDays}d
+                Referencia de la etapa: cada {wateringAnalysis.recommendedIntervalDays} d
               </span>
             </div>
           </div>
@@ -544,7 +550,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                           setStageForTransition(nextStage);
                           setIsTransitionModalOpen(true);
                         }}
-                        className="px-3 py-1.5 rounded-xl bg-ok hover:bg-[#52a44b] text-white font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                        className="px-3 py-1.5 rounded-xl bg-primary hover:brightness-95 text-ink font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
                         title={`Avanzar cultivo a ${nextStage.name}`}
                       >
                         <PlayCircle className="w-3.5 h-3.5 text-white" />
@@ -606,7 +612,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                         }}
                         className={`px-2 py-1.5 rounded-xl border text-left transition-all cursor-pointer ${
                           isActive
-                            ? 'bg-ok text-white border-ok shadow-2xs ring-2 ring-ok/40'
+                            ? 'bg-ok-ink text-white border-ok shadow-2xs ring-2 ring-ok/40'
                             : isCompleted
                             ? 'bg-track text-ink border-line'
                             : 'bg-white text-ink-subtle border-line hover:border-line'

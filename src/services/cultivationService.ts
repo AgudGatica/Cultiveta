@@ -19,6 +19,7 @@ import { localStore } from './localStore';
 import { subscribeCollection } from './dataSyncHelper';
 import { daysBetween, getLocalTodayDateOnly } from '../utils/growthStageUtils';
 import { authFetch } from './apiClient';
+import { evaluateEnvironmentReading, PH_ALERT_MIN, PH_ALERT_MAX, EC_HIGH_MS } from '../utils/agronomicThresholds';
 
 export const cultivationService = {
   subscribeCultivations(userId: string, callback: (cultivations: Cultivation[]) => void): Unsubscribe {
@@ -213,25 +214,26 @@ export const cultivationService = {
 
     // Check environment if recorded
     if (latestEnv) {
-      if (latestEnv.temperatureC > 32) {
+      const env = evaluateEnvironmentReading(latestEnv, cultivation.currentStage);
+      if (env.tempHigh) {
         issues.push(`Temperatura alta registrada (${latestEnv.temperatureC}°C)`);
-      } else if (latestEnv.temperatureC < 16) {
+      } else if (env.tempLow) {
         issues.push(`Temperatura baja registrada (${latestEnv.temperatureC}°C)`);
       }
 
-      if (latestEnv.humidityPct > 75 && (cultivation.currentStage === 'Floración' || cultivation.currentStage === 'Maduración')) {
+      if (env.humidityHigh) {
         issues.push(`Humedad elevada en floración (${latestEnv.humidityPct}%)`);
-      } else if (latestEnv.humidityPct < 30) {
+      } else if (env.humidityLow) {
         issues.push(`Humedad baja registrada (${latestEnv.humidityPct}%)`);
       }
     }
 
     // Check watering pH / EC if recorded
     if (latestWatering) {
-      if (latestWatering.phIn && (latestWatering.phIn < 5.4 || latestWatering.phIn > 7.2)) {
-        issues.push(`pH de riego fuera de rango usual (${latestWatering.phIn})`);
+      if (latestWatering.phIn && (latestWatering.phIn < PH_ALERT_MIN || latestWatering.phIn > PH_ALERT_MAX)) {
+        issues.push(`pH de riego fuera del rango recomendado (${latestWatering.phIn})`);
       }
-      if (latestWatering.ecIn && latestWatering.ecIn > 2.6) {
+      if (latestWatering.ecIn && latestWatering.ecIn > EC_HIGH_MS) {
         issues.push(`EC de riego elevada (${latestWatering.ecIn} mS/cm)`);
       }
     }

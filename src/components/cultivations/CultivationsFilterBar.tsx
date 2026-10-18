@@ -207,7 +207,7 @@ export const CultivationsFilterBar: React.FC<CultivationsFilterBarProps> = ({
                 <span>{tab.label}</span>
                 <span
                   className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
-                    isSelected ? 'bg-ok text-white' : 'bg-track text-ink-muted'
+                    isSelected ? 'bg-ok-ink text-white' : 'bg-track text-ink-muted'
                   }`}
                 >
                   {count}

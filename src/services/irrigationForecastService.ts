@@ -534,6 +534,16 @@ export function calculateIrrigationForecast(
   factors.push(`Último riego: ${appliedWaterLiters} L el ${lastW.date}${lastW.time ? ` a las ${lastW.time}` : ''}.`);
   if (runoffVolumeLiters !== undefined) {
     factors.push(`Drenaje registrado: ${runoffVolumeLiters} L (agua retenida aproximada: ${netWaterLiters} L).`);
+  } else if (lastW.drainageLevel) {
+    // Drenaje observado a simple vista: se informa como señal, sin convertirlo en litros
+    // (no cambia el cálculo; decisión del 2026-10-17).
+    const drainageText: Record<string, string> = {
+      none: 'no drenó (la maceta retuvo el agua aplicada)',
+      low: 'drenó poco',
+      normal: 'drenó normal',
+      high: 'drenó mucho (parte del agua se perdió por drenaje)',
+    };
+    factors.push(`Drenaje observado en el último riego: ${drainageText[lastW.drainageLevel] || lastW.drainageLevel}.`);
   } else {
     missingSignals.push('Volumen de drenaje (runoff) no registrado');
   }

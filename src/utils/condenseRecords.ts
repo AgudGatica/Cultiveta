@@ -1,18 +1,21 @@
 import { Cultivation, Watering, EnvironmentRecord } from '../types';
+import { daysBetween, getLocalTodayDateOnly } from './growthStageUtils';
 import {
-  SUMMARY_TEMP_HIGH_ALERT_C,
-  SUMMARY_TEMP_LOW_ALERT_C,
-  SUMMARY_TEMP_SWING_ALERT_C,
-  SUMMARY_FLOWER_HUMIDITY_HIGH_PCT,
-  SUMMARY_VEG_HUMIDITY_LOW_PCT,
-  SUMMARY_VPD_HIGH_KPA,
-  SUMMARY_FLOWER_VPD_LOW_KPA,
-  SUMMARY_PH_MIN,
-  SUMMARY_PH_MAX,
-  SUMMARY_EC_HIGH_MS,
-  SUMMARY_RUNOFF_EC_RATIO_ALERT,
-  SUMMARY_DAYS_SINCE_WATERING_ALERT,
+  TEMP_HIGH_ALERT_C,
+  TEMP_LOW_ALERT_C,
+  TEMP_SWING_ALERT_C,
+  FLOWER_HUMIDITY_HIGH_PCT,
+  VEG_HUMIDITY_LOW_PCT,
+  VPD_HIGH_KPA,
+  FLOWER_VPD_LOW_KPA,
+  PH_ALERT_MIN,
+  PH_ALERT_MAX,
+  PH_TARGET_TEXT,
+  EC_HIGH_MS,
+  RUNOFF_EC_RATIO_ALERT,
 } from './agronomicThresholds';
+import { analyzeWateringUrgency } from './wateringAlertUtils';
+import { calculateIrrigationForecast } from '../services/irrigationForecastService';
 
 export interface CondensedRecordsSummary {
   hasData: boolean;
@@ -114,12 +117,12 @@ export function condenseRecordsToKeyPoints(
         `Temperatura ambiente: Promedio ${avgTemp}°C (Mín: ${minTemp}°C / Máx: ${maxTemp}°C).`
       );
 
-      if (maxTemp - minTemp >= SUMMARY_TEMP_SWING_ALERT_C) {
+      if (maxTemp - minTemp >= TEMP_SWING_ALERT_C) {
         alerts.push(`Amplitud térmica alta (${(maxTemp - minTemp).toFixed(1)}°C de oscilación en carpa).`);
       }
-      if (maxTemp > SUMMARY_TEMP_HIGH_ALERT_C) {
+      if (maxTemp > TEMP_HIGH_ALERT_C) {
         alerts.push(`Picos térmicos elevados detectados (máximo ${maxTemp}°C).`);
-      } else if (minTemp < SUMMARY_TEMP_LOW_ALERT_C) {
+      } else if (minTemp < TEMP_LOW_ALERT_C) {
         alerts.push(`Temperaturas mínimas bajas registradas (mínimo ${minTemp}°C).`);
       }
     }
@@ -134,9 +137,9 @@ export function condenseRecordsToKeyPoints(
 
       keyPoints.push(`Humedad relativa: Promedio ${avgHum}% (Rango: ${minHum}% - ${maxHum}%).`);
 
-      if (crop.currentStage === 'Floración' && avgHum > SUMMARY_FLOWER_HUMIDITY_HIGH_PCT) {
+      if (crop.currentStage === 'Floración' && avgHum > FLOWER_HUMIDITY_HIGH_PCT) {
         alerts.push(`Humedad promedio elevada para floración (${avgHum}%), riesgo de proliferación fúngica.`);
-      } else if (crop.currentStage === 'Vegetativo' && avgHum < SUMMARY_VEG_HUMIDITY_LOW_PCT) {
+      } else if (crop.currentStage === 'Vegetativo' && avgHum < VEG_HUMIDITY_LOW_PCT) {
         alerts.push(`Humedad baja para vegetativo (${avgHum}%), ralentiza crecimiento.`);
       }
     }
@@ -153,9 +156,9 @@ export function condenseRecordsToKeyPoints(
         `VPD (Transpiración): Promedio ${avgVpd} kPa (Mín: ${minVpd} / Máx: ${maxVpd} kPa).`
       );
 
-      if (avgVpd > SUMMARY_VPD_HIGH_KPA) {
+      if (avgVpd > VPD_HIGH_KPA) {
         alerts.push(`VPD medio alto (${avgVpd} kPa), posible cierre estomático por transpiración exigida.`);
-      } else if (avgVpd < SUMMARY_FLOWER_VPD_LOW_KPA && crop.currentStage === 'Floración') {
+      } else if (avgVpd < FLOWER_VPD_LOW_KPA && crop.currentStage === 'Floración') {
         alerts.push(`VPD bajo en floración (${avgVpd} kPa), transpiración deficiente.`);
       }
     }
@@ -165,10 +168,8 @@ export function condenseRecordsToKeyPoints(
   if (cropWaterings.length > 0) {
     const recentWaterings = cropWaterings.slice(0, 8); // Analyze up to 8 recent waterings
     const lastWatering = recentWaterings[0];
-    const daysAgo = Math.max(
-      0,
-      Math.floor((Date.now() - new Date(lastWatering.date).getTime()) / 86400000)
-    );
+    // Días de calendario local (new Date('YYYY-MM-DD') usaría UTC y correría un día en Argentina)
+    const daysAgo = Math.max(0, daysBetween(lastWatering.date, getLocalTodayDateOnly()));
 
     metrics.lastWateringDate = lastWatering.date;
     metrics.lastWateringDaysAgo = daysAgo;
@@ -212,8 +213,8 @@ export function condenseRecordsToKeyPoints(
       metrics.avgPhIn = avgPh;
       keyPoints.push(`pH de entrada: Promedio ${avgPh} (Último riego: ${lastWatering.phIn ?? 'N/A'}).`);
 
-      if (avgPh < SUMMARY_PH_MIN || avgPh > SUMMARY_PH_MAX) {
-        alerts.push(`pH promedio de riego (${avgPh}) fuera del rango de absorción balanceada (6.0-6.5).`);
+      if (avgPh < PH_ALERT_MIN || avgPh > PH_ALERT_MAX) {
+        alerts.push(`pH promedio de riego (${avgPh}) fuera del rango recomendado (${PH_TARGET_TEXT}).`);
       }
     }
 
@@ -226,7 +227,7 @@ export function condenseRecordsToKeyPoints(
       metrics.avgEcIn = avgEc;
       keyPoints.push(`Conductividad (EC): Promedio ${avgEc} mS/cm (Último riego: ${lastWatering.ecIn ?? 'N/A'} mS/cm).`);
 
-      if (avgEc > SUMMARY_EC_HIGH_MS) {
+      if (avgEc > EC_HIGH_MS) {
         alerts.push(`EC de entrada elevada (${avgEc} mS/cm), vigilar posible sobrefertilización.`);
       }
     }
@@ -237,7 +238,7 @@ export function condenseRecordsToKeyPoints(
     );
     if (withRunoff.length > 0) {
       const latestRunoff = withRunoff[0];
-      if (latestRunoff.ecRunoff! > latestRunoff.ecIn! * SUMMARY_RUNOFF_EC_RATIO_ALERT) {
+      if (latestRunoff.ecRunoff! > latestRunoff.ecIn! * RUNOFF_EC_RATIO_ALERT) {
         alerts.push(
           `Salinidad de escorrentía (Runoff ${latestRunoff.ecRunoff} mS/cm) notablemente superior a la entrada (${latestRunoff.ecIn} mS/cm).`
         );
@@ -250,8 +251,15 @@ export function condenseRecordsToKeyPoints(
       keyPoints.push(`Nutrición reciente: ${prodNames}.`);
     }
 
-    if (daysAgo >= SUMMARY_DAYS_SINCE_WATERING_ALERT && crop.currentStage !== 'Finalizado') {
-      alerts.push(`Han pasado ${daysAgo} días desde el último riego registrado; verificar turgencia y peso de maceta.`);
+    // "Riego atrasado" según la ventana del pronóstico (no un plazo fijo de días)
+    const wateringAnalysis = analyzeWateringUrgency(
+      crop,
+      lastWatering,
+      new Date(),
+      calculateIrrigationForecast(crop, allWaterings, allEnvRecords)
+    );
+    if (wateringAnalysis.isOverdue) {
+      alerts.push(`${wateringAnalysis.label} Último riego hace ${daysAgo} día(s); verificar turgencia y peso de maceta.`);
     }
   }
 

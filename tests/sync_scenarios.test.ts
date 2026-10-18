@@ -334,6 +334,9 @@ async function runTests() {
 
     let photoBFinishedUpload = false;
     let setDocAResolve: (() => void) | null = null;
+    // Una vez liberada la foto A, cualquier setDoc posterior termina enseguida (evita que el test
+    // quede colgado si el setDoc de A empieza después de la liberación, con la máquina cargada).
+    let releaseA = false;
 
     setPhotoQueueAdapters({
       uploadBytesResumable: (storageRef: any) => {
@@ -351,8 +354,8 @@ async function runTests() {
         return 'https://mock.storage.url/photo.jpg';
       },
       setDoc: async (docRef: any) => {
-        if (docRef.id === photoA) {
-          // setDoc para foto A queda pendiente intencionalmente
+        if (docRef.id === photoA && !releaseA) {
+          // setDoc para foto A queda pendiente intencionalmente hasta que el test lo libere
           await new Promise<void>((resolve) => {
             setDocAResolve = resolve;
           });
@@ -387,14 +390,22 @@ async function runTests() {
     // Iniciar sincronización
     const syncPromise = photoOfflineQueue.syncPendingPhotos(testUid);
 
-    // Esperar un breve intervalo para verificar que la foto B subió su binario a pesar de que A esté en setDoc
-    await new Promise((r) => setTimeout(r, 120));
+    // Esperar (con tope de 5 s) a que la foto B termine de subir mientras A sigue en setDoc.
+    // Antes era una espera fija de 120 ms: con la máquina cargada podía quedar colgado.
+    const waitStart = Date.now();
+    while (!photoBFinishedUpload && Date.now() - waitStart < 5000) {
+      await new Promise((r) => setTimeout(r, 10));
+    }
 
     if (!photoBFinishedUpload) {
+      releaseA = true;
+      if (setDocAResolve) (setDocAResolve as Function)();
+      await syncPromise;
       throw new Error('La subida de foto B quedó bloqueada secuencialmente esperando el setDoc de foto A.');
     }
 
     // Ahora resolver setDoc de foto A para completar limpiamente
+    releaseA = true;
     if (setDocAResolve) {
       (setDocAResolve as Function)();
     }

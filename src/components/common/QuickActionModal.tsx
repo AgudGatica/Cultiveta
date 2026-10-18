@@ -124,7 +124,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
             onClick={() => handleActionClick('watering')}
             className="flex flex-col items-start p-4 rounded-2xl bg-white hover:bg-track border border-chip-line transition-all hover:scale-[1.02] active:scale-[0.98] text-left cursor-pointer shadow-xs group"
           >
-            <div className="w-10 h-10 rounded-xl bg-ok/15 text-ok flex items-center justify-center mb-2.5 group-hover:bg-ok group-hover:text-white transition-colors">
+            <div className="w-10 h-10 rounded-xl bg-ok/15 text-ok flex items-center justify-center mb-2.5 group-hover:bg-ok-ink group-hover:text-white transition-colors">
               <Droplets className="w-5 h-5 stroke-[2.2]" />
             </div>
             <span className="text-sm font-bold text-ink">💧 Regué</span>

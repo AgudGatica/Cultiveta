@@ -11,7 +11,7 @@
  * 6. ninguna etapa anterior recibe 2026-09-27.
  * 7. no existe proyección hacia atrás.
  * 8. WateringModal ya no renderiza inputs de kg.
- * 9. WateringModal permite heavy/medium/light/very_light.
+ * 9. WateringModal ofrece heavy/medium/light (3 niveles, sin very_light).
  * 10. guardar riego persiste potLiftBeforeWatering.
  * 11. heavy queda fuera de intervalos representativos.
  * 12. light/very_light sí participan.
@@ -25,7 +25,7 @@
  * 20. contexto IA recibe genetics/photos/notes/harvests.
  */
 
-import { JSDOM } from 'jsdom';
+import './helpers/setupDom';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
@@ -53,22 +53,7 @@ import { aiService } from '../src/services/aiService';
 import { buildCultivationIntelligenceContext } from '../src/services/cultivationIntelligenceService';
 
 // Configurar entorno DOM para pruebas de UI
-const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>', {
-  url: 'http://localhost:3000',
-  pretendToBeVisual: true,
-});
 
-globalThis.window = dom.window as any;
-globalThis.document = dom.window.document;
-globalThis.Event = dom.window.Event as any;
-globalThis.CustomEvent = dom.window.CustomEvent as any;
-globalThis.localStorage = dom.window.localStorage as any;
-Object.defineProperty(globalThis, 'navigator', {
-  value: dom.window.navigator,
-  configurable: true,
-  writable: true,
-});
-(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 export async function runTimelineUnknownHistoryAndPotLiftTests(): Promise<{
   passed: number;
@@ -241,8 +226,8 @@ export async function runTimelineUnknownHistoryAndPotLiftTests(): Promise<{
     }
   });
 
-  // 9. WateringModal permite heavy/medium/light/very_light
-  await assert('9. WateringModal permite heavy/medium/light/very_light', async () => {
+  // 9. WateringModal ofrece 3 niveles de peso: heavy/medium/light (decisión 2026-10-17)
+  await assert('9. WateringModal ofrece heavy/medium/light (sin very_light)', async () => {
     const container = document.createElement('div');
     document.body.appendChild(container);
     const root = createRoot(container);
@@ -265,10 +250,15 @@ export async function runTimelineUnknownHistoryAndPotLiftTests(): Promise<{
     const lightBtn = container.querySelector('[data-testid="pot-lift-light"]') as HTMLButtonElement;
     const veryLightBtn = container.querySelector('[data-testid="pot-lift-very-light"]') as HTMLButtonElement;
 
-    if (!heavyBtn || !mediumBtn || !lightBtn || !veryLightBtn) {
+    if (!heavyBtn || !mediumBtn || !lightBtn) {
       root.unmount();
       container.remove();
-      throw new Error('Faltan opciones de potLift (heavy/medium/light/very_light) en el modal');
+      throw new Error('Faltan opciones de potLift (heavy/medium/light) en el modal');
+    }
+    if (veryLightBtn) {
+      root.unmount();
+      container.remove();
+      throw new Error('El modal ya no debe ofrecer very_light (se pasó a 3 niveles)');
     }
 
     // Verificar clic interactivo

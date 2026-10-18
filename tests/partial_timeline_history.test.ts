@@ -23,7 +23,8 @@
  * 17. getWeeklySummary no inventa stageStartDate.
  */
 
-import { JSDOM } from 'jsdom';
+import './helpers/setupDom';
+import { dom } from './helpers/setupDom';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
@@ -41,26 +42,7 @@ import { cultivationService } from '../src/services/cultivationService';
 import { aiService } from '../src/services/aiService';
 
 // Configurar entorno DOM para pruebas de formulario y UI
-const dom = new JSDOM('<!DOCTYPE html><html><body><div id="root"></div></body></html>', {
-  url: 'http://localhost:3000',
-  pretendToBeVisual: true,
-});
 
-globalThis.window = dom.window as any;
-globalThis.document = dom.window.document;
-globalThis.Event = dom.window.Event as any;
-globalThis.CustomEvent = dom.window.CustomEvent as any;
-globalThis.localStorage = dom.window.localStorage as any;
-Object.defineProperty(globalThis, 'navigator', {
-  value: dom.window.navigator,
-  configurable: true,
-  writable: true,
-});
-(globalThis as any).HTMLElement = dom.window.HTMLElement;
-(globalThis as any).HTMLInputElement = dom.window.HTMLInputElement;
-(globalThis as any).HTMLSelectElement = dom.window.HTMLSelectElement;
-(globalThis as any).HTMLButtonElement = dom.window.HTMLButtonElement;
-(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 
 function assert(condition: any, message: string) {
   if (!condition) {

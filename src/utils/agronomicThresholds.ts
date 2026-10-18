@@ -1,69 +1,71 @@
 /**
- * Umbrales agronómicos centralizados.
+ * Umbrales agronómicos centralizados (cultivo bajo control: indoor / invernadero).
  *
- * Fuente única para condenseRecords.ts, wateringAlertUtils.ts y taskService.ts.
- * Los valores son exactamente los que tenía cada archivo. Donde dos archivos usaban
- * valores distintos para el mismo concepto, se conservan ambos con nombre propio
- * (marcados "PENDIENTE DE DECISIÓN") hasta definir un valor único.
+ * Fuente única para el resumen de registros (IA), las tareas, el Inicio, el detalle del cultivo
+ * y el estado de salud. Valores unificados según la decisión del 2026-10-17 ("Resumen + ventana").
+ *
+ * Los umbrales de alertas de clima EXTERIOR del servidor (server.ts: 35/11 °C, 75/25 %) son
+ * aparte a propósito: aplican a cultivos al aire libre y cada persona puede personalizarlos.
+ *
+ * El "riego atrasado" NO usa un plazo fijo: sale de la ventana de calculateIrrigationForecast.
  */
 
 // ---------------------------------------------------------------------------
 // Temperatura (°C)
 // ---------------------------------------------------------------------------
 
-/** PENDIENTE DE DECISIÓN: resumen de registros alerta con máxima > 30 °C. */
-export const SUMMARY_TEMP_HIGH_ALERT_C = 30;
-/** PENDIENTE DE DECISIÓN: tarea de alerta climática con lectura >= 29 °C. */
-export const TASK_TEMP_HIGH_ALERT_C = 29;
-
-/** Resumen: alerta si la mínima registrada es < 17 °C. */
-export const SUMMARY_TEMP_LOW_ALERT_C = 17;
+/** Alerta de temperatura alta si la lectura es > 30 °C. */
+export const TEMP_HIGH_ALERT_C = 30;
+/** Alerta de temperatura baja si la lectura es < 17 °C. */
+export const TEMP_LOW_ALERT_C = 17;
 /** Resumen: alerta de amplitud térmica si (máx - mín) >= 9 °C. */
-export const SUMMARY_TEMP_SWING_ALERT_C = 9;
+export const TEMP_SWING_ALERT_C = 9;
 
 // ---------------------------------------------------------------------------
 // Humedad relativa (%)
 // ---------------------------------------------------------------------------
 
-/** PENDIENTE DE DECISIÓN: resumen alerta en floración con promedio > 62 %. */
-export const SUMMARY_FLOWER_HUMIDITY_HIGH_PCT = 62;
-/** PENDIENTE DE DECISIÓN: tarea de alerta en floración con lectura >= 65 %. */
-export const TASK_FLOWER_HUMIDITY_HIGH_PCT = 65;
-
-/** Resumen: alerta en vegetativo con promedio < 45 %. */
-export const SUMMARY_VEG_HUMIDITY_LOW_PCT = 45;
+/** Alerta de humedad alta en floración / maduración si es > 62 %. */
+export const FLOWER_HUMIDITY_HIGH_PCT = 62;
+/** Alerta de humedad baja en vegetativo si es < 45 %. */
+export const VEG_HUMIDITY_LOW_PCT = 45;
+/** Alerta de humedad muy baja en cualquier etapa si es < 30 %. */
+export const HUMIDITY_CRITICAL_LOW_PCT = 30;
 
 // ---------------------------------------------------------------------------
 // VPD (kPa)
 // ---------------------------------------------------------------------------
 
-/** Resumen: VPD promedio alto si > 1.55 kPa. */
-export const SUMMARY_VPD_HIGH_KPA = 1.55;
-/** Resumen: VPD promedio bajo en floración si < 0.75 kPa. */
-export const SUMMARY_FLOWER_VPD_LOW_KPA = 0.75;
+/** VPD alto si es > 1.55 kPa. */
+export const VPD_HIGH_KPA = 1.55;
+/** VPD bajo en floración si es < 0.75 kPa. */
+export const FLOWER_VPD_LOW_KPA = 0.75;
 
 // ---------------------------------------------------------------------------
 // pH y EC del riego
 // ---------------------------------------------------------------------------
 
-/** PENDIENTE DE DECISIÓN: resumen alerta si el pH promedio queda fuera de 5.8–6.7
- *  (el texto de la alerta menciona 6.0–6.5). */
-export const SUMMARY_PH_MIN = 5.8;
-export const SUMMARY_PH_MAX = 6.7;
-/** PENDIENTE DE DECISIÓN: rango de pH recomendado en las tareas de riego. */
-export const TASK_TARGET_PH_FLOWER = '6.2 - 6.5';
-export const TASK_TARGET_PH_DEFAULT = '5.8 - 6.2';
+/** Rango de pH recomendado (texto para tareas y mensajes). */
+export const PH_TARGET_MIN = 5.8;
+export const PH_TARGET_MAX = 6.5;
+export const PH_TARGET_TEXT = '5.8 - 6.5';
+/** Alerta si el pH queda fuera de 5.8–6.7. */
+export const PH_ALERT_MIN = 5.8;
+export const PH_ALERT_MAX = 6.7;
 
-/** Resumen: EC de entrada elevada si el promedio > 2.2 mS/cm. */
-export const SUMMARY_EC_HIGH_MS = 2.2;
-/** Resumen: salinidad del drenaje si EC drenaje > EC entrada × 1.35. */
-export const SUMMARY_RUNOFF_EC_RATIO_ALERT = 1.35;
+/** EC de entrada elevada si es > 2.2 mS/cm. */
+export const EC_HIGH_MS = 2.2;
+/** Salinidad del drenaje si EC drenaje > EC entrada × 1.35. */
+export const RUNOFF_EC_RATIO_ALERT = 1.35;
 
 // ---------------------------------------------------------------------------
 // Riego (días)
 // ---------------------------------------------------------------------------
 
-/** Intervalo recomendado de riego por etapa (usado por getRecommendedWateringIntervalDays). */
+/**
+ * Intervalo de referencia por etapa. Lo usa calculateIrrigationForecast como base cuando todavía
+ * no hay historial suficiente; no se usa directamente para decidir "atrasado".
+ */
 export const WATERING_INTERVAL_DAYS = {
   default: 3,
   finished: 0,
@@ -73,6 +75,28 @@ export const WATERING_INTERVAL_DAYS = {
   vegetative: 3,
 } as const;
 
-/** PENDIENTE DE DECISIÓN: el resumen alerta con >= 4 días sin riego, sin importar la etapa
- *  (las alertas de riego usan WATERING_INTERVAL_DAYS: 2–3 días según etapa). */
-export const SUMMARY_DAYS_SINCE_WATERING_ALERT = 4;
+// ---------------------------------------------------------------------------
+// Helpers de evaluación
+// ---------------------------------------------------------------------------
+
+export function isFlowerOrRipeningStage(stage?: string): boolean {
+  const s = (stage || '').toLowerCase();
+  return s.includes('flor') || s.includes('madur');
+}
+
+/** Evalúa una lectura ambiental puntual. Solo evalúa los valores que existen (no supone nada). */
+export function evaluateEnvironmentReading(
+  reading: { temperatureC?: number | null; humidityPct?: number | null },
+  stage?: string
+): { tempHigh: boolean; tempLow: boolean; humidityHigh: boolean; humidityLow: boolean } {
+  const t = typeof reading.temperatureC === 'number' ? reading.temperatureC : null;
+  const h = typeof reading.humidityPct === 'number' ? reading.humidityPct : null;
+  const flower = isFlowerOrRipeningStage(stage);
+  const veg = (stage || '').toLowerCase().includes('vege');
+  return {
+    tempHigh: t !== null && t > TEMP_HIGH_ALERT_C,
+    tempLow: t !== null && t < TEMP_LOW_ALERT_C,
+    humidityHigh: h !== null && flower && h > FLOWER_HUMIDITY_HIGH_PCT,
+    humidityLow: h !== null && (h < HUMIDITY_CRITICAL_LOW_PCT || (veg && h < VEG_HUMIDITY_LOW_PCT)),
+  };
+}

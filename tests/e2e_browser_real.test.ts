@@ -16,6 +16,7 @@
  */
 
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 
 // Binario JPEG canónico real (Magic header FF D8 FF E0 ... JFIF ... FF D9)
@@ -50,23 +51,44 @@ export async function runE2EBrowserReal(): Promise<{ passed: number; failed: num
   }
 
   // 2. Comprobar ejecutables de Chromium / Chrome en el sistema operativo
+  const programFiles = process.env['ProgramFiles'] || 'C:\\Program Files';
+  const programFilesX86 = process.env['ProgramFiles(x86)'] || 'C:\\Program Files (x86)';
+  const localAppData = process.env.LOCALAPPDATA || '';
   const possiblePaths = [
+    // Linux
     '/root/.cache/ms-playwright/chromium-1243/chrome-linux64/chrome',
     '/root/.cache/ms-playwright/chromium-1243/chrome-linux/chrome',
     '/usr/bin/google-chrome',
     '/usr/bin/google-chrome-stable',
     '/usr/bin/chromium',
     '/usr/bin/chromium-browser',
-  ];
+    // Windows
+    path.join(programFiles, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    path.join(programFilesX86, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+    localAppData ? path.join(localAppData, 'Google', 'Chrome', 'Application', 'chrome.exe') : '',
+    path.join(programFilesX86, 'Microsoft', 'Edge', 'Application', 'msedge.exe'),
+    // macOS
+    '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+  ].filter(Boolean);
 
-  const executablePath = possiblePaths.find((p) => fs.existsSync(p));
-  if (!executablePath && !process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH) {
+  const executablePath =
+    process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || possiblePaths.find((p) => fs.existsSync(p));
+  if (!executablePath) {
     console.warn('  ⚠️ [OMITIDA] No se encontró ningún ejecutable de Google Chrome / Chromium en el sistema.');
     console.warn('    Requisito verificado condicionalmente: infraestructura sin navegador binario.');
     return { passed: 0, failed: 0, skipped: 1 };
   }
 
-  const tempJpegPath = path.join('/tmp', `cultiveta_e2e_photo_${Date.now()}.jpg`);
+  // 3. La prueba necesita la app corriendo en localhost:3000 (npm run dev)
+  const serverUp = await fetch('http://localhost:3000/api/health', { signal: AbortSignal.timeout(3000) })
+    .then((r) => r.ok)
+    .catch(() => false);
+  if (!serverUp) {
+    console.warn('  ⚠️ [OMITIDA] La app no está corriendo en http://localhost:3000 (iniciala con "npm run dev").');
+    return { passed: 0, failed: 0, skipped: 1 };
+  }
+
+  const tempJpegPath = path.join(os.tmpdir(), `cultiveta_e2e_photo_${Date.now()}.jpg`);
   fs.writeFileSync(tempJpegPath, REAL_JPEG_BYTES);
 
   let browser: any = null;
@@ -110,6 +132,7 @@ export async function runE2EBrowserReal(): Promise<{ passed: number; failed: num
     }
 
     console.log('  ✓ [Paso 2] Sesión lista en Chrome.');
+    console.log('  ✓ [PASÓ] La app carga en Chrome real y muestra la pantalla de ingreso o la sesión.');
     passed++;
   } catch (err: any) {
     console.error(`  ✗ [FALLÓ] Prueba E2E en navegador real: ${err?.message || err}`);

@@ -231,7 +231,7 @@ export interface FavoriteGenetic {
   photoperiodType?: PhotoperiodType | string;
   dominance?: DominanceType | string;
   floweringDays?: string | number;
-  estimatedYield?: number;
+  estimatedYield?: string | number;
   organolepticProfile?: string;
   createdAt: string;
 }
@@ -263,8 +263,8 @@ export interface Watering {
   createdAt: string;
   // Percepción subjetiva levantando la maceta a mano antes de regar (sin balanza)
   potLiftBeforeWatering?: PotLiftFeeling;
-  // Drenaje observado a simple vista (opcional). Todavía NO es una señal de calculateIrrigationForecast:
-  // solo se guarda; el motor usa runoffVolumeLiters cuando la persona mide los litros.
+  // Drenaje observado a simple vista (opcional). calculateIrrigationForecast lo muestra como factor
+  // (señal cualitativa) sin cambiar el cálculo; los litros solo salen de runoffVolumeLiters.
   drainageLevel?: DrainageLevel;
   // Backward-compatible optional technical fields for precision dryback estimation
   runoffVolumeLiters?: number;
