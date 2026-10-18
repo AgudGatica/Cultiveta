@@ -1,5 +1,19 @@
 import React from 'react';
-import { ArrowLeft, Flame, Lock, Medal, NotebookText, Sparkles, Trophy } from 'lucide-react';
+import {
+  Camera,
+  ChevronLeft,
+  ClipboardList,
+  Droplet,
+  Lock,
+  NotebookPen,
+  ScanSearch,
+  Scissors,
+  Sprout,
+  Thermometer,
+  TrendingUp,
+  Trophy,
+  type LucideIcon,
+} from 'lucide-react';
 import {
   BADGE_XP,
   BADGES,
@@ -7,6 +21,7 @@ import {
   XP_RULES,
   XP_SOURCES,
   type GrowerProgress,
+  type XpSource,
 } from '../../utils/growerProgress';
 import { formatFriendlyDate } from '../../utils/growthStageUtils';
 import { BADGE_ICONS } from './badgeIcons';
@@ -18,151 +33,159 @@ interface AchievementsViewProps {
   onBack: () => void;
 }
 
+const XP_ICONS: Record<XpSource, LucideIcon> = {
+  watering: Droplet,
+  photo: Camera,
+  environment: Thermometer,
+  diary: NotebookPen,
+  cultivation: Sprout,
+  fertilization: ClipboardList,
+  stage: TrendingUp,
+  aiAnalysis: ScanSearch,
+  harvest: Scissors,
+};
+
+/** Fecha corta en hora local ("17 oct"). */
 function earnedLabel(iso?: string): string | null {
   if (!iso || iso.length < 10) return null;
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return null;
   const local = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  return formatFriendlyDate(local, { includeYear: true });
+  return formatFriendlyDate(local, { includeYear: false });
 }
 
+/**
+ * Logros y nivel. Misma estructura que la pantalla de logros de Brote (barra con volver, tarjeta
+ * con el nivel grande y la barra de XP, "Cómo sumar XP", grilla de logros y lista de niveles),
+ * con los colores de Cultiveta.
+ */
 export const AchievementsView: React.FC<AchievementsViewProps> = ({ progress, badgeDates, onBack }) => {
-  const { level, stats } = progress;
+  const { level } = progress;
   const pct = Math.round(level.pct * 100);
-  const unlockedCount = progress.unlockedBadgeIds.length;
-
-  const kpis = [
-    { label: 'Racha', value: stats.streak, icon: Flame },
-    { label: 'Mejor racha', value: stats.bestStreak, icon: Medal },
-    { label: 'Registros', value: stats.totalRecords, icon: NotebookText },
-    { label: 'Logros', value: `${unlockedCount}/${BADGES.length}`, icon: Trophy },
-  ];
 
   return (
-    <div id="achievements-view" className="max-w-3xl mx-auto space-y-4 sm:space-y-5 pb-6">
-      <button
-        type="button"
-        onClick={onBack}
-        className="inline-flex items-center gap-1.5 min-h-11 px-1 text-xs font-bold text-brand hover:underline cursor-pointer"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Mi perfil
-      </button>
+    <div id="achievements-view" className="max-w-[480px] mx-auto pb-6">
+      {/* Barra: volver + título */}
+      <div className="flex items-center gap-2.5 pt-1 pb-2.5">
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Volver a mi perfil"
+          className="w-10 h-10 rounded-[14px] grid place-items-center bg-card text-ink shadow-card cursor-pointer hover:bg-surface"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <h1 className="flex-1 text-[1.2rem] font-black text-white drop-shadow-sm">Logros y nivel</h1>
+      </div>
 
       {/* Nivel grande */}
-      <section className="rounded-[28px] bg-brand-deep text-white p-6 sm:p-7 shadow-lg shadow-brand-deep/20 relative overflow-hidden">
-        <div className="absolute -right-10 -top-10 w-44 h-44 rounded-full bg-primary/20 blur-2xl" aria-hidden="true" />
-        <div className="relative flex items-center gap-5">
-          <div className="w-20 h-20 sm:w-24 sm:h-24 shrink-0 rounded-3xl bg-white/10 border border-white/20 flex flex-col items-center justify-center">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-brand-soft">Nivel</span>
-            <span className="text-4xl sm:text-5xl font-black leading-none">{level.level}</span>
+      <section
+        id="achievements-level-hero"
+        className="relative overflow-hidden rounded-[28px] px-[18px] py-4 mb-3.5 text-center text-white shadow-[0_14px_30px_rgba(27,46,122,0.30)]"
+        style={{ background: 'linear-gradient(135deg, var(--color-ocean-20) 0%, var(--color-ocean-60) 50%, var(--color-brand-deep) 100%)' }}
+      >
+        <div className="absolute -right-[60px] -top-[60px] w-[200px] h-[200px] rounded-full bg-white/10" aria-hidden="true" />
+        <div className="relative">
+          <div className="w-[76px] h-[76px] mx-auto mb-2 rounded-2xl bg-white text-brand-deep grid place-items-center text-[2.4rem] font-black -rotate-6 shadow-md">
+            {level.level}
           </div>
-          <div className="min-w-0 flex-1 space-y-2">
-            <h1 className="text-xl sm:text-2xl font-black truncate">{level.name}</h1>
-            <div className="h-3 rounded-full bg-white/15 overflow-hidden">
-              <div className="h-full rounded-full bg-primary transition-[width] duration-700" style={{ width: `${pct}%` }} />
-            </div>
-            <p className="text-xs text-brand-soft font-semibold">
-              {level.nextXp !== null
-                ? `${level.xp} / ${level.nextXp} XP · faltan ${level.nextXp - level.xp} para ${level.nextName}`
-                : `${level.xp} XP · llegaste al nivel máximo`}
-            </p>
+          <h2 className="text-[1.7rem] font-black leading-tight">{level.name}</h2>
+          <div
+            className="h-2.5 max-w-[260px] mx-auto mt-2.5 mb-1 rounded-full bg-white/30 overflow-hidden"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={pct}
+            aria-label="Avance al próximo nivel"
+          >
+            <span className="block h-full rounded-full bg-primary transition-[width] duration-700" style={{ width: `${pct}%` }} />
           </div>
-        </div>
-      </section>
-
-      {/* Números */}
-      <section className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-        {kpis.map(({ label, value, icon: Icon }) => (
-          <div key={label} className="cultiveta-card p-3.5 flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-icon-bg text-brand shrink-0">
-              <Icon className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <span className="text-lg font-black text-ink leading-none block">{value}</span>
-              <span className="text-[11px] font-semibold text-ink-muted">{label}</span>
-            </div>
-          </div>
-        ))}
-      </section>
-
-      {/* Grilla de logros */}
-      <section className="space-y-3">
-        <h2 className="text-sm font-bold text-ink px-1">Logros</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 sm:gap-3">
-          {BADGES.map((b) => {
-            const isUnlocked = progress.unlockedBadgeIds.includes(b.id);
-            const Icon = BADGE_ICONS[b.icon];
-            const date = isUnlocked ? earnedLabel(badgeDates[b.id]) : null;
-            return (
-              <div
-                key={b.id}
-                data-badge={b.id}
-                data-unlocked={isUnlocked ? 'true' : 'false'}
-                className={`rounded-3xl p-4 flex flex-col items-center text-center gap-1.5 border ${
-                  isUnlocked ? 'bg-card border-ok-line shadow-card' : 'bg-surface border-line'
-                }`}
-              >
-                <div
-                  className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                    isUnlocked ? 'bg-ok-bg text-ok-ink border border-ok-line' : 'bg-track text-ink-subtle'
-                  }`}
-                >
-                  {isUnlocked ? <Icon className="w-6 h-6" /> : <Lock className="w-5 h-5" />}
-                </div>
-                <span className={`text-xs font-bold ${isUnlocked ? 'text-ink' : 'text-ink-muted'}`}>{b.name}</span>
-                <span className="text-[11px] leading-snug text-ink-muted">{b.description}</span>
-                {isUnlocked && (
-                  <span className="text-[10px] font-bold text-ok-ink mt-auto pt-1">
-                    {/* Sin fecha guardada: lo desbloquean los datos de ejemplo */}
-                    {date ? `Ganado el ${date}` : 'Con datos de ejemplo'}
-                  </span>
-                )}
-              </div>
-            );
-          })}
+          <p className="font-semibold opacity-95 text-sm">
+            {level.nextXp !== null
+              ? `${level.xp} / ${level.nextXp} XP · siguiente: ${level.nextName}`
+              : `${level.xp} XP · nivel máximo`}
+          </p>
         </div>
       </section>
 
       {/* Cómo sumar XP */}
-      <section className="cultiveta-card p-5 space-y-3">
-        <h2 className="text-sm font-bold text-ink flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-brand" />
-          Cómo sumar XP
-        </h2>
-        <ul className="divide-y divide-line">
-          {XP_SOURCES.map((s) => (
-            <li key={s} className="flex items-center justify-between py-2 text-xs">
-              <span className="text-ink">{XP_RULES[s].howTo}</span>
-              <span className="font-black text-brand">+{XP_RULES[s].xp} XP</span>
-            </li>
-          ))}
-          <li className="flex items-center justify-between py-2 text-xs">
-            <span className="text-ink">Desbloquear un logro</span>
-            <span className="font-black text-brand">+{BADGE_XP} XP</span>
+      <section className="bg-card rounded-[20px] p-4 mb-3.5 shadow-card">
+        <h3 className="text-[1.12rem] font-black text-ink">Cómo sumar XP</h3>
+        <ul className="mt-2 flex flex-col gap-2">
+          {XP_SOURCES.map((s) => {
+            const Icon = XP_ICONS[s];
+            return (
+              <li key={s} className="flex items-center gap-2.5 text-sm text-ink">
+                <Icon className="w-5 h-5 text-brand shrink-0" />
+                {XP_RULES[s].label}
+                <b className="ml-auto font-black text-brand">+{XP_RULES[s].xp}</b>
+              </li>
+            );
+          })}
+          <li className="flex items-center gap-2.5 text-sm text-ink">
+            <Trophy className="w-5 h-5 text-brand shrink-0" />
+            Logro desbloqueado
+            <b className="ml-auto font-black text-brand">+{BADGE_XP}</b>
           </li>
         </ul>
-        <p className="text-[11px] text-ink-muted leading-relaxed">
-          El XP sale de lo que ya registraste, así que cuenta todo tu historial. Los registros de clima
-          exterior automáticos no suman. La racha cuenta los días seguidos con al menos un riego, una
-          foto, un registro de ambiente o una nota.
-        </p>
-        <div className="flex flex-wrap gap-1.5 pt-1">
-          {LEVELS.map((l, i) => (
-            <span
-              key={l.name}
-              className={`text-[10px] font-bold rounded-full px-2.5 py-1 border ${
-                i + 1 === level.level
-                  ? 'bg-brand-deep text-white border-brand-deep'
-                  : i + 1 < level.level
-                    ? 'bg-ok-bg text-ok-ink border-ok-line'
-                    : 'bg-surface text-ink-muted border-line'
+      </section>
+
+      {/* Grilla de logros */}
+      <section className="grid grid-cols-2 min-[361px]:grid-cols-3 gap-2.5 mb-3.5">
+        {BADGES.map((b) => {
+          const isUnlocked = progress.unlockedBadgeIds.includes(b.id);
+          const Icon = BADGE_ICONS[b.icon];
+          const date = isUnlocked ? earnedLabel(badgeDates[b.id]) : null;
+          return (
+            <div
+              key={b.id}
+              data-badge={b.id}
+              data-unlocked={isUnlocked ? 'true' : 'false'}
+              className={`rounded-[18px] px-2 py-3 text-center flex flex-col items-center gap-[3px] shadow-card ${
+                isUnlocked ? 'outline-2 outline-ok' : 'bg-card opacity-55'
               }`}
+              style={isUnlocked ? { background: 'linear-gradient(180deg, var(--color-card), var(--color-ok-bg))' } : undefined}
             >
-              {i + 1}. {l.name} · {l.minXp}
-            </span>
-          ))}
-        </div>
+              {isUnlocked ? (
+                <Icon className="w-[30px] h-[30px] text-brand" />
+              ) : (
+                <Lock className="w-[30px] h-[30px] text-ink-subtle" />
+              )}
+              <b className="text-[0.86rem] font-black text-ink leading-tight">{b.name}</b>
+              <small className="text-[0.7rem] text-ink-muted leading-tight">{b.description}</small>
+              {isUnlocked && (
+                <em className="not-italic text-[0.66rem] font-black text-ok-ink">{date || 'ejemplo'}</em>
+              )}
+            </div>
+          );
+        })}
+      </section>
+
+      {/* Niveles */}
+      <section className="bg-card rounded-[20px] p-4 shadow-card">
+        <h3 className="text-[1.12rem] font-black text-ink">Niveles</h3>
+        <ol className="mt-2 flex flex-col gap-1.5">
+          {LEVELS.map((l, i) => {
+            const reached = i + 1 <= level.level;
+            return (
+              <li
+                key={l.name}
+                className={`flex items-center gap-2.5 p-2 rounded-xl bg-surface font-bold text-sm text-ink ${
+                  reached ? '' : 'opacity-60'
+                } ${i + 1 === level.level ? 'ring-2 ring-primary' : ''}`}
+              >
+                <span
+                  className="w-7 h-7 rounded-[9px] grid place-items-center text-white font-black text-xs"
+                  style={{ background: 'linear-gradient(135deg, var(--color-ocean-20), var(--color-brand-deep))' }}
+                >
+                  {i + 1}
+                </span>
+                {l.name}
+                <small className="ml-auto text-xs font-semibold text-ink-muted">{l.minXp} XP</small>
+              </li>
+            );
+          })}
+        </ol>
       </section>
     </div>
   );
