@@ -6,7 +6,6 @@ import {
   Sparkles,
   MoreHorizontal,
   Dna,
-  Award,
   Scale,
   Calculator,
   X,
@@ -45,7 +44,6 @@ export const MobileNav: React.FC<MobileNavProps> = ({
   const secondaryNavItems = [
     { id: 'profile', label: 'Mi perfil', icon: Trophy, desc: 'Tu nivel, tu racha y tus logros' },
     { id: 'genetics', label: 'Genéticas', icon: Dna, desc: 'Banco de semillas y cepas' },
-    { id: 'harvests', label: 'Cosechas', icon: Award, desc: 'Historial de cortes y secado' },
     { id: 'compare_crops', label: 'Comparador', icon: Scale, desc: 'Curvas de cosechas anteriores' },
     { id: 'calculators', label: 'Calculadoras', icon: Calculator, desc: 'VPD, luz PPFD y mezclas' },
   ];
@@ -139,7 +137,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
             onNavigate('cultivations');
           }}
           className={`flex flex-col items-center justify-center gap-1 min-h-11 min-w-11 py-1 px-3 rounded-xl transition-colors cursor-pointer ${
-            currentView === 'cultivations' || currentView === 'cultivation_detail'
+            currentView === 'cultivations'
               ? 'bg-brand-deep text-white font-bold'
               : 'text-ink-muted hover:text-ink'
           }`}

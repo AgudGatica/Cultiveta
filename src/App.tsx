@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { User } from 'firebase/auth';
-import { AppView, parseAppRoute, pathForView } from './appRoutes';
+import { AppView, isLegacyHarvestsPath, parseAppRoute, pathForView } from './appRoutes';
 import { authService } from './services/authService';
 import { cultivationService } from './services/cultivationService';
 import { wateringService } from './services/wateringService';
@@ -34,14 +34,7 @@ import { AuthScreen } from './components/auth/AuthScreen';
 
 import { DashboardOverview } from './components/dashboard/DashboardOverview';
 import { CultivationFormModal } from './components/cultivations/CultivationFormModal';
-import { CultivationCard } from './components/cultivations/CultivationCard';
-import {
-  CultivationsFilterBar,
-  StageFilterCategory,
-  CultivationStatusFilter,
-  matchesStageFilter,
-  isCropFinished,
-} from './components/cultivations/CultivationsFilterBar';
+import { getDetailBackTarget, getNavHighlight, isCropFinished } from './utils/cropCardInfo';
 import { WateringModal } from './components/logs/WateringModal';
 import { EnvironmentModal } from './components/logs/EnvironmentModal';
 import { PhotoUploadModal } from './components/logs/PhotoUploadModal';
@@ -55,7 +48,7 @@ import { AccountModal } from './components/user/AccountModal';
 import { UserProfile } from './types';
 import { useGrowerProgress } from './hooks/useGrowerProgress';
 import { CelebrationLayer } from './components/profile/CelebrationLayer';
-import { Sprout, Plus, SlidersHorizontal } from 'lucide-react';
+import { Sprout } from 'lucide-react';
 
 // Pantallas y modales pesados con carga diferida: se descargan recién cuando se abren.
 const CultivationDetailView = React.lazy(() =>
@@ -64,8 +57,8 @@ const CultivationDetailView = React.lazy(() =>
 const GeneticsLibraryView = React.lazy(() =>
   import('./components/genetics/GeneticsLibraryView').then((m) => ({ default: m.GeneticsLibraryView }))
 );
-const HarvestsHistoryView = React.lazy(() =>
-  import('./components/harvests/HarvestsHistoryView').then((m) => ({ default: m.HarvestsHistoryView }))
+const FinishedCropsView = React.lazy(() =>
+  import('./components/cultivations/FinishedCropsView').then((m) => ({ default: m.FinishedCropsView }))
 );
 const CropComparisonView = React.lazy(() =>
   import('./components/harvests/CropComparisonView').then((m) => ({ default: m.CropComparisonView }))
@@ -117,6 +110,13 @@ export default function App() {
       setSelectedCultivationId(route.cultivationId);
     }
   }, [route.cultivationId, setSelectedCultivationId]);
+
+  // Cosechas se unió con Cultivos: los enlaces viejos a /cosechas llevan a /cultivos
+  useEffect(() => {
+    if (isLegacyHarvestsPath(location.pathname)) {
+      navigate('/cultivos', { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   // Ruta desconocida: se muestra el Inicio y se corrige la URL (sin sumar una entrada al historial)
   useEffect(() => {
@@ -182,11 +182,6 @@ export default function App() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncError, setSyncError] = useState<string | null>(null);
 
-  // Cultivations List Stage Filter & Search State
-  const [cultivationStatusFilter, setCultivationStatusFilter] = useState<CultivationStatusFilter>('active');
-  const [stageFilter, setStageFilter] = useState<StageFilterCategory>('all');
-  const [cultivationSearchQuery, setCultivationSearchQuery] = useState('');
-
   // Nivel, XP, logros y racha: se calculan de los datos en vivo; los festejos salen de comparar cambios.
   const progressData = useMemo(
     () => ({ cultivations, waterings, environmentRecords: envRecords, photos, diaryEntries, harvests }),
@@ -212,47 +207,6 @@ export default function App() {
         return 'cultiveta-page-default';
     }
   }, [currentView]);
-
-  const filteredCultivations = useMemo(() => {
-    return cultivations
-      .filter((crop) => {
-        const finished = isCropFinished(crop);
-        // Status filter: active / finished / all
-        if (cultivationStatusFilter === 'active' && finished) {
-          return false;
-        }
-        if (cultivationStatusFilter === 'finished' && !finished) {
-          return false;
-        }
-
-        // Stage filter (only applied in 'active' mode)
-        if (cultivationStatusFilter === 'active' && !matchesStageFilter(crop, stageFilter)) {
-          return false;
-        }
-
-        // Search query filter
-        if (cultivationSearchQuery.trim()) {
-          const q = cultivationSearchQuery.toLowerCase();
-          const nameMatch = crop.name.toLowerCase().includes(q);
-          const geneticsMatch = crop.geneticsName?.toLowerCase().includes(q);
-          const stageMatch = crop.currentStage?.toLowerCase().includes(q);
-          const typeMatch = crop.type?.toLowerCase().includes(q);
-          if (!nameMatch && !geneticsMatch && !stageMatch && !typeMatch) {
-            return false;
-          }
-        }
-        return true;
-      })
-      .sort((a, b) => {
-        // If showing finished crops, sort newest terminal date first
-        if (cultivationStatusFilter === 'finished') {
-          const dateA = new Date(a.harvestDate || a.endDate || a.floweringStartDate || a.startDate || 0).getTime();
-          const dateB = new Date(b.harvestDate || b.endDate || b.floweringStartDate || b.startDate || 0).getTime();
-          return dateB - dateA;
-        }
-        return 0;
-      });
-  }, [cultivations, cultivationStatusFilter, stageFilter, cultivationSearchQuery]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -545,6 +499,9 @@ export default function App() {
   };
 
   const selectedCultivation = cultivations.find((c) => c.id === selectedCultivationId);
+  // Activo → vuelve al Inicio y se resalta Inicio; terminado → Cultivos.
+  const detailBackTarget = getDetailBackTarget(selectedCultivation);
+  const navHighlight = getNavHighlight(currentView, selectedCultivation);
 
   // Authentication Loading Screen
   if (authLoading) {
@@ -622,7 +579,7 @@ export default function App() {
       <div className="flex-1 flex max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8 gap-6">
         {/* Desktop Sidebar */}
         <Sidebar
-          currentView={currentView}
+          currentView={navHighlight}
           onNavigate={(view) => {
             setCurrentView(view);
             if (view !== 'cultivation_detail') {
@@ -630,9 +587,8 @@ export default function App() {
             }
           }}
           onOpenQuickAction={() => setIsQuickActionOpen(true)}
-          cultivationsCount={cultivations.filter((c) => !c.isFinished).length}
+          cultivationsCount={cultivations.filter(isCropFinished).length}
           geneticsCount={geneticsList.length}
-          harvestsCount={harvests.length}
         />
 
         {/* Content Area */}
@@ -648,6 +604,7 @@ export default function App() {
               geneticsList={geneticsList}
               userProfile={userProfile}
               userId={currentUser.uid}
+              progress={growerProgress.progress}
               isLoading={isInitialLoading}
               isSyncing={isSyncing}
               syncError={syncError}
@@ -664,201 +621,31 @@ export default function App() {
                 if (crop) setSelectedCultivationId(crop.id);
                 setIsWateringModalOpen(true);
               }}
-              onOpenEnvModal={(crop) => {
-                if (crop) setSelectedCultivationId(crop.id);
-                setIsEnvModalOpen(true);
-              }}
-              onOpenPhotoModal={(crop) => {
-                if (crop) setSelectedCultivationId(crop.id);
-                setIsPhotoModalOpen(true);
-              }}
-              onOpenAIAssistant={(crop) => {
-                if (crop) setSelectedCultivationId(crop.id);
-                setCurrentView('ai_assistant');
-              }}
-              onOpenCalendarModal={(crop) => {
-                setCalendarModalCultivation(crop);
-                setIsCalendarModalOpen(true);
-              }}
-              onWateringAdded={(w) => {
-                setWaterings((prev) => [w, ...prev.filter((x) => x.id !== w.id)]);
-                notifiedOverdueRef.current.delete(w.cultivationId);
-              }}
               onTaskCompletedFeedback={(msg) => {
                 showToast(msg);
               }}
             />
           )}
 
-          {/* VIEW: CULTIVATIONS LIST */}
+          {/* VIEW: CULTIVOS (terminados + cosechas) */}
           {currentView === 'cultivations' && (
-            <div className="space-y-6">
-              <div className="flex items-center justify-between bg-white rounded-[32px] p-6 sm:p-8 border border-chip-line shadow-xs relative overflow-hidden">
-                <div className="relative z-10">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.25em] text-ink-subtle mb-1 block">Gestión de Salas</span>
-                  <h2 className="font-extrabold text-2xl text-ink">Mis Cultivos 🌱</h2>
-                  <p className="text-xs text-ink-muted mt-1">
-                    Seguimiento individual de carpas, salas y plantas
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  id="list-create-crop-btn"
-                  onClick={() => {
-                    setCultivationToEdit(null);
-                    setIsCultivationFormOpen(true);
-                  }}
-                  className="relative z-10 px-6 py-3 rounded-2xl bg-primary hover:brightness-95 text-ink text-xs font-bold transition-all shadow-md shadow-primary/20 flex items-center gap-2 cursor-pointer"
-                >
-                  <Plus className="w-4 h-4 text-white stroke-[2.5]" />
-                  <span>Nuevo Cultivo</span>
-                </button>
-              </div>
-
-              {cultivations.length > 0 && (
-                <CultivationsFilterBar
-                  statusFilter={cultivationStatusFilter}
-                  onStatusFilterChange={setCultivationStatusFilter}
-                  activeFilter={stageFilter}
-                  onFilterChange={setStageFilter}
-                  searchQuery={cultivationSearchQuery}
-                  onSearchChange={setCultivationSearchQuery}
-                  cultivations={cultivations}
-                  totalFilteredCount={filteredCultivations.length}
-                />
-              )}
-
-              {cultivations.length === 0 ? (
-                <div className="bg-white rounded-[32px] p-12 border border-chip-line text-center space-y-4 shadow-xs">
-                  <div className="w-16 h-16 rounded-2xl bg-track border border-chip-line text-ok flex items-center justify-center mx-auto">
-                    <Sprout className="w-8 h-8" />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-ink text-base">Todavía no anotaste ningún cultivo.</h3>
-                    <p className="text-xs text-ink-muted max-w-sm mx-auto mt-1">
-                      Creá tu primer cultivo para empezar a registrar riegos, parámetros y fotografías.
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setCultivationToEdit(null);
-                      setIsCultivationFormOpen(true);
-                    }}
-                    className="px-6 py-3 rounded-2xl bg-primary hover:brightness-95 text-ink font-bold text-xs transition-all shadow-lg shadow-primary/20 cursor-pointer inline-flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4 stroke-[2.5]" />
-                    Crear cultivo
-                  </button>
-                </div>
-              ) : filteredCultivations.length === 0 ? (
-                <div className="bg-white rounded-[32px] p-10 border border-chip-line text-center space-y-4 shadow-xs">
-                  <div className="w-12 h-12 rounded-2xl bg-track border border-chip-line text-ink-subtle flex items-center justify-center mx-auto">
-                    <SlidersHorizontal className="w-6 h-6" />
-                  </div>
-                  <div>
-                    {cultivationSearchQuery.trim() ? (
-                      <>
-                        <h3 className="font-bold text-ink text-base">No hay cultivos que coincidan</h3>
-                        <p className="text-xs text-ink-muted max-w-sm mx-auto mt-1">
-                          No encontramos plantas con el término &quot;<strong className="text-ink">{cultivationSearchQuery}</strong>&quot;.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => setCultivationSearchQuery('')}
-                          className="mt-3 px-4 py-2 rounded-xl bg-track hover:bg-line text-ink font-semibold text-xs transition-colors cursor-pointer inline-flex items-center gap-2"
-                        >
-                          Limpiar búsqueda
-                        </button>
-                      </>
-                    ) : cultivationStatusFilter === 'active' ? (
-                      <>
-                        <h3 className="font-bold text-ink text-base">No tenés cultivos activos ahora.</h3>
-                        <p className="text-xs text-ink-muted max-w-sm mx-auto mt-1">
-                          Podés iniciar una nueva carpa o revisar tus cultivos finalizados.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCultivationToEdit(null);
-                            setIsCultivationFormOpen(true);
-                          }}
-                          className="mt-3 px-5 py-2.5 rounded-2xl bg-primary hover:brightness-95 text-ink font-bold text-xs transition-all shadow-md shadow-primary/20 cursor-pointer inline-flex items-center gap-2"
-                        >
-                          <Plus className="w-4 h-4 stroke-[2.5]" />
-                          Crear cultivo
-                        </button>
-                      </>
-                    ) : cultivationStatusFilter === 'finished' ? (
-                      <>
-                        <h3 className="font-bold text-ink text-base">Todavía no terminaste ningún cultivo.</h3>
-                        <p className="text-xs text-ink-muted max-w-sm mx-auto mt-1">
-                          Cuando coseches un cultivo activo, aparecerá registrado aquí con su historial.
-                        </p>
-                      </>
-                    ) : (
-                      <>
-                        <h3 className="font-bold text-ink text-base">Todavía no anotaste ningún cultivo.</h3>
-                        <p className="text-xs text-ink-muted max-w-sm mx-auto mt-1">
-                          Iniciá tu primer cultivo para comenzar el seguimiento.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setCultivationToEdit(null);
-                            setIsCultivationFormOpen(true);
-                          }}
-                          className="mt-3 px-5 py-2.5 rounded-2xl bg-primary hover:brightness-95 text-ink font-bold text-xs transition-all shadow-md shadow-primary/20 cursor-pointer inline-flex items-center gap-2"
-                        >
-                          <Plus className="w-4 h-4 stroke-[2.5]" />
-                          Crear cultivo
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredCultivations.map((crop) => (
-                    <CultivationCard
-                      key={crop.id}
-                      cultivation={crop}
-                      latestWatering={
-                        waterings
-                          .filter((w) => w.cultivationId === crop.id)
-                          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] || null
-                      }
-                      latestEnv={
-                        envRecords
-                          .filter((e) => e.cultivationId === crop.id)
-                          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] || null
-                      }
-                      onClick={() => {
-                        setSelectedCultivationId(crop.id);
-                        setCurrentView('cultivation_detail');
-                      }}
-                      onQuickWater={(c) => {
-                        setSelectedCultivationId(c.id);
-                        setIsWateringModalOpen(true);
-                      }}
-                      onQuickPhoto={(c) => {
-                        setSelectedCultivationId(c.id);
-                        setIsPhotoModalOpen(true);
-                      }}
-                      onQuickAI={(c) => {
-                        setSelectedCultivationId(c.id);
-                        setCurrentView('ai_assistant');
-                      }}
-                      onQuickCalendar={(c) => {
-                        setCalendarModalCultivation(c);
-                        setIsCalendarModalOpen(true);
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
+            <FinishedCropsView
+              cultivations={cultivations}
+              harvests={harvests}
+              photos={photos}
+              userId={currentUser.uid}
+              onOpenCultivation={(crop) => {
+                setSelectedCultivationId(crop.id);
+                setCurrentView('cultivation_detail');
+              }}
+              onNavigateToCompare={(cropAId) => {
+                setComparisonCropAId(cropAId);
+                setCurrentView('compare_crops');
+              }}
+              onHarvestUpdated={(updated) => {
+                setHarvests((prev) => prev.map((h) => (h.id === updated.id ? updated : h)));
+              }}
+            />
           )}
 
           {/* VIEW: CULTIVATION DETAIL */}
@@ -872,9 +659,10 @@ export default function App() {
                 envRecords={envRecords}
                 photos={photos}
                 diaryEntries={diaryEntries}
+                backLabel={detailBackTarget === 'cultivations' ? 'Volver a Cultivos' : 'Volver al Inicio'}
                 onBack={() => {
                   setSelectedCultivationId(null);
-                  setCurrentView('cultivations');
+                  setCurrentView(detailBackTarget);
                 }}
                 onEditCultivation={(crop) => {
                   setCultivationToEdit(crop);
@@ -884,7 +672,7 @@ export default function App() {
                   await cultivationService.deleteCultivation(cropId);
                   showToast('Cultivo eliminado.');
                   setSelectedCultivationId(null);
-                  setCurrentView('cultivations');
+                  setCurrentView(detailBackTarget);
                 }}
                 onOpenWateringModal={() => setIsWateringModalOpen(true)}
                 onOpenWateringModalWithRecipe={(recipeProducts, defPh, defEc) => {
@@ -900,7 +688,7 @@ export default function App() {
                 onOpenDiaryModal={() => setIsDiaryModalOpen(true)}
                 onHarvestFinalized={(harvest) => {
                   showToast('¡Cosecha finalizada y registrada!');
-                  setCurrentView('harvests');
+                  setCurrentView('cultivations');
                 }}
                 onDeletePhoto={async (photoId) => {
                   if (window.confirm('¿Deseas eliminar esta fotografía?')) {
@@ -914,22 +702,22 @@ export default function App() {
                 }}
               />
             ) : (
-              <div className="bg-[#0F0F0F] rounded-[32px] p-12 border border-zinc-800 text-center space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 text-emerald-400 flex items-center justify-center mx-auto">
-                  <Sprout className="w-6 h-6 animate-pulse" />
+              <div className="cultiveta-card p-12 text-center space-y-4">
+                <div className="w-12 h-12 rounded-2xl bg-icon-bg text-brand flex items-center justify-center mx-auto">
+                  <Sprout className="w-6 h-6 animate-pulse" aria-hidden="true" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-white text-base">Cargando cultivo...</h3>
-                  <p className="text-xs text-zinc-400 max-w-sm mx-auto mt-1">
+                  <h3 className="font-bold text-ink text-base">Cargando cultivo...</h3>
+                  <p className="text-xs text-ink-muted max-w-sm mx-auto mt-1">
                     Cargando la información del cultivo seleccionado.
                   </p>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setCurrentView('cultivations')}
-                  className="px-4 py-2 rounded-xl bg-zinc-800 text-zinc-300 text-xs font-semibold hover:bg-zinc-700 transition-colors"
+                  onClick={() => setCurrentView('dashboard')}
+                  className="cultiveta-btn-secondary text-xs"
                 >
-                  Volver a mis cultivos
+                  Volver al Inicio
                 </button>
               </div>
             )
@@ -960,18 +748,6 @@ export default function App() {
           )}
 
           {/* VIEW: HARVESTS HISTORY */}
-          {currentView === 'harvests' && (
-            <HarvestsHistoryView
-              harvests={harvests}
-              cultivations={cultivations}
-              userId={currentUser?.uid}
-              onNavigateToCompare={(cropAId) => {
-                setComparisonCropAId(cropAId);
-                setCurrentView('compare_crops');
-              }}
-            />
-          )}
-
           {/* VIEW: CROP COMPARISON */}
           {currentView === 'compare_crops' && (
             <CropComparisonView
@@ -981,7 +757,7 @@ export default function App() {
               waterings={waterings}
               initialCropAId={comparisonCropAId}
               initialCropBId={comparisonCropBId}
-              onBack={() => setCurrentView('harvests')}
+              onBack={() => setCurrentView('cultivations')}
               onSeedDemoData={handleSeedDemoData}
             />
           )}
@@ -1036,7 +812,7 @@ export default function App() {
 
       {/* Mobile Bottom Navigation */}
       <MobileNav
-        currentView={currentView}
+        currentView={navHighlight}
         onNavigate={(view) => {
           setCurrentView(view);
           if (view !== 'cultivation_detail') {

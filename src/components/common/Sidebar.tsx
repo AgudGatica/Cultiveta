@@ -3,7 +3,6 @@ import {
   LayoutDashboard,
   Sprout,
   Dna,
-  Award,
   Sparkles,
   Calculator,
   ChevronLeft,
@@ -19,7 +18,6 @@ interface SidebarProps {
   onOpenQuickAction?: () => void;
   cultivationsCount?: number;
   geneticsCount?: number;
-  harvestsCount?: number;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   onOpenNewCropModal?: () => void;
@@ -31,7 +29,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenQuickAction,
   cultivationsCount = 0,
   geneticsCount = 0,
-  harvestsCount = 0,
   isCollapsed: externalIsCollapsed,
   onToggleCollapse: externalOnToggleCollapse,
   onOpenNewCropModal,
@@ -42,9 +39,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const navItems = [
     { id: 'dashboard', label: 'Inicio', icon: LayoutDashboard, badge: '' },
-    { id: 'cultivations', label: 'Mis Cultivos', icon: Sprout, badge: cultivationsCount > 0 ? `${cultivationsCount}` : '' },
+    // Cultivos: historial de terminados y cosechas (los activos están en el Inicio)
+    { id: 'cultivations', label: 'Cultivos', icon: Sprout, badge: cultivationsCount > 0 ? `${cultivationsCount}` : '' },
     { id: 'genetics', label: 'Genéticas', icon: Dna, badge: geneticsCount > 0 ? `${geneticsCount}` : '' },
-    { id: 'harvests', label: 'Cosechas', icon: Award, badge: harvestsCount > 0 ? `${harvestsCount}` : '' },
     { id: 'compare_crops', label: 'Comparador', icon: Scale, badge: '' },
     { id: 'calculators', label: 'Calculadoras', icon: Calculator, badge: '' },
     { id: 'ai_assistant', label: 'Cultiveta IA', icon: Sparkles, isAI: true, badge: '✨' },

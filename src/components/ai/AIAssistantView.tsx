@@ -28,6 +28,7 @@ import { aiService } from '../../services/aiService';
 import { condenseRecordsToKeyPoints } from '../../utils/condenseRecords';
 import { buildCultivationIntelligenceContext } from '../../services/cultivationIntelligenceService';
 import { SafeMarkdown } from './SafeMarkdown';
+import { WeeklySummaryCard } from './WeeklySummaryCard';
 
 export interface AIAssistantViewProps {
   cultivations: Cultivation[];
@@ -216,6 +217,10 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
   };
 
   return (
+    <div className="space-y-4">
+    {/* Resumen semanal de los cultivos activos (antes en el Inicio) */}
+    <WeeklySummaryCard cultivations={cultivations} waterings={recentWaterings} envRecords={recentEnvRecords} />
+
     <div className="bg-white rounded-3xl border border-chip-line shadow-xs flex flex-col h-[calc(100vh-140px)] min-h-[500px]">
       {/* Chat Top Header with Crop Context Selector and Summary Mode Switch */}
       <div className="p-4 sm:p-5 border-b border-chip-line flex flex-col md:flex-row items-start md:items-center justify-between gap-3 cultiveta-gradient-ai cultiveta-grain rounded-t-3xl">
@@ -480,6 +485,7 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
           </button>
         </form>
       </div>
+    </div>
     </div>
   );
 };

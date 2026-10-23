@@ -11,18 +11,13 @@ import {
   SlidersHorizontal,
 } from 'lucide-react';
 import { Cultivation } from '../../types';
+import { isCropFinished } from '../../utils/cropCardInfo';
 
 export type CultivationStatusFilter = 'active' | 'finished' | 'all';
 export type StageFilterCategory = 'all' | 'germinacion' | 'vegetativo' | 'floracion' | 'lavado';
 
-export const isCropFinished = (crop: Cultivation): boolean => {
-  return Boolean(
-    crop.isFinished === true ||
-    crop.status?.toLowerCase() === 'cosechado' ||
-    crop.status?.toLowerCase() === 'finalizado' ||
-    crop.currentStage?.toLowerCase() === 'cosechado'
-  );
-};
+// La regla vive en utils/cropCardInfo (se usa también fuera de esta barra).
+export { isCropFinished };
 
 export const matchesStageFilter = (crop: Cultivation, filter: StageFilterCategory): boolean => {
   if (filter === 'all') return true;

@@ -1,7 +1,10 @@
 /**
  * tests/dashboard_lifecycle_progress.test.ts
  *
- * SUITE DE PRUEBAS: DASHBOARD, BARRA DE PROGRESO DEL CICLO Y DESGLOSE DE ETAPAS EN HISTORIAL PARCIAL (12 CASOS)
+ * SUITE DE PRUEBAS: BARRA DE PROGRESO DEL CICLO Y DESGLOSE DE ETAPAS EN HISTORIAL PARCIAL (12 CASOS)
+ *
+ * El ciclo del cultivo se mudó del Inicio al detalle (CropLifecycleCard). La cabecera "Día X de <etapa>"
+ * del caso 9 ahora es la tarjeta del cultivo en el Inicio, así que se renderizan ambos.
  *
  * 1. ciclo completo: overallProgressPct es number.
  * 2. ciclo parcial: overallProgressPct === null.
@@ -26,6 +29,7 @@ import {
   buildUpdatedStagesTimeline,
 } from '../src/utils/growthStageUtils';
 import { DashboardOverview } from '../src/components/dashboard/DashboardOverview';
+import { CropLifecycleCard } from '../src/components/cultivations/CropLifecycleCard';
 
 // Configurar JSDOM para ejecución React
 
@@ -219,6 +223,7 @@ async function run(): Promise<void> {
 
   await act(async () => {
     root.render(
+      React.createElement(React.Fragment, null,
       React.createElement(DashboardOverview, {
         cultivations: [cropPartial],
         waterings: [],
@@ -229,11 +234,9 @@ async function run(): Promise<void> {
         onSelectCultivation: () => {},
         onCreateCultivationClick: () => {},
         onOpenWateringModal: () => {},
-        onOpenEnvModal: () => {},
-        onOpenPhotoModal: () => {},
-        onOpenAIAssistant: () => {},
-        onOpenCalendarModal: () => {},
-      })
+      }),
+      React.createElement(CropLifecycleCard, { cultivation: cropPartial, geneticsList: [] })
+      )
     );
   });
 
@@ -374,21 +377,7 @@ async function run(): Promise<void> {
 
     await act(async () => {
       completeRoot.render(
-        React.createElement(DashboardOverview, {
-          cultivations: [cropComplete],
-          waterings: [],
-          envRecords: [],
-          photos: [],
-          userId: 'user_1',
-          geneticsList: [],
-          onSelectCultivation: () => {},
-          onCreateCultivationClick: () => {},
-          onOpenWateringModal: () => {},
-          onOpenEnvModal: () => {},
-          onOpenPhotoModal: () => {},
-          onOpenAIAssistant: () => {},
-          onOpenCalendarModal: () => {},
-        })
+        React.createElement(CropLifecycleCard, { cultivation: cropComplete, geneticsList: [] })
       );
     });
 

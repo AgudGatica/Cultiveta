@@ -36,6 +36,8 @@ import { cultivationService } from '../../services/cultivationService';
 import { harvestService } from '../../services/harvestService';
 import { EditHarvestModal } from '../harvests/EditHarvestModal';
 import { EnvironmentChart } from '../charts/EnvironmentChart';
+import { CropLifecycleCard } from './CropLifecycleCard';
+import { IrrigationForecastCard } from './IrrigationForecastCard';
 import { WateringChart } from '../charts/WateringChart';
 import { MeasurementsTableView } from '../logs/MeasurementsTableView';
 import { PhotoGalleryView } from '../gallery/PhotoGalleryView';
@@ -73,6 +75,8 @@ interface CultivationDetailViewProps {
   geneticsList?: Genetics[];
   catalogPhotos?: Record<string, GeneticsCatalogPhoto>;
   onBack: () => void;
+  /** Texto del botón de volver (Inicio para activos, Cultivos para terminados). */
+  backLabel?: string;
   onEditCultivation: (cultivation: Cultivation) => void;
   onDeleteCultivation: (cultivationId: string) => void;
   onOpenWateringModal: () => void;
@@ -96,6 +100,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
   geneticsList = [],
   catalogPhotos: catalogPhotosProp,
   onBack,
+  backLabel = 'Volver al Inicio',
   onEditCultivation,
   onDeleteCultivation,
   onOpenWateringModal,
@@ -169,10 +174,10 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-2 text-xs font-bold text-ink-muted hover:text-brand transition-colors cursor-pointer"
+          className="min-h-11 inline-flex items-center gap-2 text-xs font-bold text-ink-muted hover:text-brand transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
-          Volver a mis cultivos
+          {backLabel}
         </button>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -817,6 +822,11 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
             </div>
           )}
 
+          {/* Ventana para revisar la maceta (antes en el Inicio) */}
+          {!isCosechado && (
+            <IrrigationForecastCard cultivation={cultivation} waterings={waterings} envRecords={envRecords} />
+          )}
+
           {/* Quick Metrics Bar */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div
@@ -920,6 +930,9 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
               </div>
             </div>
           </div>
+
+          {/* Ciclo del cultivo con hitos y desglose de etapas (antes en el Inicio) */}
+          {!isCosechado && <CropLifecycleCard cultivation={cultivation} geneticsList={geneticsList} />}
 
           {/* Sección de Floración (solo si Prefloración, Floración, Maduración o tiene floweringStartDate) */}
           {(() => {
