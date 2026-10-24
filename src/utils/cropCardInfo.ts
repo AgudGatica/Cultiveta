@@ -107,3 +107,22 @@ export function latestUploadedPhotoUrl(photos: PhotoRecord[], cropId: string): s
     .sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || '').localeCompare(a.createdAt || ''))[0];
   return latest ? latest.thumbnailUrl || latest.url : null;
 }
+
+/**
+ * Portadas fijas de las tarjetas de cultivo: una para interior y otra para exterior.
+ * Proporción 2:1 (recomendado 1600 × 800 px). Invernadero usa la de exterior (luz natural).
+ */
+export const CROP_COVER_IMAGES = {
+  interior: '/portadas/interior.webp',
+  exterior: '/portadas/exterior.webp',
+} as const;
+
+export type CropCoverKind = keyof typeof CROP_COVER_IMAGES;
+
+export function getCropCoverKind(crop: Pick<Cultivation, 'type'>): CropCoverKind {
+  return crop.type === 'Outdoor' || crop.type === 'Invernadero' ? 'exterior' : 'interior';
+}
+
+export function getCropCoverImage(crop: Pick<Cultivation, 'type'>): string {
+  return CROP_COVER_IMAGES[getCropCoverKind(crop)];
+}

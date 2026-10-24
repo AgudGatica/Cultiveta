@@ -2,24 +2,26 @@ import React, { useState } from 'react';
 import { CalendarDays, Leaf, Sprout } from 'lucide-react';
 import type { Cultivation, Genetics } from '../../types';
 import { getStageColorClasses, getStageIcon } from '../../utils/growthStageUtils';
-import { getCropDayLabel, getGeneticsLabel } from '../../utils/cropCardInfo';
+import { getCropCoverImage, getCropCoverKind, getCropDayLabel, getGeneticsLabel } from '../../utils/cropCardInfo';
 
 interface ActiveCropCardProps {
   cultivation: Cultivation;
-  /** Foto ya resuelta (última foto del cultivo o, si no hay, la del resolver). */
-  photoUrl?: string | null;
   geneticsList?: Genetics[];
   onOpen: (cultivation: Cultivation) => void;
 }
 
-/** Tarjeta de un cultivo activo en el Inicio: foto, nombre, genética, etapa, semana/día y plantas. */
-export const ActiveCropCard: React.FC<ActiveCropCardProps> = ({ cultivation, photoUrl, geneticsList = [], onOpen }) => {
+/**
+ * Tarjeta de un cultivo activo en el Inicio: portada (interior o exterior), nombre, genética, etapa,
+ * semana/día y plantas. La portada tiene proporción fija 2:1 para que la imagen calce en cualquier pantalla.
+ */
+export const ActiveCropCard: React.FC<ActiveCropCardProps> = ({ cultivation, geneticsList = [], onOpen }) => {
   const [imageFailed, setImageFailed] = useState(false);
   const stage = cultivation.currentStage || 'Vegetativo';
   const stageClasses = getStageColorClasses(stage, true, false);
   const genetics = getGeneticsLabel(cultivation);
   const plants = cultivation.plantCount || 1;
-  const showImage = Boolean(photoUrl) && !imageFailed;
+  const coverUrl = getCropCoverImage(cultivation);
+  const showImage = !imageFailed;
 
   return (
     <button
@@ -29,10 +31,10 @@ export const ActiveCropCard: React.FC<ActiveCropCardProps> = ({ cultivation, pho
       className="cultiveta-card cultiveta-card-hover overflow-hidden text-left w-full flex flex-col cursor-pointer focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/40"
       aria-label={`Abrir ${cultivation.name}`}
     >
-      <div className="relative h-36 sm:h-40 w-full bg-icon-bg overflow-hidden">
+      <div className="relative aspect-[2/1] w-full bg-icon-bg overflow-hidden" data-cover={getCropCoverKind(cultivation)}>
         {showImage ? (
           <img
-            src={photoUrl || ''}
+            src={coverUrl}
             alt=""
             loading="lazy"
             referrerPolicy="no-referrer"

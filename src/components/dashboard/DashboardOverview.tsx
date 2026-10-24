@@ -2,9 +2,7 @@ import React, { useMemo } from 'react';
 import { AlertTriangle, Flame, Leaf, Medal, Plus, Sprout } from 'lucide-react';
 import type { Cultivation, EnvironmentRecord, Genetics, PhotoRecord, UserProfile, Watering } from '../../types';
 import type { GrowerProgress } from '../../utils/growerProgress';
-import { isCropFinished, latestUploadedPhotoUrl } from '../../utils/cropCardInfo';
-import { resolveCultivationDisplayPhoto } from '../../utils/cultivationPhotoResolver';
-import { useGeneticsCatalogPhotos } from '../../hooks/useGeneticsCatalogPhotos';
+import { isCropFinished } from '../../utils/cropCardInfo';
 import { EmptyState } from '../common/EmptyState';
 import { TodayTasksCard } from './TodayTasksCard';
 import { ActiveCropCard } from './ActiveCropCard';
@@ -59,19 +57,9 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   onOpenWateringModal,
   onTaskCompletedFeedback,
 }) => {
-  const catalogPhotos = useGeneticsCatalogPhotos();
   const activeCrops = useMemo(() => cultivations.filter((c) => !isCropFinished(c)), [cultivations]);
   const totalPlants = activeCrops.reduce((acc, c) => acc + (c.plantCount || 1), 0);
   const firstName = (userProfile?.displayName || 'Cultivador').split(' ')[0] || 'Cultivador';
-
-  const cropPhotos = useMemo(() => {
-    const map: Record<string, string | null> = {};
-    for (const crop of activeCrops) {
-      map[crop.id] =
-        latestUploadedPhotoUrl(photos, crop.id) || resolveCultivationDisplayPhoto(crop, catalogPhotos).displayPhotoUrl || null;
-    }
-    return map;
-  }, [activeCrops, photos, catalogPhotos]);
 
   const numbers = [
     { id: 'home-stat-crops', label: activeCrops.length === 1 ? 'cultivo' : 'cultivos', value: activeCrops.length, icon: Sprout },
@@ -164,7 +152,6 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                   <ActiveCropCard
                     key={crop.id}
                     cultivation={crop}
-                    photoUrl={cropPhotos[crop.id]}
                     geneticsList={geneticsList}
                     onOpen={onSelectCultivation}
                   />

@@ -38,6 +38,7 @@ import { EditHarvestModal } from '../harvests/EditHarvestModal';
 import { EnvironmentChart } from '../charts/EnvironmentChart';
 import { CropLifecycleCard } from './CropLifecycleCard';
 import { IrrigationForecastCard } from './IrrigationForecastCard';
+import { CropGeneticsSection } from './CropGeneticsSection';
 import { WateringChart } from '../charts/WateringChart';
 import { MeasurementsTableView } from '../logs/MeasurementsTableView';
 import { PhotoGalleryView } from '../gallery/PhotoGalleryView';
@@ -786,6 +787,9 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
       {/* TAB 1: OVERVIEW & CHARTS */}
       {activeTab === 'overview' && (
         <div className="space-y-6">
+          {/* Genéticas del cultivo, con la misma tarjeta de la pantalla Genéticas */}
+          <CropGeneticsSection cultivation={cultivation} geneticsList={geneticsList} />
+
           {/* Alerta de Riego Overdue si supera el período recomendado */}
           {wateringAnalysis.isOverdue && (
             <div

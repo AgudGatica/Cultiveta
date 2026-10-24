@@ -2,14 +2,12 @@ import React, { useMemo, useState } from 'react';
 import { Award, CalendarDays, FileText, Pencil, Scale, Sprout, Star, Timer } from 'lucide-react';
 import type { Cultivation, Harvest, PhotoRecord } from '../../types';
 import {
-  latestUploadedPhotoUrl,
+  getCropCoverImage,
   listFinishedCrops,
   getGeneticsLabel,
   type FinishedCropSummary,
 } from '../../utils/cropCardInfo';
-import { resolveCultivationDisplayPhoto } from '../../utils/cultivationPhotoResolver';
 import { formatFriendlyDate } from '../../utils/growthStageUtils';
-import { useGeneticsCatalogPhotos } from '../../hooks/useGeneticsCatalogPhotos';
 import { EmptyState } from '../common/EmptyState';
 import { HarvestReportView } from './HarvestReportView';
 import { EditHarvestModal } from '../harvests/EditHarvestModal';
@@ -45,6 +43,16 @@ function cultivationFromHarvest(h: Harvest): Cultivation {
   };
 }
 
+/** Portada del cultivo (interior o exterior); si la imagen no carga, un ícono. */
+const CoverThumb: React.FC<{ src: string }> = ({ src }) => {
+  const [failed, setFailed] = useState(false);
+  return failed ? (
+    <Sprout className="w-8 h-8 stroke-[1.5]" aria-hidden="true" />
+  ) : (
+    <img src={src} alt="" loading="lazy" onError={() => setFailed(true)} className="w-full h-full object-cover" />
+  );
+};
+
 const fmt = (date: string | null) => (date ? formatFriendlyDate(date) : 'Sin fecha');
 
 /**
@@ -61,7 +69,6 @@ export const FinishedCropsView: React.FC<FinishedCropsViewProps> = ({
   onNavigateToCompare,
   onHarvestUpdated,
 }) => {
-  const catalogPhotos = useGeneticsCatalogPhotos();
   const [report, setReport] = useState<{ harvest: Harvest; cultivation: Cultivation } | null>(null);
   const [harvestToEdit, setHarvestToEdit] = useState<Harvest | null>(null);
 
@@ -171,11 +178,6 @@ export const FinishedCropsView: React.FC<FinishedCropsViewProps> = ({
             {items.map((item) => {
               const { crop, harvest } = item;
               const exists = knownIds.has(crop.id);
-              const photoUrl =
-                latestUploadedPhotoUrl(photos, crop.id) ||
-                (harvest?.photoUrls?.[0] ?? null) ||
-                resolveCultivationDisplayPhoto(crop, catalogPhotos).displayPhotoUrl ||
-                null;
               const genetics = getGeneticsLabel(crop);
               const openMain = () => {
                 if (exists) onOpenCultivation(crop);
@@ -194,11 +196,7 @@ export const FinishedCropsView: React.FC<FinishedCropsViewProps> = ({
                     className="text-left flex gap-3 p-3.5 cursor-pointer hover:bg-surface transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/40"
                   >
                     <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden bg-icon-bg text-brand shrink-0 flex items-center justify-center">
-                      {photoUrl ? (
-                        <img src={photoUrl} alt="" loading="lazy" referrerPolicy="no-referrer" className="w-full h-full object-cover" />
-                      ) : (
-                        <Sprout className="w-8 h-8 stroke-[1.5]" aria-hidden="true" />
-                      )}
+                      <CoverThumb src={getCropCoverImage(crop)} />
                     </div>
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex items-start justify-between gap-2">

@@ -24,6 +24,7 @@ import {
 import { Genetics, Harvest, PhotoperiodType, DominanceType, FavoriteGenetic, UserProfile, GeneticsCatalogPhoto } from '../../types';
 import { GeneticsFormModal } from './GeneticsFormModal';
 import { GeneticsPhotoAdminModal } from './GeneticsPhotoAdminModal';
+import { GeneticsShowcaseCard } from './GeneticsShowcaseCard';
 import { GENETICS_DATABASE, PredefinedGenetic } from '../../data/predefinedGenetics';
 import { geneticsService } from '../../services/geneticsService';
 import { favoritesService, getGeneticsKey } from '../../services/favoritesService';
@@ -623,76 +624,16 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                 const isTogglingFav = Boolean(togglingFavMap[itemFavKey]);
 
                 return (
-                  <article
+                  <GeneticsShowcaseCard
                     key={`${item.seedBank}-${item.name}`}
-                    className="bg-white rounded-[30px] border border-chip-line shadow-sm overflow-hidden p-4 space-y-4 w-full"
+                    name={item.name}
+                    seedBank={item.seedBank}
+                    dominance={item.dominance}
+                    photoUrl={officialPhoto}
+                    estimatedYield={item.estimatedYield}
+                    floweringDays={item.floweringDays}
+                    organolepticProfile={item.organolepticProfile}
                   >
-                    {/* 1. Fotografía grande con aspect-[295/176], rounded-[24px], hover zoom sutil, SIN DEGRADÉ NEGRO NI OVERLAY OSCURO */}
-                    <div className="group relative w-full aspect-[295/176] rounded-[24px] overflow-hidden bg-stone-100 border border-stone-200/60">
-                      {officialPhoto ? (
-                        <img
-                          src={officialPhoto}
-                          alt={`${item.name} - ${item.seedBank}`}
-                          className="w-full h-full object-cover rounded-[24px] transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center text-stone-400 bg-stone-100 rounded-[24px]">
-                          <ImageIcon className="w-10 h-10 stroke-1 text-stone-400" />
-                          <span className="text-xs font-medium text-stone-500 mt-1">Sin fotografía</span>
-                        </div>
-                      )}
-
-                      {/* 2. Contenido sobre la foto (Nombre, Banco y Tipo reducidos aproximadamente al 50%, sin agrandarse en hover) */}
-                      <div className="absolute left-4 top-4 z-10 flex flex-col items-start gap-1 max-w-[85%] pointer-events-none">
-                        {/* Nombre de la genética: reducido a 18px / 20px */}
-                        <h2
-                          className="text-[18px] sm:text-[20px] font-black uppercase leading-none text-white drop-shadow-[0_2px_3px_rgba(0,0,0,0.35)] truncate max-w-full"
-                        >
-                          {item.name}
-                        </h2>
-
-                        {/* Banco / breeder con fondo claro propio: reducido a text-xs, px-2.5 py-1 */}
-                        <span className="inline-flex items-center rounded-lg bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs font-semibold text-emerald-800 shadow-2xs">
-                          {item.seedBank}
-                        </span>
-
-                        {/* Dominancia / clasificación con fondo claro propio: reducida a text-xs, px-2.5 py-1 */}
-                        <span className="inline-flex items-center rounded-full bg-[#FFF8EB] border border-amber-400 px-2.5 py-1 text-xs font-bold text-stone-800 shadow-2xs">
-                          {item.dominance}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* 3. Debajo de la fotografía: Fila de dos elementos en violeta elegante con texto e iconos en blanco */}
-                    <div className="grid grid-cols-2 gap-3">
-                      {/* Rendimiento */}
-                      <div className="flex items-center justify-center gap-2 rounded-full bg-brand px-3 py-2 text-white font-semibold text-xs sm:text-sm shadow-sm">
-                        <Scale className="w-4 h-4 text-white shrink-0" />
-                        <span className="truncate">{item.estimatedYield} g/m²</span>
-                      </div>
-
-                      {/* Floración */}
-                      <div className="flex items-center justify-center gap-2 rounded-full bg-brand px-3 py-2 text-white font-semibold text-xs sm:text-sm shadow-sm">
-                        <Clock className="w-4 h-4 text-white shrink-0" />
-                        <span className="truncate">{item.floweringDays} d</span>
-                      </div>
-                    </div>
-
-                    {/* 4. Bloque "AROMA Y GUSTO" */}
-                    <div className="rounded-[22px] border border-stone-200 bg-white p-4 space-y-1.5">
-                      <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold uppercase tracking-wide text-stone-400">
-                        <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
-                        <span>AROMA Y GUSTO</span>
-                      </div>
-                      <p className="text-stone-700 font-medium italic leading-relaxed text-xs sm:text-sm">
-                        "{item.organolepticProfile}"
-                      </p>
-                    </div>
-
-                    {/* 5. Separador */}
-                    <div className="border-t border-stone-100 my-1" />
-
                     {/* 6. Dos botones inferiores: Iniciar Cultivo + FAVORITOS */}
                     <div className="grid grid-cols-2 gap-3">
                       {/* BOTÓN 1: INICIAR CULTIVO */}
@@ -733,7 +674,7 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                         />
                       </button>
                     </div>
-                  </article>
+                  </GeneticsShowcaseCard>
                 );
               })}
             </div>
