@@ -31,6 +31,9 @@ export interface PlantTimelineEvent {
   count?: number;
   /** Días hasta el evento anterior (más viejo) o hasta el inicio: define el tramo de tallo debajo. */
   gapDaysToOlder: number;
+  /** Etapa en que estaba el cultivo ese día y día dentro de esa etapa (si se sabe). */
+  stageName?: string;
+  stageDay?: number;
 }
 
 /** Forma de la copa de la planta. */
@@ -56,6 +59,29 @@ const dateOnly = (value?: string | null): string | null => {
   if (!p) return null;
   return `${p.year}-${String(p.month).padStart(2, '0')}-${String(p.day).padStart(2, '0')}`;
 };
+
+type StageLike = { name: string; startDate?: string; isUnknown?: boolean; dateKnowledge?: string };
+
+/**
+ * Etapa vigente en una fecha y día dentro de esa etapa, según las fechas de inicio de cada etapa
+ * (reales o estimadas). Si se pasa el nombre de la etapa registrado (por ejemplo, el de una foto),
+ * se respeta ese nombre y el día se cuenta desde el inicio de esa etapa.
+ */
+export function stageAtDate(stages: StageLike[], date: string, recordedStage?: string): { name: string; day?: number } | null {
+  const known = stages
+    .filter((s) => s.startDate && !s.isUnknown && s.dateKnowledge !== 'unknown')
+    .map((s) => ({ name: s.name, start: dateOnly(s.startDate)! }))
+    .filter((s) => s.start)
+    .sort((a, b) => a.start.localeCompare(b.start));
+
+  if (recordedStage && recordedStage.trim()) {
+    const same = known.filter((s) => s.name.toLowerCase() === recordedStage.trim().toLowerCase() && s.start <= date).pop();
+    return { name: recordedStage.trim(), day: same ? daysBetween(same.start, date) + 1 : undefined };
+  }
+  let found: { name: string; start: string } | null = null;
+  for (const s of known) if (s.start <= date) found = s;
+  return found ? { name: found.name, day: daysBetween(found.start, date) + 1 } : null;
+}
 
 /** Riego "importante": con nutrientes, pH o EC medidos, drenaje u observaciones. */
 export function isImportantWatering(w: Watering): boolean {
@@ -167,11 +193,14 @@ export function buildPlantTimeline(
     const dayNumber = Math.max(1, daysBetween(startDate, e.date) + 1);
     const olderDate = i === 0 ? startDate : sorted[i - 1].date;
     const { order: _order, ...rest } = e;
+    const stage = stageAtDate(schedule.stages, e.date, e.kind === 'photo' ? e.photo?.stage : undefined);
     return {
       ...rest,
       dayNumber,
       week: Math.floor((dayNumber - 1) / 7) + 1,
       gapDaysToOlder: Math.max(0, daysBetween(olderDate, e.date)),
+      stageName: stage?.name,
+      stageDay: stage?.day,
     };
   });
 

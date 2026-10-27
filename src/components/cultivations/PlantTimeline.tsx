@@ -178,38 +178,122 @@ function PotArt() {
   );
 }
 
-function dayLabel(e: PlantTimelineEvent) {
-  return `S${e.week} · D${e.dayNumber} · ${formatFriendlyDate(e.date, { includeYear: false })}`;
+/** Fecha corta y día del cultivo: "27 oct · Día 17". */
+function dateLine(e: PlantTimelineEvent) {
+  return `${formatFriendlyDate(e.date, { includeYear: false })} · Día ${e.dayNumber}`;
 }
 
-function EventCard({ event, userId }: { event: PlantTimelineEvent; userId?: string }) {
+/** Etapa en que estaba ese día: "Vegetativo, día 9". */
+function stageLine(e: PlantTimelineEvent): string | null {
+  if (!e.stageName) return null;
+  return e.stageDay ? `${e.stageName}, día ${e.stageDay}` : e.stageName;
+}
+
+/** Foto grande, centrada sobre el tallo, con su descripción y cuándo se sacó. */
+function PhotoCard({ event, userId }: { event: PlantTimelineEvent; userId?: string }) {
+  const caption = event.photo?.caption?.trim();
+  const stage = stageLine(event);
+  return (
+    <figure
+      data-event-kind="photo"
+      className="relative z-10 mx-auto w-[88%] max-w-[340px] rounded-[26px] bg-white border border-chip-line shadow-card p-2.5 space-y-2"
+    >
+      <div className="aspect-[4/3] rounded-[18px] overflow-hidden bg-track">
+        {event.photo && (
+          <PhotoImageView photo={event.photo} userId={userId} alt={caption || 'Foto del cultivo'} className="w-full h-full object-cover" />
+        )}
+      </div>
+      {caption && (
+        <figcaption className="px-1 text-center text-[15px] font-black text-ink leading-snug line-clamp-3">
+          “{caption}”
+        </figcaption>
+      )}
+      <div className="flex flex-wrap items-center justify-center gap-1.5 pb-0.5 text-[11px] font-bold">
+        <span className="text-ink-muted">{dateLine(event)}</span>
+        {stage && <span className="px-2 py-0.5 rounded-full bg-ok-bg border border-ok-line text-ok-ink">{stage}</span>}
+      </div>
+    </figure>
+  );
+}
+
+/** Tarjeta al costado del tallo (notas, riegos y cambios de etapa). */
+function SideCard({ event }: { event: PlantTimelineEvent }) {
   const meta = KIND_META[event.kind];
   const Icon = meta.icon;
+  const stage = event.kind === 'stage' ? null : stageLine(event);
+  const isNote = event.kind === 'note';
+  const customTitle = isNote && event.title !== 'Nota del diario' ? event.title : null;
   return (
-    <div className={`rounded-2xl border p-2.5 space-y-1.5 shadow-2xs text-left ${meta.card}`} data-event-kind={event.kind}>
+    <div className={`rounded-2xl border p-2.5 space-y-1 shadow-2xs text-left ${meta.card}`} data-event-kind={event.kind}>
       <div className="flex items-center gap-1.5 min-w-0">
         <span className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${meta.iconTone}`}>
           <Icon className="w-3.5 h-3.5" aria-hidden="true" />
         </span>
         <span className="text-[10px] font-bold uppercase tracking-wide text-ink-muted truncate">{meta.label}</span>
       </div>
-      {event.kind === 'photo' && event.photo && (
-        <div className="aspect-[4/3] rounded-xl overflow-hidden bg-track">
-          <PhotoImageView photo={event.photo} userId={userId} alt={event.title} className="w-full h-full object-cover" />
-        </div>
+      {isNote ? (
+        <>
+          {customTitle && <p className="text-xs font-bold text-ink leading-snug line-clamp-2">{customTitle}</p>}
+          {event.detail && <p className="text-xs text-ink leading-snug line-clamp-4">{event.detail}</p>}
+        </>
+      ) : (
+        <>
+          <p className="text-xs font-bold text-ink leading-snug line-clamp-2">{event.title}</p>
+          {event.detail && <p className="text-[11px] text-ink-muted leading-snug line-clamp-3">{event.detail}</p>}
+        </>
       )}
-      <p className="text-xs font-bold text-ink leading-snug line-clamp-2">{event.title}</p>
-      {event.detail && event.kind !== 'photo' && (
-        <p className="text-[11px] text-ink-muted leading-snug line-clamp-3">{event.detail}</p>
-      )}
-      <p className="text-[10px] font-semibold text-ink-subtle">{dayLabel(event)}</p>
+      <p className="text-[10px] font-semibold text-ink-subtle leading-snug">
+        {dateLine(event)}
+        {stage && (
+          <>
+            <br />
+            {stage}
+          </>
+        )}
+      </p>
     </div>
   );
 }
 
+/** Hoja del nudo hacia la tarjeta. */
+function NodeLeaf({ toRight, highlight }: { toRight: boolean; highlight: boolean }) {
+  return (
+    <svg viewBox="0 0 44 48" className="absolute inset-0 w-11 h-12 overflow-visible" aria-hidden="true">
+      <g transform={toRight ? 'translate(22 24)' : 'translate(22 24) scale(-1 1)'}>
+        <path d="M0 0 Q 16 -20 42 -9 Q 22 11 0 0 Z" fill={highlight ? LEAF_LIGHT : LEAF} stroke={LEAF_DARK} strokeWidth={1.1} />
+        <path d="M0 0 Q 20 -8 39 -9" stroke={LEAF_DARK} strokeWidth={0.9} fill="none" />
+      </g>
+      <circle cx={22} cy={24} r={highlight ? 5.5 : 4} fill={highlight ? '#F3C843' : LEAF_DARK} />
+    </svg>
+  );
+}
+
+/**
+ * Hoja grande del lado libre: lugar de descanso para la mascota (cuando esté definida se sienta acá).
+ * Aparece cada tantos registros, como los personajes al costado del camino.
+ */
+function MascotSpot({ toRight }: { toRight: boolean }) {
+  return (
+    <div data-mascot-spot className="relative h-24" aria-hidden="true">
+      <svg
+        viewBox="0 0 120 60"
+        className={`absolute top-1 ${toRight ? 'left-0' : 'right-0 -scale-x-100'} w-[120px] h-[60px] max-w-full overflow-visible`}
+      >
+        <path d="M0 26 Q 40 -8 116 14 Q 60 52 0 26 Z" fill={LEAF_LIGHT} stroke={LEAF_DARK} strokeWidth={1.2} />
+        <path d="M0 26 Q 56 6 112 15" stroke={LEAF_DARK} strokeWidth={1} fill="none" />
+        <path d="M34 15 L 44 25 M58 10 L 66 22 M82 10 L 88 20" stroke={LEAF_DARK} strokeWidth={0.8} fill="none" />
+      </svg>
+    </div>
+  );
+}
+
+/** Cada cuántas tarjetas al costado aparece una hoja grande para la mascota. */
+const MASCOT_SPOT_EVERY = 3;
+
 /**
  * Línea de tiempo con forma de planta: abajo la maceta (inicio), el tallo crece hacia arriba según
- * los días y cada registro sale del tallo como una hoja con su tarjeta. Arriba, la copa de la etapa.
+ * los días. Las fotos van grandes, centradas sobre el tallo; notas, riegos y etapas salen del tallo
+ * como hojas con su tarjeta al costado. Arriba, la copa de la etapa actual.
  */
 export const PlantTimeline: React.FC<PlantTimelineProps> = ({
   cultivation,
@@ -238,6 +322,9 @@ export const PlantTimeline: React.FC<PlantTimelineProps> = ({
     />
   );
 
+  // Las tarjetas al costado alternan de lado; las fotos van al centro y no cuentan
+  let sideIndex = 0;
+
   return (
     <section id="plant-timeline" aria-labelledby="plant-timeline-title" className="cultiveta-card p-3 sm:p-6 space-y-2 overflow-hidden">
       <div className="px-1">
@@ -249,61 +336,78 @@ export const PlantTimeline: React.FC<PlantTimelineProps> = ({
         </p>
       </div>
 
-      <div className="relative pt-1" data-crown={model.crown}>
+      <div className="relative pt-1 max-w-xl mx-auto" data-crown={model.crown}>
         <PlantCrownArt crown={model.crown} growth={model.growth} />
 
         {/* Tallo continuo: desde la copa hasta la maceta, detrás de los registros */}
         <div className="relative">
           {stem}
 
-        {/* Tramo entre la copa y el registro más reciente (días sin registros) */}
-        <div style={{ height: stemSegmentPx(Math.min(model.gapDaysToToday, 10)) }} />
+          {/* Tramo entre la copa y el registro más reciente (días sin registros) */}
+          <div style={{ height: stemSegmentPx(Math.min(model.gapDaysToToday, 10)) }} />
 
-        <ol aria-label="Registros del cultivo, del más reciente al inicio" className="relative">
-          {visible.map((event, i) => {
-            const right = i % 2 === 0;
-            return (
-              <motion.li
-                key={event.id}
-                data-event-id={event.id}
-                className="relative grid grid-cols-[1fr_36px_1fr] items-start"
-                style={{ paddingBottom: stemSegmentPx(event.gapDaysToOlder) }}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, delay: Math.min(i, 8) * 0.04 }}
+          <ol aria-label="Registros del cultivo, del más reciente al inicio" className="relative">
+            {visible.map((event, i) => {
+              const animation = {
+                initial: { opacity: 0, y: 8 },
+                animate: { opacity: 1, y: 0 },
+                transition: { duration: 0.25, delay: Math.min(i, 8) * 0.04 },
+              };
+
+              if (event.kind === 'photo') {
+                return (
+                  <motion.li
+                    key={event.id}
+                    data-event-id={event.id}
+                    data-layout="center"
+                    className="relative"
+                    style={{ paddingBottom: stemSegmentPx(event.gapDaysToOlder) }}
+                    {...animation}
+                  >
+                    <PhotoCard event={event} userId={userId} />
+                  </motion.li>
+                );
+              }
+
+              const right = sideIndex % 2 === 0;
+              const showMascotSpot = sideIndex % MASCOT_SPOT_EVERY === MASCOT_SPOT_EVERY - 1;
+              sideIndex++;
+              return (
+                <motion.li
+                  key={event.id}
+                  data-event-id={event.id}
+                  data-layout={right ? 'right' : 'left'}
+                  className="relative grid grid-cols-[1fr_44px_1fr] items-start"
+                  style={{ paddingBottom: stemSegmentPx(event.gapDaysToOlder) }}
+                  {...animation}
+                >
+                  <div className="pr-1">
+                    {right ? showMascotSpot && <MascotSpot toRight={false} /> : <SideCard event={event} />}
+                  </div>
+                  <div className="relative h-12">
+                    <NodeLeaf toRight={right} highlight={event.kind === 'stage'} />
+                  </div>
+                  <div className="pl-1">
+                    {right ? <SideCard event={event} /> : showMascotSpot && <MascotSpot toRight />}
+                  </div>
+                </motion.li>
+              );
+            })}
+          </ol>
+
+          {hidden > 0 && (
+            <div className="relative flex justify-center py-2">
+              <button
+                type="button"
+                id="plant-timeline-more-btn"
+                onClick={() => setShowAll(true)}
+                className="relative z-10 cultiveta-btn-secondary text-xs"
               >
-                <div className={right ? '' : 'pr-1'}>{!right && <EventCard event={event} userId={userId} />}</div>
-
-                {/* Nudo con una hoja hacia la tarjeta */}
-                <div className="relative h-10" aria-hidden="true">
-                  <svg viewBox="0 0 36 40" className="absolute inset-0 w-9 h-10 overflow-visible">
-                    <g transform={right ? 'translate(18 20)' : 'translate(18 20) scale(-1 1)'}>
-                      <path d="M0 0 Q 12 -14 30 -6 Q 16 8 0 0 Z" fill={event.kind === 'stage' ? LEAF_LIGHT : LEAF} stroke={LEAF_DARK} strokeWidth={1} />
-                      <path d="M0 0 Q 14 -6 28 -6" stroke={LEAF_DARK} strokeWidth={0.8} fill="none" />
-                    </g>
-                    <circle cx={18} cy={20} r={event.kind === 'stage' ? 5 : 3.5} fill={event.kind === 'stage' ? '#F3C843' : LEAF_DARK} />
-                  </svg>
-                </div>
-
-                <div className={right ? 'pl-1' : ''}>{right && <EventCard event={event} userId={userId} />}</div>
-              </motion.li>
-            );
-          })}
-        </ol>
-
-        {hidden > 0 && (
-          <div className="relative flex justify-center py-2">
-            <button
-              type="button"
-              id="plant-timeline-more-btn"
-              onClick={() => setShowAll(true)}
-              className="relative z-10 cultiveta-btn-secondary text-xs"
-            >
-              <ChevronDown className="w-4 h-4" aria-hidden="true" />
-              Ver anteriores ({hidden})
-            </button>
-          </div>
-        )}
+                <ChevronDown className="w-4 h-4" aria-hidden="true" />
+                Ver anteriores ({hidden})
+              </button>
+            </div>
+          )}
         </div>
 
         <PotArt />

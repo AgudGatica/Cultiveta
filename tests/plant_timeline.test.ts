@@ -15,6 +15,11 @@
  * 10. El tramo de tallo crece con los días y tiene tope.
  * 11. Render: copa, eventos en orden, tarjetas de foto y nota, maceta con la fecha de inicio.
  * 12. Render: con más de 20 registros muestra 20 y "Ver anteriores".
+ * 13. Etapa vigente en una fecha y día dentro de la etapa.
+ * 14. Cada registro trae la etapa y el día de etapa de ese momento.
+ * 15. La foto va grande al centro con descripción, fecha y etapa.
+ * 16. La nota va al costado con su texto, fecha y etapa.
+ * 17. Hojas alternadas y una hoja grande para la mascota cada 3 tarjetas al costado.
  */
 
 import './helpers/setupDom';
@@ -22,7 +27,7 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Cultivation, DiaryEntry, PhotoRecord, Watering } from '../src/types';
 import { addDays, buildUpdatedStagesTimeline, getLocalTodayDateOnly } from '../src/utils/growthStageUtils';
-import { buildPlantTimeline, crownForStage, isImportantWatering, stemSegmentPx } from '../src/utils/plantTimeline';
+import { buildPlantTimeline, crownForStage, isImportantWatering, stageAtDate, stemSegmentPx } from '../src/utils/plantTimeline';
 import { PlantTimeline } from '../src/components/cultivations/PlantTimeline';
 
 let passed = 0;
@@ -230,6 +235,90 @@ async function run() {
   });
 
   await act(async () => root2.unmount());
+
+  // ───────────── Etapa de cada registro, foto centrada, nota al costado y lugar de la mascota ─────────────
+  await check('13. Etapa vigente y día dentro de la etapa', () => {
+    const stages = [
+      { name: 'Germinación', startDate: ago(40) },
+      { name: 'Vegetativo', startDate: ago(30) },
+      { name: 'Floración', startDate: ago(10) },
+      { name: 'Plántula', isUnknown: true },
+    ];
+    const veg = stageAtDate(stages, ago(22));
+    assert(veg?.name === 'Vegetativo' && veg.day === 9, `vegetativo: ${JSON.stringify(veg)}`);
+    const flower = stageAtDate(stages, ago(10));
+    assert(flower?.name === 'Floración' && flower.day === 1, `primer día de flora: ${JSON.stringify(flower)}`);
+    assert(stageAtDate(stages, ago(50)) === null, 'antes de la primera etapa no hay dato');
+    const recorded = stageAtDate(stages, ago(5), 'Floración');
+    assert(recorded?.name === 'Floración' && recorded.day === 6, `etapa guardada en la foto: ${JSON.stringify(recorded)}`);
+    const unknownDay = stageAtDate(stages, ago(5), 'Prefloración');
+    assert(unknownDay?.name === 'Prefloración' && unknownDay.day === undefined, 'etapa guardada sin fecha conocida');
+  });
+
+  const start = ago(40);
+  const flowerStart = ago(10);
+  const c2 = crop({
+    id: 'c1',
+    startDate: start,
+    currentStage: 'Floración',
+    stageStartDate: flowerStart,
+    floweringStartDate: flowerStart,
+    stagesTimeline: buildUpdatedStagesTimeline({
+      currentStage: 'Floración',
+      stageStartDate: flowerStart,
+      floweringStartDate: flowerStart,
+      priorDates: { germinacion: start, vegetativo: ago(30) },
+    }),
+  });
+  const rich = {
+    waterings: [w('wr1', ago(9), { phIn: 6 }), w('wr2', ago(7), { phIn: 6.1 }), w('wr3', ago(6), { phIn: 6.2 })],
+    diaryEntries: [note('nr1', ago(22), { content: 'Hojas de abajo amarillas' })],
+    photos: [photo('pr1', ago(4), { caption: 'Carencia de calcio', stage: 'Floración' })],
+  };
+
+  await check('14. Cada registro trae la etapa y el día de etapa de ese momento', () => {
+    const m = buildPlantTimeline(c2, rich, [], today);
+    const p = m.events.find((e) => e.id === 'photo_pr1')!;
+    assert(p.stageName === 'Floración' && p.stageDay === 7, `foto: ${p.stageName} ${p.stageDay}`);
+    const n = m.events.find((e) => e.id === 'note_nr1')!;
+    assert(n.stageName === 'Vegetativo' && n.stageDay === 9, `nota: ${n.stageName} ${n.stageDay}`);
+  });
+
+  const root3 = createRoot(container);
+  await act(async () => {
+    root3.render(React.createElement(PlantTimeline, { cultivation: c2, ...rich, userId: 'u' }));
+  });
+
+  await check('15. La foto va grande al centro con su descripción, fecha y etapa', () => {
+    const row = container.querySelector('[data-event-id="photo_pr1"]');
+    assert(row?.getAttribute('data-layout') === 'center', `ubicación: ${row?.getAttribute('data-layout')}`);
+    const text = row.textContent || '';
+    assert(text.includes('“Carencia de calcio”'), `descripción: ${text}`);
+    assert(text.includes('Día 37') && text.includes('Floración, día 7'), `fecha y etapa: ${text}`);
+  });
+
+  await check('16. La nota va al costado con su texto, fecha y etapa', () => {
+    const row = container.querySelector('[data-event-id="note_nr1"]');
+    assert(row && ['left', 'right'].includes(row.getAttribute('data-layout') || ''), 'la nota no está al costado');
+    const card = row.querySelector('[data-event-kind="note"]');
+    const text = card?.textContent || '';
+    assert(text.includes('Nota') && text.includes('Hojas de abajo amarillas'), `texto: ${text}`);
+    assert(text.includes('Vegetativo, día 9') && text.includes('Día 19'), `fecha y etapa: ${text}`);
+    assert(!text.includes('Nota del diario'), 'no repite el título genérico');
+  });
+
+  await check('17. Hojas laterales alternadas y una hoja grande para la mascota cada 3', () => {
+    // 3 riegos, 1 nota y 2 cambios de etapa van al costado; la foto va al centro
+    const sides = Array.from(container.querySelectorAll('li[data-layout="left"], li[data-layout="right"]'));
+    assert(sides.length === 6, `tarjetas al costado: ${sides.length}`);
+    const layouts = sides.map((li) => li.getAttribute('data-layout'));
+    assert(layouts.join(',') === 'right,left,right,left,right,left', `lados: ${layouts.join(',')}`);
+    const spots = Array.from(container.querySelectorAll('[data-mascot-spot]'));
+    assert(spots.length === 2, `lugares para la mascota: ${spots.length}`);
+    assert(sides[2].contains(spots[0]) && sides[5].contains(spots[1]), 'la hoja grande va en la 3.ª y la 6.ª tarjeta');
+  });
+
+  await act(async () => root3.unmount());
 
   console.log('\n================================================================');
   console.log(` RESULTADO LÍNEA DE TIEMPO DE PLANTA: ${passed} pasadas, ${failed} fallidas de ${passed + failed}`);
