@@ -25,6 +25,7 @@ import {
   isFloweringStage,
 } from '../../../utils/growthStageUtils';
 import { cultivationService } from '../../../services/cultivationService';
+import { darkHoursFor } from '../../../utils/photoperiods';
 
 interface StageConfigModalProps {
   isOpen: boolean;
@@ -208,7 +209,7 @@ export const StageConfigModal: React.FC<StageConfigModalProps> = ({
       const activeStageObj = activeIdx !== -1 ? stages[activeIdx] : null;
       if (activeStageObj && activeStageObj.photoperiodHoursLight !== undefined && cultivation.type !== 'Outdoor') {
         const pLight = activeStageObj.photoperiodHoursLight;
-        const pDark = Math.max(0, 24 - pLight);
+        const pDark = darkHoursFor(pLight, activeStageObj.photoperiodHoursDark);
         updates.lighting = {
           ...(cultivation.lighting || { type: 'LED Quantum Board', usedWatts: 240 }),
           photoperiodHoursLight: pLight,
@@ -451,15 +452,16 @@ export const StageConfigModal: React.FC<StageConfigModalProps> = ({
                             }
                             className="bg-transparent font-bold text-xs text-stone-800 focus:outline-none cursor-pointer"
                           >
-                            <option value={24}>24h (24/0)</option>
-                            <option value={20}>20h (20/4)</option>
+                            <option value={20}>20h (20/4 - Vegetativo largo, recomendado para autoflorecientes)</option>
                             <option value={18}>18h (18/6 - Vegetativo)</option>
                             <option value={14}>14h (14/10)</option>
-                            <option value={13}>13h (13/11 - Luz extra / Engorde)</option>
-                            <option value={12}>12h (12/12 - Floración estándar)</option>
-                            <option value={11}>11h (11/13 - Maduración rápida)</option>
+                            <option value={13}>13h (13/11 - Floración +1 h)</option>
+                            <option value={12}>12h (12/12 - Floración clásica)</option>
+                            <option value={11}>11h (11/13 - Maduración)</option>
                             <option value={10}>10h (10/14)</option>
                             <option value={0}>0h (Oscuridad total)</option>
+                            <option disabled value="superciclo-26">13/13 · Superciclo 26 h (experimental, requiere enchufe Wi-Fi)</option>
+                            <option disabled value="superciclo-28">14/14 · Superciclo 28 h (experimental, requiere enchufe Wi-Fi)</option>
                           </select>
                         </div>
 

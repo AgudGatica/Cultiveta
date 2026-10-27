@@ -108,6 +108,8 @@ export interface CultivationGrowthStage {
   actualDurationDays?: number;
   dateKnowledge?: StageDateKnowledge;
   photoperiodHoursLight?: number;
+  /** Horas de oscuridad; si falta, las que completan 24 h (los superciclos duran más de 24 h). */
+  photoperiodHoursDark?: number;
   targetTempMinC?: number;
   targetTempMaxC?: number;
   targetHumidityMinPct?: number;

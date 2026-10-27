@@ -40,6 +40,7 @@ import { CropLifecycleCard } from './CropLifecycleCard';
 import { IrrigationForecastCard } from './IrrigationForecastCard';
 import { CropGeneticsSection } from './CropGeneticsSection';
 import { PlantTimeline } from './PlantTimeline';
+import { describePhotoperiod } from '../../utils/photoperiods';
 import { WateringChart } from '../charts/WateringChart';
 import { MeasurementsTableView } from '../logs/MeasurementsTableView';
 import { PhotoGalleryView } from '../gallery/PhotoGalleryView';
@@ -918,21 +919,27 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
               <div className="text-sm font-bold text-ink mt-1 truncate">
                 {cultivation.lighting?.usedWatts ? `${cultivation.lighting.usedWatts}W` : ''} {cultivation.lighting?.type || 'No especificada'}
               </div>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-[11px] font-bold text-ink-muted">
-                  {cultivation.lighting?.photoperiodHoursLight ?? 18}h luz / {cultivation.lighting?.photoperiodHoursDark ?? (24 - (cultivation.lighting?.photoperiodHoursLight ?? 18))}h osc.
-                </span>
-                {(cultivation.lighting?.photoperiodHoursLight === 13) && (
-                  <span className="text-[9px] font-black bg-warn-line/20 text-ink px-1.5 py-0.2 rounded-md">
-                    13/11
-                  </span>
-                )}
-                {(cultivation.lighting?.photoperiodHoursLight === 12) && (
-                  <span className="text-[9px] font-black bg-ok/20 text-ok px-1.5 py-0.2 rounded-md">
-                    12/12
-                  </span>
-                )}
-              </div>
+              {(() => {
+                const pp = describePhotoperiod(
+                  cultivation.lighting?.photoperiodHoursLight ?? 18,
+                  cultivation.lighting?.photoperiodHoursDark
+                );
+                return (
+                  <div id="detail-photoperiod" className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                    <span className="text-[11px] font-bold text-ink-muted">
+                      {pp.light}h luz / {pp.dark}h osc.
+                    </span>
+                    {pp.name && (
+                      <span className="text-[9px] font-black bg-ok/15 text-ok-ink px-1.5 py-0.5 rounded-md">{pp.name}</span>
+                    )}
+                    {pp.supercycle && (
+                      <span className="text-[9px] font-black bg-warn-bg border border-warn-line text-warn-ink px-1.5 py-0.5 rounded-md uppercase">
+                        Experimental
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
 

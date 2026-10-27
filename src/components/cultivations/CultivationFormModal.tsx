@@ -28,6 +28,8 @@ import {
   EnvironmentalAlertThresholds,
 } from '../../types';
 import { cultivationService } from '../../services/cultivationService';
+import { PhotoperiodPresetPicker } from './PhotoperiodPresetPicker';
+import { MAX_LIGHT_HOURS, clampLightHours } from '../../utils/photoperiods';
 import { photoService } from '../../services/photoService';
 import { auth } from '../../firebase/config';
 import { GENETICS_DATABASE } from '../../data/predefinedGenetics';
@@ -545,7 +547,7 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
       };
 
       if (lightHours !== '' && Number(lightHours) > 0) {
-        const hoursNum = Math.min(24, Math.max(0, Number(lightHours)));
+        const hoursNum = clampLightHours(Number(lightHours));
         lightingPayload.photoperiodHoursLight = hoursNum;
         lightingPayload.photoperiodHoursDark = Math.max(0, 24 - hoursNum);
       } else if (!isOutdoorOrGreenhouse) {
@@ -1193,67 +1195,23 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                   id="crop-light-hours-input"
                   type="number"
                   min="0"
-                  max="24"
+                  max={MAX_LIGHT_HOURS}
                   placeholder={(type === 'Outdoor' || type === 'Invernadero') ? 'Opcional (horas sol)' : '18'}
                   value={lightHours}
                   onChange={(e) => {
                     const val = e.target.value;
-                    setLightHours(val === '' ? '' : parseInt(val) || 0);
+                    setLightHours(val === '' ? '' : clampLightHours(parseInt(val) || 0));
                   }}
                   className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-stone-800 text-sm focus:outline-hidden focus:border-emerald-500 focus:bg-white font-bold"
                 />
 
-                {/* Quick Presets for Light Hours */}
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  <button
-                    type="button"
-                    onClick={() => setLightHours(12)}
-                    className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${
-                      Number(lightHours) === 12
-                        ? 'bg-amber-500 text-white shadow-xs'
-                        : 'bg-stone-100 hover:bg-amber-50 text-stone-700 border border-stone-200'
-                    }`}
-                  >
-                    12/12 Flora
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setLightHours(13)}
-                    className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${
-                      Number(lightHours) === 13
-                        ? 'bg-amber-600 text-white shadow-xs'
-                        : 'bg-stone-100 hover:bg-amber-50 text-stone-700 border border-stone-200'
-                    }`}
-                    title="13 horas de luz y 11 de oscuridad: potencia fotosíntesis y engorde"
-                  >
-                    13/11 Luz extra
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setLightHours(11)}
-                    className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${
-                      Number(lightHours) === 11
-                        ? 'bg-indigo-600 text-white shadow-xs'
-                        : 'bg-stone-100 hover:bg-indigo-50 text-stone-700 border border-stone-200'
-                    }`}
-                    title="11 horas de luz y 13 de oscuridad: maduración rápida"
-                  >
-                    11/13 Rápida
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setLightHours(18)}
-                    className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${
-                      Number(lightHours) === 18
-                        ? 'bg-emerald-600 text-white shadow-xs'
-                        : 'bg-stone-100 hover:bg-emerald-50 text-stone-700 border border-stone-200'
-                    }`}
-                  >
-                    18/6 Vega
-                  </button>
+                {/* Botones rápidos de fotoperiodo (y superciclos experimentales) */}
+                <div className="mt-2">
+                  <PhotoperiodPresetPicker
+                    idPrefix="crop-photoperiod"
+                    light={lightHours}
+                    onSelect={(light) => setLightHours(light)}
+                  />
                 </div>
               </div>
             </div>

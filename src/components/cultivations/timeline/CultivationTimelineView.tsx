@@ -26,6 +26,7 @@ import {
   addDays,
 } from '../../../utils/growthStageUtils';
 import { StageConfigModal } from './StageConfigModal';
+import { darkHoursFor } from '../../../utils/photoperiods';
 import { StageTransitionModal } from './StageTransitionModal';
 import { cultivationService } from '../../../services/cultivationService';
 
@@ -476,7 +477,7 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
                       <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold">
                         <Sun className="w-3.5 h-3.5 text-amber-600" />
                         <span>
-                          {st.photoperiodHoursLight}/{24 - st.photoperiodHoursLight}h
+                          {st.photoperiodHoursLight}/{darkHoursFor(st.photoperiodHoursLight, st.photoperiodHoursDark)}h
                         </span>
                       </span>
                     )}

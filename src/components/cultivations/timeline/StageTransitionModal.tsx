@@ -25,6 +25,8 @@ import {
   computeStageTransition,
 } from '../../../utils/growthStageUtils';
 import { cultivationService } from '../../../services/cultivationService';
+import { PhotoperiodPresetPicker } from '../PhotoperiodPresetPicker';
+import { MAX_LIGHT_HOURS, clampLightHours, darkHoursFor, describePhotoperiod } from '../../../utils/photoperiods';
 
 interface StageTransitionModalProps {
   isOpen: boolean;
@@ -118,10 +120,11 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
   };
 
   const handleAdjustHours = (delta: number) => {
-    setCustomLightHours((prev) => Math.min(24, Math.max(0, prev + delta)));
+    setCustomLightHours((prev) => clampLightHours(prev + delta));
   };
 
-  const darkHours = Math.max(0, 24 - customLightHours);
+  const darkHours = darkHoursFor(customLightHours);
+  const photoperiod = describePhotoperiod(customLightHours, darkHours);
 
   const handleConfirmTransition = async () => {
     try {
@@ -300,7 +303,7 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
                     </h4>
                     <p className="text-[11px] text-amber-800 font-medium">
                       {isFloweringStage(selectedStageName)
-                        ? 'Al pasar a floración se ajusta a 12-12 por defecto. Podés editar las horas (ej. 13 de luz y 11 de oscuridad).'
+                        ? 'Al pasar a floración se ajusta a 12/12 por defecto. También podés usar 13/11: floración con una hora más de luz para sumar peso en las flores.'
                         : 'Ajustá las horas de luz y oscuridad para esta fase del cultivo.'}
                     </p>
                   </div>
@@ -344,12 +347,12 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
                           id="stage-light-hours-input"
                           type="number"
                           min="0"
-                          max="24"
+                          max={MAX_LIGHT_HOURS}
                           value={customLightHours}
                           onChange={(e) => {
                             const val = parseInt(e.target.value);
                             if (!isNaN(val)) {
-                              setCustomLightHours(Math.min(24, Math.max(0, val)));
+                              setCustomLightHours(clampLightHours(val));
                             }
                           }}
                           className="w-12 text-center text-sm font-black text-stone-900 bg-transparent focus:outline-none"
@@ -358,7 +361,7 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
                           type="button"
                           id="btn-increase-light-hours"
                           onClick={() => handleAdjustHours(1)}
-                          disabled={customLightHours >= 24}
+                          disabled={customLightHours >= MAX_LIGHT_HOURS}
                           className="w-7 h-7 rounded-lg bg-white hover:bg-stone-200 text-stone-700 flex items-center justify-center transition-colors disabled:opacity-40 cursor-pointer shadow-2xs"
                           title="Aumentar 1 hora"
                         >
@@ -384,80 +387,22 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Quick Preset Buttons */}
+                  {/* Botones rápidos de fotoperiodo (y superciclos experimentales) */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between text-[11px] font-bold text-stone-600">
                       <span>Ajustes rápidos de fotoperíodo:</span>
-                      {customLightHours === 13 && darkHours === 11 && (
-                        <span className="text-amber-800 font-extrabold">✓ 13h Luz / 11h Oscuridad seleccionada</span>
-                      )}
-                      {customLightHours === 12 && darkHours === 12 && (
-                        <span className="text-emerald-700 font-extrabold">✓ 12h Luz / 12h Oscuridad (Estándar)</span>
+                      {photoperiod.name && (
+                        <span className="text-amber-800 font-extrabold">
+                          ✓ {photoperiod.label} · {photoperiod.name}
+                        </span>
                       )}
                     </div>
-                    <div className="flex flex-wrap gap-1.5">
-                      <button
-                        type="button"
-                        id="preset-12-12"
-                        onClick={() => setCustomLightHours(12)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
-                          customLightHours === 12 && darkHours === 12
-                            ? 'bg-amber-500 text-white shadow-xs ring-2 ring-amber-300'
-                            : 'bg-white hover:bg-amber-100 text-stone-700 border border-amber-200'
-                        }`}
-                      >
-                        <Sun className="w-3 h-3 text-amber-200" />
-                        <span>12 / 12</span>
-                        <span className="text-[10px] font-normal opacity-90">(Estándar Flora)</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        id="preset-13-11"
-                        onClick={() => setCustomLightHours(13)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
-                          customLightHours === 13 && darkHours === 11
-                            ? 'bg-amber-600 text-white shadow-xs ring-2 ring-amber-400'
-                            : 'bg-white hover:bg-amber-100 text-stone-700 border border-amber-200'
-                        }`}
-                        title="13 horas de luz y 11 de oscuridad: mayor fotosíntesis y engorde de cogollos sin revertir floración"
-                      >
-                        <Sun className="w-3 h-3 text-amber-200" />
-                        <span>13 / 11</span>
-                        <span className="text-[10px] font-normal opacity-90">(Luz extra / Engorde)</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        id="preset-11-13"
-                        onClick={() => setCustomLightHours(11)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
-                          customLightHours === 11 && darkHours === 13
-                            ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-300'
-                            : 'bg-white hover:bg-stone-100 text-stone-700 border border-stone-200'
-                        }`}
-                        title="11 horas de luz y 13 de oscuridad: acelera maduración final y floración en sativas puras"
-                      >
-                        <Moon className="w-3 h-3 text-indigo-300" />
-                        <span>11 / 13</span>
-                        <span className="text-[10px] font-normal opacity-90">(Maduración rápida)</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        id="preset-18-6"
-                        onClick={() => setCustomLightHours(18)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer flex items-center gap-1.5 ${
-                          customLightHours === 18 && darkHours === 6
-                            ? 'bg-emerald-600 text-white shadow-xs ring-2 ring-emerald-300'
-                            : 'bg-white hover:bg-stone-100 text-stone-700 border border-stone-200'
-                        }`}
-                      >
-                        <Sun className="w-3 h-3 text-emerald-200" />
-                        <span>18 / 6</span>
-                        <span className="text-[10px] font-normal opacity-90">(Vegetativo)</span>
-                      </button>
-                    </div>
+                    <PhotoperiodPresetPicker
+                      idPrefix="preset"
+                      light={customLightHours}
+                      dark={darkHours}
+                      onSelect={(light) => setCustomLightHours(light)}
+                    />
                   </div>
 
                   {/* 24-Hour Visual Day/Night Gauge */}
@@ -465,13 +410,13 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
                     <div className="w-full h-4 rounded-full bg-slate-900 overflow-hidden flex shadow-inner border border-amber-300/60">
                       <div
                         className="h-full bg-gradient-to-r from-amber-400 to-amber-500 transition-all duration-300 flex items-center justify-center text-[9px] font-black text-amber-950"
-                        style={{ width: `${(customLightHours / 24) * 100}%` }}
+                        style={{ width: `${photoperiod.lightPct}%` }}
                       >
                         {customLightHours >= 3 && `${customLightHours}h`}
                       </div>
                       <div
                         className="h-full bg-slate-900 transition-all duration-300 flex items-center justify-center text-[9px] font-black text-indigo-200"
-                        style={{ width: `${(darkHours / 24) * 100}%` }}
+                        style={{ width: `${photoperiod.darkPct}%` }}
                       >
                         {darkHours >= 3 && `${darkHours}h`}
                       </div>
@@ -479,12 +424,17 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
                     <div className="flex items-center justify-between text-[10px] text-stone-500 px-0.5">
                       <span className="flex items-center gap-1 text-amber-800 font-bold">
                         <Sun className="w-3 h-3 text-amber-500" />
-                        Luz: {customLightHours} hs ({Math.round((customLightHours / 24) * 100)}%)
+                        Luz: {customLightHours} hs ({photoperiod.lightPct}%)
                       </span>
                       <span className="flex items-center gap-1 text-slate-700 font-bold">
                         <Moon className="w-3 h-3 text-indigo-500" />
-                        Oscuridad: {darkHours} hs ({Math.round((darkHours / 24) * 100)}%)
+                        Oscuridad: {darkHours} hs ({photoperiod.darkPct}%)
                       </span>
+                      {photoperiod.supercycle && (
+                        <span className="rounded-full bg-amber-100 border border-amber-300 px-2 py-0.5 text-[10px] font-black uppercase text-amber-900">
+                          Superciclo {photoperiod.cycleHours} h · Experimental
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -514,7 +464,7 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
                       {updatePhotoperiod && cultivation.type !== 'Outdoor'
                         ? `${customLightHours}h luz / ${darkHours}h osc.`
                         : targetStage.photoperiodHoursLight !== undefined
-                        ? `${targetStage.photoperiodHoursLight}h luz / ${24 - targetStage.photoperiodHoursLight}h osc.`
+                        ? `${targetStage.photoperiodHoursLight}h luz / ${darkHoursFor(targetStage.photoperiodHoursLight, targetStage.photoperiodHoursDark)}h osc.`
                         : 'No fijado'}
                     </span>
                   </div>
