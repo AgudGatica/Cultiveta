@@ -29,7 +29,7 @@ import {
 } from '../../types';
 import { cultivationService } from '../../services/cultivationService';
 import { PhotoperiodPresetPicker } from './PhotoperiodPresetPicker';
-import { MAX_LIGHT_HOURS, clampLightHours } from '../../utils/photoperiods';
+import { clampLightHours, darkHoursFor } from '../../utils/photoperiods';
 import { photoService } from '../../services/photoService';
 import { auth } from '../../firebase/config';
 import { GENETICS_DATABASE } from '../../data/predefinedGenetics';
@@ -1187,30 +1187,17 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                   </label>
                   {lightHours !== '' && Number(lightHours) > 0 && (
                     <span className="text-[11px] font-bold text-amber-700">
-                      {lightHours}h luz / {Math.max(0, 24 - Number(lightHours))}h osc.
+                      {lightHours}h luz / {darkHoursFor(Number(lightHours))}h osc.
                     </span>
                   )}
                 </div>
-                <input
-                  id="crop-light-hours-input"
-                  type="number"
-                  min="0"
-                  max={MAX_LIGHT_HOURS}
-                  placeholder={(type === 'Outdoor' || type === 'Invernadero') ? 'Opcional (horas sol)' : '18'}
-                  value={lightHours}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setLightHours(val === '' ? '' : clampLightHours(parseInt(val) || 0));
-                  }}
-                  className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-stone-800 text-sm focus:outline-hidden focus:border-emerald-500 focus:bg-white font-bold"
-                />
-
-                {/* Botones rápidos de fotoperiodo (y superciclos experimentales) */}
-                <div className="mt-2">
+                {/* Solo opciones fijas: Vegetativo, Floración y Superciclos floración */}
+                <div className="mt-1">
                   <PhotoperiodPresetPicker
                     idPrefix="crop-photoperiod"
                     light={lightHours}
                     onSelect={(light) => setLightHours(light)}
+                    onSelectNone={type === 'Outdoor' || type === 'Invernadero' ? () => setLightHours('') : undefined}
                   />
                 </div>
               </div>

@@ -452,16 +452,19 @@ export const StageConfigModal: React.FC<StageConfigModalProps> = ({
                             }
                             className="bg-transparent font-bold text-xs text-stone-800 focus:outline-none cursor-pointer"
                           >
-                            <option value={20}>20h (20/4 - Vegetativo largo, recomendado para autoflorecientes)</option>
-                            <option value={18}>18h (18/6 - Vegetativo)</option>
-                            <option value={14}>14h (14/10)</option>
-                            <option value={13}>13h (13/11 - Floración +1 h)</option>
-                            <option value={12}>12h (12/12 - Floración clásica)</option>
-                            <option value={11}>11h (11/13 - Maduración)</option>
-                            <option value={10}>10h (10/14)</option>
+                            <option value={18}>18/6 · Vegetativo</option>
+                            <option value={20}>20/4 · Vegetativo largo (recomendado para autoflorecientes)</option>
+                            <option value={12}>12/12 · Floración clásica</option>
+                            <option value={13}>13/11 · Floración +1 h</option>
+                            {st.photoperiodHoursLight !== undefined &&
+                              ![0, 12, 13, 18, 20].includes(st.photoperiodHoursLight) && (
+                                <option value={st.photoperiodHoursLight}>
+                                  {st.photoperiodHoursLight}/{24 - st.photoperiodHoursLight} · Actual (fuera de las opciones)
+                                </option>
+                              )}
                             <option value={0}>0h (Oscuridad total)</option>
-                            <option disabled value="superciclo-26">13/13 · Superciclo 26 h (experimental, requiere enchufe Wi-Fi)</option>
-                            <option disabled value="superciclo-28">14/14 · Superciclo 28 h (experimental, requiere enchufe Wi-Fi)</option>
+                            <option disabled value="superciclo-26">13/13 · Superciclo floración 26 h (experimental, requiere enchufe Wi-Fi)</option>
+                            <option disabled value="superciclo-28">14/14 · Superciclo floración 28 h (experimental, requiere enchufe Wi-Fi)</option>
                           </select>
                         </div>
 

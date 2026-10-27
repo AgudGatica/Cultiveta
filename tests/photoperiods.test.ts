@@ -3,8 +3,9 @@
  *
  * SUITE: FOTOPERIODOS Y SUPERCICLOS (src/utils/photoperiods.ts y PhotoperiodPresetPicker)
  *
- * 1. Presets de 24 h: 20/4 (vegetativo largo, para autoflorecientes) y 18/6; 13/11, 12/12 y 11/13 de floración.
- *    No existe 24/0: siempre hay oscuridad (máximo 20 h de luz).
+ * 1. Presets de 24 h: Vegetativo (18/6 y 20/4, este recomendado para autoflorecientes) y Floración
+ *    (12/12 y 13/11). No existen 24/0 ni 11/13: siempre hay oscuridad (máximo 20 h de luz).
+ * 10. Botones: tres cuadros (Vegetativo, Floración y Superciclos floración) con sus opciones.
  * 2. 13/11 es de floración: 13 h de luz y 11 de oscuridad, con una hora más de luz que el 12/12.
  * 3. Superciclos: 13/13 (26 h) y 14/14 (28 h), experimentales.
  * 4. Horas de oscuridad: las guardadas o las que completan 24 h.
@@ -28,6 +29,8 @@ import {
   findPhotoperiodPreset,
   MAX_LIGHT_HOURS,
   clampLightHours,
+  VEG_PRESETS,
+  FLOWER_PRESETS,
 } from '../src/utils/photoperiods';
 import { PhotoperiodPresetPicker } from '../src/components/cultivations/PhotoperiodPresetPicker';
 
@@ -56,10 +59,13 @@ async function run() {
 
   await check('1. Presets de 24 h de vegetativo y floración', () => {
     const ids = STANDARD_PRESETS.map((p) => p.id);
-    assert(ids.join(',') === '20-4,18-6,13-11,12-12,11-13', `presets: ${ids.join(',')}`);
+    assert(ids.join(',') === '18-6,20-4,12-12,13-11', `presets: ${ids.join(',')}`);
+    assert(!findPhotoperiodPreset(11, 13), 'no existe el 11/13');
     assert(STANDARD_PRESETS.every((p) => p.light + p.dark === 24), 'todos suman 24 h');
     const veg = STANDARD_PRESETS.filter((p) => p.phase === 'veg').map((p) => p.id);
-    assert(veg.join(',') === '20-4,18-6', `vegetativo: ${veg.join(',')}`);
+    assert(veg.join(',') === '18-6,20-4', `vegetativo: ${veg.join(',')}`);
+    assert(VEG_PRESETS.map((x) => x.id).join(',') === '18-6,20-4', 'cuadro Vegetativo');
+    assert(FLOWER_PRESETS.map((x) => x.id).join(',') === '12-12,13-11', 'cuadro Floración');
     const long = findPhotoperiodPreset(20, 4)!;
     assert(long.name === 'Vegetativo largo' && long.note === 'recomendado para autoflorecientes', `20/4: ${long.name} (${long.note})`);
     assert(STANDARD_PRESETS.every((p) => p.dark > 0), 'siempre hay oscuridad');
@@ -132,12 +138,23 @@ async function run() {
   await check('8. Superciclos bloqueados, con "Experimental" y aviso del enchufe Wi-Fi', async () => {
     const box = container.querySelector('#test-supercycles');
     const text = box?.textContent || '';
-    assert(text.includes('Experimental') && /enchufe inteligente Wi-Fi/.test(text), `texto: ${text}`);
+    assert(text.includes('Superciclos floración') && text.includes('Experimental') && /enchufe inteligente Wi-Fi/.test(text), `texto: ${text}`);
     const s26 = container.querySelector('#test-13-13') as HTMLButtonElement;
     const s28 = container.querySelector('#test-14-14') as HTMLButtonElement;
     assert(s26?.disabled && s28?.disabled, 'deberían estar bloqueados');
     await act(async () => s26.click());
     assert(!picks.includes('13/13'), 'no se pudo elegir');
+  });
+
+  await check('10. Tres cuadros con sus opciones', () => {
+    const ids = (box: string) =>
+      Array.from(container.querySelectorAll(`#test-${box} [data-photoperiod]`)).map((b) => b.getAttribute('data-photoperiod')).join(',');
+    assert(container.querySelector('#test-veg')?.textContent?.includes('Vegetativo'), 'cuadro Vegetativo');
+    assert(ids('veg') === '18-6,20-4', `vegetativo: ${ids('veg')}`);
+    assert(container.querySelector('#test-flower')?.textContent?.includes('Floración'), 'cuadro Floración');
+    assert(ids('flower') === '12-12,13-11', `floración: ${ids('flower')}`);
+    assert(ids('supercycles') === '13-13,14-14', `superciclos: ${ids('supercycles')}`);
+    assert(!container.querySelector('#test-11-13') && !container.querySelector('#test-none'), 'sin 11/13 ni "Luz natural" en interior');
   });
 
   await act(async () => root.unmount());

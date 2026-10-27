@@ -37,6 +37,7 @@ export function clampLightHours(hours: number): number {
 }
 
 export const PHOTOPERIOD_PRESETS: ReadonlyArray<PhotoperiodPreset> = [
+  { id: '18-6', light: 18, dark: 6, name: 'Vegetativo', hint: 'El clásico de vegetativo.', phase: 'veg' },
   {
     id: '20-4',
     light: 20,
@@ -46,7 +47,7 @@ export const PHOTOPERIOD_PRESETS: ReadonlyArray<PhotoperiodPreset> = [
     hint: '20 horas de luz y 4 de oscuridad. Recomendado para autoflorecientes.',
     phase: 'veg',
   },
-  { id: '18-6', light: 18, dark: 6, name: 'Vegetativo', hint: 'El clásico de vegetativo.', phase: 'veg' },
+  { id: '12-12', light: 12, dark: 12, name: 'Floración clásica', hint: 'El estándar para inducir y mantener la floración.', phase: 'flower' },
   {
     id: '13-11',
     light: 13,
@@ -55,8 +56,6 @@ export const PHOTOPERIOD_PRESETS: ReadonlyArray<PhotoperiodPreset> = [
     hint: 'Floración con una hora más de luz: la planta florece igual y gana más peso en las flores.',
     phase: 'flower',
   },
-  { id: '12-12', light: 12, dark: 12, name: 'Floración clásica', hint: 'El estándar para inducir y mantener la floración.', phase: 'flower' },
-  { id: '11-13', light: 11, dark: 13, name: 'Maduración', hint: 'Menos luz al final para cerrar la floración.', phase: 'flower' },
   {
     id: '13-13',
     light: 13,
@@ -79,6 +78,10 @@ export const PHOTOPERIOD_PRESETS: ReadonlyArray<PhotoperiodPreset> = [
 
 export const STANDARD_PRESETS = PHOTOPERIOD_PRESETS.filter((p) => !p.supercycle);
 export const SUPERCYCLE_PRESETS = PHOTOPERIOD_PRESETS.filter((p) => p.supercycle);
+/** Cuadro "Vegetativo": 18/6 y 20/4. */
+export const VEG_PRESETS = STANDARD_PRESETS.filter((p) => p.phase === 'veg');
+/** Cuadro "Floración": 12/12 y 13/11. */
+export const FLOWER_PRESETS = STANDARD_PRESETS.filter((p) => p.phase === 'flower');
 
 /** Horas de oscuridad: las guardadas; si no hay, las que completan 24 h. */
 export function darkHoursFor(light: number, dark?: number | null): number {

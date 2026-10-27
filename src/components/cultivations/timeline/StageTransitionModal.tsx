@@ -26,7 +26,7 @@ import {
 } from '../../../utils/growthStageUtils';
 import { cultivationService } from '../../../services/cultivationService';
 import { PhotoperiodPresetPicker } from '../PhotoperiodPresetPicker';
-import { MAX_LIGHT_HOURS, clampLightHours, darkHoursFor, describePhotoperiod } from '../../../utils/photoperiods';
+import { darkHoursFor, describePhotoperiod } from '../../../utils/photoperiods';
 
 interface StageTransitionModalProps {
   isOpen: boolean;
@@ -117,10 +117,6 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
   const handleStageSelect = (stageName: string) => {
     setSelectedStageName(stageName);
     setCustomLightHours(getDefaultHoursForStage(stageName));
-  };
-
-  const handleAdjustHours = (delta: number) => {
-    setCustomLightHours((prev) => clampLightHours(prev + delta));
   };
 
   const darkHours = darkHoursFor(customLightHours);
@@ -303,7 +299,7 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
                     </h4>
                     <p className="text-[11px] text-amber-800 font-medium">
                       {isFloweringStage(selectedStageName)
-                        ? 'Al pasar a floración se ajusta a 12/12 por defecto. También podés usar 13/11: floración con una hora más de luz para sumar peso en las flores.'
+                        ? 'Al pasar a floración se ajusta a 12/12 por defecto. También podés elegir 13/11: floración con una hora más de luz para sumar peso en las flores.'
                         : 'Ajustá las horas de luz y oscuridad para esta fase del cultivo.'}
                     </p>
                   </div>
@@ -328,49 +324,8 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
 
               {updatePhotoperiod && (
                 <div className="space-y-3 pt-2.5 border-t border-amber-200/70">
-                  {/* Hours Adjuster Stepper & Ratio Badge */}
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-amber-200/80 shadow-2xs">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-stone-700">Horas de Luz:</span>
-                      <div className="flex items-center gap-1 bg-stone-100 rounded-xl p-1 border border-stone-200">
-                        <button
-                          type="button"
-                          id="btn-decrease-light-hours"
-                          onClick={() => handleAdjustHours(-1)}
-                          disabled={customLightHours <= 0}
-                          className="w-7 h-7 rounded-lg bg-white hover:bg-stone-200 text-stone-700 flex items-center justify-center transition-colors disabled:opacity-40 cursor-pointer shadow-2xs"
-                          title="Disminuir 1 hora"
-                        >
-                          <Minus className="w-3.5 h-3.5" />
-                        </button>
-                        <input
-                          id="stage-light-hours-input"
-                          type="number"
-                          min="0"
-                          max={MAX_LIGHT_HOURS}
-                          value={customLightHours}
-                          onChange={(e) => {
-                            const val = parseInt(e.target.value);
-                            if (!isNaN(val)) {
-                              setCustomLightHours(clampLightHours(val));
-                            }
-                          }}
-                          className="w-12 text-center text-sm font-black text-stone-900 bg-transparent focus:outline-none"
-                        />
-                        <button
-                          type="button"
-                          id="btn-increase-light-hours"
-                          onClick={() => handleAdjustHours(1)}
-                          disabled={customLightHours >= MAX_LIGHT_HOURS}
-                          className="w-7 h-7 rounded-lg bg-white hover:bg-stone-200 text-stone-700 flex items-center justify-center transition-colors disabled:opacity-40 cursor-pointer shadow-2xs"
-                          title="Aumentar 1 hora"
-                        >
-                          <Plus className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                      <span className="text-xs font-bold text-stone-400">hs luz</span>
-                    </div>
-
+                  {/* Fotoperiodo elegido */}
+                  <div className="flex items-center justify-center bg-white p-3 rounded-2xl border border-amber-200/80 shadow-2xs">
                     {/* Badge showing full ratio */}
                     <div className="flex items-center gap-2">
                       <div className="px-3.5 py-1.5 rounded-xl bg-amber-100/90 border border-amber-300 text-amber-950 font-black text-xs flex items-center gap-2 shadow-2xs">

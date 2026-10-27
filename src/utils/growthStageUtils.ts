@@ -231,7 +231,7 @@ export const STAGE_PRESETS: StagePreset[] = [
       {
         name: 'Prefloración',
         expectedDurationDays: 10,
-        photoperiodHoursLight: 11,
+        photoperiodHoursLight: 12,
         targetTempMinC: 21,
         targetTempMaxC: 26,
         notes: 'Estiramiento pronunciado x3 o x4.',
@@ -239,7 +239,7 @@ export const STAGE_PRESETS: StagePreset[] = [
       {
         name: 'Floración',
         expectedDurationDays: 84, // 12 semanas
-        photoperiodHoursLight: 11,
+        photoperiodHoursLight: 12,
         targetTempMinC: 20,
         targetTempMaxC: 26,
         notes: 'Floración extensa con pistilos continuos.',
@@ -247,7 +247,7 @@ export const STAGE_PRESETS: StagePreset[] = [
       {
         name: 'Maduración',
         expectedDurationDays: 14,
-        photoperiodHoursLight: 11,
+        photoperiodHoursLight: 12,
         targetTempMinC: 19,
         targetTempMaxC: 24,
         notes: 'Lavado progresivo.',
