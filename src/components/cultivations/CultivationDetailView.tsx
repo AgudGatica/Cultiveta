@@ -39,6 +39,7 @@ import { EnvironmentChart } from '../charts/EnvironmentChart';
 import { CropLifecycleCard } from './CropLifecycleCard';
 import { IrrigationForecastCard } from './IrrigationForecastCard';
 import { CropGeneticsSection } from './CropGeneticsSection';
+import { PlantTimeline } from './PlantTimeline';
 import { WateringChart } from '../charts/WateringChart';
 import { MeasurementsTableView } from '../logs/MeasurementsTableView';
 import { PhotoGalleryView } from '../gallery/PhotoGalleryView';
@@ -974,13 +975,24 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
 
       {/* TAB: TIMELINE & GROWTH STAGES */}
       {activeTab === 'timeline' && (
-        <CultivationTimelineView
-          cultivation={cultivation}
-          userId={userId}
-          geneticsList={geneticsList}
-          onCultivationUpdated={onCultivationUpdated}
-          onOpenCalendarModal={() => setIsCalendarModalOpen(true)}
-        />
+        <div className="space-y-6">
+          {/* Línea de tiempo con forma de planta: maceta abajo, lo más reciente arriba */}
+          <PlantTimeline
+            cultivation={cultivation}
+            waterings={cropWaterings}
+            diaryEntries={cropDiary}
+            photos={cropPhotos}
+            geneticsList={geneticsList}
+            userId={userId}
+          />
+          <CultivationTimelineView
+            cultivation={cultivation}
+            userId={userId}
+            geneticsList={geneticsList}
+            onCultivationUpdated={onCultivationUpdated}
+            onOpenCalendarModal={() => setIsCalendarModalOpen(true)}
+          />
+        </div>
       )}
 
       {/* TAB 2: FERTILIZATION & NUTRIENT TABLES */}
