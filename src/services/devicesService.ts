@@ -7,8 +7,9 @@ import { useSyncExternalStore } from 'react';
 import { authFetch } from './apiClient';
 import type { Cultivation } from '../types';
 import { cycleFromLighting, cycleMs, isDailyCycle, lightAnchor } from '../utils/lightCycle';
+import type { ClimateRole, ClimateRule, PumpConfig } from '../utils/deviceRules';
 
-export type DeviceRole = 'light' | 'sensor_th' | 'sensor_soil';
+export type DeviceRole = 'light' | 'pump' | 'climate' | 'sensor_th' | 'sensor_soil';
 
 export interface LightScheduleSnapshot {
   lightHours: number;
@@ -35,6 +36,13 @@ export interface DeviceBindingState {
   cultivationName: string;
   role: DeviceRole;
   schedule?: LightScheduleSnapshot | null;
+  climateRole?: ClimateRole | null;
+  rule?: ClimateRule | null;
+  pump?: PumpConfig | null;
+  countdownCode?: string | null;
+  /** Por qué está prendido o apagado (lo último que decidió el servidor). */
+  lastReason?: string | null;
+  watering?: { at: number; seconds: number; liters: number; endsAt: number; active: boolean } | null;
   online: boolean | null;
   on: boolean | null;
   sensors: SensorReadings | null;
@@ -55,7 +63,7 @@ export interface SmartDevice {
   product: string;
   category: string;
   online: boolean;
-  channels: Array<{ code: string; label: string; on: boolean; binding: DeviceBindingState | null }>;
+  channels: Array<{ code: string; label: string; on: boolean; hasCountdown: boolean; binding: DeviceBindingState | null }>;
   sensors: SensorReadings | null;
   sensorBindings: DeviceBindingState[];
   power: { watts: number } | null;
@@ -108,6 +116,8 @@ export function sameSchedule(a?: LightScheduleSnapshot | null, b?: LightSchedule
 }
 
 export const lightBindingFor = (o: DevicesOverview, cultivationId: string) => o.bindings.find((b) => b.cultivationId === cultivationId && b.role === 'light') || null;
+export const pumpBindingFor = (o: DevicesOverview, cultivationId: string) => o.bindings.find((b) => b.cultivationId === cultivationId && b.role === 'pump') || null;
+export const climateBindingsFor = (o: DevicesOverview, cultivationId: string) => o.bindings.filter((b) => b.cultivationId === cultivationId && b.role === 'climate');
 export const sensorBindingFor = (o: DevicesOverview, cultivationId: string, role: 'sensor_th' | 'sensor_soil') =>
   o.bindings.find((b) => b.cultivationId === cultivationId && b.role === role) || null;
 
@@ -142,12 +152,30 @@ export const devicesService = {
     await devicesService.refreshOverview();
   },
   listDevices: () => api<{ devices: SmartDevice[] }>('GET', '/api/devices').then((r) => r.devices),
-  async bind(body: { deviceId: string; code: string; role: DeviceRole; cultivationId: string; cultivationName: string; schedule: LightScheduleSnapshot | null }) {
+  async bind(body: { deviceId: string; code: string; role: DeviceRole; cultivationId: string; cultivationName: string; schedule?: LightScheduleSnapshot | null; climateRole?: ClimateRole; rule?: ClimateRule; pump?: PumpConfig }) {
     await api('POST', '/api/devices/bindings', body);
     await devicesService.refreshOverview();
   },
   async unbind(id: string) {
     await api('DELETE', `/api/devices/bindings/${encodeURIComponent(id)}`);
+    await devicesService.refreshOverview();
+  },
+  async setRule(bindingId: string, rule: ClimateRule) {
+    await api('POST', `/api/devices/bindings/${encodeURIComponent(bindingId)}/rule`, { rule });
+    await devicesService.refreshOverview();
+  },
+  async setPump(bindingId: string, pump: PumpConfig) {
+    await api('POST', `/api/devices/bindings/${encodeURIComponent(bindingId)}/pump`, { pump });
+    await devicesService.refreshOverview();
+  },
+  /** Riega N segundos con la bomba (se apaga sola). */
+  async water(bindingId: string, seconds: number) {
+    const r = await api<{ seconds: number; liters: number; endsAt: number; cultivationId: string }>('POST', `/api/devices/bindings/${encodeURIComponent(bindingId)}/water`, { seconds });
+    await devicesService.refreshOverview();
+    return r;
+  },
+  async stopWater(bindingId: string) {
+    await api('POST', `/api/devices/bindings/${encodeURIComponent(bindingId)}/water/stop`, {});
     await devicesService.refreshOverview();
   },
   command: (deviceId: string, code: string, value: boolean) => api('POST', `/api/devices/${encodeURIComponent(deviceId)}/command`, { code, value }),

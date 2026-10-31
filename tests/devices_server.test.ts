@@ -15,6 +15,11 @@
  * 8. Un toma con la luz asignada no se prende "a mano"; uno libre sí.
  * 9. Sensor de ambiente asignado: el cultivo ve temperatura y humedad.
  * 10. Desasignar y desconectar: se borra lo de Cultiveta y vuelven los horarios de la persona.
+ * 11. Bomba: riega con la cuenta regresiva del toma, se apaga sola y respeta los topes.
+ * 12. Sin cuenta regresiva no hay bomba; una bomba olvidada se apaga; no se prende a mano.
+ * 13. Extractor por sensor: margen para no prender y apagar sin parar; sin sensor, apagado.
+ * 14. Lo que sigue a la luz (o al revés) queda cargado en Smart Life y sigue los cambios de horario.
+ * 15. Humidificador con valores de noche; una regla al revés se rechaza.
  */
 
 import { tuyaSign, signUrl, channelsOf, sensorsOf } from '../src/server/devices/tuyaClient';
@@ -176,6 +181,122 @@ async function run() {
     const left = userTimers(mock(), 'category_switch_1').groups.flatMap((g: any) => g.timers.map((t: any) => `${t.time}:${t.status}`));
     assert(left.join() === '07:00:1,20:00:1', `solo lo de la persona, activo: ${left}`);
     assert(!(await svc.status('u1')).tuya.connected, 'desconectado');
+  });
+
+  const light18 = { lightHours: 18, darkHours: 6, anchorMs: ar('20261024', '18:00'), timeZone: TZ };
+
+  await check('11. Bomba: riega N segundos con la cuenta regresiva del toma y se apaga sola; los topes no se pasan', async () => {
+    const { now, svc, mock } = setup(ar('20261031', '10:00'));
+    await svc.connectTuya('u1', { mock: true });
+    const pump = await svc.bind('u1', { deviceId: 'mockstrip01', code: 'switch_2', role: 'pump', cultivationId: 'c1', pump: { flowLph: 8, maxSeconds: 120, maxLiters: 5 } });
+    const r = await svc.water('u1', pump.id, 30);
+    assert(r.seconds === 30 && Math.abs(r.liters - 30 * 8 / 3600) < 1e-9, JSON.stringify(r));
+    assert(mock().devices.mockstrip01.status.switch_2 === true && mock().devices.mockstrip01.status.countdown_2 === 30, 'prendida con cuenta regresiva de 30 s');
+    now.t += 31_000;
+    mock().runCountdowns();
+    assert(mock().devices.mockstrip01.status.switch_2 === false, 'se apagó sola (cuenta regresiva del equipo)');
+    await svc.tick('u1');
+    assert(mock().devices.mockstrip01.status.switch_2 === false, 'y la revisión no la vuelve a prender');
+    let err: any = null;
+    try {
+      await svc.water('u1', pump.id, 200);
+    } catch (e) {
+      err = e;
+    }
+    assert(err?.status === 409 && /tope/.test(err.message), `tope: ${err?.message}`);
+    mock().state.offline = true;
+    err = null;
+    try {
+      await svc.water('u1', pump.id, 10);
+    } catch (e) {
+      err = e;
+    }
+    assert(err && /no responde/.test(err.message), `sin conexión no riega: ${err?.message}`);
+  });
+
+  await check('12. Un toma sin cuenta regresiva no se usa como bomba; la bomba olvidada se apaga', async () => {
+    const { now, svc, mock } = setup(ar('20261031', '10:00'));
+    await svc.connectTuya('u1', { mock: true });
+    let err: any = null;
+    try {
+      await svc.bind('u1', { deviceId: 'mockstrip01', code: 'switch_usb1', role: 'pump', cultivationId: 'c1' });
+    } catch (e) {
+      err = e;
+    }
+    assert(err && /cuenta regresiva/.test(err.message), `USB sin seguro: ${err?.message}`);
+    await svc.bind('u1', { deviceId: 'mockstrip01', code: 'switch_2', role: 'pump', cultivationId: 'c1' });
+    mock().flip('switch_2');
+    now.t += 5 * 60_000;
+    await svc.tick('u1');
+    assert(mock().devices.mockstrip01.status.switch_2 === false, 'la apagó la revisión');
+    err = null;
+    try {
+      await svc.command('u1', 'mockstrip01', 'switch_2', true);
+    } catch (e) {
+      err = e;
+    }
+    assert(err?.status === 409 && /Regar/.test(err.message), 'no se prende a mano');
+  });
+
+  await check('13. Extractor por sensor: prende al pasar 27 °C, sigue hasta bajar de 24 °C y apaga sin sensor', async () => {
+    const { now, svc, mock } = setup(ar('20261031', '10:00'));
+    await svc.connectTuya('u1', { mock: true });
+    await svc.bind('u1', { deviceId: 'mockth01', code: 'sensor', role: 'sensor_th', cultivationId: 'c1' });
+    await svc.bind('u1', { deviceId: 'mockstrip01', code: 'switch_3', role: 'climate', climateRole: 'exhaust', cultivationId: 'c1' });
+    const sw3 = () => mock().devices.mockstrip01.status.switch_3;
+    assert(sw3() === false, 'con 24,5 °C queda apagado');
+    const step = async (tenths: number) => {
+      mock().setReading('mockth01', { va_temperature: tenths });
+      now.t += 5 * 60_000;
+      await svc.tick('u1');
+      return sw3();
+    };
+    assert((await step(280)) === true, 'a 28 °C prende');
+    assert((await step(250)) === true, 'a 25 °C sigue prendido (margen)');
+    assert((await step(235)) === false, 'a 23,5 °C apaga');
+    mock().devices.mockth01.online = false;
+    mock().setReading('mockth01', { va_temperature: 300 });
+    now.t += 40 * 60_000;
+    await svc.tick('u1');
+    assert(sw3() === false, 'sensor sin datos: apagado');
+    const ov = await svc.overview('u1');
+    assert(/sensor sin datos/.test(ov.bindings.find((b: any) => b.role === 'climate').lastReason || ''), 'dice por qué');
+  });
+
+  await check('14. Ventilador que sigue a la luz y uno al revés: quedan cargados en Smart Life', async () => {
+    const { svc, mock } = setup(ar('20261031', '10:00'));
+    await svc.connectTuya('u1', { mock: true });
+    await svc.bind('u1', { deviceId: 'mockstrip01', code: 'switch_1', role: 'light', cultivationId: 'c1', schedule: light18 });
+    await svc.bind('u1', { deviceId: 'mockstrip01', code: 'switch_3', role: 'climate', climateRole: 'fan', cultivationId: 'c1' });
+    await svc.bind('u1', { deviceId: 'mockstrip01', code: 'switch_4', role: 'climate', climateRole: 'dehumidifier', cultivationId: 'c1', rule: { mode: 'follow_inverted' } });
+    const times = (code: string) => (userTimers(mock(), `category_${code}`)?.groups || []).flatMap((g: any) => g.timers.filter((t: any) => t.status === 1).map((t: any) => `${t.time}${t.functions[0].value ? '+' : '-'}`)).sort().join(' ');
+    assert(times('switch_3') === '12:00- 18:00+', `ventilador con la luz: ${times('switch_3')}`);
+    assert(times('switch_4') === '12:00+ 18:00-', `deshumidificador al revés: ${times('switch_4')}`);
+    const st = mock().devices.mockstrip01.status;
+    assert(st.switch_1 === true && st.switch_3 === true && st.switch_4 === false, 'a las 10: luz y ventilador prendidos, el otro apagado');
+    // si cambia el horario de la luz, se recarga lo que la sigue
+    await svc.setSchedule('u1', 'c1', { ...light18, anchorMs: ar('20261024', '06:00') });
+    assert(times('switch_3') === '00:00- 06:00+', `ventilador con la luz nueva: ${times('switch_3')}`);
+  });
+
+  await check('15. Humidificador con valores de noche y reglas inválidas rechazadas', async () => {
+    const { now, svc, mock } = setup(ar('20261031', '13:00'));
+    await svc.connectTuya('u1', { mock: true });
+    await svc.bind('u1', { deviceId: 'mockstrip01', code: 'switch_1', role: 'light', cultivationId: 'c1', schedule: light18 });
+    await svc.bind('u1', { deviceId: 'mockth01', code: 'sensor', role: 'sensor_th', cultivationId: 'c1' });
+    let err: any = null;
+    try {
+      await svc.bind('u1', { deviceId: 'mockstrip01', code: 'switch_3', role: 'climate', climateRole: 'humidifier', cultivationId: 'c1', rule: { mode: 'sensor', metric: 'humidity', on: 55, off: 45, sensorLoss: 'off' } });
+    } catch (e) {
+      err = e;
+    }
+    assert(err && /BAJAR/.test(err.message), `al revés se rechaza: ${err?.message}`);
+    const hum = await svc.bind('u1', { deviceId: 'mockstrip01', code: 'switch_3', role: 'climate', climateRole: 'humidifier', cultivationId: 'c1', rule: { mode: 'sensor', metric: 'humidity', on: 45, off: 55, night: { on: 60, off: 70 }, sensorLoss: 'off' } });
+    // 13 h: luz apagada (18/6 apaga a las 12) → valores de noche: 58 % ≤ 60 → prende
+    assert(mock().devices.mockstrip01.status.switch_3 === true, `de noche prende con 58 %: ${hum.lastReason}`);
+    now.t = ar('20261031', '19:00');
+    await svc.tick('u1');
+    assert(mock().devices.mockstrip01.status.switch_3 === false, 'de día, 58 % está por arriba de 55: apaga');
   });
 
   console.log('\n================================================================');

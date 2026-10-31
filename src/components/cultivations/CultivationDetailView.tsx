@@ -69,7 +69,8 @@ import { resolveCultivationDisplayPhoto } from '../../utils/cultivationPhotoReso
 import { useGeneticsCatalogPhotos } from '../../hooks/useGeneticsCatalogPhotos';
 import { GeneticsHeaderPhoto } from './GeneticsHeaderPhoto';
 import { LightCycleCard, type LightSchedule } from './LightCycleCard';
-import { useDevicesOverview, lightBindingFor, sensorBindingFor } from '../../services/devicesService';
+import { CropDevicesCard } from './CropDevicesCard';
+import { useDevicesOverview, lightBindingFor, sensorBindingFor, pumpBindingFor } from '../../services/devicesService';
 import { environmentService } from '../../services/environmentService';
 
 interface CultivationDetailViewProps {
@@ -97,6 +98,8 @@ interface CultivationDetailViewProps {
   onCultivationUpdated?: (updatedCultivation: Cultivation) => void;
   /** Abre Equipos para conectar un enchufe (luz), un sensor (ambiente) o una bomba o sonda (riego). */
   onOpenDevices?: (focus: 'luz' | 'ambiente' | 'riego') => void;
+  /** Se regó con la bomba (queda anotado como un riego más). */
+  onWateringAdded?: (watering: Watering) => void;
   /** Se guardó la hora de encendido de la luz. */
   onLightSaved?: (updatedCultivation: Cultivation) => void;
 }
@@ -125,6 +128,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
   onCultivationUpdated,
   onOpenDevices,
   onLightSaved,
+  onWateringAdded,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'fertilization' | 'photos' | 'table' | 'diary' | 'calendar'>('overview');
   // Equipos asignados a este cultivo (enchufe de la luz, sensor de ambiente y sonda de sustrato)
@@ -898,7 +902,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                   Sustrato {soilSensor.sensors.soil}% · {sensorAgo(soilSensor.readAt)}
                 </span>
               )}
-              {onOpenDevices && !soilSensor && (
+              {onOpenDevices && !soilSensor && !pumpBindingFor(devicesOverview, cultivation.id) && (
                 <button
                   type="button"
                   id="connect-irrigation-device"
@@ -1018,6 +1022,16 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
               })()}
             </div>
           </div>
+
+          {/* Bomba de riego y equipos de clima asignados a este cultivo (si hay) */}
+          {!isCosechado && (
+            <CropDevicesCard
+              cultivation={cultivation}
+              userId={userId}
+              onWateringAdded={onWateringAdded}
+              onOpenDevices={onOpenDevices ? () => onOpenDevices('riego') : undefined}
+            />
+          )}
 
           {/* Ciclo del cultivo con hitos y desglose de etapas (antes en el Inicio) */}
           {!isCosechado && <CropLifecycleCard cultivation={cultivation} geneticsList={geneticsList} />}

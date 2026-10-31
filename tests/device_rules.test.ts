@@ -1,0 +1,135 @@
+/**
+ * tests/device_rules.test.ts
+ *
+ * SUITE: REGLAS DE CLIMA Y RIEGO SEGURO (src/utils/deviceRules.ts) y la tarjeta "Equipos del cultivo".
+ *
+ * 1. Extractor: prende al pasar el valor, sigue en el margen y apaga al bajar.
+ * 2. Humidificador: prende al BAJAR; valores de noche con la luz apagada.
+ * 3. Sin sensor: apagar, prender o dejar como está, según se eligió.
+ * 4. Sigue a la luz y al revés.
+ * 5. Reglas inválidas: al revés, sin margen y ventilador por sensor.
+ * 6. Riego: sin conexión, sin cuenta regresiva o pasado de los topes, no riega.
+ * 7. La tarjeta muestra la bomba con "Regar" y cada equipo de clima con su estado y por qué.
+ */
+
+import './helpers/setupDom';
+import React, { act } from 'react';
+import { createRoot } from 'react-dom/client';
+import { evaluateClimate, validateClimateRule, defaultClimateRule, checkWaterOrder, describeClimateRule, DEFAULT_PUMP } from '../src/utils/deviceRules';
+import { CropDevicesCard } from '../src/components/cultivations/CropDevicesCard';
+import { devicesService } from '../src/services/devicesService';
+
+let passed = 0;
+let failed = 0;
+async function check(name: string, fn: () => void | Promise<void>) {
+  try {
+    await fn();
+    passed++;
+    console.log(`  ✓ [PASÓ] ${name}`);
+  } catch (err: any) {
+    failed++;
+    console.error(`  ✗ [FALLÓ] ${name}: ${err?.message || err}`);
+  }
+}
+function assert(condition: unknown, message: string): asserts condition {
+  if (!condition) throw new Error(message);
+}
+(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
+
+const r = (temperature: number | null, humidity: number | null) => ({ temperature, humidity });
+
+async function run() {
+  console.log('\n================================================================');
+  console.log('   REGLAS DE CLIMA Y RIEGO SEGURO');
+  console.log('================================================================\n');
+
+  await check('1. Extractor: prende ≥ 27, sigue en el margen y apaga ≤ 24', () => {
+    const rule = defaultClimateRule('exhaust');
+    assert(evaluateClimate('exhaust', rule, { readings: r(28, 50), lightOn: true, currentOn: false }).on, '28 prende');
+    assert(evaluateClimate('exhaust', rule, { readings: r(25, 50), lightOn: true, currentOn: true }).on, '25 sigue prendido');
+    assert(!evaluateClimate('exhaust', rule, { readings: r(25, 50), lightOn: true, currentOn: false }).on, '25 sigue apagado');
+    assert(!evaluateClimate('exhaust', rule, { readings: r(23.9, 50), lightOn: true, currentOn: true }).on, '23,9 apaga');
+    assert(describeClimateRule('exhaust', rule) === 'prende ≥ 27 °C, apaga ≤ 24 °C', describeClimateRule('exhaust', rule));
+  });
+
+  await check('2. Humidificador: prende al bajar; de noche usa sus valores', () => {
+    const rule = { ...defaultClimateRule('humidifier'), night: { on: 60, off: 70 } };
+    assert(evaluateClimate('humidifier', rule, { readings: r(24, 40), lightOn: true, currentOn: false }).on, '40 % de día prende');
+    assert(!evaluateClimate('humidifier', rule, { readings: r(24, 58), lightOn: true, currentOn: false }).on, '58 % de día no');
+    const n = evaluateClimate('humidifier', rule, { readings: r(24, 58), lightOn: false, currentOn: false });
+    assert(n.on && /noche/.test(n.reason), `58 % de noche prende: ${n.reason}`);
+  });
+
+  await check('3. Sin datos del sensor: lo que se eligió', () => {
+    const base = defaultClimateRule('exhaust');
+    assert(!evaluateClimate('exhaust', { ...base, sensorLoss: 'off' }, { readings: null, lightOn: true, currentOn: true }).on, 'apagar');
+    assert(evaluateClimate('exhaust', { ...base, sensorLoss: 'on' }, { readings: null, lightOn: true, currentOn: false }).on, 'prender');
+    assert(evaluateClimate('exhaust', { ...base, sensorLoss: 'keep' }, { readings: r(null, 50), lightOn: true, currentOn: true }).on, 'como estaba');
+  });
+
+  await check('4. Sigue a la luz y al revés', () => {
+    const fan = defaultClimateRule('fan');
+    assert(fan.mode === 'follow', 'el ventilador sigue a la luz por defecto');
+    assert(evaluateClimate('fan', fan, { readings: null, lightOn: true, currentOn: false }).on, 'con la luz');
+    assert(evaluateClimate('dehumidifier', { ...fan, mode: 'follow_inverted' }, { readings: null, lightOn: false, currentOn: false }).on, 'al revés');
+  });
+
+  await check('5. Reglas inválidas', () => {
+    assert(/SUBIR/.test(validateClimateRule('exhaust', { ...defaultClimateRule('exhaust'), on: 24, off: 27 })[0] || ''), 'al revés');
+    assert(validateClimateRule('exhaust', { ...defaultClimateRule('exhaust'), on: 25, off: 24 }).some((e) => /al menos 2/.test(e)), 'sin margen');
+    assert(validateClimateRule('fan', { ...defaultClimateRule('exhaust') }).some((e) => /quedaría prendido/.test(e)), 'ventilador por sensor');
+    assert(validateClimateRule('heater', defaultClimateRule('heater')).length === 0, 'el calefactor por defecto sirve');
+  });
+
+  await check('6. Riego seguro', () => {
+    const cfg = { flowLph: 8, maxSeconds: 120, maxLiters: 0.2 };
+    assert(!checkWaterOrder(30, cfg, { online: false, hasCountdown: true }).ok, 'sin conexión');
+    assert(!checkWaterOrder(30, cfg, { online: true, hasCountdown: false }).ok, 'sin cuenta regresiva');
+    assert(!checkWaterOrder(200, cfg, { online: true, hasCountdown: true }).ok, 'pasado del tope de segundos');
+    assert(!checkWaterOrder(100, cfg, { online: true, hasCountdown: true }).ok, 'pasado del tope de litros (0,22 L)');
+    const ok = checkWaterOrder(60, DEFAULT_PUMP, { online: true, hasCountdown: true });
+    assert(ok.ok && Math.abs(ok.liters - 60 * 8 / 3600) < 1e-9, JSON.stringify(ok));
+  });
+
+  await check('7. Tarjeta del cultivo: bomba con "Regar" y equipos de clima con su estado', async () => {
+    const realFetch = globalThis.fetch;
+    const binding = (extra: any) => ({ deviceId: 'd1', deviceName: 'Zapatilla', cultivationId: 'c1', cultivationName: 'Carpa', online: true, sensors: null, readAt: null, loaded: null, ...extra });
+    (globalThis as any).fetch = async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        connected: true,
+        mock: true,
+        bindings: [
+          binding({ id: 'p', code: 'switch_2', label: 'Toma 2', role: 'pump', on: false, pump: { flowLph: 8, maxSeconds: 300, maxLiters: 20 }, countdownCode: 'countdown_2', watering: null }),
+          binding({ id: 'e', code: 'switch_3', label: 'Toma 3', role: 'climate', climateRole: 'exhaust', rule: defaultClimateRule('exhaust'), on: true, lastReason: 'temperatura 28 °C' }),
+        ],
+      }),
+    });
+    try {
+      await devicesService.refreshOverview();
+    } finally {
+      (globalThis as any).fetch = realFetch;
+    }
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+    await act(async () => root.render(React.createElement(CropDevicesCard, { cultivation: { id: 'c1' } as any, userId: 'u1' })));
+    assert(container.querySelector('#pump-water')?.textContent?.includes('Regar 30 s'), 'botón Regar');
+    assert(/0,07 L/.test(container.textContent || ''), `litros estimados: ${container.textContent}`);
+    const dev = container.querySelector('.crop-climate-device')?.textContent || '';
+    assert(/Extractor/.test(dev) && /PRENDIDO/.test(dev) && /28 °C/.test(dev), dev);
+    await act(async () => root.unmount());
+    devicesService.reset();
+  });
+
+  console.log('\n================================================================');
+  console.log(` RESULTADO REGLAS DE CLIMA Y RIEGO: ${passed} pasadas, ${failed} fallidas de ${passed + failed}`);
+  console.log('================================================================\n');
+  process.exit(failed > 0 ? 1 : 0);
+}
+
+run().catch((err) => {
+  console.error('Error fatal en device_rules:', err);
+  process.exit(1);
+});

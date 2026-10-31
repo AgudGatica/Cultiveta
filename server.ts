@@ -2264,7 +2264,7 @@ app.post('/api/devices/bindings', verifyFirebaseAuth, async (req, res) => {
     if (typeof b.deviceId !== 'string' || typeof b.code !== 'string' || typeof b.cultivationId !== 'string') {
       return res.status(400).json({ error: 'Faltan el equipo o el cultivo.' });
     }
-    res.json({ binding: await deviceService.bind(req.userId!, { deviceId: b.deviceId, code: b.code, role: b.role, cultivationId: b.cultivationId, cultivationName: b.cultivationName, schedule: b.schedule }) });
+    res.json({ binding: await deviceService.bind(req.userId!, { deviceId: b.deviceId, code: b.code, role: b.role, cultivationId: b.cultivationId, cultivationName: b.cultivationName, schedule: b.schedule, climateRole: b.climateRole, rule: b.rule, pump: b.pump }) });
   } catch (err) {
     return sendDeviceError(res, err, 'devices/bindings');
   }
@@ -2276,6 +2276,41 @@ app.delete('/api/devices/bindings/:id', verifyFirebaseAuth, async (req, res) => 
     res.json({ success: true });
   } catch (err) {
     return sendDeviceError(res, err, 'devices/bindings/delete');
+  }
+});
+
+// Equipo de clima: cómo se maneja (por sensor con sus valores, sigue a la luz o al revés).
+app.post('/api/devices/bindings/:id/rule', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json({ binding: await deviceService.setRule(req.userId!, String(req.params.id), (req.body || {}).rule) });
+  } catch (err) {
+    return sendDeviceError(res, err, 'devices/rule');
+  }
+});
+
+// Bomba: caudal y topes por riego.
+app.post('/api/devices/bindings/:id/pump', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json({ binding: await deviceService.setPump(req.userId!, String(req.params.id), (req.body || {}).pump) });
+  } catch (err) {
+    return sendDeviceError(res, err, 'devices/pump');
+  }
+});
+
+// Regar N segundos con la bomba (se apaga sola con la cuenta regresiva del enchufe) o cortar.
+app.post('/api/devices/bindings/:id/water', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json(await deviceService.water(req.userId!, String(req.params.id), Number((req.body || {}).seconds)));
+  } catch (err) {
+    return sendDeviceError(res, err, 'devices/water');
+  }
+});
+app.post('/api/devices/bindings/:id/water/stop', verifyFirebaseAuth, async (req, res) => {
+  try {
+    await deviceService.stopWater(req.userId!, String(req.params.id));
+    res.json({ success: true });
+  } catch (err) {
+    return sendDeviceError(res, err, 'devices/water/stop');
   }
 });
 
@@ -2300,8 +2335,9 @@ app.post('/api/devices/:deviceId/command', verifyFirebaseAuth, async (req, res) 
   }
 });
 
-// Revisión periódica (Cloud Scheduler, cada 15 min): rellena el horario cargado en Smart Life,
-// corrige la luz si quedó al revés y lee los sensores. Usa el mismo secreto que el clima exterior.
+// Revisión periódica (Cloud Scheduler, cada 5 min): rellena el horario cargado en Smart Life, aplica
+// las reglas por sensor, corrige lo que quedó al revés, apaga una bomba olvidada y lee los sensores.
+// Usa el mismo secreto que el clima exterior.
 app.post('/api/internal/devices-tick', async (req, res) => {
   if (!OUTDOOR_SYNC_SECRET) return res.status(503).json({ error: 'Revisión programada no configurada.' });
   if (!isValidCronSecret(req.get('x-cultiveta-cron-secret'))) return res.status(401).json({ error: 'No autorizado.' });

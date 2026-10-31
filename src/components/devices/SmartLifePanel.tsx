@@ -1,7 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Loader2, Power, RefreshCw, Unplug } from 'lucide-react';
 import type { Cultivation } from '../../types';
-import { devicesService, scheduleSnapshot, type SmartDevice } from '../../services/devicesService';
+import { devicesService, scheduleSnapshot, type DeviceBindingState, type SmartDevice } from '../../services/devicesService';
+import { CLIMATE_ROLES, DEFAULT_PUMP, defaultClimateRule, describeClimateRule, validatePump, type ClimateRole, type PumpConfig } from '../../utils/deviceRules';
+import { ClimateRuleEditor } from './ClimateRuleEditor';
 
 interface SmartLifePanelProps {
   cultivations: Cultivation[];
@@ -12,6 +14,52 @@ interface SmartLifePanelProps {
 
 const FIELD = 'min-h-11 px-3 rounded-2xl bg-white border border-line text-sm text-ink focus:outline-hidden focus:border-brand w-full';
 const ITEM = 'bg-surface rounded-3xl p-4 border border-line';
+const SMALL = 'min-h-9 px-2 rounded-xl bg-white border border-line text-xs text-ink';
+
+/** Para qué se usa un toma: la luz, la bomba de riego o un equipo de clima. */
+type Use = 'light' | 'pump' | ClimateRole;
+const USE_LABEL: Record<string, string> = { light: 'Luz', pump: 'Bomba de riego', ...Object.fromEntries(Object.entries(CLIMATE_ROLES).map(([k, r]) => [k, r.label])) };
+function bindingText(b: DeviceBindingState): string {
+  if (b.role === 'light') return `Luz de ${b.cultivationName}`;
+  if (b.role === 'pump') return `Bomba de riego de ${b.cultivationName}`;
+  if (b.role === 'climate' && b.climateRole && b.rule) return `${CLIMATE_ROLES[b.climateRole].label} de ${b.cultivationName} · ${describeClimateRule(b.climateRole, b.rule)}`;
+  return b.cultivationName;
+}
+
+/** Caudal y topes de una bomba. */
+const PumpEditor: React.FC<{ pump: PumpConfig; onSave: (p: PumpConfig) => Promise<void>; onCancel: () => void }> = ({ pump, onSave, onCancel }) => {
+  const [v, setV] = useState({ flowLph: String(pump.flowLph), maxSeconds: String(pump.maxSeconds), maxLiters: String(pump.maxLiters) });
+  const [err, setErr] = useState<string | null>(null);
+  const num = (x: string) => Number(String(x).replace(',', '.'));
+  const save = async () => {
+    const next = { flowLph: num(v.flowLph), maxSeconds: num(v.maxSeconds), maxLiters: num(v.maxLiters) };
+    const errs = validatePump(next);
+    if (errs.length) return setErr(errs[0]);
+    try {
+      await onSave(next);
+    } catch (e: any) {
+      setErr(e?.message || 'No se pudo guardar.');
+    }
+  };
+  return (
+    <div className="pump-editor space-y-2 rounded-2xl bg-surface border border-line p-3">
+      <div className="grid grid-cols-3 gap-2">
+        {([['flowLph', 'Caudal (L/h)'], ['maxSeconds', 'Tope (s)'], ['maxLiters', 'Tope (L)']] as const).map(([k, l]) => (
+          <label key={k} className="text-[11px] font-semibold text-ink-muted space-y-1">
+            <span>{l}</span>
+            <input className={`${SMALL} w-full`} inputMode="decimal" value={v[k]} onChange={(e) => setV({ ...v, [k]: e.target.value })} aria-label={l} />
+          </label>
+        ))}
+      </div>
+      <p className="text-[11px] text-ink-subtle">Caudal: goteros × litros por hora de cada uno (4 goteros de 2 L/h = 8 L/h).</p>
+      {err && <p className="text-[11px] font-bold text-error">{err}</p>}
+      <div className="flex gap-2">
+        <button type="button" onClick={save} className="cultiveta-btn-primary text-xs">Guardar</button>
+        <button type="button" onClick={onCancel} className="cultiveta-btn-secondary text-xs">Cancelar</button>
+      </div>
+    </div>
+  );
+};
 
 const reading = (s: SmartDevice['sensors']) =>
   s
@@ -37,6 +85,8 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
   const [error, setError] = useState<string | null>(null);
   const [form, setForm] = useState({ accessId: '', accessSecret: '', region: 'us' });
   const [target, setTarget] = useState<Record<string, string>>({});
+  const [use, setUse] = useState<Record<string, Use>>({});
+  const [editing, setEditing] = useState<string | null>(null);
 
   const toast = (m: string) => showToast?.(m);
   const indoor = cultivations.filter((c) => c.type === 'Indoor');
@@ -98,14 +148,26 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
     }, 'Smart Life desconectado');
   };
 
-  const assign = (d: SmartDevice, code: string, role: 'light' | 'sensor_th' | 'sensor_soil') => {
+  const cropsFor = (u: Use | 'sensor') => (u === 'light' ? indoor : cultivations);
+  const assign = (d: SmartDevice, code: string, u: Use | 'sensor_th' | 'sensor_soil') => {
     const key = `${d.id}|${code}`;
-    const crop = (role === 'light' ? indoor : cultivations).find((c) => c.id === (target[key] || (role === 'light' ? indoor : cultivations)[0]?.id));
-    if (!crop) return setError(role === 'light' ? 'Primero creá un cultivo indoor.' : 'Primero creá un cultivo.');
+    const list = cropsFor(u === 'sensor_th' || u === 'sensor_soil' ? 'sensor' : u);
+    const crop = list.find((c) => c.id === (target[key] || list[0]?.id));
+    if (!crop) return setError(u === 'light' ? 'Primero creá un cultivo indoor.' : 'Primero creá un cultivo.');
+    const role = u === 'light' || u === 'pump' || u === 'sensor_th' || u === 'sensor_soil' ? u : 'climate';
     run(key, async () => {
-      await devicesService.bind({ deviceId: d.id, code, role, cultivationId: crop.id, cultivationName: crop.name, schedule: role === 'light' ? scheduleSnapshot(crop) : null });
+      await devicesService.bind({
+        deviceId: d.id,
+        code,
+        role,
+        cultivationId: crop.id,
+        cultivationName: crop.name,
+        schedule: role === 'light' ? scheduleSnapshot(crop) : null,
+        ...(role === 'climate' ? { climateRole: u as ClimateRole, rule: defaultClimateRule(u as ClimateRole) } : {}),
+        ...(role === 'pump' ? { pump: { ...DEFAULT_PUMP } } : {}),
+      });
       await loadDevices();
-    }, role === 'light' ? `Listo: este toma maneja la luz de ${crop.name}` : `Listo: el sensor mide en ${crop.name}`);
+    }, role === 'light' ? `Listo: este toma maneja la luz de ${crop.name}` : role === 'pump' ? `Listo: bomba de riego de ${crop.name}` : role === 'climate' ? `Listo: ${USE_LABEL[u]} de ${crop.name}` : `Listo: el sensor mide en ${crop.name}`);
   };
 
   if (!status) {
@@ -224,7 +286,7 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
                     {ch.label} · <span className={ch.on ? 'text-ok-ink' : 'text-ink-muted'}>{ch.on ? 'PRENDIDO' : 'APAGADO'}</span>
                   </span>
                   {ch.binding ? (
-                    <span className="text-[11px] font-bold text-brand">Luz de {ch.binding.cultivationName}</span>
+                    <span className="text-[11px] font-bold text-brand text-right">{bindingText(ch.binding)}</span>
                   ) : (
                     <button
                       type="button"
@@ -238,22 +300,71 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
                   )}
                 </div>
                 {ch.binding ? (
-                  <button type="button" onClick={() => run(key, async () => { await devicesService.unbind(ch.binding!.id); await loadDevices(); }, 'Asignación quitada')} className="text-[11px] font-bold text-ink-muted hover:underline">
-                    Desasignar (vuelven tus horarios de Smart Life)
-                  </button>
-                ) : indoor.length ? (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <select className="min-h-9 px-2 rounded-xl bg-white border border-line text-xs text-ink" value={target[key] || indoor[0].id} onChange={(e) => setTarget({ ...target, [key]: e.target.value })} aria-label="Cultivo">
-                      {indoor.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                    <button type="button" disabled={busy === key} onClick={() => assign(d, ch.code, 'light')} className="cultiveta-btn-secondary text-xs disabled:opacity-50">
-                      Usar como luz
-                    </button>
+                  <div className="space-y-2">
+                    {editing === ch.binding.id && ch.binding.role === 'climate' && ch.binding.climateRole && ch.binding.rule && (
+                      <ClimateRuleEditor
+                        role={ch.binding.climateRole}
+                        rule={ch.binding.rule}
+                        onCancel={() => setEditing(null)}
+                        onSave={async (rule) => {
+                          await devicesService.setRule(ch.binding!.id, rule);
+                          setEditing(null);
+                          await loadDevices();
+                          toast('Regla guardada');
+                        }}
+                      />
+                    )}
+                    {editing === ch.binding.id && ch.binding.role === 'pump' && (
+                      <PumpEditor
+                        pump={ch.binding.pump || DEFAULT_PUMP}
+                        onCancel={() => setEditing(null)}
+                        onSave={async (p) => {
+                          await devicesService.setPump(ch.binding!.id, p);
+                          setEditing(null);
+                          await loadDevices();
+                          toast('Bomba guardada');
+                        }}
+                      />
+                    )}
+                    <div className="flex flex-wrap gap-3">
+                      {(ch.binding.role === 'climate' || ch.binding.role === 'pump') && editing !== ch.binding.id && (
+                        <button type="button" onClick={() => setEditing(ch.binding!.id)} className="text-[11px] font-bold text-brand hover:underline">
+                          {ch.binding.role === 'pump' ? 'Caudal y topes' : 'Cambiar regla'}
+                        </button>
+                      )}
+                      <button type="button" onClick={() => run(key, async () => { await devicesService.unbind(ch.binding!.id); await loadDevices(); }, 'Asignación quitada')} className="text-[11px] font-bold text-ink-muted hover:underline">
+                        Desasignar (vuelven tus horarios de Smart Life)
+                      </button>
+                    </div>
                   </div>
+                ) : cultivations.length ? (
+                  (() => {
+                    const u = use[key] || (indoor.length ? 'light' : 'exhaust');
+                    const list = cropsFor(u);
+                    return (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <select className={SMALL} value={u} onChange={(e) => setUse({ ...use, [key]: e.target.value as Use })} aria-label="Para qué se usa">
+                          {indoor.length > 0 && <option value="light">Luz</option>}
+                          {ch.hasCountdown && <option value="pump">Bomba de riego</option>}
+                          {(Object.keys(CLIMATE_ROLES) as ClimateRole[]).map((r) => (
+                            <option key={r} value={r}>
+                              {CLIMATE_ROLES[r].label}
+                            </option>
+                          ))}
+                        </select>
+                        <select className={SMALL} value={target[key] && list.some((c) => c.id === target[key]) ? target[key] : list[0]?.id} onChange={(e) => setTarget({ ...target, [key]: e.target.value })} aria-label="Cultivo">
+                          {list.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                        <button type="button" disabled={busy === key || !list.length} onClick={() => assign(d, ch.code, u)} className="cultiveta-btn-secondary text-xs disabled:opacity-50">
+                          Asignar
+                        </button>
+                      </div>
+                    );
+                  })()
                 ) : null}
               </div>
             );

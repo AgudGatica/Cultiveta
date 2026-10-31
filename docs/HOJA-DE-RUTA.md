@@ -6,7 +6,7 @@ y de la mascota de la app. Fuente: "Cultiveta — Hoja de ruta de pendientes" (d
 | # | Función | Estado (2026-10-27) |
 |---|---|---|
 | 1 | Línea de tiempo con forma de planta | En curso |
-| 2 | Enchufes inteligentes por Wi-Fi | En curso (2026-10-31): etapas 1 y 2a hechas (a mano + Equipos; Smart Life real). Faltan eWeLink, Shelly, riego y reglas por sensor |
+| 2 | Enchufes inteligentes por Wi-Fi | En curso (2026-10-31): etapas 1, 2a y 2b hechas (a mano + Equipos; Smart Life real; bomba y clima). Faltan riego automático, eWeLink y Shelly |
 | 3 | Indoors / carpas | Pendiente. Referencia: "Espacios" de Canopia. Cambia el modelo de datos |
 | 4 | Comunidad | Pendiente. Necesita servidor y moderación (exigida por Google Play) |
 | 5 | Privacidad y ubicación | Pendiente. Tiene que estar antes o junto con la Comunidad |
@@ -58,8 +58,13 @@ muestra el estado del enchufe y lo que mide el sensor. Servidor: `src/server/dev
 husos horarios, horario cargado y `DeviceService`); rutas `/api/devices/*` y `/api/internal/devices-tick` (cada 15 min,
 Cloud Scheduler). Las claves van en `deviceIntegrations` (solo el servidor). Pendientes tuyos en PENDIENTES.md.
 
-**Etapa 2b (pendiente):** riego con bomba (cuenta regresiva del toma), reglas por sensor (extractor, humidificador),
-eWeLink (con una app de Cultiveta en dev.ewelink.cc: cada persona solo inicia sesión en eWeLink) y Shelly (por su
+**Etapa 2b (hecha, 2026-10-31): bomba y equipos de clima.** Un toma se asigna como bomba de riego (solo con cuenta
+regresiva: se apaga sola; topes de segundos y litros; "Regar" en el cultivo anota el riego) o como equipo de clima
+(extractor, intracción, ventilador, humidificador, deshumidificador, calefactor, refrigeración): por sensor, con margen
+para no prender y apagar sin parar, valores de noche y qué hacer si el sensor se calla; o siguiendo a la luz (o al revés),
+que queda cargado en Smart Life. Lógica en `src/utils/deviceRules.ts`; el cultivo muestra la tarjeta "Equipos del cultivo".
+
+**Etapa 2c (pendiente):** riego automático (programado o por humedad del sustrato), eWeLink (con una app de Cultiveta en dev.ewelink.cc: cada persona solo inicia sesión en eWeLink) y Shelly (por su
 nube). Todo corre en el servidor de Cultiveta (Cloud Run + Cloud Scheduler, como el clima exterior). Con servidor en la nube no
 hace falta dejar una PC prendida ni la regla de "entrar una vez por semana" de Órbita. Detalle técnico en
 `Cultiveta-referencias/TRASPASO.md` (O18–O20).

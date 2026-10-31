@@ -734,6 +734,9 @@ export default function App() {
                 onOpenPhotoModal={() => setIsPhotoModalOpen(true)}
                 onOpenDiaryModal={() => setIsDiaryModalOpen(true)}
                 onOpenDevices={openDevices}
+                onWateringAdded={(w) => {
+                  setWaterings((prev) => (prev.some((x) => x.id === w.id) ? prev : [w, ...prev]));
+                }}
                 onLightSaved={(updated) => {
                   setCultivations((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
                   showToast('Hora de encendido de la luz guardada.');

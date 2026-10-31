@@ -210,6 +210,8 @@ export function createMockTuya(o: { now?: () => number; withSensors?: boolean; t
     timers,
     state,
     runCloud,
+    /** Apaga los tomas cuya cuenta regresiva terminó (el equipo lo hace solo; acá, al pedirlo). */
+    runCountdowns,
     /** Cambia lo que mide un sensor de prueba. */
     setReading(id: string, values: Status) {
       Object.assign(devices[id].status, values);
