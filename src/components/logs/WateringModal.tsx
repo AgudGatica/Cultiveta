@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Droplets, Plus, Trash2, Save, FlaskConical, ChevronDown } from 'lucide-react';
+import { X, Droplets, Plus, Trash2, Save, FlaskConical, ChevronDown, Plug } from 'lucide-react';
 import { Cultivation, Watering, WateringProductItem, FertilizationSchedule, PotLiftFeeling, DrainageLevel } from '../../types';
 import { wateringService } from '../../services/wateringService';
 import { fertilizationService } from '../../services/fertilizationService';
@@ -16,6 +16,8 @@ interface WateringModalProps {
   initialEc?: number;
   initialWeekNumber?: number;
   onWateringAdded: (watering: Watering) => void;
+  /** Lleva a Equipos para conectar una bomba o una sonda de sustrato. */
+  onConnectDevice?: () => void;
 }
 
 const DRAINAGE_OPTIONS: Array<{ value: DrainageLevel; label: string }> = [
@@ -54,6 +56,7 @@ export const WateringModal: React.FC<WateringModalProps> = ({
   initialEc,
   initialWeekNumber,
   onWateringAdded,
+  onConnectDevice,
 }) => {
   const [cultivationId, setCultivationId] = useState(defaultCultivationId || (cultivations[0]?.id || ''));
   const [date, setDate] = useState(getLocalTodayDateOnly());
@@ -586,6 +589,20 @@ export const WateringModal: React.FC<WateringModalProps> = ({
               <span>Guardar riego</span>
             </button>
           </div>
+          {onConnectDevice && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onConnectDevice();
+              }}
+              className="w-full min-h-11 rounded-2xl border border-dashed border-line text-xs font-bold text-brand hover:bg-track transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <Plug className="w-4 h-4" aria-hidden="true" />
+              Conectar bomba o sonda
+              <span className="font-medium text-ink-subtle">· riega y mide solo</span>
+            </button>
+          )}
         </form>
       </div>
     </div>

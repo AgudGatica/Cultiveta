@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Thermometer, Save, SunMedium, Loader2, AlertCircle, ChevronDown, Sparkles } from 'lucide-react';
+import { X, Thermometer, Save, SunMedium, Loader2, AlertCircle, ChevronDown, Sparkles, Plug } from 'lucide-react';
 import { Cultivation, EnvironmentRecord } from '../../types';
 import { environmentService } from '../../services/environmentService';
 import { getLocalTodayDateOnly } from '../../utils/growthStageUtils';
@@ -11,6 +11,8 @@ interface EnvironmentModalProps {
   cultivations: Cultivation[];
   defaultCultivationId?: string;
   onRecordAdded: (record: EnvironmentRecord) => void;
+  /** Lleva a Equipos para conectar un sensor que mida solo. */
+  onConnectDevice?: () => void;
 }
 
 export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
@@ -20,6 +22,7 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
   cultivations,
   defaultCultivationId,
   onRecordAdded,
+  onConnectDevice,
 }) => {
   const [cultivationId, setCultivationId] = useState(defaultCultivationId || (cultivations[0]?.id || ''));
   const [date, setDate] = useState(getLocalTodayDateOnly());
@@ -424,6 +427,20 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
               <span>Guardar medición</span>
             </button>
           </div>
+          {onConnectDevice && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onConnectDevice();
+              }}
+              className="w-full min-h-11 rounded-2xl border border-dashed border-line text-xs font-bold text-brand hover:bg-track transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <Plug className="w-4 h-4" aria-hidden="true" />
+              Conectar mi sensor
+              <span className="font-medium text-ink-subtle">· mide solo, sin cargar a mano</span>
+            </button>
+          )}
         </form>
       </div>
     </div>

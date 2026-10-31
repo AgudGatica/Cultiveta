@@ -10,6 +10,7 @@ import {
   Plus,
   Scale,
   Trophy,
+  Plug,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -44,6 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'genetics', label: 'Genéticas', icon: Dna, badge: geneticsCount > 0 ? `${geneticsCount}` : '' },
     { id: 'compare_crops', label: 'Comparador', icon: Scale, badge: '' },
     { id: 'calculators', label: 'Calculadoras', icon: Calculator, badge: '' },
+    { id: 'devices', label: 'Equipos', icon: Plug, badge: '' },
     { id: 'ai_assistant', label: 'Cultiveta IA', icon: Sparkles, isAI: true, badge: '✨' },
     { id: 'profile', label: 'Mi perfil', icon: Trophy, badge: '' },
   ];

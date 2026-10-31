@@ -6,7 +6,7 @@ y de la mascota de la app. Fuente: "Cultiveta — Hoja de ruta de pendientes" (d
 | # | Función | Estado (2026-10-27) |
 |---|---|---|
 | 1 | Línea de tiempo con forma de planta | En curso |
-| 2 | Enchufes inteligentes por Wi-Fi | Bloqueado: falta acceso al código de la app Órbita. Conviene después del 3 |
+| 2 | Enchufes inteligentes por Wi-Fi | En curso (2026-10-31): etapa 1 hecha (luz, ambiente y riego a mano + pantalla Equipos). Falta la conexión real |
 | 3 | Indoors / carpas | Pendiente. Referencia: "Espacios" de Canopia. Cambia el modelo de datos |
 | 4 | Comunidad | Pendiente. Necesita servidor y moderación (exigida por Google Play) |
 | 5 | Privacidad y ubicación | Pendiente. Tiene que estar antes o junto con la Comunidad |
@@ -15,7 +15,7 @@ y de la mascota de la app. Fuente: "Cultiveta — Hoja de ruta de pendientes" (d
 | 8 | Monetización | Pendiente. AdMob restringe apps de cannabis; Play Billing sí sirve para suscripciones |
 | 9 | Indoor en 3D | Muy a futuro |
 
-Orden sugerido: 1 → 3 → 5 → 4 → 6 → 7. El 2 cuando haya acceso a Órbita; el 8 cuando haya algo para vender.
+Orden sugerido: 1 → 3 → 5 → 4 → 6 → 7. El 2 ya empezó (etapa 1, con los equipos colgados de cada cultivo hasta que existan los indoors); el 8 cuando haya algo para vender.
 
 ---
 
@@ -37,6 +37,24 @@ Orden sugerido: 1 → 3 → 5 → 4 → 6 → 7. El 2 cuando haya acceso a Órbi
 - Medir humedad.
 - Automatizaciones: según la humedad, prender o apagar distintos dispositivos.
 - Sugerencia: evaluar que sea una función de Cultiveta Pro.
+
+**Etapa 1 (hecha, 2026-10-31), sin equipos todavía, traída de Órbita:**
+- En cada cultivo indoor, la tarjeta **Luz**: prendida o apagada, cuenta regresiva al próximo cambio,
+  horas de luz y de oscuridad, y el gráfico de los próximos 7 días (marcas cada 3 h). A mano funciona como
+  un timer: se carga la hora de encendido (y, en un superciclo, el día de un encendido). Guarda
+  `lighting.lightsOnTime` y `lighting.lightsOnDate`. Cálculo en `src/utils/lightCycle.ts`.
+- Ambiente y Riego siguen a mano como antes, con "Conectar mi sensor" y "Conectar bomba o sonda" en sus
+  tarjetas y al pie de los formularios.
+- **Equipos** en el menú "Más" (y en la barra lateral): tus equipos, conectar uno nuevo por marca
+  (Smart Life, Sonoff / eWeLink, Shelly: "Próximamente"), qué hace cada equipo y Qué comprar con
+  búsquedas de Mercado Libre.
+- Sin tareas ni actividad de Órbita (Cultiveta ya tiene las suyas).
+
+**Etapa 2 (pendiente):** conexión real desde el servidor de Cultiveta (Cloud Run + Cloud Scheduler, como el
+clima exterior). Smart Life con las claves de cada usuario guardadas solo en el servidor; eWeLink con una app
+de Cultiveta en dev.ewelink.cc (inicio de sesión de eWeLink); Shelly por su nube. Con servidor en la nube no
+hace falta dejar una PC prendida ni la regla de "entrar una vez por semana" de Órbita. Detalle técnico en
+`Cultiveta-referencias/TRASPASO.md` (O18–O20).
 
 ## 3. Sistema de indoors / carpas
 

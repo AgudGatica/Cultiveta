@@ -69,6 +69,7 @@ const AIAssistantView = React.lazy(() =>
 const CalculatorsView = React.lazy(() =>
   import('./components/tools/CalculatorsView').then((m) => ({ default: m.CalculatorsView }))
 );
+const DevicesView = React.lazy(() => import('./components/devices/DevicesView'));
 const PhotoDiagnosisModal = React.lazy(() =>
   import('./components/ai/PhotoDiagnosisModal').then((m) => ({ default: m.PhotoDiagnosisModal }))
 );
@@ -139,6 +140,15 @@ export default function App() {
   );
   const [comparisonCropAId, setComparisonCropAId] = useState<string | undefined>(undefined);
   const [comparisonCropBId, setComparisonCropBId] = useState<string | undefined>(undefined);
+  // Equipos: desde dónde se llegó (la luz, el ambiente o el riego de un cultivo) para resaltarlo
+  const [devicesFocus, setDevicesFocus] = useState<'luz' | 'ambiente' | 'riego' | null>(null);
+  const openDevices = React.useCallback((focus: 'luz' | 'ambiente' | 'riego' | null) => {
+    setDevicesFocus(focus);
+    setCurrentView('devices');
+  }, [setCurrentView]);
+  useEffect(() => {
+    if (currentView !== 'devices') setDevicesFocus(null);
+  }, [currentView]);
 
   // Data Collections
   const [cultivations, setCultivations] = useState<Cultivation[]>([]);
@@ -686,6 +696,11 @@ export default function App() {
                 onOpenEnvModal={() => setIsEnvModalOpen(true)}
                 onOpenPhotoModal={() => setIsPhotoModalOpen(true)}
                 onOpenDiaryModal={() => setIsDiaryModalOpen(true)}
+                onOpenDevices={openDevices}
+                onLightSaved={(updated) => {
+                  setCultivations((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+                  showToast('Hora de encendido de la luz guardada.');
+                }}
                 onHarvestFinalized={(harvest) => {
                   showToast('¡Cosecha finalizada y registrada!');
                   setCurrentView('cultivations');
@@ -778,6 +793,9 @@ export default function App() {
 
           {/* VIEW: CALCULATORS */}
           {currentView === 'calculators' && <CalculatorsView />}
+
+          {/* VIEW: EQUIPOS (enchufes, sensores y riego) */}
+          {currentView === 'devices' && <DevicesView focus={devicesFocus} />}
 
           {/* VIEW: PERFIL Y LOGROS */}
           {currentView === 'profile' && (
@@ -896,6 +914,7 @@ export default function App() {
       {isWateringModalOpen && (
         <WateringModal
           isOpen={isWateringModalOpen}
+          onConnectDevice={() => openDevices('riego')}
           onClose={() => {
             setIsWateringModalOpen(false);
             setWateringModalInitialRecipe(null);
@@ -920,6 +939,7 @@ export default function App() {
         <EnvironmentModal
           isOpen={isEnvModalOpen}
           onClose={() => setIsEnvModalOpen(false)}
+          onConnectDevice={() => openDevices('ambiente')}
           userId={currentUser.uid}
           cultivations={cultivations.filter((c) => !c.isFinished)}
           defaultCultivationId={selectedCultivationId || undefined}

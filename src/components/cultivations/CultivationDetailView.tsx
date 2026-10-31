@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   Scale,
   ShieldAlert,
+  Plug,
 } from 'lucide-react';
 import {
   Cultivation,
@@ -67,6 +68,7 @@ import { evaluateEnvironmentReading } from '../../utils/agronomicThresholds';
 import { resolveCultivationDisplayPhoto } from '../../utils/cultivationPhotoResolver';
 import { useGeneticsCatalogPhotos } from '../../hooks/useGeneticsCatalogPhotos';
 import { GeneticsHeaderPhoto } from './GeneticsHeaderPhoto';
+import { LightCycleCard, type LightSchedule } from './LightCycleCard';
 
 interface CultivationDetailViewProps {
   cultivation: Cultivation;
@@ -91,6 +93,10 @@ interface CultivationDetailViewProps {
   onOpenWateringModalWithRecipe?: (products: WateringProductItem[], defaultPh?: number, defaultEc?: number) => void;
   onWateringUpdated?: (updatedWatering: Watering) => void;
   onCultivationUpdated?: (updatedCultivation: Cultivation) => void;
+  /** Abre Equipos para conectar un enchufe (luz), un sensor (ambiente) o una bomba o sonda (riego). */
+  onOpenDevices?: (focus: 'luz' | 'ambiente' | 'riego') => void;
+  /** Se guardó la hora de encendido de la luz. */
+  onLightSaved?: (updatedCultivation: Cultivation) => void;
 }
 
 export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
@@ -115,6 +121,8 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
   onOpenWateringModalWithRecipe,
   onWateringUpdated,
   onCultivationUpdated,
+  onOpenDevices,
+  onLightSaved,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'fertilization' | 'photos' | 'table' | 'diary' | 'calendar'>('overview');
   const [isHarvestModalOpen, setIsHarvestModalOpen] = useState(false);
@@ -833,6 +841,19 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
             <IrrigationForecastCard cultivation={cultivation} waterings={waterings} envRecords={envRecords} />
           )}
 
+          {/* Luz del cultivo (indoor): prendida o apagada, cuenta regresiva y próximos 7 días */}
+          {!isCosechado && cultivation.type === 'Indoor' && (
+            <LightCycleCard
+              cultivation={cultivation}
+              onSaveSchedule={async (schedule: LightSchedule) => {
+                const lighting = { ...(cultivation.lighting ?? { type: '' }), ...schedule };
+                await cultivationService.updateCultivation(cultivation.id, { lighting }, userId);
+                onLightSaved?.({ ...cultivation, lighting });
+              }}
+              onConnectPlug={onOpenDevices ? () => onOpenDevices('luz') : undefined}
+            />
+          )}
+
           {/* Quick Metrics Bar */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div
@@ -859,6 +880,17 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
               <span className="text-[11px] text-ink-subtle font-medium">
                 {lastWatering ? `pH ${lastWatering.phIn || '—'} · EC ${lastWatering.ecIn || '—'}` : 'Agregá un riego'}
               </span>
+              {onOpenDevices && (
+                <button
+                  type="button"
+                  id="connect-irrigation-device"
+                  onClick={() => onOpenDevices('riego')}
+                  className="mt-2 min-h-9 text-[11px] font-bold text-brand hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <Plug className="w-3.5 h-3.5" aria-hidden="true" />
+                  Conectar bomba o sonda
+                </button>
+              )}
             </div>
 
             <div className="bg-white rounded-3xl p-5 border border-line shadow-2xs relative group">
@@ -888,6 +920,17 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                     : '11°-35°C | 25-75%'}
                 </span>
               </div>
+              {onOpenDevices && (
+                <button
+                  type="button"
+                  id="connect-env-sensor"
+                  onClick={() => onOpenDevices('ambiente')}
+                  className="mt-2 min-h-9 text-[11px] font-bold text-brand hover:underline flex items-center gap-1 cursor-pointer"
+                >
+                  <Plug className="w-3.5 h-3.5" aria-hidden="true" />
+                  Conectar mi sensor
+                </button>
+              )}
             </div>
 
             <div className="bg-white rounded-3xl p-5 border border-line shadow-2xs">

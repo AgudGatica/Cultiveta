@@ -10,6 +10,7 @@ import {
   Calculator,
   X,
   Trophy,
+  Plug,
 } from 'lucide-react';
 
 interface MobileNavProps {
@@ -46,6 +47,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
     { id: 'genetics', label: 'Genéticas', icon: Dna, desc: 'Banco de semillas y cepas' },
     { id: 'compare_crops', label: 'Comparador', icon: Scale, desc: 'Curvas de cosechas anteriores' },
     { id: 'calculators', label: 'Calculadoras', icon: Calculator, desc: 'VPD, luz PPFD y mezclas' },
+    { id: 'devices', label: 'Equipos', icon: Plug, desc: 'Enchufes, sensores y riego conectados' },
   ];
 
   const isSecondaryActive =

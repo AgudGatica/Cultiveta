@@ -10,7 +10,8 @@ export type AppView =
   | 'ai_assistant'
   | 'calculators'
   | 'profile'
-  | 'achievements';
+  | 'achievements'
+  | 'devices';
 
 const VIEW_PATHS: Record<Exclude<AppView, 'cultivation_detail'>, string> = {
   dashboard: '/',
@@ -21,6 +22,7 @@ const VIEW_PATHS: Record<Exclude<AppView, 'cultivation_detail'>, string> = {
   calculators: '/calculadoras',
   profile: '/perfil',
   achievements: '/perfil/logros',
+  devices: '/equipos',
 };
 
 /** Cosechas se unió con Cultivos: /cosechas es una dirección vieja que lleva a /cultivos. */

@@ -160,6 +160,10 @@ export interface Cultivation {
     photoperiodHoursLight?: number;
     photoperiodHoursDark?: number;
     distanceCm?: number;
+    /** Hora en que se prende la luz (HH:MM), como en el timer: con ella se calcula si está prendida y cuándo cambia. */
+    lightsOnTime?: string;
+    /** Superciclos: día de un encendido (YYYY-MM-DD), porque cada encendido se corre. En ciclos de 24 h va vacío. */
+    lightsOnDate?: string;
   };
   locationCoordinates?: {
     lat: number;
