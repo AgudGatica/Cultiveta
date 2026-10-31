@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Droplets, Fan, Loader2, Square } from 'lucide-react';
 import type { Cultivation, Watering } from '../../types';
 import { climateBindingsFor, devicesService, pumpBindingFor, useDevicesOverview } from '../../services/devicesService';
-import { CLIMATE_ROLES, DEFAULT_PUMP, describeClimateRule, secondsToLiters } from '../../utils/deviceRules';
+import { CLIMATE_ROLES, DEFAULT_PUMP, describeAutoIrrigation, describeClimateRule, secondsToLiters } from '../../utils/deviceRules';
 import { wateringService } from '../../services/wateringService';
 import { getLocalTodayDateOnly } from '../../utils/growthStageUtils';
 
@@ -17,6 +17,13 @@ interface CropDevicesCardProps {
 
 const PRESETS = [15, 30, 60, 120];
 const liters = (l: number) => `${(Math.round(l * 100) / 100).toString().replace('.', ',')} L`;
+const pad = (n: number) => String(n).padStart(2, '0');
+/** "hoy 18:32" o "30/10 18:32". */
+function shortWhen(ms: number): string {
+  const d = new Date(ms);
+  const clock = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return d.toDateString() === new Date().toDateString() ? `hoy ${clock}` : `${pad(d.getDate())}/${pad(d.getMonth() + 1)} ${clock}`;
+}
 
 /**
  * Equipos del cultivo (traído de Órbita): la bomba de riego, con "Regar" (se apaga sola con la cuenta
@@ -106,7 +113,7 @@ export const CropDevicesCard: React.FC<CropDevicesCardProps> = ({ cultivation, u
             <div className="flex items-center justify-between gap-2">
               <p id="pump-watering" className="text-sm font-bold text-ink flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin text-brand" aria-hidden="true" />
-                Regando · quedan {Math.max(0, Math.ceil((watering.endsAt - now) / 1000))} s
+                Regando{watering.auto ? ' solo' : ''} · quedan {Math.max(0, Math.ceil((watering.endsAt - now) / 1000))} s
               </p>
               <button type="button" disabled={busy} onClick={stop} className="cultiveta-btn-secondary text-xs">
                 <Square className="w-3.5 h-3.5" aria-hidden="true" />
@@ -137,6 +144,20 @@ export const CropDevicesCard: React.FC<CropDevicesCardProps> = ({ cultivation, u
               </div>
               <p className="text-[11px] text-ink-subtle">Se apaga sola con la cuenta regresiva del enchufe, aunque se corte internet. El riego queda anotado en el cultivo.</p>
             </>
+          )}
+          {pump.auto && pump.auto.mode !== 'off' ? (
+            <div id="crop-pump-auto" className="rounded-xl bg-white border border-line p-3 space-y-0.5">
+              <p className="text-xs font-bold text-ink">Riego automático</p>
+              <p className="text-xs text-ink-muted">{describeAutoIrrigation(pump.auto)}</p>
+              {pump.irrigation?.last && (
+                <p className="text-[11px] text-ink-subtle">
+                  Último: {shortWhen(pump.irrigation.last.at)} · {pump.irrigation.last.seconds} s ({liters(pump.irrigation.last.liters)})
+                </p>
+              )}
+              {pump.irrigation?.note && <p className="text-[11px] text-ink-subtle">Ahora: {pump.irrigation.note}</p>}
+            </div>
+          ) : (
+            <p className="text-[11px] text-ink-subtle">Para que riegue sola (con la luz, a una hora o por humedad), activá el riego automático en Equipos.</p>
           )}
           {error && <p className="text-xs font-bold text-error">{error}</p>}
         </div>

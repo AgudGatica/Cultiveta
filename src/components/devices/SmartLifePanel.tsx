@@ -2,8 +2,9 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Loader2, Power, RefreshCw, Unplug } from 'lucide-react';
 import type { Cultivation } from '../../types';
 import { devicesService, scheduleSnapshot, type DeviceBindingState, type SmartDevice } from '../../services/devicesService';
-import { CLIMATE_ROLES, DEFAULT_PUMP, defaultClimateRule, describeClimateRule, validatePump, type ClimateRole, type PumpConfig } from '../../utils/deviceRules';
+import { CLIMATE_ROLES, DEFAULT_PUMP, defaultClimateRule, describeAutoIrrigation, describeClimateRule, validatePump, type ClimateRole, type PumpConfig } from '../../utils/deviceRules';
 import { ClimateRuleEditor } from './ClimateRuleEditor';
+import { AutoIrrigationEditor } from './AutoIrrigationEditor';
 
 interface SmartLifePanelProps {
   cultivations: Cultivation[];
@@ -21,7 +22,7 @@ type Use = 'light' | 'pump' | ClimateRole;
 const USE_LABEL: Record<string, string> = { light: 'Luz', pump: 'Bomba de riego', ...Object.fromEntries(Object.entries(CLIMATE_ROLES).map(([k, r]) => [k, r.label])) };
 function bindingText(b: DeviceBindingState): string {
   if (b.role === 'light') return `Luz de ${b.cultivationName}`;
-  if (b.role === 'pump') return `Bomba de riego de ${b.cultivationName}`;
+  if (b.role === 'pump') return `Bomba de riego de ${b.cultivationName} · ${describeAutoIrrigation(b.auto)}`;
   if (b.role === 'climate' && b.climateRole && b.rule) return `${CLIMATE_ROLES[b.climateRole].label} de ${b.cultivationName} · ${describeClimateRule(b.climateRole, b.rule)}`;
   return b.cultivationName;
 }
@@ -162,7 +163,7 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
         role,
         cultivationId: crop.id,
         cultivationName: crop.name,
-        schedule: role === 'light' ? scheduleSnapshot(crop) : null,
+        schedule: role === 'light' || role === 'pump' ? scheduleSnapshot(crop) : null,
         ...(role === 'climate' ? { climateRole: u as ClimateRole, rule: defaultClimateRule(u as ClimateRole) } : {}),
         ...(role === 'pump' ? { pump: { ...DEFAULT_PUMP } } : {}),
       });
@@ -314,6 +315,21 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
                         }}
                       />
                     )}
+                    {editing === `${ch.binding.id}|auto` && ch.binding.role === 'pump' && (
+                      <AutoIrrigationEditor
+                        auto={ch.binding.auto}
+                        pump={ch.binding.pump || DEFAULT_PUMP}
+                        hasSoilSensor={(devices || []).some((x) => x.sensorBindings.some((sb) => sb.role === 'sensor_soil' && sb.cultivationId === ch.binding!.cultivationId))}
+                        hasLightSchedule={!!ch.binding.schedule || !!scheduleSnapshot(cultivations.find((c) => c.id === ch.binding!.cultivationId) || {})}
+                        onCancel={() => setEditing(null)}
+                        onSave={async (a) => {
+                          await devicesService.setAuto(ch.binding!.id, a);
+                          setEditing(null);
+                          await loadDevices();
+                          toast(a.mode === 'off' ? 'La bomba riega solo a mano' : 'Riego automático guardado');
+                        }}
+                      />
+                    )}
                     {editing === ch.binding.id && ch.binding.role === 'pump' && (
                       <PumpEditor
                         pump={ch.binding.pump || DEFAULT_PUMP}
@@ -327,6 +343,11 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
                       />
                     )}
                     <div className="flex flex-wrap gap-3">
+                      {ch.binding.role === 'pump' && editing !== `${ch.binding.id}|auto` && (
+                        <button type="button" onClick={() => setEditing(`${ch.binding!.id}|auto`)} className="pump-auto-btn text-[11px] font-bold text-brand hover:underline">
+                          Riego automático
+                        </button>
+                      )}
                       {(ch.binding.role === 'climate' || ch.binding.role === 'pump') && editing !== ch.binding.id && (
                         <button type="button" onClick={() => setEditing(ch.binding!.id)} className="text-[11px] font-bold text-brand hover:underline">
                           {ch.binding.role === 'pump' ? 'Caudal y topes' : 'Cambiar regla'}

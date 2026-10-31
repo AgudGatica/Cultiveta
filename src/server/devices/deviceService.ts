@@ -13,12 +13,15 @@
  *   desasignarlo o al desconectar). La luz y lo que la sigue quedan cargados en Smart Life: siguen
  *   aunque el servidor no corra. La revisión periódica (Cloud Scheduler, cada 5 min) rellena lo
  *   cargado, aplica las reglas por sensor, corrige lo que quedó al revés y apaga una bomba olvidada.
+ * - La bomba puede regar sola (programado o por humedad del sustrato): lo decide la revisión, con los
+ *   mismos topes que "Regar", y cada riego queda anotado en el cultivo.
  */
 import crypto from 'crypto';
 import { TuyaCloud, TuyaError, TUYA_REGIONS, channelsOf, maskId, powerOf, sensorsOf, type SensorReadings } from './tuyaClient';
 import { createMockTuya, MOCK_TUYA_ID, MOCK_TUYA_SECRET, type MockTuya } from './tuyaMock';
 import { clearSchedule, syncSchedule, SCHEDULE_CATEGORY, type LightItem, type ScheduleState } from './lightSchedule';
-import { isValidTimeZone } from './tz';
+import { isValidTimeZone, zonedParts } from './tz';
+import { LATE_MS, scheduledWaterings, wetDryStep, type WetDryState } from './autoIrrigation';
 import { HOUR_MS, lightState } from '../../utils/lightCycle';
 import {
   checkWaterOrder,
@@ -27,7 +30,10 @@ import {
   isClimateRole,
   validateClimateRule,
   validatePump,
+  validateAutoIrrigation,
+  DEFAULT_AUTO_IRRIGATION,
   DEFAULT_PUMP,
+  type AutoIrrigation,
   type ClimateRole,
   type ClimateRule,
   type PumpConfig,
@@ -53,6 +59,7 @@ export interface DeviceBinding {
   cultivationId: string;
   cultivationName: string;
   role: BindingRole;
+  /** Luz: su horario. Bomba: el horario de la luz del cultivo (para el riego atado a la luz y para saber si es de noche). */
   schedule?: LightScheduleSnapshot | null;
   /** Equipo de clima: qué es y cómo se maneja. */
   climateRole?: ClimateRole | null;
@@ -61,6 +68,8 @@ export interface DeviceBinding {
   pump?: PumpConfig | null;
   countdownCode?: string | null;
   countdownUnit?: 's' | 'min' | null;
+  /** Bomba: riego automático (programado o por humedad). */
+  auto?: AutoIrrigation | null;
   /** Por qué está prendido o apagado (lo último que decidió la revisión). */
   lastReason?: string | null;
 }
@@ -84,9 +93,28 @@ export interface DeviceIntegration {
   cache: Record<string, CacheEntry>;
   lastCommand: Record<string, { at: number; value: boolean }>;
   /** Riegos con bomba: el último de cada bomba (por id de asignación). */
-  watering?: Record<string, { at: number; seconds: number; liters: number; endsAt: number }>;
+  watering?: Record<string, { at: number; seconds: number; liters: number; endsAt: number; auto?: boolean }>;
+  /** Riego automático de cada bomba: hasta dónde miró, el estado del modo por humedad y lo último que hizo. */
+  irrigation?: Record<string, IrrigationState>;
   lastError: string | null;
   updatedAt: number;
+}
+
+export interface IrrigationState {
+  lastCheck: number;
+  wetdry: WetDryState | null;
+  last: { at: number; seconds: number; liters: number; reason: string } | null;
+  /** Por qué no regó en la última revisión (o el error). */
+  note: string | null;
+}
+
+/** Lo que se anota en los riegos del cultivo (colección waterings). */
+export interface AutoWateringRecord {
+  cultivationId: string;
+  date: string;
+  time: string;
+  volumeLiters: number;
+  observations: string;
 }
 
 export interface DeviceStore {
@@ -149,7 +177,7 @@ const SENSOR_STALE_MS = 30 * 60_000; // una lectura más vieja que esto cuenta c
 const SWITCH_CODE = /^switch(_\d+|_usb\d*)?$/;
 
 function blank(userId: string, now: number): DeviceIntegration {
-  return { userId, tuya: null, bindings: [], paused: [], schedules: {}, cache: {}, lastCommand: {}, watering: {}, lastError: null, updatedAt: now };
+  return { userId, tuya: null, bindings: [], paused: [], schedules: {}, cache: {}, lastCommand: {}, watering: {}, irrigation: {}, lastError: null, updatedAt: now };
 }
 
 export function validateSchedule(s: any): LightScheduleSnapshot | null {
@@ -189,6 +217,31 @@ function cleanPump(raw: any): PumpConfig {
   return cfg;
 }
 
+function cleanAuto(raw: any, maxSeconds: number): AutoIrrigation {
+  if (!raw || typeof raw !== 'object') return { ...DEFAULT_AUTO_IRRIGATION };
+  const d = DEFAULT_AUTO_IRRIGATION;
+  const num = (v: any, def: number) => (v == null || v === '' ? def : Number(v));
+  const sc = raw.scheduled || {};
+  const wd = raw.wetdry || {};
+  const auto: AutoIrrigation = {
+    mode: raw.mode,
+    scheduled: {
+      when: sc.when === 'fixed' ? 'fixed' : 'light',
+      trigger: sc.trigger === 'before_off' ? 'before_off' : 'after_on',
+      offsetMin: num(sc.offsetMin, d.scheduled.offsetMin),
+      fixedTime: String(sc.fixedTime || d.scheduled.fixedTime),
+      shotS: num(sc.shotS, d.scheduled.shotS),
+      pulses: num(sc.pulses, d.scheduled.pulses),
+      pauseMin: num(sc.pauseMin, d.scheduled.pauseMin),
+    },
+    wetdry: { dry: num(wd.dry, d.wetdry.dry), wet: num(wd.wet, d.wetdry.wet), shotS: num(wd.shotS, d.wetdry.shotS), pauseMin: num(wd.pauseMin, d.wetdry.pauseMin), maxShots: num(wd.maxShots, d.wetdry.maxShots) },
+    timeZone: isValidTimeZone(String(raw.timeZone || '')) ? String(raw.timeZone) : d.timeZone,
+  };
+  const errs = validateAutoIrrigation(auto, maxSeconds);
+  if (errs.length) throw new DeviceError(errs[0]);
+  return auto;
+}
+
 export class DeviceService {
   private store: DeviceStore;
   private now: () => number;
@@ -197,6 +250,7 @@ export class DeviceService {
   private mocks = new Map<string, MockTuya>();
   private specs = new Map<string, any>();
   private verifyCultivation: (userId: string, cultivationId: string) => Promise<{ name: string } | null>;
+  private recordWatering: (userId: string, w: AutoWateringRecord) => Promise<void>;
 
   constructor(o: {
     store: DeviceStore;
@@ -204,11 +258,14 @@ export class DeviceService {
     fetchImpl?: (url: string, init?: any) => Promise<any>;
     /** Con Firestore Admin: confirma que el cultivo es de esa persona y devuelve su nombre. */
     verifyCultivation?: (userId: string, cultivationId: string) => Promise<{ name: string } | null>;
+    /** Con Firestore Admin: anota en el cultivo cada riego automático. */
+    recordWatering?: (userId: string, w: AutoWateringRecord) => Promise<void>;
   }) {
     this.store = o.store;
     this.now = o.now || Date.now;
     this.fetchImpl = o.fetchImpl;
     this.verifyCultivation = o.verifyCultivation || (async () => null);
+    this.recordWatering = o.recordWatering || (async () => {});
   }
 
   /** La zapatilla de prueba de esa persona (para tests y para "probar sin cuenta"). */
@@ -238,6 +295,7 @@ export class DeviceService {
   private async load(userId: string): Promise<DeviceIntegration> {
     const integ = (await this.store.get(userId)) || blank(userId, this.now());
     integ.watering = integ.watering || {};
+    integ.irrigation = integ.irrigation || {};
     return integ;
   }
   private async persist(integ: DeviceIntegration) {
@@ -397,12 +455,13 @@ export class DeviceService {
       cultivationId: input.cultivationId,
       cultivationName,
       role,
-      schedule: role === 'light' ? validateSchedule(input.schedule) : null,
+      schedule: role === 'light' || role === 'pump' ? validateSchedule(input.schedule) : null,
       climateRole,
       rule,
       pump,
       countdownCode: role === 'pump' ? channel!.countdownCode : null,
       countdownUnit: role === 'pump' ? channel!.countdownUnit : null,
+      auto: null,
       lastReason: null,
     };
     integ.bindings.push(binding);
@@ -428,6 +487,7 @@ export class DeviceService {
 
   private async unbindInto(c: TuyaCloud, integ: DeviceIntegration, b: DeviceBinding) {
     integ.bindings = integ.bindings.filter((x) => x.id !== b.id);
+    if (integ.irrigation) delete integ.irrigation[b.id];
     if (!MANAGED.includes(b.role)) return;
     if (b.role === 'pump') await c.sendCommands(b.deviceId, [{ code: b.code, value: false }]).catch(() => {});
     // si era una luz, lo que la seguía en otros equipos se vuelve a cargar sin ella
@@ -462,7 +522,27 @@ export class DeviceService {
     const integ = await this.load(userId);
     const b = integ.bindings.find((x) => x.id === bindingId && x.role === 'pump');
     if (!b) throw new DeviceError('Esa bomba ya no está asignada.', 404);
-    b.pump = cleanPump(raw);
+    const pump = cleanPump(raw);
+    if (b.auto && b.auto.mode !== 'off') {
+      const errs = validateAutoIrrigation(b.auto, pump.maxSeconds);
+      if (errs.length) throw new DeviceError(`Con ese tope no anda el riego automático: ${errs[0]}`);
+    }
+    b.pump = pump;
+    await this.persist(integ);
+    return b;
+  }
+
+  /** Riego automático de una bomba: programado, por humedad o apagado. Empieza a contar desde ahora. */
+  async setAuto(userId: string, bindingId: string, raw: unknown) {
+    const integ = await this.load(userId);
+    const b = integ.bindings.find((x) => x.id === bindingId && x.role === 'pump');
+    if (!b) throw new DeviceError('Esa bomba ya no está asignada.', 404);
+    const auto = cleanAuto(raw, (b.pump || DEFAULT_PUMP).maxSeconds);
+    if (auto.mode === 'wetdry' && !integ.bindings.some((x) => x.cultivationId === b.cultivationId && x.role === 'sensor_soil')) {
+      throw new DeviceError('Para regar por humedad hace falta una sonda de sustrato asignada a este cultivo.');
+    }
+    b.auto = auto;
+    integ.irrigation![b.id] = { lastCheck: this.now(), wetdry: null, last: integ.irrigation![b.id]?.last || null, note: null };
     await this.persist(integ);
     return b;
   }
@@ -470,16 +550,21 @@ export class DeviceService {
   /** El horario del cultivo cambió (hora de encendido o fotoperiodo): se vuelve a cargar en Smart Life. */
   async setSchedule(userId: string, cultivationId: string, schedule: unknown) {
     const integ = await this.store.get(userId);
-    const b = integ?.bindings.find((x) => x.cultivationId === cultivationId && x.role === 'light');
-    if (!integ || !b) return { changed: false };
+    const targets = integ?.bindings.filter((x) => x.cultivationId === cultivationId && (x.role === 'light' || x.role === 'pump')) || [];
+    if (!integ || !targets.length) return { changed: false };
     integ.watering = integ.watering || {};
+    integ.irrigation = integ.irrigation || {};
     const next = schedule == null ? null : validateSchedule(schedule);
-    if (JSON.stringify(next) === JSON.stringify(b.schedule ?? null)) return { changed: false };
-    b.schedule = next;
-    const c = this.client(userId, integ);
-    const followers = this.followers(integ, cultivationId);
-    for (const id of new Set([b.deviceId, ...followers.map((f) => f.deviceId)])) await this.syncDevice(c, integ, id, true);
-    for (const x of [b, ...followers]) await this.applyNow(c, integ, x);
+    const changed = targets.filter((x) => JSON.stringify(next) !== JSON.stringify(x.schedule ?? null));
+    if (!changed.length) return { changed: false };
+    for (const x of changed) x.schedule = next;
+    const b = changed.find((x) => x.role === 'light');
+    if (b) {
+      const c = this.client(userId, integ);
+      const followers = this.followers(integ, cultivationId);
+      for (const id of new Set([b.deviceId, ...followers.map((f) => f.deviceId)])) await this.syncDevice(c, integ, id, true);
+      for (const x of [b, ...followers]) await this.applyNow(c, integ, x);
+    }
     await this.persist(integ);
     return { changed: true };
   }
@@ -505,7 +590,13 @@ export class DeviceService {
     const integ = await this.load(userId);
     const b = integ.bindings.find((x) => x.id === bindingId && x.role === 'pump');
     if (!b) throw new DeviceError('Ese cultivo no tiene una bomba asignada.', 404);
-    const c = this.client(userId, integ);
+    const r = await this.waterInto(this.client(userId, integ), integ, b, seconds, false);
+    await this.persist(integ);
+    return { ...r, cultivationId: b.cultivationId };
+  }
+
+  /** Prende la bomba con su cuenta regresiva (pasando por los topes). No guarda: lo hace quien llama. */
+  private async waterInto(c: TuyaCloud, integ: DeviceIntegration, b: DeviceBinding, seconds: number, auto: boolean) {
     let online = false;
     try {
       online = (await this.poll(c, integ, b.deviceId, 0)).online;
@@ -522,11 +613,86 @@ export class DeviceService {
     ]);
     const t = this.now();
     const liters = (realSeconds * (b.pump || DEFAULT_PUMP).flowLph) / 3600;
-    integ.watering![b.id] = { at: t, seconds: realSeconds, liters, endsAt: t + realSeconds * 1000 };
+    integ.watering![b.id] = { at: t, seconds: realSeconds, liters, endsAt: t + realSeconds * 1000, ...(auto ? { auto: true } : {}) };
     integ.lastCommand[b.id] = { at: t, value: true };
     if (integ.cache[b.deviceId]) integ.cache[b.deviceId].status[b.code] = true;
-    await this.persist(integ);
-    return { seconds: realSeconds, liters, endsAt: t + realSeconds * 1000, cultivationId: b.cultivationId };
+    return { seconds: realSeconds, liters, endsAt: t + realSeconds * 1000 };
+  }
+
+  /** La luz del cultivo para el riego: la del toma de luz si hay, o la que mandó la app con la bomba. */
+  private irrigationLight(integ: DeviceIntegration, pump: DeviceBinding) {
+    return this.lightOf(integ, pump.cultivationId)?.schedule || pump.schedule || null;
+  }
+
+  /** Un paso del riego automático de una bomba (en la revisión). */
+  private async stepAuto(c: TuyaCloud, integ: DeviceIntegration, b: DeviceBinding, t: number) {
+    const auto = b.auto;
+    if (!auto || auto.mode === 'off') return;
+    const st = (integ.irrigation![b.id] ||= { lastCheck: t, wetdry: null, last: null, note: null });
+    const running = integ.watering?.[b.id];
+    const busy = !!running && t < running.endsAt + 30_000;
+    let due: { seconds: number; reason: string } | null = null;
+    if (auto.mode === 'scheduled') {
+      const from = Math.max(st.lastCheck ?? t, t - LATE_MS); // si el servidor estuvo caído, no riega atrasado
+      const list = scheduledWaterings(auto, this.irrigationLight(integ, b), from, t + 1);
+      st.lastCheck = t + 1;
+      if (!list.length) {
+        if (auto.scheduled.when === 'light' && !this.irrigationLight(integ, b)) st.note = 'falta la hora de encendido de la luz del cultivo';
+        return;
+      }
+      if (busy) {
+        st.note = 'se salteó un riego programado porque la bomba ya estaba regando';
+        return;
+      }
+      due = list[list.length - 1];
+    } else {
+      if (busy) return;
+      const soil = integ.bindings.find((x) => x.cultivationId === b.cultivationId && x.role === 'sensor_soil');
+      const entry = soil ? integ.cache[soil.deviceId] : null;
+      const moisture = entry && entry.online !== false && t - entry.at <= SENSOR_STALE_MS ? entry.sensors?.soil ?? null : null;
+      const light = this.irrigationLight(integ, b);
+      const s = light ? lightState({ lightHours: light.lightHours, darkHours: light.darkHours }, light.anchorMs, t) : null;
+      const isNight = !!s && (!s.started || !s.on);
+      const prev = st.wetdry;
+      const r = wetDryStep(prev, moisture, isNight, t, auto.wetdry, auto.timeZone);
+      st.wetdry = r.state;
+      st.note = r.action === 'shot' ? null : soil ? r.reason : 'falta una sonda de sustrato en el cultivo';
+      if (r.action !== 'shot') return;
+      due = { seconds: r.seconds!, reason: r.reason };
+      try {
+        return await this.autoWater(c, integ, b, st, due);
+      } catch (e) {
+        st.wetdry = { ...r.state, shotsToday: r.state.shotsToday - 1, lastShotAt: prev?.lastShotAt ?? null }; // no cuenta el que no salió
+        throw e;
+      }
+    }
+    await this.autoWater(c, integ, b, st, due);
+  }
+
+  private async autoWater(c: TuyaCloud, integ: DeviceIntegration, b: DeviceBinding, st: IrrigationState, due: { seconds: number; reason: string }) {
+    try {
+      const r = await this.waterInto(c, integ, b, due.seconds, true);
+      const at = this.now();
+      st.last = { at, seconds: r.seconds, liters: r.liters, reason: due.reason };
+      st.note = null;
+      const tz = b.auto?.timeZone || DEFAULT_AUTO_IRRIGATION.timeZone;
+      const p = zonedParts(at, tz);
+      const pad = (n: number) => String(n).padStart(2, '0');
+      try {
+        await this.recordWatering(integ.userId, {
+          cultivationId: b.cultivationId,
+          date: `${p.year}-${pad(p.month)}-${pad(p.day)}`,
+          time: `${pad(p.hour)}:${pad(p.minute)}`,
+          volumeLiters: Math.round(r.liters * 100) / 100,
+          observations: `Riego automático con bomba (${r.seconds} s) · ${due.reason}`,
+        });
+      } catch (e: any) {
+        st.note = `regó, pero no se pudo anotar el riego: ${e?.message || e}`;
+      }
+    } catch (e: any) {
+      st.note = `no pudo regar: ${e?.message || e}`;
+      throw e;
+    }
   }
 
   async stopWater(userId: string, bindingId: string) {
@@ -679,6 +845,7 @@ export class DeviceService {
         readAt: entry?.at ?? null,
         loaded: (b.role === 'light' || b.role === 'climate') && sched && sched.codes.includes(b.code) ? { mode: sched.mode, until: sched.until, daily: sched.daily?.find((p) => p.code === b.code) || null, error: sched.error } : null,
         watering: b.role === 'pump' && w ? { ...w, active: t < w.endsAt } : null,
+        irrigation: b.role === 'pump' && integ.irrigation?.[b.id] ? { last: integ.irrigation[b.id].last, note: integ.irrigation[b.id].note } : null,
       });
     }
     await this.persist(integ);
@@ -690,19 +857,32 @@ export class DeviceService {
   /** Rellena lo cargado, aplica las reglas por sensor, corrige lo que quedó al revés y lee los sensores. */
   async tick(userId: string) {
     const integ = await this.store.get(userId);
-    if (!integ?.tuya) return { devices: 0, fixes: 0 };
+    if (!integ?.tuya) return { devices: 0, fixes: 0, waterings: 0 };
     integ.watering = integ.watering || {};
+    integ.irrigation = integ.irrigation || {};
     const c = this.client(userId, integ);
     const t = this.now();
     let fixes = 0;
-    // los sensores de cultivos con reglas por sensor se leen en cada vuelta (antes que los equipos)
-    const sensorRules = new Set(integ.bindings.filter((b) => b.role === 'climate' && b.rule?.mode === 'sensor').map((b) => b.cultivationId));
+    let waterings = 0;
+    // los sensores de cultivos con reglas por sensor o riego por humedad se leen en cada vuelta (antes que los equipos)
+    const sensorRules = new Set(
+      integ.bindings.filter((b) => (b.role === 'climate' && b.rule?.mode === 'sensor') || (b.role === 'pump' && b.auto?.mode === 'wetdry')).map((b) => b.cultivationId)
+    );
     for (const s of integ.bindings.filter((b) => b.role === 'sensor_th' || b.role === 'sensor_soil')) {
       try {
         await this.poll(c, integ, s.deviceId, sensorRules.has(s.cultivationId) ? SENSOR_POLL_MS : SLOW_POLL_MS);
       } catch (e: any) {
         integ.lastError = e?.message || String(e);
       }
+    }
+    for (const b of integ.bindings.filter((x) => x.role === 'pump' && x.auto && x.auto.mode !== 'off')) {
+      const before = integ.irrigation[b.id]?.last?.at;
+      try {
+        await this.stepAuto(c, integ, b, t);
+      } catch (e: any) {
+        integ.lastError = e?.message || String(e);
+      }
+      if (integ.irrigation[b.id]?.last?.at !== before) waterings++;
     }
     const deviceIds = [...new Set(integ.bindings.filter((b) => MANAGED.includes(b.role)).map((b) => b.deviceId))];
     for (const deviceId of deviceIds) {
@@ -730,19 +910,22 @@ export class DeviceService {
       }
     }
     await this.persist(integ);
-    return { devices: deviceIds.length, fixes };
+    return { devices: deviceIds.length, fixes, waterings };
   }
 
   async tickAll() {
     const ids = await this.store.listUserIds();
     let fixes = 0;
+    let waterings = 0;
     for (const id of ids) {
       try {
-        fixes += (await this.tick(id)).fixes;
+        const r = await this.tick(id);
+        fixes += r.fixes;
+        waterings += r.waterings || 0;
       } catch {
         /* sigue con las demás cuentas */
       }
     }
-    return { accounts: ids.length, fixes };
+    return { accounts: ids.length, fixes, waterings };
   }
 }

@@ -7,7 +7,7 @@ import { useSyncExternalStore } from 'react';
 import { authFetch } from './apiClient';
 import type { Cultivation } from '../types';
 import { cycleFromLighting, cycleMs, isDailyCycle, lightAnchor } from '../utils/lightCycle';
-import type { ClimateRole, ClimateRule, PumpConfig } from '../utils/deviceRules';
+import type { AutoIrrigation, ClimateRole, ClimateRule, PumpConfig } from '../utils/deviceRules';
 
 export type DeviceRole = 'light' | 'pump' | 'climate' | 'sensor_th' | 'sensor_soil';
 
@@ -40,9 +40,12 @@ export interface DeviceBindingState {
   rule?: ClimateRule | null;
   pump?: PumpConfig | null;
   countdownCode?: string | null;
+  /** Bomba: riego automático y lo último que hizo (o por qué no regó). */
+  auto?: AutoIrrigation | null;
+  irrigation?: { last: { at: number; seconds: number; liters: number; reason: string } | null; note: string | null } | null;
   /** Por qué está prendido o apagado (lo último que decidió el servidor). */
   lastReason?: string | null;
-  watering?: { at: number; seconds: number; liters: number; endsAt: number; active: boolean } | null;
+  watering?: { at: number; seconds: number; liters: number; endsAt: number; active: boolean; auto?: boolean } | null;
   online: boolean | null;
   on: boolean | null;
   sensors: SensorReadings | null;
@@ -99,13 +102,15 @@ export function scheduleSnapshot(cultivation: Pick<Cultivation, 'lighting'>, now
   if (!daily && !date) return null;
   const anchorMs = lightAnchor({ lightsOnTime: cultivation.lighting?.lightsOnTime, lightsOnDate: date }, nowMs);
   if (anchorMs == null) return null;
-  let timeZone = 'America/Argentina/Buenos_Aires';
+  return { lightHours: cycle.lightHours, darkHours: cycle.darkHours, anchorMs, timeZone: localTimeZone() };
+}
+/** Zona horaria del navegador (con la que se cargan los horarios y el riego automático). */
+export function localTimeZone(): string {
   try {
-    timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || timeZone;
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Argentina/Buenos_Aires';
   } catch {
-    /* sin Intl */
+    return 'America/Argentina/Buenos_Aires';
   }
-  return { lightHours: cycle.lightHours, darkHours: cycle.darkHours, anchorMs, timeZone };
 }
 
 /** ¿Es el mismo horario? (el encendido puede venir de otro día del mismo ciclo). */
@@ -166,6 +171,10 @@ export const devicesService = {
   },
   async setPump(bindingId: string, pump: PumpConfig) {
     await api('POST', `/api/devices/bindings/${encodeURIComponent(bindingId)}/pump`, { pump });
+    await devicesService.refreshOverview();
+  },
+  async setAuto(bindingId: string, auto: AutoIrrigation) {
+    await api('POST', `/api/devices/bindings/${encodeURIComponent(bindingId)}/auto`, { auto });
     await devicesService.refreshOverview();
   },
   /** Riega N segundos con la bomba (se apaga sola). */

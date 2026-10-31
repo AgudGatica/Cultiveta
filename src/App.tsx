@@ -174,24 +174,25 @@ export default function App() {
     return () => window.clearInterval(id);
   }, [currentUser, currentView]);
   // Si cambia el horario de la luz de un cultivo con enchufe (hora de encendido o fotoperiodo), se
-  // vuelve a cargar en Smart Life. Se recuerda lo último mandado para no repetirlo.
+  // vuelve a cargar en Smart Life; la bomba también lo recibe (riego con la luz, de noche no riega por
+  // humedad). Se recuerda lo último mandado para no repetirlo.
   const pushedSchedules = React.useRef<Record<string, string>>({});
   useEffect(() => {
     devicesOverview.bindings
-      .filter((b) => b.role === 'light')
+      .filter((b) => b.role === 'light' || b.role === 'pump')
       .forEach((b) => {
         const crop = cultivations.find((c) => c.id === b.cultivationId);
         if (!crop) return;
         const snap = scheduleSnapshot(crop);
         if (sameSchedule(snap, b.schedule ?? null)) return;
         const key = JSON.stringify(snap);
-        if (pushedSchedules.current[b.cultivationId] === key) return;
-        pushedSchedules.current[b.cultivationId] = key;
+        if (pushedSchedules.current[b.id] === key) return;
+        pushedSchedules.current[b.id] = key;
         devicesService
           .pushSchedule(b.cultivationId, snap)
           .then(() => devicesService.refreshOverview())
           .catch(() => {
-            delete pushedSchedules.current[b.cultivationId];
+            delete pushedSchedules.current[b.id];
           });
       });
   }, [cultivations, devicesOverview]);

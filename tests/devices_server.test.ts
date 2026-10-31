@@ -20,6 +20,11 @@
  * 13. Extractor por sensor: margen para no prender y apagar sin parar; sin sensor, apagado.
  * 14. Lo que sigue a la luz (o al revés) queda cargado en Smart Life y sigue los cambios de horario.
  * 15. Humidificador con valores de noche; una regla al revés se rechaza.
+ * 16. Riego programado 30 min después de prender la luz: riega una vez, lo anota con la hora de
+ *     Argentina y, si el servidor estuvo caído, no riega atrasado.
+ * 17. Riego a hora fija en 3 pulsos; topes y sonda que faltan se rechazan; el horario nuevo de la luz
+ *     llega a la bomba.
+ * 18. Riego por humedad: riega al llegar a seco, con pausas, hasta el tope por día; de noche espera.
  */
 
 import { tuyaSign, signUrl, channelsOf, sensorsOf } from '../src/server/devices/tuyaClient';
@@ -50,8 +55,9 @@ const HOUR = 3_600_000;
 
 function setup(start: number) {
   const now = { t: start };
-  const svc = new DeviceService({ store: new MemoryDeviceStore(), now: () => now.t });
-  return { now, svc, mock: () => svc.mockOf('u1') };
+  const records: any[] = [];
+  const svc = new DeviceService({ store: new MemoryDeviceStore(), now: () => now.t, recordWatering: async (userId, w) => void records.push({ userId, ...w }) });
+  return { now, svc, records, count: () => records.length, mock: () => svc.mockOf('u1') };
 }
 const userTimers = (mock: any, cat: string) => (mock.timers.mockstrip01 || []).find((c: any) => c.category.category === cat);
 
@@ -297,6 +303,109 @@ async function run() {
     now.t = ar('20261031', '19:00');
     await svc.tick('u1');
     assert(mock().devices.mockstrip01.status.switch_3 === false, 'de día, 58 % está por arriba de 55: apaga');
+  });
+
+  /** La revisión cada 5 min hasta esa hora (y la cuenta regresiva del equipo, que apaga la bomba). */
+  const ticksUntil = async (env: ReturnType<typeof setup>, until: number) => {
+    while (env.now.t + 5 * 60_000 <= until) {
+      env.now.t += 5 * 60_000;
+      env.mock().runCountdowns();
+      await env.svc.tick('u1');
+    }
+  };
+  const pumpCfg = { flowLph: 8, maxSeconds: 120, maxLiters: 5 };
+  const scheduled = (extra: any) => ({ mode: 'scheduled', timeZone: TZ, scheduled: { when: 'light', trigger: 'after_on', offsetMin: 30, fixedTime: '09:00', shotS: 60, pulses: 1, pauseMin: 30, ...extra } });
+
+  await check('16. Riego programado 30 min después de prender la luz: una vez, anotado y nunca atrasado', async () => {
+    const env = setup(ar('20261031', '18:02'));
+    const { svc, records, count, mock } = env;
+    await svc.connectTuya('u1', { mock: true });
+    // sin toma de luz: la bomba usa el horario que manda la app (18/6, prende a las 18)
+    const pump = await svc.bind('u1', { deviceId: 'mockstrip01', code: 'switch_2', role: 'pump', cultivationId: 'c1', pump: pumpCfg, schedule: light18 });
+    await svc.setAuto('u1', pump.id, scheduled({}));
+    await ticksUntil(env, ar('20261031', '19:00'));
+    assert(count() === 1, `un riego: ${JSON.stringify(records)}`);
+    const r = records[0];
+    assert(r.userId === 'u1' && r.cultivationId === 'c1' && r.date === '2026-10-31' && r.time === '18:32', JSON.stringify(r));
+    assert(r.volumeLiters === 0.13 && /automático/.test(r.observations) && /después de prender/.test(r.observations), r.observations);
+    assert(mock().devices.mockstrip01.status.switch_2 === false, 'la apagó su cuenta regresiva');
+    const ov = await svc.overview('u1');
+    const b = ov.bindings.find((x: any) => x.role === 'pump');
+    assert(b.auto?.mode === 'scheduled' && b.irrigation?.last?.seconds === 60, JSON.stringify(b.irrigation));
+    // al otro día el servidor estuvo caído de 18:20 a 18:45: el de las 18:30 no se hace tarde
+    env.now.t = ar('20261101', '18:45');
+    await svc.tick('u1');
+    assert(count() === 1, 'no riega atrasado');
+    await ticksUntil(env, ar('20261102', '18:40'));
+    assert(count() === 2 && records[1].date === '2026-11-02', `al día siguiente vuelve: ${records.map((x) => x.date + ' ' + x.time)}`);
+  });
+
+  await check('17. A hora fija en 3 pulsos; topes y sonda faltante rechazados; el horario nuevo llega a la bomba', async () => {
+    const env = setup(ar('20261102', '08:50'));
+    const { svc, records, count } = env;
+    await svc.connectTuya('u1', { mock: true });
+    const pump = await svc.bind('u1', { deviceId: 'mockstrip01', code: 'switch_2', role: 'pump', cultivationId: 'c1', pump: pumpCfg, schedule: light18 });
+    const fail = async (auto: any) => {
+      try {
+        await svc.setAuto('u1', pump.id, auto);
+      } catch (e: any) {
+        return e.message as string;
+      }
+      return '';
+    };
+    assert(/tope de la bomba/.test(await fail(scheduled({ shotS: 200 }))), 'más que el tope');
+    assert(/Pausa/.test(await fail(scheduled({ pulses: 3, pauseMin: 2 }))), 'pausa más corta que la revisión');
+    assert(/sonda de sustrato/.test(await fail({ mode: 'wetdry', timeZone: TZ })), 'por humedad sin sonda');
+    await svc.setAuto('u1', pump.id, scheduled({ when: 'fixed', fixedTime: '09:00', pulses: 3, pauseMin: 15 }));
+    let err: any = null;
+    try {
+      await svc.setPump('u1', pump.id, { ...pumpCfg, maxSeconds: 30 });
+    } catch (e) {
+      err = e;
+    }
+    assert(err && /riego automático/.test(err.message), `bajar el tope por debajo del riego: ${err?.message}`);
+    await ticksUntil(env, ar('20261102', '10:00'));
+    assert(records.map((r) => r.time).join() === '09:00,09:20,09:35', `pulsos 09:00, 09:16 y 09:32: ${records.map((r) => r.time)}`);
+    assert(/pulso 3 de 3/.test(records[2].observations), records[2].observations);
+    // la luz pasa a prender a las 6: la bomba se entera (para lo atado a la luz)
+    assert((await svc.setSchedule('u1', 'c1', { ...light18, anchorMs: ar('20261024', '06:00') })).changed, 'cambió');
+    const ov = await svc.overview('u1');
+    assert(ov.bindings.find((x: any) => x.role === 'pump').schedule.anchorMs === ar('20261024', '06:00'), 'horario nuevo en la bomba');
+  });
+
+  await check('18. Por humedad: riega al llegar a seco, con pausas, hasta el tope del día; de noche espera', async () => {
+    const env = setup(ar('20261101', '08:00'));
+    const { svc, records, count, mock } = env;
+    await svc.connectTuya('u1', { mock: true });
+    const pump = await svc.bind('u1', { deviceId: 'mockstrip01', code: 'switch_2', role: 'pump', cultivationId: 'c1', pump: pumpCfg, schedule: light18 });
+    await svc.bind('u1', { deviceId: 'mocksoil01', code: 'sensor', role: 'sensor_soil', cultivationId: 'c1' });
+    await svc.setAuto('u1', pump.id, { mode: 'wetdry', timeZone: TZ, wetdry: { dry: 40, wet: 65, shotS: 30, pauseMin: 15, maxShots: 3 } });
+    const soil = (v: number) => mock().setReading('mocksoil01', { humidity: v });
+    const note = async () => (await svc.overview('u1')).bindings.find((x: any) => x.role === 'pump').irrigation?.note || '';
+    soil(42);
+    await ticksUntil(env, ar('20261101', '08:05'));
+    assert(count() === 0 && /todavía no está seco/.test(await note()), `42 %: no riega (${await note()})`);
+    soil(38);
+    await ticksUntil(env, ar('20261101', '08:10'));
+    assert(count() === 1 && /sustrato en 38 %/.test(records[0].observations), `38 %: riega (${count()})`);
+    soil(45);
+    await ticksUntil(env, ar('20261101', '08:20'));
+    assert(count() === 1, 'sigue regando hasta húmedo, pero respeta la pausa de 15 min');
+    await ticksUntil(env, ar('20261101', '08:25'));
+    assert(count() === 2 && /riega hasta 65 %/.test(records[1].observations), `a los 15 min, otro: ${count()}`);
+    soil(50);
+    await ticksUntil(env, ar('20261101', '09:30'));
+    assert(count() === 3 && /ya regó 3 veces hoy/.test(await note()), `tope de 3 por día: ${count()} (${await note()})`);
+    soil(70);
+    await ticksUntil(env, ar('20261101', '09:35'));
+    assert(/llegó a 65 %/.test(await note()), await note());
+    // otro día, con la luz apagada (18/6 apaga a las 12): seco, pero espera a que prenda
+    env.now.t = ar('20261102', '12:55');
+    soil(30);
+    await ticksUntil(env, ar('20261102', '13:00'));
+    assert(count() === 3 && /de noche/.test(await note()), `de noche no riega: ${await note()}`);
+    await ticksUntil(env, ar('20261102', '18:05'));
+    assert(count() === 4 && records[3].time === '18:00', `prende la luz y riega: ${records.map((r) => r.time)}`);
   });
 
   console.log('\n================================================================');

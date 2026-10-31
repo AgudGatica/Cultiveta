@@ -2208,6 +2208,12 @@ const deviceService = new DeviceService({
     if (!snap.exists || snap.data()?.userId !== uid) throw new DeviceError('El cultivo no pertenece a tu cuenta.', 403);
     return { name: String(snap.data()?.name || 'Cultivo') };
   },
+  // Cada riego automático queda anotado en los riegos del cultivo (como uno hecho desde la app).
+  recordWatering: async (uid, w) => {
+    if (!hasAdminCredentials()) return;
+    const ref = getFirebaseAdmin().firestore().collection('waterings').doc();
+    await ref.set({ ...w, userId: uid, id: ref.id, createdAt: new Date().toISOString() });
+  },
 });
 
 function sendDeviceError(res: express.Response, err: unknown, logTag: string) {
@@ -2294,6 +2300,15 @@ app.post('/api/devices/bindings/:id/pump', verifyFirebaseAuth, async (req, res) 
     res.json({ binding: await deviceService.setPump(req.userId!, String(req.params.id), (req.body || {}).pump) });
   } catch (err) {
     return sendDeviceError(res, err, 'devices/pump');
+  }
+});
+
+// Bomba: riego automático (programado o por humedad del sustrato); lo hace la revisión periódica.
+app.post('/api/devices/bindings/:id/auto', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json({ binding: await deviceService.setAuto(req.userId!, String(req.params.id), (req.body || {}).auto) });
+  } catch (err) {
+    return sendDeviceError(res, err, 'devices/auto');
   }
 });
 

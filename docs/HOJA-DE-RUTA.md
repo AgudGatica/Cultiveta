@@ -64,7 +64,14 @@ regresiva: se apaga sola; topes de segundos y litros; "Regar" en el cultivo anot
 para no prender y apagar sin parar, valores de noche y qué hacer si el sensor se calla; o siguiendo a la luz (o al revés),
 que queda cargado en Smart Life. Lógica en `src/utils/deviceRules.ts`; el cultivo muestra la tarjeta "Equipos del cultivo".
 
-**Etapa 2c (pendiente):** riego automático (programado o por humedad del sustrato), eWeLink (con una app de Cultiveta en dev.ewelink.cc: cada persona solo inicia sesión en eWeLink) y Shelly (por su
+**Etapa 2c (hecha, 2026-10-31): riego automático.** En Equipos, la bomba suma "Riego automático": programado (unos
+minutos después de prender o antes de apagar la luz, o a una hora fija; en uno o varios pulsos con pausa) o por humedad del
+sustrato (riega al llegar a "seco" y sigue con pausas hasta "húmedo", con tope por día; con la luz apagada no riega). Lo
+decide la revisión del servidor cada 5 min, con los mismos topes y la cuenta regresiva de "Regar"; si el servidor estuvo
+caído, un riego programado que se pasó no se hace tarde. Cada riego queda anotado en los riegos del cultivo. Lógica en
+`src/server/devices/autoIrrigation.ts` y `src/utils/deviceRules.ts`.
+
+**Etapa 2d (pendiente):** eWeLink (con una app de Cultiveta en dev.ewelink.cc: cada persona solo inicia sesión en eWeLink) y Shelly (por su
 nube). Todo corre en el servidor de Cultiveta (Cloud Run + Cloud Scheduler, como el clima exterior). Con servidor en la nube no
 hace falta dejar una PC prendida ni la regla de "entrar una vez por semana" de Órbita. Detalle técnico en
 `Cultiveta-referencias/TRASPASO.md` (O18–O20).

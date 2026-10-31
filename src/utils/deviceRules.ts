@@ -185,3 +185,66 @@ export function checkWaterOrder(
   if (liters > cfg.maxLiters) return { ok: false, text: `Serían ${fmt(liters, 'L')} y el tope por riego es ${String(cfg.maxLiters).replace('.', ',')} L.` };
   return { ok: true, seconds: Math.round(seconds), liters };
 }
+
+// ---------- riego automático ----------
+
+export interface AutoIrrigation {
+  mode: 'off' | 'scheduled' | 'wetdry';
+  /** Programado: atado a la luz (después de prender / antes de apagar) o a una hora fija; uno o varios pulsos. */
+  scheduled: { when: 'light' | 'fixed'; trigger: 'after_on' | 'before_off'; offsetMin: number; fixedTime: string; shotS: number; pulses: number; pauseMin: number };
+  /** Por humedad: riega al llegar a "seco" y sigue (con pausas) hasta "húmedo"; de noche no. */
+  wetdry: { dry: number; wet: number; shotS: number; pauseMin: number; maxShots: number };
+  /** Zona horaria de la persona (para la hora fija y para contar los riegos de cada día). */
+  timeZone: string;
+}
+
+export const DEFAULT_AUTO_IRRIGATION: AutoIrrigation = {
+  mode: 'off',
+  scheduled: { when: 'light', trigger: 'after_on', offsetMin: 30, fixedTime: '09:00', shotS: 60, pulses: 1, pauseMin: 30 },
+  wetdry: { dry: 40, wet: 65, shotS: 30, pauseMin: 15, maxShots: 6 },
+  timeZone: 'America/Argentina/Buenos_Aires',
+};
+
+const inRange = (v: number, a: number, b: number) => Number.isFinite(v) && v >= a && v <= b;
+/** La revisión del servidor pasa cada 5 min: pausas más cortas no se podrían respetar. */
+export const MIN_PAUSE_MIN = 10;
+
+/** Errores en castellano (vacío = sirve). maxSeconds: el tope por riego de la bomba. */
+export function validateAutoIrrigation(a: AutoIrrigation, maxSeconds: number): string[] {
+  const errs: string[] = [];
+  if (!['off', 'scheduled', 'wetdry'].includes(a.mode)) return ['Elegí cómo riega solo.'];
+  if (a.mode === 'scheduled') {
+    const s = a.scheduled;
+    if (!['light', 'fixed'].includes(s.when)) errs.push('Elegí cuándo riega.');
+    if (s.when === 'light' && !inRange(s.offsetMin, 0, 480)) errs.push('Minutos respecto de la luz: entre 0 y 480.');
+    if (s.when === 'fixed' && !/^([01]\d|2[0-3]):[0-5]\d$/.test(s.fixedTime)) errs.push('Elegí la hora del riego.');
+    if (!inRange(s.shotS, 5, 600)) errs.push('Segundos por riego: entre 5 y 600.');
+    if (s.shotS > maxSeconds) errs.push(`Cada riego (${s.shotS} s) pasa el tope de la bomba (${maxSeconds} s).`);
+    if (!inRange(s.pulses, 1, 10) || !Number.isInteger(s.pulses)) errs.push('Pulsos: entre 1 y 10.');
+    if (s.pulses > 1 && !inRange(s.pauseMin, MIN_PAUSE_MIN, 180)) errs.push(`Pausa entre pulsos: entre ${MIN_PAUSE_MIN} y 180 minutos.`);
+  }
+  if (a.mode === 'wetdry') {
+    const w = a.wetdry;
+    if (!inRange(w.dry, 5, 95)) errs.push('Seco: entre 5 y 95 %.');
+    if (!inRange(w.wet, 10, 100)) errs.push('Húmedo: entre 10 y 100 %.');
+    if (!(w.wet > w.dry)) errs.push('El valor húmedo tiene que ser mayor que el seco.');
+    else if (w.wet - w.dry < 10) errs.push('Dejá al menos 10 puntos entre seco y húmedo: si no, riega todo el día y la raíz no busca agua.');
+    if (!inRange(w.shotS, 5, 600)) errs.push('Segundos por riego: entre 5 y 600.');
+    if (w.shotS > maxSeconds) errs.push(`Cada riego (${w.shotS} s) pasa el tope de la bomba (${maxSeconds} s).`);
+    if (!inRange(w.pauseMin, MIN_PAUSE_MIN, 180)) errs.push(`Pausa entre riegos: entre ${MIN_PAUSE_MIN} y 180 minutos.`);
+    if (!inRange(w.maxShots, 1, 20) || !Number.isInteger(w.maxShots)) errs.push('Riegos por día: entre 1 y 20.');
+  }
+  return errs;
+}
+
+/** "30 min después de prender la luz · 60 s" / "por humedad: riega con ≤ 40 % hasta 65 %". */
+export function describeAutoIrrigation(a: AutoIrrigation | null | undefined): string {
+  if (!a || a.mode === 'off') return 'Solo a mano';
+  if (a.mode === 'wetdry') {
+    const w = a.wetdry;
+    return `Por humedad: riega ${w.shotS} s con el sustrato en ${w.dry} % o menos, hasta ${w.wet} % (pausas de ${w.pauseMin} min, hasta ${w.maxShots} por día, de día)`;
+  }
+  const s = a.scheduled;
+  const when = s.when === 'fixed' ? `todos los días a las ${s.fixedTime}` : `${s.offsetMin} min ${s.trigger === 'after_on' ? 'después de prender' : 'antes de apagar'} la luz`;
+  return `Programado: ${when} · ${s.pulses > 1 ? `${s.pulses} pulsos de ${s.shotS} s cada ${s.pauseMin} min` : `${s.shotS} s`}`;
+}

@@ -9,13 +9,15 @@
  * 4. Sigue a la luz y al revés.
  * 5. Reglas inválidas: al revés, sin margen y ventilador por sensor.
  * 6. Riego: sin conexión, sin cuenta regresiva o pasado de los topes, no riega.
- * 7. La tarjeta muestra la bomba con "Regar" y cada equipo de clima con su estado y por qué.
+ * 7. La tarjeta muestra la bomba con "Regar" (y su riego automático) y cada equipo de clima con su estado y por qué.
+ * 8. Riego automático: valores inválidos, descripción y riego atado a la luz en un superciclo.
  */
 
 import './helpers/setupDom';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { evaluateClimate, validateClimateRule, defaultClimateRule, checkWaterOrder, describeClimateRule, DEFAULT_PUMP } from '../src/utils/deviceRules';
+import { evaluateClimate, validateClimateRule, defaultClimateRule, checkWaterOrder, describeClimateRule, DEFAULT_PUMP, DEFAULT_AUTO_IRRIGATION, validateAutoIrrigation, describeAutoIrrigation } from '../src/utils/deviceRules';
+import { scheduledWaterings } from '../src/server/devices/autoIrrigation';
 import { CropDevicesCard } from '../src/components/cultivations/CropDevicesCard';
 import { devicesService } from '../src/services/devicesService';
 
@@ -101,7 +103,7 @@ async function run() {
         connected: true,
         mock: true,
         bindings: [
-          binding({ id: 'p', code: 'switch_2', label: 'Toma 2', role: 'pump', on: false, pump: { flowLph: 8, maxSeconds: 300, maxLiters: 20 }, countdownCode: 'countdown_2', watering: null }),
+          binding({ id: 'p', code: 'switch_2', label: 'Toma 2', role: 'pump', on: false, pump: { flowLph: 8, maxSeconds: 300, maxLiters: 20 }, countdownCode: 'countdown_2', watering: null, auto: { ...DEFAULT_AUTO_IRRIGATION, mode: 'scheduled' }, irrigation: { last: { at: Date.now() - 60_000, seconds: 60, liters: 0.13, reason: 'programado' }, note: null } }),
           binding({ id: 'e', code: 'switch_3', label: 'Toma 3', role: 'climate', climateRole: 'exhaust', rule: defaultClimateRule('exhaust'), on: true, lastReason: 'temperatura 28 °C' }),
         ],
       }),
@@ -117,10 +119,32 @@ async function run() {
     await act(async () => root.render(React.createElement(CropDevicesCard, { cultivation: { id: 'c1' } as any, userId: 'u1' })));
     assert(container.querySelector('#pump-water')?.textContent?.includes('Regar 30 s'), 'botón Regar');
     assert(/0,07 L/.test(container.textContent || ''), `litros estimados: ${container.textContent}`);
+    const auto = container.querySelector('#crop-pump-auto')?.textContent || '';
+    assert(/30 min después de prender/.test(auto) && /Último: \S+ \d\d:\d\d · 60 s \(0,13 L\)/.test(auto), `riego automático: ${auto}`);
     const dev = container.querySelector('.crop-climate-device')?.textContent || '';
     assert(/Extractor/.test(dev) && /PRENDIDO/.test(dev) && /28 °C/.test(dev), dev);
     await act(async () => root.unmount());
     devicesService.reset();
+  });
+
+  await check('8. Riego automático: valores inválidos, descripción y superciclo 13/13', () => {
+    const base = { ...DEFAULT_AUTO_IRRIGATION, timeZone: 'America/Argentina/Buenos_Aires' };
+    assert(validateAutoIrrigation({ ...base, mode: 'scheduled' }, 300).length === 0, 'el programado por defecto sirve');
+    assert(validateAutoIrrigation({ ...base, mode: 'wetdry' }, 300).length === 0, 'el de humedad por defecto sirve');
+    assert(validateAutoIrrigation({ ...base, mode: 'wetdry', wetdry: { ...base.wetdry, dry: 50, wet: 55 } }, 300).some((e) => /10 puntos/.test(e)), 'banda angosta');
+    assert(validateAutoIrrigation({ ...base, mode: 'scheduled', scheduled: { ...base.scheduled, when: 'fixed', fixedTime: '25:00' } }, 300).some((e) => /hora/.test(e)), 'hora inválida');
+    assert(validateAutoIrrigation({ ...base, mode: 'scheduled' }, 30).some((e) => /tope de la bomba/.test(e)), 'más que el tope');
+    assert(describeAutoIrrigation({ ...base, mode: 'scheduled' }) === 'Programado: 30 min después de prender la luz · 60 s', describeAutoIrrigation({ ...base, mode: 'scheduled' }));
+    assert(describeAutoIrrigation(null) === 'Solo a mano', 'apagado');
+    // 13/13 desde el 26/10 a las 08:00 (Argentina): cada encendido llega 2 h más tarde y el riego lo sigue
+    const H = 3_600_000;
+    const anchor = Date.UTC(2026, 9, 26, 11, 0);
+    const light = { lightHours: 13, darkHours: 13, anchorMs: anchor };
+    const after = scheduledWaterings({ ...base, mode: 'scheduled' }, light, anchor, anchor + 72 * H);
+    assert(after.map((d) => (d.at - anchor) / H).join() === '0.5,26.5,52.5', `después de prender: ${after.map((d) => (d.at - anchor) / H)}`);
+    const before = scheduledWaterings({ ...base, mode: 'scheduled', scheduled: { ...base.scheduled, trigger: 'before_off', offsetMin: 60 } }, light, anchor, anchor + 26 * H);
+    assert(before.length === 1 && before[0].at === anchor + 12 * H, 'una hora antes de apagar');
+    assert(scheduledWaterings({ ...base, mode: 'scheduled' }, null, anchor, anchor + 72 * H).length === 0, 'sin horario de luz no riega lo atado a la luz');
   });
 
   console.log('\n================================================================');
