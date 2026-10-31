@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Moon, Plug, Pencil, Sun } from 'lucide-react';
 import type { Cultivation } from '../../types';
+import type { DeviceBindingState } from '../../services/devicesService';
 import {
   DAY_MS,
   clockText,
@@ -27,6 +28,8 @@ interface LightCycleCardProps {
   onSaveSchedule: (schedule: LightSchedule) => Promise<void> | void;
   /** Lleva a Equipos para conectar un enchufe inteligente. */
   onConnectPlug?: () => void;
+  /** Enchufe inteligente que maneja esta luz (si hay): su estado real y lo cargado en Smart Life. */
+  device?: DeviceBindingState | null;
   /** Hora fija (para los tests); sin esto, la tarjeta se actualiza cada segundo. */
   now?: number;
 }
@@ -47,8 +50,9 @@ const todayKey = (ms: number): string => {
  * Luz del cultivo (traída de Órbita): si está prendida o apagada, cuánto falta para el próximo cambio,
  * las horas de luz y de oscuridad, y cómo queda cada uno de los próximos 7 días.
  * A mano funciona como un timer: se carga a qué hora prende (y, en un superciclo, qué día).
+ * Con un enchufe de Smart Life asignado, el estado es el del equipo y el horario queda cargado en él.
  */
-export const LightCycleCard: React.FC<LightCycleCardProps> = ({ cultivation, onSaveSchedule, onConnectPlug, now: fixedNow }) => {
+export const LightCycleCard: React.FC<LightCycleCardProps> = ({ cultivation, onSaveSchedule, onConnectPlug, device = null, now: fixedNow }) => {
   const [tick, setTick] = useState(() => Date.now());
   useEffect(() => {
     if (fixedNow != null) return undefined;
@@ -136,6 +140,11 @@ export const LightCycleCard: React.FC<LightCycleCardProps> = ({ cultivation, onS
           </label>
         )}
       </div>
+      {device && (
+        <p className="text-[11px] font-bold text-brand">
+          Enchufe: {device.deviceName} · {device.label}. Con la hora, Cultiveta carga el horario en el enchufe.
+        </p>
+      )}
       {!daily && (
         <p className="text-[11px] text-ink-subtle">
           En un superciclo cada encendido arranca a otra hora: con el día y la hora de uno, Cultiveta calcula todos los demás.
@@ -155,22 +164,27 @@ export const LightCycleCard: React.FC<LightCycleCardProps> = ({ cultivation, onS
     </form>
   );
 
+  const deviceOn = device && device.online !== false && device.on != null ? device.on : null;
   const header = (state?: ReturnType<typeof lightState>) => (
     <div className="flex items-center justify-between gap-3">
       <span className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
-        {state?.on ? <Sun className="w-4 h-4 text-warn-line" aria-hidden="true" /> : <Moon className="w-4 h-4 text-brand" aria-hidden="true" />}
+        {(deviceOn ?? state?.on) ? <Sun className="w-4 h-4 text-warn-line" aria-hidden="true" /> : <Moon className="w-4 h-4 text-brand" aria-hidden="true" />}
         Luz · {title}
       </span>
-      {state && state.started && (
+      {device && device.online === false ? (
+        <span id="light-state-pill" className="px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider bg-coral/15 text-coral">
+          SIN CONEXIÓN
+        </span>
+      ) : (deviceOn != null || (state && state.started)) ? (
         <span
           id="light-state-pill"
           className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider ${
-            state.on ? 'bg-accent text-ink' : 'bg-brand-deep text-white'
+            (deviceOn ?? state?.on) ? 'bg-accent text-ink' : 'bg-brand-deep text-white'
           }`}
         >
-          {state.on ? 'PRENDIDA' : 'APAGADA'}
+          {(deviceOn ?? state?.on) ? 'PRENDIDA' : 'APAGADA'}
         </span>
-      )}
+      ) : null}
     </div>
   );
 
@@ -277,13 +291,32 @@ export const LightCycleCard: React.FC<LightCycleCardProps> = ({ cultivation, onS
         )}
       </div>
 
+      {device && (
+        <div id="light-device-note" className="text-[11px] space-y-1">
+          {device.loaded?.error ? (
+            <p className="font-bold text-error">No se pudo cargar el horario en Smart Life: {device.loaded.error}</p>
+          ) : device.loaded?.mode === 'daily' ? (
+            <p className="text-ink-muted">Cargado en Smart Life como programación diaria: sigue sola aunque cierres Cultiveta.</p>
+          ) : device.loaded?.mode === 'once' && device.loaded.until ? (
+            <p className="text-ink-muted">Cargado en Smart Life hasta {whenText(device.loaded.until, now)}. Cultiveta lo renueva solo.</p>
+          ) : null}
+          {deviceOn != null && state.started && !state.alwaysOn && deviceOn !== state.on && (
+            <p className="font-bold text-warn-ink">
+              El enchufe está {deviceOn ? 'PRENDIDO' : 'APAGADO'} y según el horario tendría que estar {state.on ? 'prendido' : 'apagado'}: Cultiveta lo corrige en la próxima revisión.
+            </p>
+          )}
+        </div>
+      )}
+
       <div className="flex flex-wrap items-center gap-2 pt-1">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-ink-subtle bg-track px-2 py-1 rounded-lg">A mano · timer</span>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-ink-subtle bg-track px-2 py-1 rounded-lg">
+          {device ? `Enchufe · ${device.deviceName} · ${device.label}` : 'A mano · timer'}
+        </span>
         <button type="button" id="edit-light-schedule" onClick={() => setEditing(true)} className="cultiveta-btn-secondary text-xs">
           <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
           <span>Cambiar hora</span>
         </button>
-        {onConnectPlug && (
+        {onConnectPlug && !device && (
           <button type="button" id="connect-plug" onClick={onConnectPlug} className="cultiveta-btn-secondary text-xs">
             <Plug className="w-3.5 h-3.5" aria-hidden="true" />
             <span>Conectar enchufe inteligente</span>

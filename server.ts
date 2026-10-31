@@ -16,6 +16,8 @@ import { verifyAdminRole, isRequestAdmin } from './src/server/adminAuthMiddlewar
 import { validateImageBuffer } from './src/server/imageValidation';
 import { getGeneticsPhotoKey } from './src/utils/geneticsKeyUtils';
 import { cleanFirestoreData } from './src/utils/firestoreUtils';
+import { DeviceService, MemoryDeviceStore, FirestoreDeviceStore, DeviceError } from './src/server/devices/deviceService';
+import { TuyaError } from './src/server/devices/tuyaClient';
 
 dotenv.config();
 
@@ -1752,6 +1754,13 @@ app.post('/api/account/delete', verifyFirebaseAuth, async (req, res) => {
         await batch.commit();
       }
     }
+    // Equipos: se saca lo de Cultiveta de los enchufes, vuelven los horarios de Smart Life y se borran las claves
+    try {
+      await deviceService.disconnectTuya(userId);
+    } catch (devErr) {
+      console.warn('[account/delete] No se pudo liberar los equipos:', devErr);
+      await db.collection('deviceIntegrations').doc(userId).delete().catch(() => {});
+    }
     // recursiveDelete: el perfil y sus subcolecciones (progress, etc.); delete() las dejaba huérfanas
     await db.recursiveDelete(db.collection('users').doc(userId));
 
@@ -2185,6 +2194,131 @@ app.delete('/api/admin/genetics/delete-photo', verifyFirebaseAuth, verifyAdminRo
 });
 
 // Vite middleware & Static serving
+// ─────────────────────────────────────────────────────────────
+// EQUIPOS INTELIGENTES (Smart Life / Tuya), traído de Órbita
+// ─────────────────────────────────────────────────────────────
+// Las claves del proyecto de iot.tuya.com de cada persona se guardan solo acá (colección
+// deviceIntegrations: las reglas no dejan que el navegador la lea). Sin Firestore Admin (desarrollo
+// local) se guardan en memoria.
+const deviceService = new DeviceService({
+  store: hasAdminCredentials() ? new FirestoreDeviceStore(getFirebaseAdmin().firestore()) : new MemoryDeviceStore(),
+  verifyCultivation: async (uid, cultivationId) => {
+    if (!hasAdminCredentials()) return null;
+    const snap = await getFirebaseAdmin().firestore().collection('cultivations').doc(cultivationId).get();
+    if (!snap.exists || snap.data()?.userId !== uid) throw new DeviceError('El cultivo no pertenece a tu cuenta.', 403);
+    return { name: String(snap.data()?.name || 'Cultivo') };
+  },
+});
+
+function sendDeviceError(res: express.Response, err: unknown, logTag: string) {
+  if (err instanceof DeviceError) return res.status(err.status).json({ error: err.message });
+  if (err instanceof TuyaError) return res.status(502).json({ error: err.message });
+  return sendServerError(res, 500, 'Error con los equipos.', err, logTag);
+}
+
+app.get('/api/devices/status', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json(await deviceService.status(req.userId!));
+  } catch (err) {
+    return sendDeviceError(res, err, 'devices/status');
+  }
+});
+
+app.post('/api/devices/tuya/connect', verifyFirebaseAuth, async (req, res) => {
+  try {
+    const b = req.body || {};
+    res.json(await deviceService.connectTuya(req.userId!, { accessId: b.accessId, accessSecret: b.accessSecret, region: b.region, mock: b.mock === true }));
+  } catch (err) {
+    return sendDeviceError(res, err, 'devices/tuya/connect');
+  }
+});
+
+app.delete('/api/devices/tuya', verifyFirebaseAuth, async (req, res) => {
+  try {
+    await deviceService.disconnectTuya(req.userId!);
+    res.json({ success: true });
+  } catch (err) {
+    return sendDeviceError(res, err, 'devices/tuya/delete');
+  }
+});
+
+app.get('/api/devices', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json({ devices: await deviceService.devices(req.userId!) });
+  } catch (err) {
+    return sendDeviceError(res, err, 'devices/list');
+  }
+});
+
+app.get('/api/devices/overview', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json(await deviceService.overview(req.userId!));
+  } catch (err) {
+    return sendDeviceError(res, err, 'devices/overview');
+  }
+});
+
+app.post('/api/devices/bindings', verifyFirebaseAuth, async (req, res) => {
+  try {
+    const b = req.body || {};
+    if (typeof b.deviceId !== 'string' || typeof b.code !== 'string' || typeof b.cultivationId !== 'string') {
+      return res.status(400).json({ error: 'Faltan el equipo o el cultivo.' });
+    }
+    res.json({ binding: await deviceService.bind(req.userId!, { deviceId: b.deviceId, code: b.code, role: b.role, cultivationId: b.cultivationId, cultivationName: b.cultivationName, schedule: b.schedule }) });
+  } catch (err) {
+    return sendDeviceError(res, err, 'devices/bindings');
+  }
+});
+
+app.delete('/api/devices/bindings/:id', verifyFirebaseAuth, async (req, res) => {
+  try {
+    await deviceService.unbind(req.userId!, String(req.params.id));
+    res.json({ success: true });
+  } catch (err) {
+    return sendDeviceError(res, err, 'devices/bindings/delete');
+  }
+});
+
+// El navegador avisa cuando cambia el horario de la luz de un cultivo (hora de encendido o fotoperiodo).
+app.post('/api/devices/schedule', verifyFirebaseAuth, async (req, res) => {
+  try {
+    const b = req.body || {};
+    if (typeof b.cultivationId !== 'string') return res.status(400).json({ error: 'Falta el cultivo.' });
+    res.json(await deviceService.setSchedule(req.userId!, b.cultivationId, b.schedule ?? null));
+  } catch (err) {
+    return sendDeviceError(res, err, 'devices/schedule');
+  }
+});
+
+app.post('/api/devices/:deviceId/command', verifyFirebaseAuth, async (req, res) => {
+  try {
+    const b = req.body || {};
+    await deviceService.command(req.userId!, String(req.params.deviceId), String(b.code || ''), b.value === true);
+    res.json({ success: true });
+  } catch (err) {
+    return sendDeviceError(res, err, 'devices/command');
+  }
+});
+
+// Revisión periódica (Cloud Scheduler, cada 15 min): rellena el horario cargado en Smart Life,
+// corrige la luz si quedó al revés y lee los sensores. Usa el mismo secreto que el clima exterior.
+app.post('/api/internal/devices-tick', async (req, res) => {
+  if (!OUTDOOR_SYNC_SECRET) return res.status(503).json({ error: 'Revisión programada no configurada.' });
+  if (!isValidCronSecret(req.get('x-cultiveta-cron-secret'))) return res.status(401).json({ error: 'No autorizado.' });
+  try {
+    res.json({ success: true, ...(await deviceService.tickAll()) });
+  } catch (err) {
+    return sendServerError(res, 500, 'Error en la revisión de equipos.', err, 'internal/devices-tick');
+  }
+});
+
+// Desarrollo local: revisar los equipos cada 5 minutos sin Cloud Scheduler (LOCAL_DEVICES_TICK=1).
+if (process.env.NODE_ENV !== 'production' && process.env.LOCAL_DEVICES_TICK === '1') {
+  setInterval(() => {
+    deviceService.tickAll().catch((e) => console.warn('[Equipos] Error en la revisión local:', e?.message || e));
+  }, 5 * 60 * 1000);
+}
+
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({

@@ -26,12 +26,17 @@ service cloud.firestore {
     match /aiUsage/{docId} {
       allow read, write: if false;
     }
+    // Equipos inteligentes: claves de Smart Life y asignaciones (solo el servidor, con Firebase Admin)
+    match /deviceIntegrations/{docId} {
+      allow read, write: if false;
+    }
     // Top-level collections scoped by userId field (excluyendo expresamente colecciones reservadas)
     match /{collection}/{document} {
       function isReservedTopLevelCollection() {
         return collection == 'users'
             || collection == 'geneticsCatalogPhotos'
-            || collection == 'aiUsage';
+            || collection == 'aiUsage'
+            || collection == 'deviceIntegrations';
       }
 
       allow read, delete: if request.auth != null

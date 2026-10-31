@@ -17,6 +17,7 @@ import { parseAppRoute, pathForView } from '../src/appRoutes';
 import { DevicesView } from '../src/components/devices/DevicesView';
 import { MobileNav } from '../src/components/common/MobileNav';
 import { mercadoLibreUrl, SHOP_ITEMS } from '../src/data/deviceCatalog';
+import { devicesService } from '../src/services/devicesService';
 
 let passed = 0;
 let failed = 0;
@@ -56,10 +57,12 @@ async function run() {
     assert(pathForView('devices') === '/equipos', 'camino');
   });
 
-  await check('2. Sin equipos: lo dice, marcas en "Próximamente" y Qué comprar', async () => {
+  await check('2. Sin equipos: lo dice, Smart Life se conecta, eWeLink y Shelly "Próximamente", y Qué comprar', async () => {
     const { container, unmount } = await mount(React.createElement(DevicesView, {}));
     assert(/no conectaste ningún equipo/.test(container.querySelector('#devices-mine')?.textContent || ''), 'aviso de que no hay equipos');
-    for (const id of ['tuya', 'ewelink', 'shelly']) {
+    const tuya = container.querySelector('#device-brand-tuya');
+    assert(tuya && !/Próximamente/i.test(tuya.textContent || ''), 'Smart Life ya no está en "Próximamente"');
+    for (const id of ['ewelink', 'shelly']) {
       const card = container.querySelector(`#device-brand-${id}`);
       assert(card && /Próximamente/i.test(card.textContent || ''), `marca ${id}`);
       assert((card!.querySelector('button') as HTMLButtonElement).disabled, `${id}: todavía no se conecta`);
@@ -96,6 +99,17 @@ async function run() {
     await act(async () => item.click());
     assert(visited.includes('devices'), `navegó a ${visited.join(',')}`);
     await unmount();
+  });
+
+  await check('6. Si el servidor no tiene la parte de equipos (responde una página), la app no se rompe', async () => {
+    const realFetch = globalThis.fetch;
+    (globalThis as any).fetch = async () => ({ ok: true, status: 200, json: async () => { throw new SyntaxError('Unexpected token <'); } });
+    try {
+      const o = await devicesService.refreshOverview();
+      assert(Array.isArray(o.bindings) && o.connected === false, `estado: ${JSON.stringify(o)}`);
+    } finally {
+      (globalThis as any).fetch = realFetch;
+    }
   });
 
   console.log('\n================================================================');

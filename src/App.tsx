@@ -70,6 +70,7 @@ const CalculatorsView = React.lazy(() =>
   import('./components/tools/CalculatorsView').then((m) => ({ default: m.CalculatorsView }))
 );
 const DevicesView = React.lazy(() => import('./components/devices/DevicesView'));
+import { devicesService, scheduleSnapshot, sameSchedule, useDevicesOverview } from './services/devicesService';
 const PhotoDiagnosisModal = React.lazy(() =>
   import('./components/ai/PhotoDiagnosisModal').then((m) => ({ default: m.PhotoDiagnosisModal }))
 );
@@ -158,6 +159,42 @@ export default function App() {
   const [geneticsList, setGeneticsList] = useState<Genetics[]>([]);
   const [harvests, setHarvests] = useState<Harvest[]>([]);
   const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>([]);
+
+  // Equipos: estado de lo asignado (luz y sensores). Se lee al entrar y cada minuto mientras se mira
+  // un cultivo o Equipos.
+  const devicesOverview = useDevicesOverview();
+  useEffect(() => {
+    if (!currentUser) {
+      devicesService.reset();
+      return undefined;
+    }
+    devicesService.refreshOverview();
+    if (currentView !== 'cultivation_detail' && currentView !== 'devices') return undefined;
+    const id = window.setInterval(() => devicesService.refreshOverview(), 60_000);
+    return () => window.clearInterval(id);
+  }, [currentUser, currentView]);
+  // Si cambia el horario de la luz de un cultivo con enchufe (hora de encendido o fotoperiodo), se
+  // vuelve a cargar en Smart Life. Se recuerda lo último mandado para no repetirlo.
+  const pushedSchedules = React.useRef<Record<string, string>>({});
+  useEffect(() => {
+    devicesOverview.bindings
+      .filter((b) => b.role === 'light')
+      .forEach((b) => {
+        const crop = cultivations.find((c) => c.id === b.cultivationId);
+        if (!crop) return;
+        const snap = scheduleSnapshot(crop);
+        if (sameSchedule(snap, b.schedule ?? null)) return;
+        const key = JSON.stringify(snap);
+        if (pushedSchedules.current[b.cultivationId] === key) return;
+        pushedSchedules.current[b.cultivationId] = key;
+        devicesService
+          .pushSchedule(b.cultivationId, snap)
+          .then(() => devicesService.refreshOverview())
+          .catch(() => {
+            delete pushedSchedules.current[b.cultivationId];
+          });
+      });
+  }, [cultivations, devicesOverview]);
 
   // Modal States
   const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
@@ -795,7 +832,9 @@ export default function App() {
           {currentView === 'calculators' && <CalculatorsView />}
 
           {/* VIEW: EQUIPOS (enchufes, sensores y riego) */}
-          {currentView === 'devices' && <DevicesView focus={devicesFocus} />}
+          {currentView === 'devices' && (
+            <DevicesView focus={devicesFocus} cultivations={cultivations.filter((c) => !c.isFinished)} showToast={showToast} />
+          )}
 
           {/* VIEW: PERFIL Y LOGROS */}
           {currentView === 'profile' && (

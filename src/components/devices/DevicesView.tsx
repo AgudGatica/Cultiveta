@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Droplets, ExternalLink, Lightbulb, Plug, Thermometer } from 'lucide-react';
 import {
   DEVICE_BRANDS,
@@ -10,12 +10,15 @@ import {
   type DeviceUse,
   type ShopSection,
 } from '../../data/deviceCatalog';
+import type { Cultivation } from '../../types';
+import { SmartLifePanel } from './SmartLifePanel';
 
 interface DevicesViewProps {
   /** Desde dónde se llegó (la luz, el ambiente o el riego de un cultivo): se resalta eso. */
   focus?: DeviceUse | null;
-  /** Equipos conectados. Todavía no hay conexión real: la lista viene vacía. */
-  hasDevices?: boolean;
+  /** Cultivos activos, para asignarles tomas y sensores. */
+  cultivations?: Cultivation[];
+  showToast?: (msg: string) => void;
 }
 
 const USE_ICON: Record<DeviceUse, React.ElementType> = { luz: Lightbulb, ambiente: Thermometer, riego: Droplets };
@@ -25,10 +28,13 @@ const ITEM = 'bg-surface rounded-3xl p-4 border border-line';
 
 /**
  * Equipos (traído de Órbita): los equipos conectados, cómo conectar uno nuevo por marca y, si todavía
- * no hay ninguno, qué comprar. La conexión real con cada marca llega en la próxima etapa.
+ * no hay ninguno, qué comprar. Smart Life ya se conecta de verdad; eWeLink y Shelly, más adelante.
  * Todo va dentro de tarjetas blancas: sobre el fondo de color de la página los textos no se leen.
  */
-export const DevicesView: React.FC<DevicesViewProps> = ({ focus = null, hasDevices = false }) => {
+export const DevicesView: React.FC<DevicesViewProps> = ({ focus = null, cultivations = [], showToast }) => {
+  const [deviceCount, setDeviceCount] = useState(0);
+  const onDevicesChange = useCallback((n: number) => setDeviceCount(n), []);
+  const hasDevices = deviceCount > 0;
   const [section, setSection] = useState<ShopSection | 'todo'>(focus ? SECTION_FOR_USE[focus] : 'todo');
 
   useEffect(() => {
@@ -53,7 +59,9 @@ export const DevicesView: React.FC<DevicesViewProps> = ({ focus = null, hasDevic
           </div>
         </div>
         <p className="text-sm text-ink">
-          Todavía no conectaste ningún equipo. Mientras tanto, la luz, el ambiente y el riego se cargan a mano en cada cultivo.
+          {hasDevices
+            ? `Tenés ${deviceCount} equipo${deviceCount === 1 ? '' : 's'} conectado${deviceCount === 1 ? '' : 's'}. Asigná cada toma o sensor a un cultivo: la luz sigue su horario y el ambiente se mide solo.`
+            : 'Todavía no conectaste ningún equipo. Mientras tanto, la luz, el ambiente y el riego se cargan a mano en cada cultivo.'}
         </p>
       </section>
 
@@ -64,8 +72,12 @@ export const DevicesView: React.FC<DevicesViewProps> = ({ focus = null, hasDevic
             Cada equipo se agrega primero en la app de su marca. Después se conecta acá y se asigna a un cultivo.
           </p>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {DEVICE_BRANDS.map((b) => (
+        <div id="device-brand-tuya" className="space-y-2">
+          <p className="text-sm font-bold text-ink">Smart Life / Tuya</p>
+          <SmartLifePanel cultivations={cultivations} showToast={showToast} onDevicesChange={onDevicesChange} />
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {DEVICE_BRANDS.filter((b) => b.id !== 'tuya').map((b) => (
             <div key={b.id} id={`device-brand-${b.id}`} className={`${ITEM} flex flex-col gap-2`}>
               <div className="flex items-start justify-between gap-2">
                 <span className="text-sm font-bold text-ink">{b.label}</span>

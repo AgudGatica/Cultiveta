@@ -26,6 +26,7 @@ import {
 } from '../../../utils/growthStageUtils';
 import { cultivationService } from '../../../services/cultivationService';
 import { PhotoperiodPresetPicker } from '../PhotoperiodPresetPicker';
+import { useDevicesOverview, lightBindingFor } from '../../../services/devicesService';
 import { darkHoursFor, describePhotoperiod } from '../../../utils/photoperiods';
 
 interface StageTransitionModalProps {
@@ -48,6 +49,8 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
   onStageChanged,
 }) => {
   const todayStr = getLocalTodayDateOnly();
+  // Superciclos: solo si la luz de este cultivo está en un enchufe inteligente (cada encendido se corre)
+  const hasSmartPlug = !!lightBindingFor(useDevicesOverview(), cultivation.id);
 
   const determineDefaultStage = (): string => {
     if (initialSelectedStage?.name) return initialSelectedStage.name;
@@ -354,6 +357,7 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
                     </div>
                     <PhotoperiodPresetPicker
                       idPrefix="preset"
+                      hasSmartPlug={hasSmartPlug}
                       light={customLightHours}
                       dark={darkHours}
                       onSelect={(light) => setCustomLightHours(light)}

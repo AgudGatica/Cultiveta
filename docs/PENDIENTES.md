@@ -1,14 +1,15 @@
 # Pendientes de Cultiveta
 
 Recordatorio de lo que queda abierto. Tachá cada punto (`[x]`) cuando esté resuelto.
-Última actualización: 2026-10-17.
+Última actualización: 2026-10-31.
 
 ---
 
 ## 1. Tareas tuyas para que la Fase 3 funcione en producción
 
 - [ ] **Cloud Scheduler:** definir `OUTDOOR_SYNC_SECRET` en el servicio de Cloud Run y crear el job horario que llama a `POST /api/internal/outdoor-weather`. Comando en [fase3-propuesta.md](fase3-propuesta.md#configurar-cloud-scheduler-una-sola-vez). Hasta hacerlo, el clima exterior no se sincroniza solo.
-- [ ] **Desplegar las reglas de Firestore:** `firebase deploy --only firestore:rules` (regla de `update` con `userId` y colección `aiUsage`).
+- [ ] **Desplegar las reglas de Firestore:** `firebase deploy --only firestore:rules` (regla de `update` con `userId`, colección `aiUsage` y, desde el 2026-10-31, `deviceIntegrations`: las claves de Smart Life no las puede leer el navegador). **Antes de usar Smart Life en producción.**
+- [ ] **Equipos (Smart Life): revisión cada 15 minutos.** Crear un segundo job de Cloud Scheduler que llame a `POST /api/internal/devices-tick` con el mismo encabezado `x-cultiveta-cron-secret` (el valor de `OUTDOOR_SYNC_SECRET`), con la frecuencia `*/15 * * * *`. Rellena el horario de los superciclos cargado en Smart Life, corrige la luz si quedó al revés y lee los sensores. Sin el job, los ciclos de 24 h igual andan (quedan como programación diaria en Smart Life) y un superciclo dura la semana que se cargó al asignarlo o al cambiar la hora.
 - [ ] **Revisar variables de entorno** en Cloud Run: `APP_TIMEZONE` (por defecto Buenos Aires) y `AI_DAILY_LIMIT` (por defecto 60 consultas por día).
 
 ## 2. Datos que necesito para Google Play

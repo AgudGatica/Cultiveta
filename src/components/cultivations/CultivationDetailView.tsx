@@ -69,6 +69,8 @@ import { resolveCultivationDisplayPhoto } from '../../utils/cultivationPhotoReso
 import { useGeneticsCatalogPhotos } from '../../hooks/useGeneticsCatalogPhotos';
 import { GeneticsHeaderPhoto } from './GeneticsHeaderPhoto';
 import { LightCycleCard, type LightSchedule } from './LightCycleCard';
+import { useDevicesOverview, lightBindingFor, sensorBindingFor } from '../../services/devicesService';
+import { environmentService } from '../../services/environmentService';
 
 interface CultivationDetailViewProps {
   cultivation: Cultivation;
@@ -125,6 +127,16 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
   onLightSaved,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'fertilization' | 'photos' | 'table' | 'diary' | 'calendar'>('overview');
+  // Equipos asignados a este cultivo (enchufe de la luz, sensor de ambiente y sonda de sustrato)
+  const devicesOverview = useDevicesOverview();
+  const lightDevice = lightBindingFor(devicesOverview, cultivation.id);
+  const envSensor = sensorBindingFor(devicesOverview, cultivation.id, 'sensor_th');
+  const soilSensor = sensorBindingFor(devicesOverview, cultivation.id, 'sensor_soil');
+  const sensorAgo = (ms: number | null) => {
+    if (!ms) return '';
+    const min = Math.max(0, Math.round((Date.now() - ms) / 60000));
+    return min < 1 ? 'recién' : min < 60 ? `hace ${min} min` : `hace ${Math.round(min / 60)} h`;
+  };
   const [isHarvestModalOpen, setIsHarvestModalOpen] = useState(false);
   const [harvestToEdit, setHarvestToEdit] = useState<Harvest | null>(null);
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
@@ -851,6 +863,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                 onLightSaved?.({ ...cultivation, lighting });
               }}
               onConnectPlug={onOpenDevices ? () => onOpenDevices('luz') : undefined}
+              device={lightDevice}
             />
           )}
 
@@ -880,7 +893,12 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
               <span className="text-[11px] text-ink-subtle font-medium">
                 {lastWatering ? `pH ${lastWatering.phIn || '—'} · EC ${lastWatering.ecIn || '—'}` : 'Agregá un riego'}
               </span>
-              {onOpenDevices && (
+              {soilSensor?.sensors?.soil != null && (
+                <span id="soil-sensor-reading" className="mt-1 block text-[11px] font-bold text-brand">
+                  Sustrato {soilSensor.sensors.soil}% · {sensorAgo(soilSensor.readAt)}
+                </span>
+              )}
+              {onOpenDevices && !soilSensor && (
                 <button
                   type="button"
                   id="connect-irrigation-device"
@@ -895,7 +913,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
 
             <div className="bg-white rounded-3xl p-5 border border-line shadow-2xs relative group">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-ink-subtle block">Último Ambiente</span>
+                <span className="text-xs font-semibold text-ink-subtle block">{envSensor ? 'Ambiente ahora' : 'Último Ambiente'}</span>
                 <button
                   type="button"
                   onClick={() => onEditCultivation(cultivation)}
@@ -907,10 +925,25 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                 </button>
               </div>
               <div className="text-lg font-extrabold text-ink mt-1">
-                {lastEnv ? `${lastEnv.temperatureC}°C | ${lastEnv.humidityPct}%` : 'Sin registros'}
+                {envSensor?.sensors && (envSensor.sensors.temperature != null || envSensor.sensors.humidity != null)
+                  ? `${envSensor.sensors.temperature ?? '–'}°C | ${envSensor.sensors.humidity ?? '–'}%`
+                  : lastEnv
+                    ? `${lastEnv.temperatureC}°C | ${lastEnv.humidityPct}%`
+                    : 'Sin registros'}
               </div>
+              {envSensor && (
+                <span id="env-sensor-source" className="block text-[11px] font-bold text-brand">
+                  {envSensor.online === false ? 'Sensor sin conexión' : `Medido por ${envSensor.deviceName} · ${sensorAgo(envSensor.readAt)}`}
+                </span>
+              )}
               <div className="flex items-center justify-between gap-1 text-[11px] text-ink-subtle font-medium mt-0.5">
-                <span>{lastEnv?.vpdKPa ? `VPD: ${lastEnv.vpdKPa} kPa` : 'Temp y humedad'}</span>
+                <span>
+                  {envSensor?.sensors?.temperature != null && envSensor.sensors.humidity != null
+                    ? `VPD: ${environmentService.calculateVPD(envSensor.sensors.temperature, envSensor.sensors.humidity)} kPa`
+                    : lastEnv?.vpdKPa
+                      ? `VPD: ${lastEnv.vpdKPa} kPa`
+                      : 'Temp y humedad'}
+                </span>
                 <span
                   className="text-[10px] font-mono text-ok bg-ok/10 px-1.5 py-0.5 rounded border border-ok/30"
                   title="Rango térmico y de humedad seguro configurado para alertas automáticas"
@@ -920,7 +953,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                     : '11°-35°C | 25-75%'}
                 </span>
               </div>
-              {onOpenDevices && (
+              {onOpenDevices && !envSensor && (
                 <button
                   type="button"
                   id="connect-env-sensor"

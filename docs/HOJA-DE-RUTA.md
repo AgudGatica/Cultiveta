@@ -6,7 +6,7 @@ y de la mascota de la app. Fuente: "Cultiveta — Hoja de ruta de pendientes" (d
 | # | Función | Estado (2026-10-27) |
 |---|---|---|
 | 1 | Línea de tiempo con forma de planta | En curso |
-| 2 | Enchufes inteligentes por Wi-Fi | En curso (2026-10-31): etapa 1 hecha (luz, ambiente y riego a mano + pantalla Equipos). Falta la conexión real |
+| 2 | Enchufes inteligentes por Wi-Fi | En curso (2026-10-31): etapas 1 y 2a hechas (a mano + Equipos; Smart Life real). Faltan eWeLink, Shelly, riego y reglas por sensor |
 | 3 | Indoors / carpas | Pendiente. Referencia: "Espacios" de Canopia. Cambia el modelo de datos |
 | 4 | Comunidad | Pendiente. Necesita servidor y moderación (exigida por Google Play) |
 | 5 | Privacidad y ubicación | Pendiente. Tiene que estar antes o junto con la Comunidad |
@@ -50,9 +50,17 @@ Orden sugerido: 1 → 3 → 5 → 4 → 6 → 7. El 2 ya empezó (etapa 1, con l
   búsquedas de Mercado Libre.
 - Sin tareas ni actividad de Órbita (Cultiveta ya tiene las suyas).
 
-**Etapa 2 (pendiente):** conexión real desde el servidor de Cultiveta (Cloud Run + Cloud Scheduler, como el
-clima exterior). Smart Life con las claves de cada usuario guardadas solo en el servidor; eWeLink con una app
-de Cultiveta en dev.ewelink.cc (inicio de sesión de eWeLink); Shelly por su nube. Con servidor en la nube no
+**Etapa 2a (hecha, 2026-10-31): Smart Life real.** En Equipos se conecta el proyecto de iot.tuya.com (o una zapatilla de
+prueba), se ven los equipos y se asigna cada toma como luz de un cultivo indoor, o cada sensor como ambiente o sustrato. Al
+asignar la luz se pausan los horarios de la app Smart Life de ese toma (vuelven al desasignar o desconectar) y el horario
+queda cargado en Smart Life (diario en ciclos de 24 h; la semana en superciclos, que pasan a poder elegirse). El cultivo
+muestra el estado del enchufe y lo que mide el sensor. Servidor: `src/server/devices/` (cliente de Tuya con la firma oficial,
+husos horarios, horario cargado y `DeviceService`); rutas `/api/devices/*` y `/api/internal/devices-tick` (cada 15 min,
+Cloud Scheduler). Las claves van en `deviceIntegrations` (solo el servidor). Pendientes tuyos en PENDIENTES.md.
+
+**Etapa 2b (pendiente):** riego con bomba (cuenta regresiva del toma), reglas por sensor (extractor, humidificador),
+eWeLink (con una app de Cultiveta en dev.ewelink.cc: cada persona solo inicia sesión en eWeLink) y Shelly (por su
+nube). Todo corre en el servidor de Cultiveta (Cloud Run + Cloud Scheduler, como el clima exterior). Con servidor en la nube no
 hace falta dejar una PC prendida ni la regla de "entrar una vez por semana" de Órbita. Detalle técnico en
 `Cultiveta-referencias/TRASPASO.md` (O18–O20).
 

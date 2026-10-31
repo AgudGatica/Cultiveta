@@ -29,6 +29,7 @@ import {
   HOUR_MS,
 } from '../src/utils/lightCycle';
 import { LightCycleCard } from '../src/components/cultivations/LightCycleCard';
+import { scheduleSnapshot, sameSchedule } from '../src/services/devicesService';
 import type { Cultivation } from '../src/types';
 
 let passed = 0;
@@ -171,6 +172,28 @@ async function run() {
     assert(/arranca 2 h más tarde/.test(container.querySelector('#light-shift-note')?.textContent || ''), 'nota del corrimiento');
     assert([...container.querySelectorAll('.light-day')][0].textContent?.includes('11 h'), 'el sábado suma 11 h');
     await unmount();
+  });
+
+  await check('11. Con enchufe: estado del equipo, lo cargado en Smart Life y sin botón de conectar', async () => {
+    const device = { id: 'b1', deviceId: 'd1', deviceName: 'Zapatilla', code: 'switch_1', label: 'Toma 1', cultivationId: 'c1', cultivationName: 'Carpa', role: 'light', online: true, on: false, sensors: null, readAt: null, loaded: { mode: 'daily', until: null, daily: { on: '18:00', off: '12:00' }, error: null } } as any;
+    const { container, unmount } = await mount(
+      React.createElement(LightCycleCard, { cultivation: crop({ photoperiodHoursLight: 18, photoperiodHoursDark: 6, lightsOnTime: '18:00' }), onSaveSchedule: () => {}, onConnectPlug: () => {}, device, now: at(2026, 10, 31, 10) })
+    );
+    assert(container.querySelector('#light-state-pill')?.textContent === 'APAGADA', 'muestra lo que reporta el enchufe');
+    const note = container.querySelector('#light-device-note')?.textContent || '';
+    assert(/programación diaria/.test(note) && /lo corrige/.test(note), note);
+    assert(/Enchufe · Zapatilla · Toma 1/.test(container.textContent || ''), 'dice qué enchufe es');
+    assert(!container.querySelector('#connect-plug'), 'ya no ofrece conectar');
+    await unmount();
+  });
+
+  await check('12. Lo que se manda al servidor: horas y un encendido con la hora local', () => {
+    const snap = scheduleSnapshot(crop({ photoperiodHoursLight: 18, photoperiodHoursDark: 6, lightsOnTime: '18:00' }), at(2026, 10, 31, 10));
+    assert(snap && snap.lightHours === 18 && snap.darkHours === 6 && new Date(snap.anchorMs).getHours() === 18, JSON.stringify(snap));
+    const otherDay = { ...snap!, anchorMs: snap!.anchorMs + 3 * 24 * HOUR_MS };
+    assert(sameSchedule(snap, otherDay), 'otro día del mismo ciclo es el mismo horario');
+    assert(!sameSchedule(snap, { ...snap!, anchorMs: snap!.anchorMs + HOUR_MS }), 'una hora después no');
+    assert(scheduleSnapshot(crop({ photoperiodHoursLight: 13, photoperiodHoursDark: 13, lightsOnTime: '08:00' })) === null, 'superciclo sin día: todavía no');
   });
 
   await check('10. Superciclo sin día de encendido: lo pide', async () => {
