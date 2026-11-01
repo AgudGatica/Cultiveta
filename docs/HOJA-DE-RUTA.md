@@ -9,7 +9,7 @@ y de la mascota de la app. Fuente: "Cultiveta — Hoja de ruta de pendientes" (d
 | 2 | Enchufes inteligentes por Wi-Fi | Hecho (2026-10-31): a mano + Equipos, Smart Life, bomba y clima, riego automático, eWeLink y Shelly. Falta habilitar la app de eWeLink (ver PENDIENTES) |
 | 3 | Indoors / carpas | Hecho (2026-11-01): ambientes interiores y exteriores; el Jardín muestra ambientes → genéticas |
 | 4 | Comunidad | Pendiente. Necesita servidor y moderación (exigida por Google Play) |
-| 5 | Privacidad y ubicación | Pendiente. Tiene que estar antes o junto con la Comunidad |
+| 5 | Privacidad y ubicación | En curso (2026-11-01): todas las fotos se guardan sin datos internos ni ubicación. Falta la ubicación general opcional al publicar (va con la Comunidad) |
 | 6 | Mascota personalizable | Falta definir la mascota oficial. Experiencia, niveles, logros y racha ya están hechos |
 | 7 | Minijuego endless runner | Depende de la mascota. Declarar bien la clasificación por edad en Play Store |
 | 8 | Monetización | Pendiente. AdMob restringe apps de cannabis; Play Billing sí sirve para suscripciones |
@@ -151,6 +151,11 @@ la sonda de sustrato siguen por cultivo).
 
 - La ubicación nunca se muestra automáticamente.
 - Borrar los datos internos de las fotos (metadatos, incluida la ubicación) en todas las publicaciones.
+  **Hecho (2026-11-01):** se borran al guardar cualquier foto (del cultivo, portadas y fotos de genéticas), no solo
+  al publicar: así una foto nunca guarda dónde se sacó. JPEG, PNG y WebP se limpian sin volver a comprimir
+  (`src/utils/imageMetadata.ts`); en los JPEG queda solo la orientación para que no aparezcan giradas. Otro
+  formato (HEIC) se pasa a JPEG en el celular (`src/services/photoPrivacy.ts`). Las fotos subidas antes de
+  este cambio siguen con sus datos: se limpiarán al publicarlas.
 - Al publicar, el usuario puede agregar opcionalmente una ubicación general (por ejemplo: Argentina, Buenos Aires), nunca una específica.
 
 ## 6. Mascota personalizable

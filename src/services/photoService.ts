@@ -14,6 +14,7 @@ import { db, storage, auth } from '../firebase/config';
 import { PhotoRecord, CultivationStageName, PhotoCategory, PhotoSyncStatus } from '../types';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
 import { localStore } from './localStore';
+import { cleanPhotoFile } from './photoPrivacy';
 import {
   photoOfflineQueue,
   QueuedOfflinePhoto,
@@ -306,6 +307,12 @@ export const photoService = {
       file = photoIdOrFile;
       ext = typeof fileOrExt === 'string' ? fileOrExt : ((file as File).name?.split('.').pop() || 'jpg');
     }
+    // Sin ubicación ni datos del celular (si se pasó a JPEG, cambia la extensión)
+    if (file instanceof File) {
+      const clean = await cleanPhotoFile(file);
+      if (clean !== file && clean.type === 'image/jpeg' && file.type !== 'image/jpeg') ext = 'jpg';
+      file = clean;
+    }
 
     const storagePath = getPhotoStoragePath(userId, cultivationId, photoId, ext);
     const storageRef = ref(storage, storagePath);
@@ -336,6 +343,9 @@ export const photoService = {
     isDemo?: boolean;
     previewUrl?: string; // Mantenido para retrocompatibilidad de firma, pero ignorado para persistencia
   }): Promise<{ photo: PhotoRecord; enqueuedOffline: boolean }> {
+    // 0. Sin ubicación ni datos del celular: se limpia antes de guardarla en el dispositivo y en la nube
+    params = { ...params, file: await cleanPhotoFile(params.file) };
+
     // 1. Identificador determinista único
     const photoId = doc(collection(db, FIRESTORE_COLLECTIONS.PHOTOS)).id;
     const ext = params.file.name.split('.').pop() || 'jpg';

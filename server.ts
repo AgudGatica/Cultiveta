@@ -14,6 +14,7 @@ import multer from 'multer';
 import { CultivationTask } from './src/types';
 import { verifyAdminRole, isRequestAdmin } from './src/server/adminAuthMiddleware';
 import { validateImageBuffer } from './src/server/imageValidation';
+import { stripImageMetadata } from './src/utils/imageMetadata';
 import { getGeneticsPhotoKey } from './src/utils/geneticsKeyUtils';
 import { cleanFirestoreData } from './src/utils/firestoreUtils';
 import { DeviceService, MemoryDeviceStore, FirestoreDeviceStore, DeviceError } from './src/server/devices/deviceService';
@@ -2034,8 +2035,11 @@ app.post(
       const downloadToken = crypto.randomUUID();
       const fileRef = bucket.file(newStoragePath);
 
+      // Sin ubicación ni datos de la cámara (la foto la ve cualquiera que use la genética)
+      const cleanImage = stripImageMetadata(new Uint8Array(req.file.buffer.buffer, req.file.buffer.byteOffset, req.file.buffer.length));
+
       try {
-        await fileRef.save(req.file.buffer, {
+        await fileRef.save(Buffer.from(cleanImage.bytes.buffer, cleanImage.bytes.byteOffset, cleanImage.bytes.length), {
           metadata: {
             contentType: imageValidation.detectedMime || req.file.mimetype || 'image/jpeg',
             metadata: {
@@ -2077,7 +2081,7 @@ app.post(
         name: name.trim(),
         photoUrl,
         storagePath: newStoragePath,
-        fileSize: req.file.size,
+        fileSize: cleanImage.bytes.length,
         mimeType: imageValidation.detectedMime,
         dimensions: parsedDimensions || undefined,
         photoSourceUrl: trimmedSourceUrl || undefined,
