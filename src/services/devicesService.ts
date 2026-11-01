@@ -44,6 +44,8 @@ export interface DeviceBindingState {
   cultivationId: string;
   cultivationName: string;
   role: DeviceRole;
+  /** A qué está asignado: un cultivo o un indoor (cultivationId es el id de uno u otro). */
+  targetKind?: 'cultivation' | 'indoor';
   vendor?: DeviceVendor;
   schedule?: LightScheduleSnapshot | null;
   climateRole?: ClimateRole | null;
@@ -190,7 +192,7 @@ export const devicesService = {
   listDevices: () => api<{ devices: SmartDevice[] }>('GET', '/api/devices').then((r) => r.devices),
   /** Los equipos y, si una marca falló, su error (las otras se ven igual). */
   listDevicesWithErrors: () => api<{ devices: SmartDevice[]; errors?: Partial<Record<DeviceVendor, string>> }>('GET', '/api/devices').then((r) => ({ devices: r.devices || [], errors: r.errors || {} })),
-  async bind(body: { deviceId: string; code: string; role: DeviceRole; cultivationId: string; cultivationName: string; schedule?: LightScheduleSnapshot | null; climateRole?: ClimateRole; rule?: ClimateRule; pump?: PumpConfig }) {
+  async bind(body: { deviceId: string; code: string; role: DeviceRole; cultivationId: string; cultivationName: string; targetKind?: 'cultivation' | 'indoor'; schedule?: LightScheduleSnapshot | null; climateRole?: ClimateRole; rule?: ClimateRule; pump?: PumpConfig }) {
     await api('POST', '/api/devices/bindings', body);
     await devicesService.refreshOverview();
   },

@@ -1,11 +1,13 @@
 import React, { useMemo } from 'react';
-import { AlertTriangle, Flame, Leaf, Medal, Plus, Sprout } from 'lucide-react';
-import type { Cultivation, EnvironmentRecord, Genetics, PhotoRecord, UserProfile, Watering } from '../../types';
+import { AlertTriangle, Flame, Home, Leaf, Medal, Plus, Sprout } from 'lucide-react';
+import type { Cultivation, EnvironmentRecord, Genetics, Indoor, PhotoRecord, UserProfile, Watering } from '../../types';
 import type { GrowerProgress } from '../../utils/growerProgress';
 import { isCropFinished } from '../../utils/cropCardInfo';
 import { EmptyState } from '../common/EmptyState';
 import { TodayTasksCard } from './TodayTasksCard';
 import { ActiveCropCard } from './ActiveCropCard';
+import { IndoorCard } from '../indoors/IndoorCard';
+import { cropsInIndoor } from '../../utils/indoors';
 
 interface DashboardOverviewProps {
   cultivations: Cultivation[];
@@ -25,6 +27,10 @@ interface DashboardOverviewProps {
   onCreateCultivationClick: () => void;
   onOpenWateringModal: (cultivation?: Cultivation) => void;
   onTaskCompletedFeedback?: (message: string) => void;
+  /** Indoors (carpas, salas, armarios) que agrupan cultivos. */
+  indoors?: Indoor[];
+  onOpenIndoor?: (indoor: Indoor) => void;
+  onCreateIndoorClick?: () => void;
 }
 
 /** Saludo según la hora local. */
@@ -36,8 +42,8 @@ export function getGreeting(date: Date = new Date()): string {
 }
 
 /**
- * Inicio: saludo, "Para hoy", cuatro números (cultivos, plantas, racha y nivel) y las tarjetas de
- * los cultivos activos. El detalle de cada cultivo (ambiente, riego, ciclo, gráficos) vive en su pantalla.
+ * Inicio: saludo, "Para hoy", cuatro números (cultivos, plantas, racha y nivel), los indoors y las
+ * tarjetas de los cultivos activos. El detalle de cada cultivo (ambiente, riego, ciclo, gráficos) vive en su pantalla.
  */
 export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   cultivations,
@@ -56,6 +62,9 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   onCreateCultivationClick,
   onOpenWateringModal,
   onTaskCompletedFeedback,
+  indoors = [],
+  onOpenIndoor,
+  onCreateIndoorClick,
 }) => {
   const activeCrops = useMemo(() => cultivations.filter((c) => !isCropFinished(c)), [cultivations]);
   const totalPlants = activeCrops.reduce((acc, c) => acc + (c.plantCount || 1), 0);
@@ -130,7 +139,38 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             ))}
           </section>
 
-          {/* 4. Cultivos activos */}
+          {/* 4. Indoors: carpas o salas que agrupan cultivos y comparten la luz */}
+          {onCreateIndoorClick && (indoors.length > 0 || activeCrops.length > 0) && (
+            <section id="home-indoors" aria-labelledby="home-indoors-title" className="space-y-3">
+              <h2 id="home-indoors-title" className="text-lg font-extrabold text-white flex items-center gap-2 px-1">
+                <Home className="w-4 h-4" aria-hidden="true" />
+                Indoors{indoors.length ? ` (${indoors.length})` : ''}
+              </h2>
+              {indoors.length === 0 ? (
+                <div className="cultiveta-card p-4 flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-sm text-ink flex-1 min-w-[200px]">Juntá tus cultivos de interior en una carpa o sala: comparten la luz, el ambiente y los equipos.</p>
+                  <button type="button" id="home-create-indoor-btn" onClick={onCreateIndoorClick} className="cultiveta-btn-primary text-sm">
+                    <Plus className="w-4 h-4" aria-hidden="true" />
+                    Crear indoor
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div id="home-indoor-grid" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                    {indoors.map((i) => (
+                      <IndoorCard key={i.id} indoor={i} crops={cropsInIndoor(cultivations, i.id)} onOpen={(x) => onOpenIndoor?.(x)} />
+                    ))}
+                  </div>
+                  <button type="button" id="home-add-indoor-btn" onClick={onCreateIndoorClick} className="cultiveta-btn-secondary w-full text-sm">
+                    <Plus className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
+                    Nuevo indoor
+                  </button>
+                </>
+              )}
+            </section>
+          )}
+
+          {/* 5. Cultivos activos */}
           {activeCrops.length === 0 ? (
             <EmptyState
               id="home-empty-crops"
@@ -154,6 +194,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
                     cultivation={crop}
                     geneticsList={geneticsList}
                     onOpen={onSelectCultivation}
+                    indoorName={crop.indoorId ? indoors.find((i) => i.id === crop.indoorId)?.name : null}
                   />
                 ))}
               </div>

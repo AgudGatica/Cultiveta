@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { User } from 'firebase/auth';
-import { AppView, isLegacyHarvestsPath, parseAppRoute, pathForView } from './appRoutes';
+import { AppView, isLegacyHarvestsPath, parseAppRoute, pathForIndoor, pathForView } from './appRoutes';
 import { authService } from './services/authService';
 import { cultivationService } from './services/cultivationService';
 import { wateringService } from './services/wateringService';
@@ -24,6 +24,7 @@ import {
   DiaryEntry,
   WateringProductItem,
   CultivationTask,
+  Indoor,
 } from './types';
 
 import { Header } from './components/common/Header';
@@ -34,6 +35,7 @@ import { AuthScreen } from './components/auth/AuthScreen';
 
 import { DashboardOverview } from './components/dashboard/DashboardOverview';
 import { CultivationFormModal } from './components/cultivations/CultivationFormModal';
+import { IndoorFormModal } from './components/indoors/IndoorFormModal';
 import { getDetailBackTarget, getNavHighlight, isCropFinished } from './utils/cropCardInfo';
 import { WateringModal } from './components/logs/WateringModal';
 import { EnvironmentModal } from './components/logs/EnvironmentModal';
@@ -70,7 +72,10 @@ const CalculatorsView = React.lazy(() =>
   import('./components/tools/CalculatorsView').then((m) => ({ default: m.CalculatorsView }))
 );
 const DevicesView = React.lazy(() => import('./components/devices/DevicesView'));
+const IndoorDetailView = React.lazy(() => import('./components/indoors/IndoorDetailView'));
 import { devicesService, scheduleSnapshot, sameSchedule, useDevicesOverview } from './services/devicesService';
+import { indoorService } from './services/indoorService';
+import { withIndoorLighting } from './utils/indoors';
 const PhotoDiagnosisModal = React.lazy(() =>
   import('./components/ai/PhotoDiagnosisModal').then((m) => ({ default: m.PhotoDiagnosisModal }))
 );
@@ -152,7 +157,16 @@ export default function App() {
   }, [currentView]);
 
   // Data Collections
-  const [cultivations, setCultivations] = useState<Cultivation[]>([]);
+  const [rawCultivations, setCultivations] = useState<Cultivation[]>([]);
+  // Indoors (carpas): los cultivos de adentro usan la luz del indoor.
+  const [indoors, setIndoors] = useState<Indoor[]>([]);
+  const cultivations = React.useMemo(() => withIndoorLighting(rawCultivations, indoors), [rawCultivations, indoors]);
+  const [isIndoorFormOpen, setIsIndoorFormOpen] = useState(false);
+  const [indoorToEdit, setIndoorToEdit] = useState<Indoor | null>(null);
+  // Nuevo cultivo pedido desde un indoor: arranca adentro
+  const [newCropIndoorId, setNewCropIndoorId] = useState<string | null>(null);
+  const openIndoor = React.useCallback((id: string) => navigate(pathForIndoor(id)), [navigate]);
+  const selectedIndoor = route.indoorId ? indoors.find((i) => i.id === route.indoorId) || null : null;
   const [waterings, setWaterings] = useState<Watering[]>([]);
   const [envRecords, setEnvRecords] = useState<EnvironmentRecord[]>([]);
   const [photos, setPhotos] = useState<PhotoRecord[]>([]);
@@ -173,7 +187,7 @@ export default function App() {
     const id = window.setInterval(() => devicesService.refreshOverview(), 60_000);
     return () => window.clearInterval(id);
   }, [currentUser, currentView]);
-  // Si cambia el horario de la luz de un cultivo con enchufe (hora de encendido o fotoperiodo), se
+  // Si cambia el horario de la luz de un cultivo o indoor con enchufe (hora de encendido o fotoperiodo), se
   // vuelve a cargar en Smart Life; la bomba también lo recibe (riego con la luz, de noche no riega por
   // humedad). Se recuerda lo último mandado para no repetirlo.
   const pushedSchedules = React.useRef<Record<string, string>>({});
@@ -181,9 +195,10 @@ export default function App() {
     devicesOverview.bindings
       .filter((b) => b.role === 'light' || b.role === 'pump')
       .forEach((b) => {
-        const crop = cultivations.find((c) => c.id === b.cultivationId);
-        if (!crop) return;
-        const snap = scheduleSnapshot(crop);
+        // la luz de un indoor es la suya; un cultivo dentro de un indoor ya trae la luz del indoor
+        const owner = b.targetKind === 'indoor' ? indoors.find((i) => i.id === b.cultivationId) : cultivations.find((c) => c.id === b.cultivationId);
+        if (!owner) return;
+        const snap = scheduleSnapshot(owner);
         if (sameSchedule(snap, b.schedule ?? null)) return;
         const key = JSON.stringify(snap);
         if (pushedSchedules.current[b.id] === key) return;
@@ -195,7 +210,7 @@ export default function App() {
             delete pushedSchedules.current[b.id];
           });
       });
-  }, [cultivations, devicesOverview]);
+  }, [cultivations, indoors, devicesOverview]);
 
   // Modal States
   const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
@@ -381,6 +396,8 @@ export default function App() {
   useEffect(() => {
     if (!currentUser) {
       setCultivations([]);
+      setIndoors([]);
+      indoorService.reset();
       setWaterings([]);
       setEnvRecords([]);
       setPhotos([]);
@@ -427,6 +444,7 @@ export default function App() {
         markInitialLoaded();
       }
     );
+    const unsubIndoors = indoorService.subscribeIndoors(currentUser.uid, setIndoors);
     const unsubWaterings = wateringService.subscribeWaterings(
       currentUser.uid,
       (list) => {
@@ -471,6 +489,7 @@ export default function App() {
       clearTimeout(safetyTimer);
       window.removeEventListener('cultiveta_listener_error', handleListenerError);
       unsubCultivations();
+      unsubIndoors();
       unsubWaterings();
       unsubEnv();
       unsubPhotos();
@@ -535,6 +554,8 @@ export default function App() {
       localStore.clearUserData(currentUser.uid);
     }
     setCultivations([]);
+    setIndoors([]);
+    indoorService.reset();
     setWaterings([]);
     setEnvRecords([]);
     setPhotos([]);
@@ -672,8 +693,49 @@ export default function App() {
               onTaskCompletedFeedback={(msg) => {
                 showToast(msg);
               }}
+              indoors={indoors}
+              onOpenIndoor={(i) => openIndoor(i.id)}
+              onCreateIndoorClick={() => {
+                setIndoorToEdit(null);
+                setIsIndoorFormOpen(true);
+              }}
             />
           )}
+
+          {/* VIEW: INDOOR (carpa, sala o armario) */}
+          {currentView === 'indoor_detail' &&
+            (selectedIndoor ? (
+              <IndoorDetailView
+                indoor={selectedIndoor}
+                cultivations={cultivations}
+                userId={currentUser.uid}
+                geneticsList={geneticsList}
+                onBack={() => setCurrentView('dashboard')}
+                onOpenCrop={(crop) => {
+                  setSelectedCultivationId(crop.id);
+                  setCurrentView('cultivation_detail');
+                }}
+                onEdit={(i) => {
+                  setIndoorToEdit(i);
+                  setIsIndoorFormOpen(true);
+                }}
+                onDeleted={() => setCurrentView('dashboard')}
+                onCreateCropHere={(i) => {
+                  setCultivationToEdit(null);
+                  setNewCropIndoorId(i.id);
+                  setIsCultivationFormOpen(true);
+                }}
+                onOpenDevices={openDevices}
+                showToast={showToast}
+              />
+            ) : (
+              <div className="cultiveta-card p-10 text-center space-y-3">
+                <p className="text-sm text-ink-muted">{isInitialLoading ? 'Cargando el indoor…' : 'Ese indoor ya no existe.'}</p>
+                <button type="button" onClick={() => setCurrentView('dashboard')} className="cultiveta-btn-secondary text-sm">
+                  Volver al Inicio
+                </button>
+              </div>
+            ))}
 
           {/* VIEW: CULTIVOS (terminados + cosechas) */}
           {currentView === 'cultivations' && (
@@ -735,6 +797,7 @@ export default function App() {
                 onOpenPhotoModal={() => setIsPhotoModalOpen(true)}
                 onOpenDiaryModal={() => setIsDiaryModalOpen(true)}
                 onOpenDevices={openDevices}
+                onOpenIndoor={openIndoor}
                 onWateringAdded={(w) => {
                   setWaterings((prev) => (prev.some((x) => x.id === w.id) ? prev : [w, ...prev]));
                 }}
@@ -924,6 +987,24 @@ export default function App() {
         onOpenAIAssistant={() => setCurrentView('ai_assistant')}
       />
 
+      {/* Indoor (carpa, sala o armario): crear o editar */}
+      {isIndoorFormOpen && currentUser && (
+        <IndoorFormModal
+          isOpen={isIndoorFormOpen}
+          onClose={() => {
+            setIsIndoorFormOpen(false);
+            setIndoorToEdit(null);
+          }}
+          userId={currentUser.uid}
+          indoorToEdit={indoorToEdit}
+          onSaved={(saved) => {
+            setIndoors((prev) => (prev.some((i) => i.id === saved.id) ? prev.map((i) => (i.id === saved.id ? saved : i)) : [...prev, saved]));
+            showToast(indoorToEdit ? `Indoor "${saved.name}" guardado.` : `Indoor "${saved.name}" creado. Sumale cultivos.`);
+            if (!indoorToEdit) openIndoor(saved.id);
+          }}
+        />
+      )}
+
       {/* Cultivation Form Modal */}
       {isCultivationFormOpen && (
         <CultivationFormModal
@@ -932,8 +1013,11 @@ export default function App() {
             setIsCultivationFormOpen(false);
             setCultivationToEdit(null);
             setInitialGeneticsForNewCrop(null);
+            setNewCropIndoorId(null);
           }}
           userId={currentUser.uid}
+          indoors={indoors}
+          initialIndoorId={newCropIndoorId}
           cultivationToEdit={cultivationToEdit}
           initialGenetics={initialGeneticsForNewCrop}
           geneticsList={geneticsList}

@@ -6,8 +6,8 @@ y de la mascota de la app. Fuente: "Cultiveta — Hoja de ruta de pendientes" (d
 | # | Función | Estado (2026-10-27) |
 |---|---|---|
 | 1 | Línea de tiempo con forma de planta | En curso |
-| 2 | Enchufes inteligentes por Wi-Fi | En curso (2026-10-31): etapas 1, 2a y 2b hechas (a mano + Equipos; Smart Life real; bomba y clima). Faltan riego automático, eWeLink y Shelly |
-| 3 | Indoors / carpas | Pendiente. Referencia: "Espacios" de Canopia. Cambia el modelo de datos |
+| 2 | Enchufes inteligentes por Wi-Fi | Hecho (2026-10-31): a mano + Equipos, Smart Life, bomba y clima, riego automático, eWeLink y Shelly. Falta habilitar la app de eWeLink (ver PENDIENTES) |
+| 3 | Indoors / carpas | Hecho (2026-10-31): el indoor agrupa cultivos y comparte la luz; luz, clima y ambiente por indoor |
 | 4 | Comunidad | Pendiente. Necesita servidor y moderación (exigida por Google Play) |
 | 5 | Privacidad y ubicación | Pendiente. Tiene que estar antes o junto con la Comunidad |
 | 6 | Mascota personalizable | Falta definir la mascota oficial. Experiencia, niveles, logros y racha ya están hechos |
@@ -15,7 +15,7 @@ y de la mascota de la app. Fuente: "Cultiveta — Hoja de ruta de pendientes" (d
 | 8 | Monetización | Pendiente. AdMob restringe apps de cannabis; Play Billing sí sirve para suscripciones |
 | 9 | Indoor en 3D | Muy a futuro |
 
-Orden sugerido: 1 → 3 → 5 → 4 → 6 → 7. El 2 ya empezó (etapa 1, con los equipos colgados de cada cultivo hasta que existan los indoors); el 8 cuando haya algo para vender.
+Orden sugerido: 1 → 3 → 5 → 4 → 6 → 7 (el 2 y el 3 ya están); el 8 cuando haya algo para vender.
 
 ---
 
@@ -91,6 +91,21 @@ hace falta dejar una PC prendida ni la regla de "entrar una vez por semana" de �
 - Dentro del indoor se configuran luces, horarios y demás parámetros.
 - Cada indoor contiene sus plantas y muestra todas las genéticas que hay adentro.
 - Se integra con los enchufes inteligentes (luz y humedad por indoor).
+
+**Hecho (2026-10-31).** Decisiones del dueño: el indoor **agrupa cultivos** (cada cultivo sigue siendo un lote con sus
+genéticas y su línea de tiempo), la **luz vive en el indoor** y la comparten sus cultivos, los cultivos que ya existían
+**quedan sueltos** hasta que se los mete a mano, y **luz, clima y sensor de ambiente** se asignan al indoor (la bomba y
+la sonda de sustrato siguen por cultivo).
+- Colección `indoors` (nombre, tipo carpa/sala/armario, medidas, luz) y `indoorId` en el cultivo. La regla general de
+  Firestore ya la cubre; se exporta y se borra con la cuenta.
+- Inicio: sección Indoors (luz prendida o apagada, cultivos, plantas y genéticas) y cada cultivo dice en qué indoor está.
+  Pantalla `/indoors/:id`: luz con su tarjeta de 7 días, ambiente y equipos de clima, cultivos de adentro (meter, sacar,
+  nuevo cultivo acá) y las genéticas de adentro con sus plantas.
+- Luz compartida: `withIndoorLighting` le pone a cada cultivo la luz de su indoor; cambiar la hora de encendido o el
+  fotoperiodo desde un cultivo (o al pasar de etapa) se guarda en el indoor (`indoorService.saveCropUpdates`) y se avisa
+  que vale para todos. Al sacar un cultivo o borrar el indoor, el cultivo se queda con esa luz.
+- Equipos: en Equipos se elige el indoor o el cultivo; el servidor guarda `targetKind` y comprueba que el indoor sea de
+  la persona.
 
 ## 4. Comunidad (red social)
 

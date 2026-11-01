@@ -34,6 +34,7 @@ import {
 } from '../../types';
 import { StatusPill } from '../common/StatusPill';
 import { cultivationService } from '../../services/cultivationService';
+import { indoorService, useIndoors } from '../../services/indoorService';
 import { harvestService } from '../../services/harvestService';
 import { EditHarvestModal } from '../harvests/EditHarvestModal';
 import { EnvironmentChart } from '../charts/EnvironmentChart';
@@ -51,7 +52,7 @@ import { GoogleCalendarModal } from '../calendar/GoogleCalendarModal';
 import { FertilizationSectionView } from './FertilizationSectionView';
 import { FloweringProgressSection } from '../dashboard/FloweringProgressSection';
 import { HarvestProjectionSection } from '../dashboard/HarvestProjectionSection';
-import { FlaskConical, Clock, Settings2, ChevronRight, ChevronDown, PlayCircle } from 'lucide-react';
+import { FlaskConical, Clock, Settings2, ChevronRight, ChevronDown, PlayCircle, Home } from 'lucide-react';
 import { CultivationTimelineView } from './timeline/CultivationTimelineView';
 import { StageConfigModal } from './timeline/StageConfigModal';
 import { StageTransitionModal } from './timeline/StageTransitionModal';
@@ -102,6 +103,8 @@ interface CultivationDetailViewProps {
   onWateringAdded?: (watering: Watering) => void;
   /** Se guardó la hora de encendido de la luz. */
   onLightSaved?: (updatedCultivation: Cultivation) => void;
+  /** Abre el indoor donde está el cultivo. */
+  onOpenIndoor?: (indoorId: string) => void;
 }
 
 export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
@@ -129,12 +132,15 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
   onOpenDevices,
   onLightSaved,
   onWateringAdded,
+  onOpenIndoor,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'fertilization' | 'photos' | 'table' | 'diary' | 'calendar'>('overview');
+  // Indoor donde está: su luz es la del cultivo, y la luz, el clima y el ambiente se asignan al indoor
+  const indoor = useIndoors().find((i) => i.id === cultivation.indoorId) || null;
   // Equipos asignados a este cultivo (enchufe de la luz, sensor de ambiente y sonda de sustrato)
   const devicesOverview = useDevicesOverview();
-  const lightDevice = lightBindingFor(devicesOverview, cultivation.id);
-  const envSensor = sensorBindingFor(devicesOverview, cultivation.id, 'sensor_th');
+  const lightDevice = lightBindingFor(devicesOverview, cultivation.id) || (indoor ? lightBindingFor(devicesOverview, indoor.id) : null);
+  const envSensor = sensorBindingFor(devicesOverview, cultivation.id, 'sensor_th') || (indoor ? sensorBindingFor(devicesOverview, indoor.id, 'sensor_th') : null);
   const soilSensor = sensorBindingFor(devicesOverview, cultivation.id, 'sensor_soil');
   const sensorAgo = (ms: number | null) => {
     if (!ms) return '';
@@ -314,6 +320,17 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-black text-ink tracking-tight">{cultivation.name}</h1>
+            {indoor && (
+              <button
+                type="button"
+                id="crop-indoor-chip"
+                onClick={() => onOpenIndoor?.(indoor.id)}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand/10 border border-brand/20 text-brand text-xs font-bold hover:bg-brand/15"
+              >
+                <Home className="w-3.5 h-3.5" aria-hidden="true" />
+                En {indoor.name}
+              </button>
+            )}
             <p className="text-xs sm:text-sm text-ink-muted font-medium flex items-center gap-2">
               <span>
                 Genética: <strong className="text-ink">{cultivation.geneticsName || (cultivation.geneticsList && cultivation.geneticsList[0]?.name) || 'No especificada'}</strong>
@@ -861,9 +878,10 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
           {!isCosechado && cultivation.type === 'Indoor' && (
             <LightCycleCard
               cultivation={cultivation}
+              sharedNote={indoor ? `Luz del indoor ${indoor.name}: es la misma para todos los cultivos de adentro.` : null}
               onSaveSchedule={async (schedule: LightSchedule) => {
                 const lighting = { ...(cultivation.lighting ?? { type: '' }), ...schedule };
-                await cultivationService.updateCultivation(cultivation.id, { lighting }, userId);
+                await indoorService.saveCropUpdates(cultivation, { lighting }, userId);
                 onLightSaved?.({ ...cultivation, lighting });
               }}
               onConnectPlug={onOpenDevices ? () => onOpenDevices('luz') : undefined}

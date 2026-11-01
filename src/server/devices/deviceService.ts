@@ -63,8 +63,11 @@ export interface DeviceBinding {
   deviceName: string;
   code: string;
   label: string;
+  /** Id del cultivo o del indoor al que está asignado (ver targetKind). */
   cultivationId: string;
   cultivationName: string;
+  /** Indoor: la luz, el clima y el ambiente se asignan a la carpa y valen para sus cultivos. */
+  targetKind?: 'cultivation' | 'indoor';
   role: BindingRole;
   /** Luz: su horario. Bomba: el horario de la luz del cultivo (para el riego atado a la luz y para saber si es de noche). */
   schedule?: LightScheduleSnapshot | null;
@@ -277,15 +280,15 @@ export class DeviceService {
   private shellyMocks = new Map<string, MockShelly>();
   private ewelinkApp: EwelinkApp | null;
   private specs = new Map<string, any>();
-  private verifyCultivation: (userId: string, cultivationId: string) => Promise<{ name: string } | null>;
+  private verifyCultivation: (userId: string, cultivationId: string, kind: 'cultivation' | 'indoor') => Promise<{ name: string } | null>;
   private recordWatering: (userId: string, w: AutoWateringRecord) => Promise<void>;
 
   constructor(o: {
     store: DeviceStore;
     now?: () => number;
     fetchImpl?: (url: string, init?: any) => Promise<any>;
-    /** Con Firestore Admin: confirma que el cultivo es de esa persona y devuelve su nombre. */
-    verifyCultivation?: (userId: string, cultivationId: string) => Promise<{ name: string } | null>;
+    /** Con Firestore Admin: confirma que el cultivo (o el indoor) es de esa persona y devuelve su nombre. */
+    verifyCultivation?: (userId: string, cultivationId: string, kind: 'cultivation' | 'indoor') => Promise<{ name: string } | null>;
     /** Con Firestore Admin: anota en el cultivo cada riego automático. */
     recordWatering?: (userId: string, w: AutoWateringRecord) => Promise<void>;
     /** La app de Cultiveta en dev.ewelink.cc (sin ella, eWeLink solo se puede probar con el de prueba). */
@@ -610,7 +613,7 @@ export class DeviceService {
 
   async bind(
     userId: string,
-    input: { deviceId: string; code: string; role: BindingRole; cultivationId: string; cultivationName?: string; schedule?: unknown; climateRole?: unknown; rule?: unknown; pump?: unknown }
+    input: { deviceId: string; code: string; role: BindingRole; cultivationId: string; cultivationName?: string; targetKind?: unknown; schedule?: unknown; climateRole?: unknown; rule?: unknown; pump?: unknown }
   ) {
     const integ = await this.load(userId);
     const c = this.client(userId, integ);
@@ -619,7 +622,9 @@ export class DeviceService {
     const isSwitch = MANAGED.includes(role);
     if (isSwitch && !SWITCH_CODE.test(input.code)) throw new DeviceError('Para eso hay que elegir un toma.');
     if (role === 'climate' && !isClimateRole(input.climateRole)) throw new DeviceError('Elegí qué equipo de clima es.');
-    const owned = await this.verifyCultivation(userId, input.cultivationId);
+    const targetKind = input.targetKind === 'indoor' ? 'indoor' : 'cultivation';
+    if (targetKind === 'indoor' && (role === 'pump' || role === 'sensor_soil')) throw new DeviceError('La bomba y la sonda de sustrato van en un cultivo: cada maceta se riega aparte.');
+    const owned = await this.verifyCultivation(userId, input.cultivationId, targetKind);
     const cultivationName = owned?.name || String(input.cultivationName || 'Cultivo').slice(0, 60);
     const device = (await c.listDevices()).find((d) => d.id === input.deviceId);
     if (!device) throw new DeviceError('Ese equipo no está en tu cuenta de Smart Life.', 404);
@@ -646,6 +651,7 @@ export class DeviceService {
       label: channel ? channel.label : 'Sensor',
       cultivationId: input.cultivationId,
       cultivationName,
+      targetKind,
       role,
       schedule: role === 'light' || role === 'pump' ? validateSchedule(input.schedule) : null,
       climateRole,

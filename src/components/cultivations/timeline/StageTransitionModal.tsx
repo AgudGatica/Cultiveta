@@ -24,7 +24,7 @@ import {
   isPreFloweringStage,
   computeStageTransition,
 } from '../../../utils/growthStageUtils';
-import { cultivationService } from '../../../services/cultivationService';
+import { indoorService, useIndoors } from '../../../services/indoorService';
 import { PhotoperiodPresetPicker } from '../PhotoperiodPresetPicker';
 import { useDevicesOverview, lightBindingFor } from '../../../services/devicesService';
 import { darkHoursFor, describePhotoperiod } from '../../../utils/photoperiods';
@@ -50,7 +50,10 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
 }) => {
   const todayStr = getLocalTodayDateOnly();
   // Superciclos: solo si la luz de este cultivo está en un enchufe inteligente (cada encendido se corre)
-  const hasSmartPlug = !!lightBindingFor(useDevicesOverview(), cultivation.id);
+  const devicesOverview = useDevicesOverview();
+  const hasSmartPlug = !!(lightBindingFor(devicesOverview, cultivation.id) || (cultivation.indoorId && lightBindingFor(devicesOverview, cultivation.indoorId)));
+  // en un indoor la luz es compartida: el fotoperiodo nuevo vale para todo el indoor
+  const indoor = useIndoors().find((i) => i.id === cultivation.indoorId) || null;
 
   const determineDefaultStage = (): string => {
     if (initialSelectedStage?.name) return initialSelectedStage.name;
@@ -146,7 +149,7 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
         updates.isFinished = true;
       }
 
-      await cultivationService.updateCultivation(cultivation.id, updates, userId);
+      await indoorService.saveCropUpdates(cultivation, updates, userId);
 
       const updatedCultivation: Cultivation = {
         ...cultivation,
@@ -324,6 +327,12 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
                   </label>
                 </div>
               </div>
+
+              {updatePhotoperiod && indoor && (
+                <p id="stage-indoor-light-note" className="text-xs font-bold text-amber-950 bg-white/70 border border-amber-300/60 rounded-xl px-3 py-2">
+                  La luz es la del indoor {indoor.name}: el fotoperiodo nuevo vale para todos los cultivos de adentro.
+                </p>
+              )}
 
               {updatePhotoperiod && (
                 <div className="space-y-3 pt-2.5 border-t border-amber-200/70">

@@ -24,7 +24,10 @@ export interface LightSchedule {
 }
 
 interface LightCycleCardProps {
-  cultivation: Cultivation;
+  /** Un cultivo o un indoor: solo se usa su luz. */
+  cultivation: Pick<Cultivation, 'lighting'>;
+  /** Luz compartida de un indoor (se dice de cuál y para cuántos cultivos). */
+  sharedNote?: string | null;
   onSaveSchedule: (schedule: LightSchedule) => Promise<void> | void;
   /** Lleva a Equipos para conectar un enchufe inteligente. */
   onConnectPlug?: () => void;
@@ -52,7 +55,7 @@ const todayKey = (ms: number): string => {
  * A mano funciona como un timer: se carga a qué hora prende (y, en un superciclo, qué día).
  * Con un enchufe de Smart Life asignado, el estado es el del equipo y el horario queda cargado en él.
  */
-export const LightCycleCard: React.FC<LightCycleCardProps> = ({ cultivation, onSaveSchedule, onConnectPlug, device = null, now: fixedNow }) => {
+export const LightCycleCard: React.FC<LightCycleCardProps> = ({ cultivation, sharedNote = null, onSaveSchedule, onConnectPlug, device = null, now: fixedNow }) => {
   const [tick, setTick] = useState(() => Date.now());
   useEffect(() => {
     if (fixedNow != null) return undefined;
@@ -189,10 +192,17 @@ export const LightCycleCard: React.FC<LightCycleCardProps> = ({ cultivation, onS
     </div>
   );
 
+  const shared = sharedNote ? (
+    <p id="light-shared-note" className="text-[11px] font-bold text-brand -mt-2">
+      {sharedNote}
+    </p>
+  ) : null;
+
   if (anchor == null || needsDate || editing) {
     return (
       <section id="crop-light-card" className="bg-white rounded-[28px] p-5 sm:p-6 border border-line shadow-2xs space-y-4">
         {header()}
+        {shared}
         {form}
       </section>
     );
@@ -205,6 +215,7 @@ export const LightCycleCard: React.FC<LightCycleCardProps> = ({ cultivation, onS
   return (
     <section id="crop-light-card" className="bg-white rounded-[28px] p-5 sm:p-6 border border-line shadow-2xs space-y-4">
       {header(state)}
+      {shared}
 
       <div>
         {state.alwaysOn ? (

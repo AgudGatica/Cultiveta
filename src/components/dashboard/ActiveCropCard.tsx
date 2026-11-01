@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CalendarDays, Leaf, Sprout } from 'lucide-react';
+import { CalendarDays, Home, Leaf, Sprout } from 'lucide-react';
 import type { Cultivation, Genetics } from '../../types';
 import { getStageColorClasses, getStageIcon } from '../../utils/growthStageUtils';
 import { getCropCoverImage, getCropCoverKind, getCropDayLabel, getGeneticsLabel } from '../../utils/cropCardInfo';
@@ -8,13 +8,15 @@ interface ActiveCropCardProps {
   cultivation: Cultivation;
   geneticsList?: Genetics[];
   onOpen: (cultivation: Cultivation) => void;
+  /** Indoor donde está (si está en uno). */
+  indoorName?: string | null;
 }
 
 /**
  * Tarjeta de un cultivo activo en el Inicio: portada (interior o exterior), nombre, genética, etapa,
  * semana/día y plantas. La portada tiene proporción fija 2:1 para que la imagen calce en cualquier pantalla.
  */
-export const ActiveCropCard: React.FC<ActiveCropCardProps> = ({ cultivation, geneticsList = [], onOpen }) => {
+export const ActiveCropCard: React.FC<ActiveCropCardProps> = ({ cultivation, geneticsList = [], onOpen, indoorName = null }) => {
   const [imageFailed, setImageFailed] = useState(false);
   const stage = cultivation.currentStage || 'Vegetativo';
   const stageClasses = getStageColorClasses(stage, true, false);
@@ -57,6 +59,12 @@ export const ActiveCropCard: React.FC<ActiveCropCardProps> = ({ cultivation, gen
       <div className="p-4 space-y-1.5">
         <h3 className="text-base font-extrabold text-ink truncate">{cultivation.name}</h3>
         <p className="text-xs text-ink-muted truncate">{genetics || 'Genética sin cargar'}</p>
+        {indoorName && (
+          <p className="crop-indoor-name text-[11px] font-bold text-brand flex items-center gap-1 truncate">
+            <Home className="w-3 h-3 shrink-0" aria-hidden="true" />
+            En {indoorName}
+          </p>
+        )}
         <div className="flex items-center justify-between gap-2 pt-1 text-xs font-semibold text-ink">
           <span className="inline-flex items-center gap-1.5 min-w-0">
             <CalendarDays className="w-3.5 h-3.5 text-brand shrink-0" aria-hidden="true" />

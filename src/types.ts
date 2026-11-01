@@ -126,6 +126,28 @@ export interface EnvironmentalAlertThresholds {
   humidityMaxPct?: number;
 }
 
+export type IndoorKind = 'carpa' | 'sala' | 'armario';
+
+/**
+ * Indoor: una carpa, sala o armario con su luz (tipo, watts, fotoperiodo y hora de encendido), que
+ * agrupa cultivos. Los cultivos de adentro comparten esa luz; los equipos de luz, clima y ambiente se
+ * asignan al indoor.
+ */
+export interface Indoor {
+  id: string;
+  userId: string;
+  name: string;
+  kind: IndoorKind;
+  widthCm?: number;
+  depthCm?: number;
+  heightCm?: number;
+  lighting?: Cultivation['lighting'];
+  notes?: string;
+  isDemo?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Cultivation {
   id: string;
   userId: string;
@@ -169,6 +191,8 @@ export interface Cultivation {
     lat: number;
     lon: number;
   };
+  /** Indoor (carpa, sala o armario) donde está: si tiene, la luz es la del indoor. */
+  indoorId?: string | null;
   alertThresholds?: EnvironmentalAlertThresholds;
   coverPhotoUrl?: string;
   status: HealthStatus;

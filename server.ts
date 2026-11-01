@@ -1666,6 +1666,7 @@ app.get('/api/notifications/recent', verifyFirebaseAuth, (req, res) => {
 /** Colecciones de primer nivel con datos de la persona (campo userId). */
 export const USER_DATA_COLLECTIONS = [
   'cultivations',
+  'indoors',
   'waterings',
   'environmentRecords',
   'diaryEntries',
@@ -2211,10 +2212,10 @@ const deviceService = new DeviceService({
     redirectUrl: process.env.EWELINK_REDIRECT_URL || '',
   },
   store: hasAdminCredentials() ? new FirestoreDeviceStore(getFirebaseAdmin().firestore()) : new MemoryDeviceStore(),
-  verifyCultivation: async (uid, cultivationId) => {
+  verifyCultivation: async (uid, cultivationId, kind) => {
     if (!hasAdminCredentials()) return null;
-    const snap = await getFirebaseAdmin().firestore().collection('cultivations').doc(cultivationId).get();
-    if (!snap.exists || snap.data()?.userId !== uid) throw new DeviceError('El cultivo no pertenece a tu cuenta.', 403);
+    const snap = await getFirebaseAdmin().firestore().collection(kind === 'indoor' ? 'indoors' : 'cultivations').doc(cultivationId).get();
+    if (!snap.exists || snap.data()?.userId !== uid) throw new DeviceError(kind === 'indoor' ? 'El indoor no pertenece a tu cuenta.' : 'El cultivo no pertenece a tu cuenta.', 403);
     return { name: String(snap.data()?.name || 'Cultivo') };
   },
   // Cada riego automático queda anotado en los riegos del cultivo (como uno hecho desde la app).
@@ -2327,7 +2328,7 @@ app.post('/api/devices/bindings', verifyFirebaseAuth, async (req, res) => {
     if (typeof b.deviceId !== 'string' || typeof b.code !== 'string' || typeof b.cultivationId !== 'string') {
       return res.status(400).json({ error: 'Faltan el equipo o el cultivo.' });
     }
-    res.json({ binding: await deviceService.bind(req.userId!, { deviceId: b.deviceId, code: b.code, role: b.role, cultivationId: b.cultivationId, cultivationName: b.cultivationName, schedule: b.schedule, climateRole: b.climateRole, rule: b.rule, pump: b.pump }) });
+    res.json({ binding: await deviceService.bind(req.userId!, { deviceId: b.deviceId, code: b.code, role: b.role, cultivationId: b.cultivationId, cultivationName: b.cultivationName, targetKind: b.targetKind, schedule: b.schedule, climateRole: b.climateRole, rule: b.rule, pump: b.pump }) });
   } catch (err) {
     return sendDeviceError(res, err, 'devices/bindings');
   }

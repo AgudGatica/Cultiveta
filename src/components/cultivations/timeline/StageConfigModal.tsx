@@ -24,7 +24,7 @@ import {
   getLocalTodayDateOnly,
   isFloweringStage,
 } from '../../../utils/growthStageUtils';
-import { cultivationService } from '../../../services/cultivationService';
+import { indoorService } from '../../../services/indoorService';
 import { darkHoursFor } from '../../../utils/photoperiods';
 
 interface StageConfigModalProps {
@@ -217,7 +217,7 @@ export const StageConfigModal: React.FC<StageConfigModalProps> = ({
         };
       }
 
-      await cultivationService.updateCultivation(cultivation.id, updates, userId);
+      await indoorService.saveCropUpdates(cultivation, updates, userId);
 
       const updatedCultivation: Cultivation = {
         ...cultivation,

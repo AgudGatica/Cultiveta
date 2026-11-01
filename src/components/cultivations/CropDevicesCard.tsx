@@ -32,7 +32,8 @@ function shortWhen(ms: number): string {
 export const CropDevicesCard: React.FC<CropDevicesCardProps> = ({ cultivation, userId, showToast, onWateringAdded, onOpenDevices }) => {
   const overview = useDevicesOverview();
   const pump = pumpBindingFor(overview, cultivation.id);
-  const climate = climateBindingsFor(overview, cultivation.id);
+  // el clima del indoor (extractor, humidificador…) también es de sus cultivos
+  const climate = [...climateBindingsFor(overview, cultivation.id), ...(cultivation.indoorId ? climateBindingsFor(overview, cultivation.indoorId) : [])];
   const [seconds, setSeconds] = useState(30);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
