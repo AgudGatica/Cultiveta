@@ -8,7 +8,7 @@ y de la mascota de la app. Fuente: "Cultiveta — Hoja de ruta de pendientes" (d
 | 1 | Línea de tiempo con forma de planta | En curso |
 | 2 | Enchufes inteligentes por Wi-Fi | Hecho (2026-10-31): a mano + Equipos, Smart Life, bomba y clima, riego automático, eWeLink y Shelly. Falta habilitar la app de eWeLink (ver PENDIENTES) |
 | 3 | Indoors / carpas | Hecho (2026-11-01): ambientes interiores y exteriores; el Jardín muestra ambientes → genéticas |
-| 4 | Comunidad | Pendiente. Necesita servidor y moderación (exigida por Google Play) |
+| 4 | Comunidad | En curso (2026-11-01): como en Canopia. Hecho: perfil de grower, compartir cada genética (Privado / No listado / Público), página del growlog, Explorar, Siguiendo, Seguir, denuncias y admin. Falta: me gusta, comentarios, vistas, avisos y bloquear |
 | 5 | Privacidad y ubicación | En curso (2026-11-01): todas las fotos se guardan sin datos internos ni ubicación. Falta la ubicación general opcional al publicar (va con la Comunidad) |
 | 6 | Mascota personalizable | Falta definir la mascota oficial. Experiencia, niveles, logros y racha ya están hechos |
 | 7 | Minijuego endless runner | Depende de la mascota. Declarar bien la clasificación por edad en Play Store |
@@ -136,6 +136,17 @@ la sonda de sustrato siguen por cultivo).
   maceta hasta el cogollo, con las fotos y notas).
 
 ## 4. Comunidad (red social)
+
+**Cómo quedó (2026-11-01), como la de Canopia:** pestaña Comunidad en la barra de abajo (en lugar de IA, que pasó a
+"Más"), con buscador y tres pestañas: Explorar (growlog del mes, colecciones Más vistos / Indoor / Exterior /
+Automáticas / Hidroponía / En tierra, tus públicos y growers), Siguiendo y Mis growlogs. **Un growlog por genética**
+(decisión del dueño): Compartir desde Mis growlogs o desde la página de cada genética. Página pública
+`/comunidad/growlog/:id` con Resumen (resumen automático), Etapas, Gráficos, Comentarios y Timeline (la maceta).
+Perfil de grower `/comunidad/growers/:usuario` con Seguir. Lo público es una **copia** que arma el servidor
+(`src/server/community/`, `src/utils/growlog.ts`): los cultivos siguen privados y las colecciones nuevas solo las
+toca el servidor (reglas). Las fotos se copian limpias (sin ubicación) a `community/growlogs/{id}/`. Denunciar
+growlog o grower; con 3 denuncias de personas distintas se oculta solo; pantalla de denuncias para el admin.
+**Falta (fase 3):** me gusta, comentarios, contador de vistas, avisos y bloquear.
 
 - **Identidad a elección del usuario:**
   - Cuenta de Google.

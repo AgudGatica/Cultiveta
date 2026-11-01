@@ -13,9 +13,13 @@ export type AppView =
   | 'calculators'
   | 'profile'
   | 'achievements'
-  | 'devices';
+  | 'devices'
+  | 'community'
+  | 'community_admin'
+  | 'growlog'
+  | 'grower';
 
-const VIEW_PATHS: Record<Exclude<AppView, 'cultivation_detail' | 'indoor_detail' | 'genetic_detail'>, string> = {
+const VIEW_PATHS: Record<Exclude<AppView, 'cultivation_detail' | 'indoor_detail' | 'genetic_detail' | 'growlog' | 'grower'>, string> = {
   dashboard: '/',
   cultivations: '/cultivos',
   genetics: '/geneticas',
@@ -25,6 +29,8 @@ const VIEW_PATHS: Record<Exclude<AppView, 'cultivation_detail' | 'indoor_detail'
   profile: '/perfil',
   achievements: '/perfil/logros',
   devices: '/equipos',
+  community: '/comunidad',
+  community_admin: '/comunidad/denuncias',
 };
 
 /** Cosechas se unió con Cultivos: /cosechas es una dirección vieja que lleva a /cultivos. */
@@ -39,8 +45,12 @@ export function pathForView(view: string): string {
 }
 
 /** Pantalla, cultivo, ambiente y genética a partir de la URL. Cualquier ruta desconocida muestra el Jardín. */
-export function parseAppRoute(pathname: string): { view: AppView; cultivationId: string | null; indoorId: string | null; geneticIndex?: number | null } {
+export function parseAppRoute(pathname: string): { view: AppView; cultivationId: string | null; indoorId: string | null; geneticIndex?: number | null; growlogId?: string; handle?: string } {
   const clean = pathname.replace(/\/+$/, '') || '/';
+  const growlog = /^\/comunidad\/growlog\/([^/]+)$/.exec(clean);
+  if (growlog) return { view: 'growlog', cultivationId: null, indoorId: null, growlogId: decodeURIComponent(growlog[1]) };
+  const grower = /^\/comunidad\/growers\/([^/]+)$/.exec(clean);
+  if (grower) return { view: 'grower', cultivationId: null, indoorId: null, handle: decodeURIComponent(grower[1]) };
   const detail = /^\/cultivos\/([^/]+)$/.exec(clean);
   if (detail) {
     return { view: 'cultivation_detail', cultivationId: decodeURIComponent(detail[1]), indoorId: null };
@@ -65,3 +75,8 @@ export function parseAppRoute(pathname: string): { view: AppView; cultivationId:
 export const pathForIndoor = (id: string) => `/ambientes/${encodeURIComponent(id)}`;
 /** URL de una genética (n: su posición en el cultivo) dentro de su ambiente. */
 export const pathForGenetic = (ambientId: string, cropId: string, index: number) => `/ambientes/${encodeURIComponent(ambientId)}/geneticas/${encodeURIComponent(cropId)}/${index}`;
+
+/** URL de un growlog de la Comunidad. */
+export const pathForGrowlog = (id: string) => `/comunidad/growlog/${encodeURIComponent(id)}`;
+/** URL del perfil de un grower. */
+export const pathForGrower = (handle: string) => `/comunidad/growers/${encodeURIComponent(handle)}`;

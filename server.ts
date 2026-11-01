@@ -7,7 +7,7 @@ import { GoogleGenAI } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
 import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
 import { getAuth, DecodedIdToken } from 'firebase-admin/auth';
-import { getFirestore, Firestore } from 'firebase-admin/firestore';
+import { getFirestore, Firestore, FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import crypto from 'crypto';
 import multer from 'multer';
@@ -15,6 +15,9 @@ import { CultivationTask } from './src/types';
 import { verifyAdminRole, isRequestAdmin } from './src/server/adminAuthMiddleware';
 import { validateImageBuffer } from './src/server/imageValidation';
 import { stripImageMetadata } from './src/utils/imageMetadata';
+import { CommunityError, CommunityService } from './src/server/community/communityService';
+import { FirestoreCommunityDb, MemoryCommunityDb, MemoryCommunityFiles, StorageCommunityFiles } from './src/server/community/communityStore';
+import { growlogCard } from './src/utils/growlog';
 import { getGeneticsPhotoKey } from './src/utils/geneticsKeyUtils';
 import { cleanFirestoreData } from './src/utils/firestoreUtils';
 import { DeviceService, MemoryDeviceStore, FirestoreDeviceStore, DeviceError } from './src/server/devices/deviceService';
@@ -1765,6 +1768,8 @@ app.post('/api/account/delete', verifyFirebaseAuth, async (req, res) => {
       console.warn('[account/delete] No se pudo liberar los equipos:', devErr);
       await db.collection('deviceIntegrations').doc(userId).delete().catch(() => {});
     }
+    // Comunidad: perfil público, @usuario, growlogs y sus fotos
+    await communityService.deleteAllForUser(userId);
     // recursiveDelete: el perfil y sus subcolecciones (progress, etc.); delete() las dejaba huérfanas
     await db.recursiveDelete(db.collection('users').doc(userId));
 
@@ -2422,6 +2427,149 @@ app.post('/api/internal/devices-tick', async (req, res) => {
     res.json({ success: true, ...(await deviceService.tickAll()) });
   } catch (err) {
     return sendServerError(res, 500, 'Error en la revisión de equipos.', err, 'internal/devices-tick');
+  }
+});
+
+// ─────────────────────────────────────────────────────────────
+// COMUNIDAD (como en Canopia): perfiles de grower, growlogs públicos y denuncias
+// ─────────────────────────────────────────────────────────────
+// Todo lo público lo escribe y lo lee el servidor (las reglas no dejan que el navegador toque estas
+// colecciones): así un growlog no listado solo se abre con su enlace y lo oculto no le llega a nadie.
+const communityService = hasAdminCredentials()
+  ? new CommunityService(
+      new FirestoreCommunityDb(getFirebaseAdmin().firestore(), FieldValue),
+      new StorageCommunityFiles(getStorage(getFirebaseAdmin()).bucket(getStorageBucketName()))
+    )
+  : new CommunityService(new MemoryCommunityDb(), new MemoryCommunityFiles());
+
+function sendCommunityError(res: express.Response, err: unknown, logTag: string) {
+  if (err instanceof CommunityError) return res.status(err.status).json({ error: err.message });
+  return sendServerError(res, 500, 'Error en la comunidad.', err, logTag);
+}
+
+app.get('/api/community/me', verifyFirebaseAuth, async (req, res) => {
+  try {
+    const uid = req.userId!;
+    const [profile, growlogs] = await Promise.all([communityService.getProfile(uid), communityService.myGrowlogs(uid)]);
+    res.json({ profile, growlogs: growlogs.map(growlogCard), isAdmin: isRequestAdmin(req), googlePhoto: req.user?.picture || null });
+  } catch (err) {
+    return sendCommunityError(res, err, 'community/me');
+  }
+});
+
+app.post('/api/community/profile', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json({ profile: await communityService.saveProfile(req.userId!, req.body || {}, { googlePhoto: req.user?.picture || null }) });
+  } catch (err) {
+    return sendCommunityError(res, err, 'community/profile');
+  }
+});
+
+const avatarUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+app.post('/api/community/avatar', verifyFirebaseAuth, avatarUpload.single('photo'), async (req, res) => {
+  try {
+    if (!req.file?.buffer?.length) return res.status(400).json({ error: 'Elegí una foto.' });
+    const check = validateImageBuffer(req.file.buffer);
+    if (!check.valid) return res.status(400).json({ error: 'La foto tiene que ser JPG, PNG o WebP.' });
+    const bytes = new Uint8Array(req.file.buffer.buffer, req.file.buffer.byteOffset, req.file.buffer.length);
+    res.json({ profile: await communityService.setAvatarPhoto(req.userId!, bytes, check.detectedMime || 'image/jpeg') });
+  } catch (err) {
+    return sendCommunityError(res, err, 'community/avatar');
+  }
+});
+
+app.post('/api/community/growlogs', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json({ growlog: growlogCard(await communityService.publish(req.userId!, req.body || {})) });
+  } catch (err) {
+    return sendCommunityError(res, err, 'community/publish');
+  }
+});
+
+// Después de un riego, una foto, una nota o un cambio de etapa: la copia pública se pone al día
+app.post('/api/community/refresh', verifyFirebaseAuth, async (req, res) => {
+  try {
+    const cropId = typeof req.body?.cropId === 'string' ? req.body.cropId : '';
+    if (!cropId) return res.status(400).json({ error: 'Falta el cultivo.' });
+    res.json({ updated: await communityService.refreshCrop(req.userId!, cropId) });
+  } catch (err) {
+    return sendCommunityError(res, err, 'community/refresh');
+  }
+});
+
+app.get('/api/community/growlogs/:id', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json({ growlog: await communityService.getGrowlog(req.userId!, String(req.params.id), { isAdmin: isRequestAdmin(req) }) });
+  } catch (err) {
+    return sendCommunityError(res, err, 'community/growlog');
+  }
+});
+
+app.delete('/api/community/growlogs/:id', verifyFirebaseAuth, async (req, res) => {
+  try {
+    await communityService.unpublish(req.userId!, String(req.params.id), { isAdmin: isRequestAdmin(req) });
+    res.json({ success: true });
+  } catch (err) {
+    return sendCommunityError(res, err, 'community/unpublish');
+  }
+});
+
+app.get('/api/community/explore', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json(await communityService.explore(req.userId!));
+  } catch (err) {
+    return sendCommunityError(res, err, 'community/explore');
+  }
+});
+
+app.get('/api/community/feed', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json({ growlogs: await communityService.feed(req.userId!) });
+  } catch (err) {
+    return sendCommunityError(res, err, 'community/feed');
+  }
+});
+
+app.get('/api/community/growers/:handle', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json(await communityService.grower(req.userId!, String(req.params.handle), { isAdmin: isRequestAdmin(req) }));
+  } catch (err) {
+    return sendCommunityError(res, err, 'community/grower');
+  }
+});
+
+app.post('/api/community/follow', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json(await communityService.follow(req.userId!, req.body || {}));
+  } catch (err) {
+    return sendCommunityError(res, err, 'community/follow');
+  }
+});
+
+app.post('/api/community/report', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json(await communityService.report(req.userId!, req.body || {}));
+  } catch (err) {
+    return sendCommunityError(res, err, 'community/report');
+  }
+});
+
+app.get('/api/community/admin/reports', verifyFirebaseAuth, async (req, res) => {
+  try {
+    if (!isRequestAdmin(req)) return res.status(403).json({ error: 'Solo para administradores.' });
+    res.json({ groups: await communityService.openReports() });
+  } catch (err) {
+    return sendCommunityError(res, err, 'community/admin/reports');
+  }
+});
+
+app.post('/api/community/admin/reports', verifyFirebaseAuth, async (req, res) => {
+  try {
+    if (!isRequestAdmin(req)) return res.status(403).json({ error: 'Solo para administradores.' });
+    await communityService.resolveReports(req.body || {});
+    res.json({ success: true });
+  } catch (err) {
+    return sendCommunityError(res, err, 'community/admin/resolve');
   }
 });
 

@@ -19,6 +19,8 @@ interface PlantTimelineProps {
   photos: PhotoRecord[];
   geneticsList?: Genetics[];
   userId?: string;
+  /** Título (en la comunidad, el nombre de la genética en vez de "Tu planta"). */
+  title?: string;
 }
 
 /** Eventos visibles de entrada; el resto se despliega con "Ver anteriores". */
@@ -302,6 +304,7 @@ export const PlantTimeline: React.FC<PlantTimelineProps> = ({
   photos,
   geneticsList = [],
   userId,
+  title = 'Tu planta',
 }) => {
   const [showAll, setShowAll] = useState(false);
   const model = useMemo(
@@ -329,7 +332,7 @@ export const PlantTimeline: React.FC<PlantTimelineProps> = ({
     <section id="plant-timeline" aria-labelledby="plant-timeline-title" className="cultiveta-card p-3 sm:p-6 space-y-2 overflow-hidden">
       <div className="px-1">
         <h2 id="plant-timeline-title" className="text-base sm:text-lg font-extrabold text-ink">
-          Tu planta
+          {title}
         </h2>
         <p className="text-xs text-ink-muted">
           Día {model.totalDays} · {model.stageName} · {model.events.length === 1 ? '1 registro' : `${model.events.length} registros`}

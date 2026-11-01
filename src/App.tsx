@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { User } from 'firebase/auth';
-import { AppView, isLegacyHarvestsPath, parseAppRoute, pathForGenetic, pathForIndoor, pathForView } from './appRoutes';
+import { AppView, isLegacyHarvestsPath, parseAppRoute, pathForGenetic, pathForGrower, pathForGrowlog, pathForIndoor, pathForView } from './appRoutes';
 import { authService } from './services/authService';
 import { cultivationService } from './services/cultivationService';
 import { wateringService } from './services/wateringService';
@@ -14,6 +14,7 @@ import { demoDataService } from './services/demoDataService';
 import { photoOfflineQueue } from './services/photoOfflineQueue';
 import { localStore } from './services/localStore';
 import { scrollToTop, useScrollTopOnNavigate } from './hooks/useScrollTopOnNavigate';
+import { communityService } from './services/communityService';
 
 import {
   Cultivation,
@@ -75,6 +76,10 @@ const CalculatorsView = React.lazy(() =>
 const DevicesView = React.lazy(() => import('./components/devices/DevicesView'));
 const AmbientDetailView = React.lazy(() => import('./components/indoors/AmbientDetailView'));
 const GeneticDetailView = React.lazy(() => import('./components/indoors/GeneticDetailView'));
+const CommunityView = React.lazy(() => import('./components/community/CommunityView').then((m) => ({ default: m.CommunityView })));
+const GrowlogView = React.lazy(() => import('./components/community/GrowlogView').then((m) => ({ default: m.GrowlogView })));
+const GrowerView = React.lazy(() => import('./components/community/GrowerView').then((m) => ({ default: m.GrowerView })));
+const AdminReportsView = React.lazy(() => import('./components/community/AdminReportsView').then((m) => ({ default: m.AdminReportsView })));
 import { devicesService, scheduleSnapshot, sameSchedule, useDevicesOverview } from './services/devicesService';
 import { indoorService } from './services/indoorService';
 import { autoAmbientId, cropsWithoutAmbient, withIndoorLighting } from './utils/indoors';
@@ -183,12 +188,32 @@ export default function App() {
   const [harvests, setHarvests] = useState<Harvest[]>([]);
   const [diaryEntries, setDiaryEntries] = useState<DiaryEntry[]>([]);
 
+  // Comunidad: si un cultivo compartido cambia (un riego, una foto, una nota, la etapa), su growlog se
+  // actualiza solo en un rato. Se compara una "firma" de cada cultivo para no avisar de más.
+  const growlogSignatures = React.useRef(new Map<string, string>());
+  useEffect(() => {
+    if (!currentUser) {
+      growlogSignatures.current.clear();
+      return;
+    }
+    const sig = new Map<string, string>();
+    const add = (id: string, part: string) => sig.set(id, (sig.get(id) || '') + part);
+    for (const c of rawCultivations) add(c.id, `c${c.updatedAt}|${c.currentStage}|`);
+    for (const w of waterings) add(w.cultivationId, `w${w.id}`);
+    for (const p of photos) if (!p.isPendingSync) add(p.cultivationId, `p${p.id}`);
+    for (const d of diaryEntries) add(d.cultivationId, `d${d.id}${d.updatedAt}`);
+    const before = growlogSignatures.current;
+    if (before.size) sig.forEach((v, id) => before.get(id) !== v && communityService.refreshSoon(id));
+    growlogSignatures.current = sig;
+  }, [currentUser, rawCultivations, waterings, photos, diaryEntries]);
+
   // Equipos: estado de lo asignado (luz y sensores). Se lee al entrar y cada minuto mientras se mira
   // un cultivo o Equipos.
   const devicesOverview = useDevicesOverview();
   useEffect(() => {
     if (!currentUser) {
       devicesService.reset();
+      communityService.reset();
       return undefined;
     }
     devicesService.refreshOverview();
@@ -794,6 +819,8 @@ export default function App() {
                   setIsWateringModalOpen(true);
                 }}
                 onMoved={(to) => navigate(pathForGenetic(to.id, geneticCrop.id, route.geneticIndex ?? 0), { replace: true })}
+                onShareNeedsProfile={() => setCurrentView('community')}
+                onOpenGrowlog={(id) => navigate(pathForGrowlog(id))}
                 showToast={showToast}
               />
             ) : (
@@ -804,6 +831,49 @@ export default function App() {
                 </button>
               </div>
             ))}
+
+          {/* VIEW: COMUNIDAD (como en Canopia) */}
+          {currentView === 'community' && (
+            <CommunityView
+              userId={currentUser.uid}
+              cultivations={cultivations}
+              geneticsList={geneticsList}
+              suggestedName={userProfile?.displayName || currentUser.displayName}
+              suggestedHandle={userProfile?.username}
+              level={growerProgress.progress?.level.level}
+              levelName={growerProgress.progress?.level.name}
+              onOpenGrowlog={(id) => navigate(pathForGrowlog(id))}
+              onOpenGrower={(handle) => navigate(pathForGrower(handle))}
+              onOpenAdmin={() => setCurrentView('community_admin')}
+              showToast={showToast}
+            />
+          )}
+          {currentView === 'growlog' && route.growlogId && (
+            <GrowlogView
+              growlogId={route.growlogId}
+              userId={currentUser.uid}
+              onBack={() => (window.history.length > 1 ? navigate(-1) : setCurrentView('community'))}
+              onOpenGrower={(handle) => navigate(pathForGrower(handle))}
+              onEditShare={(g) => {
+                const crop = cultivations.find((c) => c.id === g.cropId);
+                if (crop) navigate(pathForGenetic(crop.indoorId || 'sin-ambiente', crop.id, g.geneticIndex));
+              }}
+              showToast={showToast}
+            />
+          )}
+          {currentView === 'grower' && route.handle && (
+            <GrowerView
+              handle={route.handle}
+              userId={currentUser.uid}
+              onBack={() => setCurrentView('community')}
+              onOpenGrowlog={(id) => navigate(pathForGrowlog(id))}
+              onEditProfile={() => setCurrentView('community')}
+              showToast={showToast}
+            />
+          )}
+          {currentView === 'community_admin' && (
+            <AdminReportsView onBack={() => setCurrentView('community')} onOpenGrowlog={(id) => navigate(pathForGrowlog(id))} showToast={showToast} />
+          )}
 
           {/* VIEW: CULTIVOS (terminados + cosechas) */}
           {currentView === 'cultivations' && (

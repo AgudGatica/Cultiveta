@@ -11,6 +11,7 @@ import {
   Scale,
   Trophy,
   Plug,
+  Users,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -42,6 +43,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'dashboard', label: 'Jardín', icon: LayoutDashboard, badge: '' },
     // Cultivos: historial de terminados y cosechas (los activos están en el Inicio)
     { id: 'cultivations', label: 'Cultivos', icon: Sprout, badge: cultivationsCount > 0 ? `${cultivationsCount}` : '' },
+    { id: 'community', label: 'Comunidad', icon: Users, badge: '' },
     { id: 'genetics', label: 'Genéticas', icon: Dna, badge: geneticsCount > 0 ? `${geneticsCount}` : '' },
     { id: 'compare_crops', label: 'Comparador', icon: Scale, badge: '' },
     { id: 'calculators', label: 'Calculadoras', icon: Calculator, badge: '' },

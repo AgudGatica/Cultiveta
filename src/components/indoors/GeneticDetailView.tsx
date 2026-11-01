@@ -1,15 +1,18 @@
-import React, { useMemo, useState } from 'react';
-import { ArrowLeft, CalendarDays, Clock, Dna, Droplets, Flag, Home, Leaf, Scale, Scissors, Sparkles, Sprout, Sun } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ArrowLeft, CalendarDays, Clock, Dna, Droplets, Flag, Home, Leaf, Scale, Scissors, Share2, Sparkles, Sprout, Sun } from 'lucide-react';
 import type { Cultivation, DiaryEntry, EnvironmentRecord, Genetics, Indoor, PhotoRecord, Watering } from '../../types';
 import { indoorService } from '../../services/indoorService';
 import { useGeneticsCatalogPhotos } from '../../hooks/useGeneticsCatalogPhotos';
 import { resolveCropGenetics } from '../../utils/cropGenetics';
-import { buildCultivationStageSchedule, getNextStage, getStagesForCultivation, type StageScheduleItem } from '../../utils/growthStageUtils';
+import { buildCultivationStageSchedule, getNextStage, getStagesForCultivation } from '../../utils/growthStageUtils';
 import { ambientsForCrop, cropForGenetic, harvestText, isExteriorAmbient } from '../../utils/indoors';
 import { IrrigationForecastCard } from '../cultivations/IrrigationForecastCard';
 import { PlantTimeline } from '../cultivations/PlantTimeline';
 import { StageTransitionModal } from '../cultivations/timeline/StageTransitionModal';
 import { PhotoImageView } from '../common/PhotoImageView';
+import { StageList, dateText } from './StageList';
+import { ShareGrowlogModal } from '../community/ShareGrowlogModal';
+import { communityService, growlogFor, useCommunityMe } from '../../services/communityService';
 
 interface GeneticDetailViewProps {
   /** Ambiente donde está (para volver y para moverla). */
@@ -33,28 +36,16 @@ interface GeneticDetailViewProps {
   onCropUpdated?: (crop: Cultivation) => void;
   onMoved?: (to: Indoor) => void;
   showToast?: (msg: string) => void;
+  /** Compartir en la comunidad: todavía no armó su perfil de grower. */
+  onShareNeedsProfile?: () => void;
+  onOpenGrowlog?: (id: string) => void;
 }
 
 type Tab = 'resumen' | 'etapas' | 'timeline';
 const TABS: Record<Tab, string> = { resumen: 'Resumen', etapas: 'Etapas', timeline: 'Timeline' };
 
 const CARD = 'bg-white rounded-[28px] p-5 sm:p-6 border border-line shadow-2xs';
-const dateText = (d?: string, month: 'long' | 'short' = 'long') => {
-  if (!d) return '';
-  const [y, m, day] = d.split('-').map(Number);
-  return y ? new Date(y, m - 1, day).toLocaleDateString('es-AR', { day: 'numeric', month }) : '';
-};
 const num = (v: number, d = 1) => (Math.round(v * 10 ** d) / 10 ** d).toString().replace('.', ',');
-
-/** Qué dice cada etapa en la pestaña Etapas: sus fechas y cuánto duró (o cuánto se espera). */
-function stageLine(s: StageScheduleItem, activeDay: number): { when: string; pill: string } {
-  const days = s.actualDurationDays ?? s.expectedDurationDays;
-  if (s.status === 'completed') {
-    return { when: s.startDate && s.endDate ? `${dateText(s.startDate, 'short')} – ${dateText(s.endDate, 'short')}` : 'Sin fechas anotadas', pill: days ? `${days} d` : '' };
-  }
-  if (s.status === 'active') return { when: s.startDate ? `Desde el ${dateText(s.startDate, 'short')} · actual` : 'Actual', pill: `día ${Math.max(1, activeDay)}` };
-  return { when: s.startDate ? `Estimada: ${dateText(s.startDate, 'short')}` : 'Más adelante', pill: s.expectedDurationDays ? `${s.expectedDurationDays} d` : '' };
-}
 
 /**
  * Una genética dentro de su ambiente, como una planta en Canopia: su foto grande arriba, en qué etapa
@@ -79,8 +70,16 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
   onCropUpdated,
   onMoved,
   showToast,
+  onShareNeedsProfile,
+  onOpenGrowlog,
 }) => {
   const catalogPhotos = useGeneticsCatalogPhotos();
+  const community = useCommunityMe();
+  const shared = growlogFor(community, crop.id, index);
+  const [sharing, setSharing] = useState(false);
+  useEffect(() => {
+    communityService.loadMe().catch(() => {});
+  }, []);
   const cards = useMemo(() => resolveCropGenetics(crop, geneticsList, catalogPhotos), [crop, geneticsList, catalogPhotos]);
   const card = cards[index] || cards[0];
   const one = useMemo(() => cropForGenetic(crop, index), [crop, index]);
@@ -191,7 +190,16 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
             Cambiar etapa
           </button>
         )}
+        <button type="button" id="genetic-share" onClick={() => setSharing(true)} aria-label="Compartir en la comunidad" className="cultiveta-btn-secondary text-sm">
+          <Share2 className="w-4 h-4" aria-hidden="true" />
+          {shared ? (shared.privacy === 'public' ? 'Público' : 'No listado') : 'Compartir'}
+        </button>
       </div>
+      {shared && onOpenGrowlog && (
+        <button type="button" id="genetic-open-growlog" onClick={() => onOpenGrowlog(shared.id)} className="w-full text-xs font-bold text-white/90 underline underline-offset-2">
+          Ver cómo lo ve la comunidad
+        </button>
+      )}
 
       <div role="tablist" aria-label="Secciones" className="grid grid-cols-3 p-1 rounded-2xl bg-white/15 gap-1">
         {(Object.keys(TABS) as Tab[]).map((t) => (
@@ -339,34 +347,7 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
 
       {tab === 'etapas' && (
         <div id="genetic-panel-etapas" role="tabpanel" aria-labelledby="genetic-tab-etapas" className="space-y-4">
-          <section id="genetic-stages" className={`${CARD}`}>
-            <ol className="relative">
-              {schedule.stages.map((s, i) => {
-                const { when, pill } = stageLine(s, schedule.activeStageElapsedDays);
-                const last = i === schedule.stages.length - 1;
-                return (
-                  <li key={s.id} data-stage-status={s.status} className="genetic-stage relative flex gap-3 pb-4 last:pb-0">
-                    {!last && <span className={`absolute left-[9px] top-5 bottom-0 w-0.5 ${s.status === 'completed' ? 'bg-ok' : 'bg-line'}`} aria-hidden="true" />}
-                    <span
-                      className={`relative z-10 mt-0.5 w-5 h-5 rounded-full shrink-0 border-[3px] ${
-                        s.status === 'completed' ? 'bg-ok border-ok' : s.status === 'active' ? 'bg-primary border-brand-deep' : 'bg-white border-line border-dashed'
-                      }`}
-                      aria-hidden="true"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <b className={`block text-sm ${s.status === 'upcoming' ? 'text-ink-muted font-bold' : 'text-ink font-extrabold'}`}>{s.name}</b>
-                      <small className="text-xs text-ink-muted">{when}</small>
-                    </div>
-                    {pill && (
-                      <span className={`self-start shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-black ${s.status === 'active' ? 'bg-brand-deep text-white' : 'bg-track text-ink-muted'}`}>
-                        {pill}
-                      </span>
-                    )}
-                  </li>
-                );
-              })}
-            </ol>
-          </section>
+          <StageList id="genetic-stages" className={CARD} stages={schedule.stages} activeDay={schedule.activeStageElapsedDays} />
           {nextStage && (
             <button type="button" onClick={() => setStageModal(true)} className="cultiveta-btn-primary text-sm w-full justify-center">
               <Flag className="w-4 h-4" aria-hidden="true" />
@@ -381,6 +362,20 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
           {/* La planta crece desde la maceta: lo más reciente arriba, con el cogollo cuando florece */}
           <PlantTimeline cultivation={one} waterings={cropWaterings} diaryEntries={cropDiary} photos={cropPhotos} geneticsList={geneticsList} userId={userId} />
         </div>
+      )}
+
+      {sharing && (
+        <ShareGrowlogModal
+          cropId={crop.id}
+          geneticIndex={index}
+          name={card.name}
+          onClose={() => setSharing(false)}
+          onNeedProfile={() => {
+            setSharing(false);
+            onShareNeedsProfile?.();
+          }}
+          showToast={showToast}
+        />
       )}
 
       {stageModal && (

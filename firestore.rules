@@ -30,13 +30,35 @@ service cloud.firestore {
     match /deviceIntegrations/{docId} {
       allow read, write: if false;
     }
+    // Comunidad: perfiles, @usuarios, growlogs (con sus comentarios y me gusta), seguidos y denuncias.
+    // Los lee y escribe solo el servidor: así lo no listado no aparece en listas y lo oculto no le llega a nadie.
+    match /profiles/{docId} {
+      allow read, write: if false;
+    }
+    match /handles/{docId} {
+      allow read, write: if false;
+    }
+    match /growlogs/{docId}/{rest=**} {
+      allow read, write: if false;
+    }
+    match /follows/{docId} {
+      allow read, write: if false;
+    }
+    match /reports/{docId} {
+      allow read, write: if false;
+    }
     // Top-level collections scoped by userId field (excluyendo expresamente colecciones reservadas)
     match /{collection}/{document} {
       function isReservedTopLevelCollection() {
         return collection == 'users'
             || collection == 'geneticsCatalogPhotos'
             || collection == 'aiUsage'
-            || collection == 'deviceIntegrations';
+            || collection == 'deviceIntegrations'
+            || collection == 'profiles'
+            || collection == 'handles'
+            || collection == 'growlogs'
+            || collection == 'follows'
+            || collection == 'reports';
       }
 
       allow read, delete: if request.auth != null

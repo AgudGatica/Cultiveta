@@ -11,6 +11,7 @@ import {
   X,
   Trophy,
   Plug,
+  Users,
 } from 'lucide-react';
 
 interface MobileNavProps {
@@ -43,6 +44,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
   }, [isMoreMenuOpen]);
 
   const secondaryNavItems = [
+    { id: 'ai_assistant', label: 'Cultiveta IA', icon: Sparkles, desc: 'Preguntas, diagnósticos por foto y consejos' },
     { id: 'profile', label: 'Mi perfil', icon: Trophy, desc: 'Tu nivel, tu racha y tus logros' },
     { id: 'genetics', label: 'Genéticas', icon: Dna, desc: 'Banco de semillas y cepas' },
     { id: 'compare_crops', label: 'Comparador', icon: Scale, desc: 'Curvas de cosechas anteriores' },
@@ -162,22 +164,22 @@ export const MobileNav: React.FC<MobileNavProps> = ({
           </button>
         </div>
 
-        {/* 4. Cultiveta IA */}
+        {/* 4. Comunidad (como en Canopia; la IA pasó a "Más") */}
         <button
           type="button"
-          id="mobile-nav-ai"
+          id="mobile-nav-community"
           onClick={() => {
             setIsMoreMenuOpen(false);
-            onNavigate('ai_assistant');
+            onNavigate('community');
           }}
           className={`flex flex-col items-center justify-center gap-1 min-h-11 min-w-11 py-1 px-3 rounded-xl transition-colors cursor-pointer ${
-            currentView === 'ai_assistant'
+            currentView === 'community'
               ? 'bg-brand-deep text-white font-bold'
               : 'text-ink-muted hover:text-ink'
           }`}
         >
-          <Sparkles className="w-5 h-5" />
-          <span className="text-[11px]">Cultiveta IA</span>
+          <Users className="w-5 h-5" />
+          <span className="text-[11px]">Comunidad</span>
         </button>
 
         {/* 5. Más */}
