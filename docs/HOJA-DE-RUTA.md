@@ -71,8 +71,17 @@ decide la revisión del servidor cada 5 min, con los mismos topes y la cuenta re
 caído, un riego programado que se pasó no se hace tarde. Cada riego queda anotado en los riegos del cultivo. Lógica en
 `src/server/devices/autoIrrigation.ts` y `src/utils/deviceRules.ts`.
 
-**Etapa 2d (pendiente):** eWeLink (con una app de Cultiveta en dev.ewelink.cc: cada persona solo inicia sesión en eWeLink) y Shelly (por su
-nube). Todo corre en el servidor de Cultiveta (Cloud Run + Cloud Scheduler, como el clima exterior). Con servidor en la nube no
+**Etapa 2d (hecha, 2026-10-31): Sonoff / eWeLink y Shelly.** En Equipos hay tres marcas y una sola lista de equipos (cada
+uno dice de qué marca es); las reglas, la bomba y el riego automático andan igual en las tres. Las dos marcas nuevas pasan por
+un enrutador (`src/server/devices/cloud.ts`) que les hace "hablar como" Tuya. Cómo queda el horario de la luz:
+- **eWeLink:** la persona inicia sesión en eWeLink (una app de Cultiveta en dev.ewelink.cc; variables `EWELINK_APP_ID`,
+  `EWELINK_APP_SECRET` y `EWELINK_REDIRECT_URL`). El horario queda como un bucle guardado en el Sonoff, que no vence; se
+  pausan los temporizadores de la persona en ese toma. La bomba usa el "inching" del equipo (solo en los que lo tienen).
+- **Shelly:** con el server y la clave de autorización de la nube de la app Shelly (si la lista no trae algún equipo, se
+  agrega su Device Id). La nube de Shelly no deja guardar horarios: la revisión de cada 5 min deja programado cada cambio
+  en el equipo (`toggle_after`, se da vuelta solo a horario) y el siguiente apenas pasa uno. La bomba también se apaga
+  sola con `toggle_after`. Lo que la persona tenga en la app Shelly no se ve desde la nube (se le pide pausarlo).
+Todo corre en el servidor de Cultiveta (Cloud Run + Cloud Scheduler, como el clima exterior). Con servidor en la nube no
 hace falta dejar una PC prendida ni la regla de "entrar una vez por semana" de Órbita. Detalle técnico en
 `Cultiveta-referencias/TRASPASO.md` (O18–O20).
 

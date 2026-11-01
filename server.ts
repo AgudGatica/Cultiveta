@@ -18,6 +18,8 @@ import { getGeneticsPhotoKey } from './src/utils/geneticsKeyUtils';
 import { cleanFirestoreData } from './src/utils/firestoreUtils';
 import { DeviceService, MemoryDeviceStore, FirestoreDeviceStore, DeviceError } from './src/server/devices/deviceService';
 import { TuyaError } from './src/server/devices/tuyaClient';
+import { EwelinkError } from './src/server/devices/ewelinkClient';
+import { ShellyError } from './src/server/devices/shellyClient';
 
 dotenv.config();
 
@@ -1754,9 +1756,9 @@ app.post('/api/account/delete', verifyFirebaseAuth, async (req, res) => {
         await batch.commit();
       }
     }
-    // Equipos: se saca lo de Cultiveta de los enchufes, vuelven los horarios de Smart Life y se borran las claves
+    // Equipos: se saca lo de Cultiveta de los enchufes, vuelven los horarios de cada app y se borran las claves
     try {
-      await deviceService.disconnectTuya(userId);
+      await deviceService.disconnectAll(userId);
     } catch (devErr) {
       console.warn('[account/delete] No se pudo liberar los equipos:', devErr);
       await db.collection('deviceIntegrations').doc(userId).delete().catch(() => {});
@@ -2197,10 +2199,17 @@ app.delete('/api/admin/genetics/delete-photo', verifyFirebaseAuth, verifyAdminRo
 // ─────────────────────────────────────────────────────────────
 // EQUIPOS INTELIGENTES (Smart Life / Tuya), traído de Órbita
 // ─────────────────────────────────────────────────────────────
-// Las claves del proyecto de iot.tuya.com de cada persona se guardan solo acá (colección
-// deviceIntegrations: las reglas no dejan que el navegador la lea). Sin Firestore Admin (desarrollo
-// local) se guardan en memoria.
+// Las claves de cada persona (proyecto de iot.tuya.com, token de eWeLink, clave de Shelly Cloud) se
+// guardan solo acá (colección deviceIntegrations: las reglas no dejan que el navegador la lea). Sin
+// Firestore Admin (desarrollo local) se guardan en memoria.
+// eWeLink usa UNA app de Cultiveta en dev.ewelink.cc: EWELINK_APP_ID, EWELINK_APP_SECRET y
+// EWELINK_REDIRECT_URL (https://<dominio de Cultiveta>/equipos, la misma que se cargó en esa app).
 const deviceService = new DeviceService({
+  ewelinkApp: {
+    appId: process.env.EWELINK_APP_ID || '',
+    appSecret: process.env.EWELINK_APP_SECRET || '',
+    redirectUrl: process.env.EWELINK_REDIRECT_URL || '',
+  },
   store: hasAdminCredentials() ? new FirestoreDeviceStore(getFirebaseAdmin().firestore()) : new MemoryDeviceStore(),
   verifyCultivation: async (uid, cultivationId) => {
     if (!hasAdminCredentials()) return null;
@@ -2218,7 +2227,9 @@ const deviceService = new DeviceService({
 
 function sendDeviceError(res: express.Response, err: unknown, logTag: string) {
   if (err instanceof DeviceError) return res.status(err.status).json({ error: err.message });
-  if (err instanceof TuyaError) return res.status(502).json({ error: err.message });
+  if (err instanceof TuyaError || err instanceof EwelinkError || err instanceof ShellyError) return res.status(502).json({ error: err.message });
+  const status = (err as any)?.status;
+  if (typeof status === 'number' && status >= 400 && status < 500) return res.status(status).json({ error: (err as Error).message });
   return sendServerError(res, 500, 'Error con los equipos.', err, logTag);
 }
 
@@ -2248,9 +2259,55 @@ app.delete('/api/devices/tuya', verifyFirebaseAuth, async (req, res) => {
   }
 });
 
+// eWeLink: la página de inicio de sesión (vuelve a /equipos con ?code=…&region=…&state=…) y el canje del código.
+app.get('/api/devices/ewelink/login', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json(await deviceService.ewelinkLogin(req.userId!));
+  } catch (err) {
+    return sendDeviceError(res, err, 'devices/ewelink/login');
+  }
+});
+
+app.post('/api/devices/ewelink/connect', verifyFirebaseAuth, async (req, res) => {
+  try {
+    const b = req.body || {};
+    res.json(await deviceService.connectEwelink(req.userId!, { code: b.code, region: b.region, state: b.state, mock: b.mock === true }));
+  } catch (err) {
+    return sendDeviceError(res, err, 'devices/ewelink/connect');
+  }
+});
+
+app.delete('/api/devices/ewelink', verifyFirebaseAuth, async (req, res) => {
+  try {
+    await deviceService.disconnectEwelink(req.userId!);
+    res.json({ success: true });
+  } catch (err) {
+    return sendDeviceError(res, err, 'devices/ewelink/delete');
+  }
+});
+
+// Shelly: con el server y la clave de autorización de la nube (app Shelly → Configuración de usuario).
+app.post('/api/devices/shelly/connect', verifyFirebaseAuth, async (req, res) => {
+  try {
+    const b = req.body || {};
+    res.json(await deviceService.connectShelly(req.userId!, { server: b.server, authKey: b.authKey, ids: b.ids, mock: b.mock === true }));
+  } catch (err) {
+    return sendDeviceError(res, err, 'devices/shelly/connect');
+  }
+});
+
+app.delete('/api/devices/shelly', verifyFirebaseAuth, async (req, res) => {
+  try {
+    await deviceService.disconnectShelly(req.userId!);
+    res.json({ success: true });
+  } catch (err) {
+    return sendDeviceError(res, err, 'devices/shelly/delete');
+  }
+});
+
 app.get('/api/devices', verifyFirebaseAuth, async (req, res) => {
   try {
-    res.json({ devices: await deviceService.devices(req.userId!) });
+    res.json(await deviceService.devicesWithErrors(req.userId!));
   } catch (err) {
     return sendDeviceError(res, err, 'devices/list');
   }

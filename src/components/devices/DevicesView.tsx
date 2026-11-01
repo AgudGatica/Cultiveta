@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Droplets, ExternalLink, Lightbulb, Plug, Thermometer } from 'lucide-react';
 import {
-  DEVICE_BRANDS,
   DEVICE_USES,
   SHOP_ITEMS,
   SHOP_SECTIONS,
@@ -69,29 +68,10 @@ export const DevicesView: React.FC<DevicesViewProps> = ({ focus = null, cultivat
         <div>
           <h2 className="text-sm font-bold text-ink">Conectar un equipo nuevo</h2>
           <p className="text-xs text-ink-muted mt-1">
-            Cada equipo se agrega primero en la app de su marca. Después se conecta acá y se asigna a un cultivo.
+            Cada equipo se agrega primero en la app de su marca (Smart Life, eWeLink o Shelly). Después se conecta la marca acá y cada toma o sensor se asigna a un cultivo.
           </p>
         </div>
-        <div id="device-brand-tuya" className="space-y-2">
-          <p className="text-sm font-bold text-ink">Smart Life / Tuya</p>
-          <SmartLifePanel cultivations={cultivations} showToast={showToast} onDevicesChange={onDevicesChange} />
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {DEVICE_BRANDS.filter((b) => b.id !== 'tuya').map((b) => (
-            <div key={b.id} id={`device-brand-${b.id}`} className={`${ITEM} flex flex-col gap-2`}>
-              <div className="flex items-start justify-between gap-2">
-                <span className="text-sm font-bold text-ink">{b.label}</span>
-                <span className="text-[9px] font-black tracking-wider uppercase bg-warn-bg border border-warn-line text-warn-ink px-1.5 py-0.5 rounded-md shrink-0">
-                  Próximamente
-                </span>
-              </div>
-              <p className="text-[11px] text-ink-muted flex-1">{b.description}</p>
-              <button type="button" disabled className="cultiveta-btn-secondary text-xs opacity-50 cursor-not-allowed">
-                Conectar {b.app}
-              </button>
-            </div>
-          ))}
-        </div>
+        <SmartLifePanel cultivations={cultivations} showToast={showToast} onDevicesChange={onDevicesChange} />
       </section>
 
       <section id="devices-uses" className={`${CARD} space-y-3`}>

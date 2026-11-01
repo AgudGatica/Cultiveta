@@ -4,10 +4,12 @@
  * SUITE: EQUIPOS (pantalla traída de Órbita) y sus accesos.
  *
  * 1. Ruta: /equipos abre Equipos y Equipos vuelve a /equipos.
- * 2. Sin equipos: lo dice, muestra las tres marcas como "Próximamente" y la guía de Qué comprar.
+ * 2. Sin equipos: lo dice, las tres marcas (Smart Life, eWeLink y Shelly) se conectan y está la guía de Qué comprar.
  * 3. Llegando desde el ambiente: se resalta el sensor y Qué comprar muestra sensores.
  * 4. Los enlaces de compra son búsquedas de Mercado Libre Argentina que se abren aparte.
  * 5. El menú "Más" del celular tiene Equipos.
+ * 7. Marcas: Smart Life con sus pasos, eWeLink sin la app de Cultiveta solo con el de prueba y Shelly con
+ *    server y clave; con equipos de varias marcas, cada uno dice de cuál es.
  */
 
 import './helpers/setupDom';
@@ -57,15 +59,13 @@ async function run() {
     assert(pathForView('devices') === '/equipos', 'camino');
   });
 
-  await check('2. Sin equipos: lo dice, Smart Life se conecta, eWeLink y Shelly "Próximamente", y Qué comprar', async () => {
+  await check('2. Sin equipos: lo dice, las tres marcas se conectan y está Qué comprar', async () => {
     const { container, unmount } = await mount(React.createElement(DevicesView, {}));
     assert(/no conectaste ningún equipo/.test(container.querySelector('#devices-mine')?.textContent || ''), 'aviso de que no hay equipos');
-    const tuya = container.querySelector('#device-brand-tuya');
-    assert(tuya && !/Próximamente/i.test(tuya.textContent || ''), 'Smart Life ya no está en "Próximamente"');
-    for (const id of ['ewelink', 'shelly']) {
+    assert(!/Próximamente/i.test(container.querySelector('#devices-connect')?.textContent || ''), 'ninguna marca en "Próximamente"');
+    for (const id of ['tuya', 'ewelink', 'shelly']) {
       const card = container.querySelector(`#device-brand-${id}`);
-      assert(card && /Próximamente/i.test(card.textContent || ''), `marca ${id}`);
-      assert((card!.querySelector('button') as HTMLButtonElement).disabled, `${id}: todavía no se conecta`);
+      assert(card && card.querySelector(`#${id}-open`), `marca ${id} con su botón Conectar`);
     }
     assert(container.querySelectorAll('.shop-item').length === SHOP_ITEMS.length, 'todos los equipos para comprar');
     await unmount();
@@ -109,6 +109,59 @@ async function run() {
       assert(Array.isArray(o.bindings) && o.connected === false, `estado: ${JSON.stringify(o)}`);
     } finally {
       (globalThis as any).fetch = realFetch;
+    }
+  });
+
+  await check('7. Marcas: Smart Life con sus pasos, eWeLink sin la app solo de prueba, Shelly con server y clave', async () => {
+    const realFetch = globalThis.fetch;
+    const status = (ewelinkConnected: boolean) => ({
+      tuya: { connected: false, mock: false, region: null, accessId: '' },
+      ewelink: { connected: ewelinkConnected, mock: ewelinkConnected, region: ewelinkConnected ? 'us' : null, available: false },
+      shelly: { connected: false, mock: false, server: null, ids: [] },
+      regions: { us: 'Western America' },
+    });
+    let connected = false;
+    (globalThis as any).fetch = async (url: string) => {
+      const path = String(url).replace(/^https?:\/\/[^/]+/, '');
+      const body =
+        path === '/api/devices/status'
+          ? status(connected)
+          : path === '/api/devices'
+            ? { devices: [{ id: 'ewelink-1000a1b2c3', vendor: 'ewelink', name: 'Sonoff Basic', product: 'BASICR2', category: 'cz', online: true, channels: [{ code: 'switch_1', label: 'Toma 1', on: false, hasCountdown: true, binding: null }], sensors: null, sensorBindings: [], power: null }], errors: {} }
+            : { connected: false, mock: false, bindings: [] };
+      return { ok: true, status: 200, json: async () => body };
+    };
+    const flush = async () => {
+      for (let i = 0; i < 4; i++) await act(async () => new Promise((r) => setTimeout(r, 0)));
+    };
+    const click = async (el: Element | null) => {
+      assert(el, 'botón');
+      await act(async () => (el as HTMLButtonElement).click());
+    };
+    try {
+      // sin marcas conectadas
+      let m = await mount(React.createElement(DevicesView, { cultivations: [] }));
+      await flush();
+      await click(m.container.querySelector('#tuya-open'));
+      assert(m.container.querySelector('#tuya-access-id') && /iot\.tuya\.com/.test(m.container.querySelector('#device-brand-tuya')?.textContent || ''), 'Smart Life con sus pasos');
+      await click(m.container.querySelector('#ewelink-open'));
+      const ew = m.container.querySelector('#device-brand-ewelink')?.textContent || '';
+      assert(/todavía no está habilitado/.test(ew) && !m.container.querySelector('#ewelink-login') && m.container.querySelector('#ewelink-mock'), `eWeLink sin la app: ${ew}`);
+      await click(m.container.querySelector('#shelly-open'));
+      assert(m.container.querySelector('#shelly-server') && m.container.querySelector('#shelly-key') && m.container.querySelector('#shelly-ids'), 'Shelly: server, clave y Device Ids');
+      await m.unmount();
+      // con eWeLink conectado: su tarjeta lo dice y cada equipo dice de qué marca es
+      connected = true;
+      m = await mount(React.createElement(DevicesView, { cultivations: [] }));
+      await flush();
+      const card = m.container.querySelector('#device-brand-ewelink')?.textContent || '';
+      assert(/Conectado · Sonoff de prueba/.test(card) && m.container.querySelector('#ewelink-disconnect'), `eWeLink conectado: ${card}`);
+      const dev = m.container.querySelector('.smart-device')?.textContent || '';
+      assert(/eWeLink · BASICR2/.test(dev) && /Toma 1/.test(dev), `equipo con su marca: ${dev}`);
+      await m.unmount();
+    } finally {
+      (globalThis as any).fetch = realFetch;
+      devicesService.reset();
     }
   });
 

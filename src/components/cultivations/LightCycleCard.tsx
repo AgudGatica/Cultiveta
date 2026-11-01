@@ -28,7 +28,7 @@ interface LightCycleCardProps {
   onSaveSchedule: (schedule: LightSchedule) => Promise<void> | void;
   /** Lleva a Equipos para conectar un enchufe inteligente. */
   onConnectPlug?: () => void;
-  /** Enchufe inteligente que maneja esta luz (si hay): su estado real y lo cargado en Smart Life. */
+  /** Enchufe inteligente que maneja esta luz (si hay): su estado real y lo cargado en el equipo o su nube. */
   device?: DeviceBindingState | null;
   /** Hora fija (para los tests); sin esto, la tarjeta se actualiza cada segundo. */
   now?: number;
@@ -165,6 +165,7 @@ export const LightCycleCard: React.FC<LightCycleCardProps> = ({ cultivation, onS
   );
 
   const deviceOn = device && device.online !== false && device.on != null ? device.on : null;
+  const app = device?.vendor === 'ewelink' ? 'eWeLink' : device?.vendor === 'shelly' ? 'Shelly' : 'Smart Life';
   const header = (state?: ReturnType<typeof lightState>) => (
     <div className="flex items-center justify-between gap-3">
       <span className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
@@ -294,11 +295,17 @@ export const LightCycleCard: React.FC<LightCycleCardProps> = ({ cultivation, onS
       {device && (
         <div id="light-device-note" className="text-[11px] space-y-1">
           {device.loaded?.error ? (
-            <p className="font-bold text-error">No se pudo cargar el horario en Smart Life: {device.loaded.error}</p>
+            <p className="font-bold text-error">No se pudo cargar el horario en {app}: {device.loaded.error}</p>
           ) : device.loaded?.mode === 'daily' ? (
-            <p className="text-ink-muted">Cargado en Smart Life como programación diaria: sigue sola aunque cierres Cultiveta.</p>
+            <p className="text-ink-muted">
+              {device.vendor === 'ewelink' ? 'Guardado en el Sonoff como bucle diario' : `Cargado en ${app} como programación diaria`}: sigue sola aunque cierres Cultiveta.
+            </p>
+          ) : device.loaded?.mode === 'loop' ? (
+            <p className="text-ink-muted">Guardado en el Sonoff como bucle: alterna solo en el equipo y no vence.</p>
+          ) : device.loaded?.mode === 'server' ? (
+            <p className="text-ink-muted">La nube de Shelly no guarda horarios: Cultiveta deja programado cada cambio en el Shelly y el siguiente en su revisión de cada 5 minutos.</p>
           ) : device.loaded?.mode === 'once' && device.loaded.until ? (
-            <p className="text-ink-muted">Cargado en Smart Life hasta {whenText(device.loaded.until, now)}. Cultiveta lo renueva solo.</p>
+            <p className="text-ink-muted">Cargado en {app} hasta {whenText(device.loaded.until, now)}. Cultiveta lo renueva solo.</p>
           ) : null}
           {deviceOn != null && state.started && !state.alwaysOn && deviceOn !== state.on && (
             <p className="font-bold text-warn-ink">

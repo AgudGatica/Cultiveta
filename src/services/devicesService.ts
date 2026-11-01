@@ -1,6 +1,6 @@
 /**
  * Equipos inteligentes en el navegador: habla con /api/devices (el servidor guarda las claves de
- * Smart Life y maneja los equipos) y guarda en memoria el estado de lo asignado a cada cultivo para
+ * Smart Life, eWeLink y Shelly y maneja los equipos) y guarda en memoria el estado de lo asignado a cada cultivo para
  * que la luz y el ambiente lo muestren.
  */
 import { useSyncExternalStore } from 'react';
@@ -10,6 +10,15 @@ import { cycleFromLighting, cycleMs, isDailyCycle, lightAnchor } from '../utils/
 import type { AutoIrrigation, ClimateRole, ClimateRule, PumpConfig } from '../utils/deviceRules';
 
 export type DeviceRole = 'light' | 'pump' | 'climate' | 'sensor_th' | 'sensor_soil';
+export type DeviceVendor = 'tuya' | 'ewelink' | 'shelly';
+
+export interface DevicesStatus {
+  tuya: { connected: boolean; mock: boolean; region: string | null; accessId: string };
+  /** available: el servidor tiene la app de Cultiveta en dev.ewelink.cc (si no, solo el de prueba). */
+  ewelink: { connected: boolean; mock: boolean; region: string | null; available: boolean };
+  shelly: { connected: boolean; mock: boolean; server: string | null; ids: string[] };
+  regions: Record<string, string>;
+}
 
 export interface LightScheduleSnapshot {
   lightHours: number;
@@ -35,6 +44,7 @@ export interface DeviceBindingState {
   cultivationId: string;
   cultivationName: string;
   role: DeviceRole;
+  vendor?: DeviceVendor;
   schedule?: LightScheduleSnapshot | null;
   climateRole?: ClimateRole | null;
   rule?: ClimateRule | null;
@@ -50,7 +60,7 @@ export interface DeviceBindingState {
   on: boolean | null;
   sensors: SensorReadings | null;
   readAt: number | null;
-  loaded: { mode: 'once' | 'daily' | 'none'; until: number | null; daily: { on: string; off: string } | null; error: string | null } | null;
+  loaded: { mode: 'once' | 'daily' | 'loop' | 'server' | 'none'; until: number | null; daily: { on: string; off: string } | null; error: string | null } | null;
 }
 
 export interface DevicesOverview {
@@ -62,6 +72,7 @@ export interface DevicesOverview {
 
 export interface SmartDevice {
   id: string;
+  vendor: DeviceVendor;
   name: string;
   product: string;
   category: string;
@@ -146,7 +157,7 @@ export const devicesService = {
     current = EMPTY;
     notify();
   },
-  status: () => api<{ tuya: { connected: boolean; mock: boolean; region: string | null; accessId: string }; regions: Record<string, string> }>('GET', '/api/devices/status'),
+  status: () => api<DevicesStatus>('GET', '/api/devices/status'),
   async connectTuya(body: { accessId?: string; accessSecret?: string; region?: string; mock?: boolean }) {
     const r = await api<{ devices: number; warning: string | null }>('POST', '/api/devices/tuya/connect', body);
     await devicesService.refreshOverview();
@@ -156,7 +167,29 @@ export const devicesService = {
     await api('DELETE', '/api/devices/tuya');
     await devicesService.refreshOverview();
   },
+  /** Página de inicio de sesión de eWeLink (vuelve a /equipos con el código). */
+  ewelinkLoginUrl: () => api<{ url: string }>('GET', '/api/devices/ewelink/login').then((r) => r.url),
+  async connectEwelink(body: { code?: string; region?: string; state?: string; mock?: boolean }) {
+    const r = await api<{ devices: number; warning: string | null }>('POST', '/api/devices/ewelink/connect', body);
+    await devicesService.refreshOverview();
+    return r;
+  },
+  async disconnectEwelink() {
+    await api('DELETE', '/api/devices/ewelink');
+    await devicesService.refreshOverview();
+  },
+  async connectShelly(body: { server?: string; authKey?: string; ids?: string; mock?: boolean }) {
+    const r = await api<{ devices: number; warning: string | null }>('POST', '/api/devices/shelly/connect', body);
+    await devicesService.refreshOverview();
+    return r;
+  },
+  async disconnectShelly() {
+    await api('DELETE', '/api/devices/shelly');
+    await devicesService.refreshOverview();
+  },
   listDevices: () => api<{ devices: SmartDevice[] }>('GET', '/api/devices').then((r) => r.devices),
+  /** Los equipos y, si una marca falló, su error (las otras se ven igual). */
+  listDevicesWithErrors: () => api<{ devices: SmartDevice[]; errors?: Partial<Record<DeviceVendor, string>> }>('GET', '/api/devices').then((r) => ({ devices: r.devices || [], errors: r.errors || {} })),
   async bind(body: { deviceId: string; code: string; role: DeviceRole; cultivationId: string; cultivationName: string; schedule?: LightScheduleSnapshot | null; climateRole?: ClimateRole; rule?: ClimateRule; pump?: PumpConfig }) {
     await api('POST', '/api/devices/bindings', body);
     await devicesService.refreshOverview();
@@ -194,4 +227,27 @@ export const devicesService = {
 /** Estado de los equipos asignados, para cualquier componente (se actualiza solo). */
 export function useDevicesOverview(): DevicesOverview {
   return useSyncExternalStore(devicesService.subscribe, devicesService.getOverview, devicesService.getOverview);
+}
+
+/**
+ * La vuelta del inicio de sesión de eWeLink (/equipos?code=…&region=…&state=…). Se lee una sola vez al
+ * cargar la app, antes de que el ruteo pueda cambiar la dirección, y se borra de la barra.
+ */
+let ewelinkReturn: { code: string; region: string; state: string } | null = null;
+try {
+  if (typeof window !== 'undefined' && /^\/equipos\/?$/.test(window.location.pathname)) {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get('code') && q.get('state')) {
+      ewelinkReturn = { code: q.get('code')!, region: q.get('region') || 'us', state: q.get('state')! };
+      window.history.replaceState(window.history.state, '', window.location.pathname);
+    }
+  }
+} catch {
+  /* sin ventana */
+}
+/** Se entrega una vez (a la pantalla Equipos, que termina de conectar). */
+export function takeEwelinkReturn() {
+  const r = ewelinkReturn;
+  ewelinkReturn = null;
+  return r;
 }

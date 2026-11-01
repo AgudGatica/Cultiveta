@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Loader2, Power, RefreshCw, Unplug } from 'lucide-react';
 import type { Cultivation } from '../../types';
-import { devicesService, scheduleSnapshot, type DeviceBindingState, type SmartDevice } from '../../services/devicesService';
+import { devicesService, scheduleSnapshot, takeEwelinkReturn, type DeviceBindingState, type DeviceVendor, type DevicesStatus, type SmartDevice } from '../../services/devicesService';
 import { CLIMATE_ROLES, DEFAULT_PUMP, defaultClimateRule, describeAutoIrrigation, describeClimateRule, validatePump, type ClimateRole, type PumpConfig } from '../../utils/deviceRules';
 import { ClimateRuleEditor } from './ClimateRuleEditor';
 import { AutoIrrigationEditor } from './AutoIrrigationEditor';
@@ -15,6 +15,7 @@ interface SmartLifePanelProps {
 
 const FIELD = 'min-h-11 px-3 rounded-2xl bg-white border border-line text-sm text-ink focus:outline-hidden focus:border-brand w-full';
 const ITEM = 'bg-surface rounded-3xl p-4 border border-line';
+const VENDOR_LABEL: Record<DeviceVendor, string> = { tuya: 'Smart Life', ewelink: 'eWeLink', shelly: 'Shelly' };
 const SMALL = 'min-h-9 px-2 rounded-xl bg-white border border-line text-xs text-ink';
 
 /** Para qué se usa un toma: la luz, la bomba de riego o un equipo de clima. */
@@ -76,11 +77,12 @@ const reading = (s: SmartDevice['sensors']) =>
     : '';
 
 /**
- * Smart Life / Tuya real (traído de Órbita): conectar el proyecto de iot.tuya.com, ver los equipos de
- * la cuenta y asignar cada toma o sensor a un cultivo. Las claves quedan solo en el servidor.
+ * Equipos reales (traído de Órbita): conectar Smart Life / Tuya (proyecto de iot.tuya.com), Sonoff /
+ * eWeLink (inicio de sesión en eWeLink) y Shelly (clave de la nube), ver los equipos de todas las marcas
+ * juntos y asignar cada toma o sensor a un cultivo. Las claves quedan solo en el servidor.
  */
 export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, showToast, onDevicesChange }) => {
-  const [status, setStatus] = useState<Awaited<ReturnType<typeof devicesService.status>> | null>(null);
+  const [status, setStatus] = useState<DevicesStatus | null>(null);
   const [devices, setDevices] = useState<SmartDevice[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -88,14 +90,18 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
   const [target, setTarget] = useState<Record<string, string>>({});
   const [use, setUse] = useState<Record<string, Use>>({});
   const [editing, setEditing] = useState<string | null>(null);
+  const [open, setOpen] = useState<DeviceVendor | null>(null);
+  const [shellyForm, setShellyForm] = useState({ server: '', authKey: '', ids: '' });
+  const [listErrors, setListErrors] = useState<Partial<Record<DeviceVendor, string>>>({});
 
   const toast = (m: string) => showToast?.(m);
   const indoor = cultivations.filter((c) => c.type === 'Indoor');
 
   const loadDevices = useCallback(async () => {
     try {
-      const list = await devicesService.listDevices();
+      const { devices: list, errors } = await devicesService.listDevicesWithErrors();
       setDevices(list);
+      setListErrors(errors);
       onDevicesChange?.(list.length);
       setError(null);
     } catch (e: any) {
@@ -107,15 +113,36 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
     try {
       const s = await devicesService.status();
       setStatus(s);
-      if (s.tuya.connected) await loadDevices();
-      else onDevicesChange?.(0);
+      if (s.tuya.connected || s.ewelink?.connected || s.shelly?.connected) await loadDevices();
+      else {
+        setDevices(null);
+        onDevicesChange?.(0);
+      }
     } catch (e: any) {
       setError(e?.message || 'No hay conexión con el servidor de Cultiveta.');
     }
   }, [loadDevices, onDevicesChange]);
 
   useEffect(() => {
-    loadStatus();
+    // vuelta del inicio de sesión de eWeLink: se termina de conectar acá
+    const back = takeEwelinkReturn();
+    if (!back) {
+      loadStatus();
+      return;
+    }
+    setBusy('ewelink');
+    devicesService
+      .connectEwelink(back)
+      .then((r) => {
+        if (r.warning) setError(r.warning);
+        showToast?.(`eWeLink conectado: ${r.devices} equipo${r.devices === 1 ? '' : 's'}`);
+      })
+      .catch((e) => setError(e?.message || 'No se pudo conectar eWeLink.'))
+      .finally(() => {
+        setBusy(null);
+        loadStatus();
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadStatus]);
 
   const run = async (key: string, fn: () => Promise<unknown>, ok?: string) => {
@@ -140,13 +167,37 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
       toast(mock ? 'Zapatilla de prueba conectada' : `Smart Life conectado: ${r.devices} equipo${r.devices === 1 ? '' : 's'}`);
     });
 
-  const disconnect = () => {
-    if (!window.confirm('Se borra lo que Cultiveta cargó en Smart Life, vuelven tus programaciones de la app Smart Life y se borran las claves. ¿Desconectar?')) return;
-    run('disconnect', async () => {
-      await devicesService.disconnectTuya();
-      setDevices(null);
+  const ewelinkMock = () =>
+    run('ewelink', async () => {
+      const r = await devicesService.connectEwelink({ mock: true });
+      setOpen(null);
       await loadStatus();
-    }, 'Smart Life desconectado');
+      toast(`Sonoff de prueba conectados: ${r.devices}`);
+    });
+  const ewelinkLogin = () =>
+    run('ewelink', async () => {
+      window.location.assign(await devicesService.ewelinkLoginUrl());
+    });
+  const shellyConnect = (mock: boolean) =>
+    run('shelly', async () => {
+      const r = await devicesService.connectShelly(mock ? { mock: true } : shellyForm);
+      if (r.warning) setError(r.warning);
+      setShellyForm({ server: '', authKey: '', ids: '' });
+      setOpen(null);
+      await loadStatus();
+      toast(mock ? 'Shelly de prueba conectados' : `Shelly conectado: ${r.devices} equipo${r.devices === 1 ? '' : 's'}`);
+    });
+
+  const disconnect = (v: DeviceVendor) => {
+    const app = VENDOR_LABEL[v];
+    const what = v === 'shelly' ? 'Se apagan las bombas de Shelly asignadas y se borra la clave.' : `Se borra lo que Cultiveta cargó en ${app}, vuelven tus programaciones de la app ${app} y se borran las claves.`;
+    if (!window.confirm(`${what} ¿Desconectar ${app}?`)) return;
+    run(`disconnect-${v}`, async () => {
+      if (v === 'tuya') await devicesService.disconnectTuya();
+      else if (v === 'ewelink') await devicesService.disconnectEwelink();
+      else await devicesService.disconnectShelly();
+      await loadStatus();
+    }, `${app} desconectado`);
   };
 
   const cropsFor = (u: Use | 'sensor') => (u === 'light' ? indoor : cultivations);
@@ -171,105 +222,177 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
     }, role === 'light' ? `Listo: este toma maneja la luz de ${crop.name}` : role === 'pump' ? `Listo: bomba de riego de ${crop.name}` : role === 'climate' ? `Listo: ${USE_LABEL[u]} de ${crop.name}` : `Listo: el sensor mide en ${crop.name}`);
   };
 
-  if (!status) {
-    return (
-      <div className={`${ITEM} text-xs text-ink-muted`}>{error || 'Cargando Smart Life…'}</div>
-    );
-  }
-
-  if (!status.tuya.connected) {
-    return (
-      <div id="smartlife-connect" className={`${ITEM} space-y-3`}>
-        <p className="text-sm font-bold text-ink">Conectar Smart Life / Tuya</p>
-        <ol className="list-decimal pl-5 space-y-1.5 text-xs text-ink-muted">
-          <li>
-            Entrá a{' '}
-            <a className="text-brand font-bold" href="https://iot.tuya.com" target="_blank" rel="noopener noreferrer">
-              iot.tuya.com
-            </a>{' '}
-            y creá una cuenta gratis (es la plataforma oficial de Tuya, la empresa detrás de Smart Life).
-          </li>
-          <li>
-            <b>Cloud → Development → Create Cloud Project</b>. Industria y método: <b>Smart Home</b>. Centro de datos: <b>Western America</b> (el de las cuentas de Argentina).
-          </li>
-          <li>
-            En <b>Authorize API Services</b> dejá marcados <b>IoT Core</b> y <b>Authorization Token Management</b>.
-          </li>
-          <li>
-            Dentro del proyecto: <b>Devices → Link App Account</b>. Aparece un código QR: en Smart Life andá a <b>Yo</b>, tocá el ícono de escanear y confirmá. Tus equipos quedan vinculados.
-          </li>
-          <li>
-            En <b>Overview</b> copiá el <b>Access ID</b> y el <b>Access Secret</b> y pegalos acá.
-          </li>
-        </ol>
-        <form
-          className="space-y-2"
-          autoComplete="off"
-          onSubmit={(e) => {
-            e.preventDefault();
-            connect(false);
-          }}
-        >
-          <label className="text-xs font-semibold text-ink-muted block space-y-1">
-            <span>Access ID</span>
-            <input id="tuya-access-id" className={FIELD} value={form.accessId} onChange={(e) => setForm({ ...form, accessId: e.target.value })} spellCheck={false} required />
-          </label>
-          <label className="text-xs font-semibold text-ink-muted block space-y-1">
-            <span>Access Secret</span>
-            <input id="tuya-access-secret" className={FIELD} type="password" autoComplete="new-password" value={form.accessSecret} onChange={(e) => setForm({ ...form, accessSecret: e.target.value })} required />
-          </label>
-          <label className="text-xs font-semibold text-ink-muted block space-y-1">
-            <span>Centro de datos</span>
-            <select className={FIELD} value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })}>
-              {Object.entries(status.regions).map(([k, l]) => (
-                <option key={k} value={k}>
-                  {l}
-                </option>
-              ))}
-            </select>
-          </label>
-          {error && <p className="text-xs font-bold text-error">{error}</p>}
-          <button type="submit" id="tuya-connect" disabled={busy === 'connect'} className="cultiveta-btn-primary text-xs w-full justify-center disabled:opacity-50">
-            {busy === 'connect' ? 'Conectando…' : 'Conectar Smart Life'}
+  const st = status;
+  const anyConnected = !!st && (st.tuya.connected || st.ewelink?.connected || st.shelly?.connected);
+  const brand = (v: DeviceVendor, title: string, desc: string, connectedText: string | null, body: React.ReactNode) => (
+    <div id={`device-brand-${v}`} className={`${ITEM} space-y-3`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-ink">{title}</p>
+          <p className={`text-[11px] ${connectedText ? 'text-ok-ink font-bold' : 'text-ink-muted'}`}>{connectedText || desc}</p>
+        </div>
+        {connectedText ? (
+          <button type="button" id={`${v}-disconnect`} onClick={() => disconnect(v)} disabled={busy === `disconnect-${v}`} className="cultiveta-btn-secondary text-xs text-error disabled:opacity-50">
+            <Unplug className="w-3.5 h-3.5" aria-hidden="true" />
+            <span>Desconectar</span>
           </button>
-        </form>
-        <p className="text-[11px] text-ink-subtle">Las claves quedan guardadas solo en el servidor de Cultiveta; la app nunca las vuelve a mostrar.</p>
-        <button type="button" id="tuya-mock" onClick={() => connect(true)} className="cultiveta-btn-secondary text-xs w-full justify-center">
-          Probar con una zapatilla de prueba (sin cuenta)
-        </button>
+        ) : (
+          <button type="button" id={`${v}-open`} aria-expanded={open === v} disabled={!st} onClick={() => setOpen(open === v ? null : v)} className="cultiveta-btn-secondary text-xs disabled:opacity-50">
+            {open === v ? 'Cerrar' : 'Conectar'}
+          </button>
+        )}
       </div>
-    );
-  }
+      {!connectedText && open === v && body}
+    </div>
+  );
+
+  const tuyaForm = st && (
+    <div id="smartlife-connect" className="space-y-3">
+      <ol className="list-decimal pl-5 space-y-1.5 text-xs text-ink-muted">
+        <li>
+          Entrá a{' '}
+          <a className="text-brand font-bold" href="https://iot.tuya.com" target="_blank" rel="noopener noreferrer">
+            iot.tuya.com
+          </a>{' '}
+          y creá una cuenta gratis (es la plataforma oficial de Tuya, la empresa detrás de Smart Life).
+        </li>
+        <li>
+          <b>Cloud → Development → Create Cloud Project</b>. Industria y método: <b>Smart Home</b>. Centro de datos: <b>Western America</b> (el de las cuentas de Argentina).
+        </li>
+        <li>
+          En <b>Authorize API Services</b> dejá marcados <b>IoT Core</b> y <b>Authorization Token Management</b>.
+        </li>
+        <li>
+          Dentro del proyecto: <b>Devices → Link App Account</b>. Aparece un código QR: en Smart Life andá a <b>Yo</b>, tocá el ícono de escanear y confirmá. Tus equipos quedan vinculados.
+        </li>
+        <li>
+          En <b>Overview</b> copiá el <b>Access ID</b> y el <b>Access Secret</b> y pegalos acá.
+        </li>
+      </ol>
+      <form
+        className="space-y-2"
+        autoComplete="off"
+        onSubmit={(e) => {
+          e.preventDefault();
+          connect(false);
+        }}
+      >
+        <label className="text-xs font-semibold text-ink-muted block space-y-1">
+          <span>Access ID</span>
+          <input id="tuya-access-id" className={FIELD} value={form.accessId} onChange={(e) => setForm({ ...form, accessId: e.target.value })} spellCheck={false} required />
+        </label>
+        <label className="text-xs font-semibold text-ink-muted block space-y-1">
+          <span>Access Secret</span>
+          <input id="tuya-access-secret" className={FIELD} type="password" autoComplete="new-password" value={form.accessSecret} onChange={(e) => setForm({ ...form, accessSecret: e.target.value })} required />
+        </label>
+        <label className="text-xs font-semibold text-ink-muted block space-y-1">
+          <span>Centro de datos</span>
+          <select className={FIELD} value={form.region} onChange={(e) => setForm({ ...form, region: e.target.value })}>
+            {Object.entries(status.regions).map(([k, l]) => (
+              <option key={k} value={k}>
+                {l}
+              </option>
+            ))}
+          </select>
+        </label>
+        {error && <p className="text-xs font-bold text-error">{error}</p>}
+        <button type="submit" id="tuya-connect" disabled={busy === 'connect'} className="cultiveta-btn-primary text-xs w-full justify-center disabled:opacity-50">
+          {busy === 'connect' ? 'Conectando…' : 'Conectar Smart Life'}
+        </button>
+      </form>
+      <p className="text-[11px] text-ink-subtle">Las claves quedan guardadas solo en el servidor de Cultiveta; la app nunca las vuelve a mostrar.</p>
+      <button type="button" id="tuya-mock" onClick={() => connect(true)} className="cultiveta-btn-secondary text-xs w-full justify-center">
+        Probar con una zapatilla de prueba (sin cuenta)
+      </button>
+    </div>
+  );
+
+  const ewelinkForm = st && (
+    <div id="ewelink-connect" className="space-y-3">
+      {st.ewelink.available ? (
+        <>
+          <p className="text-xs text-ink-muted">Se abre la página de eWeLink: iniciá sesión con tu cuenta (la de la app eWeLink) y aceptá. Volvés a esta pantalla con tus equipos.</p>
+          <button type="button" id="ewelink-login" disabled={busy === 'ewelink'} onClick={ewelinkLogin} className="cultiveta-btn-primary text-xs w-full justify-center disabled:opacity-50">
+            {busy === 'ewelink' ? 'Conectando…' : 'Iniciar sesión en eWeLink'}
+          </button>
+        </>
+      ) : (
+        <p className="text-xs text-ink-muted">Conectar tu cuenta de eWeLink todavía no está habilitado en Cultiveta. Mientras tanto podés probar cómo funciona con equipos de prueba.</p>
+      )}
+      <button type="button" id="ewelink-mock" disabled={busy === 'ewelink'} onClick={ewelinkMock} className="cultiveta-btn-secondary text-xs w-full justify-center disabled:opacity-50">
+        Probar con Sonoff de prueba (sin cuenta)
+      </button>
+    </div>
+  );
+
+  const shellyFormEl = st && (
+    <form
+      id="shelly-connect"
+      className="space-y-2"
+      autoComplete="off"
+      onSubmit={(e) => {
+        e.preventDefault();
+        shellyConnect(false);
+      }}
+    >
+      <p className="text-xs text-ink-muted">
+        En la app Shelly: <b>Configuración de usuario → Clave de autorización de la nube</b>. Tocá <b>Obtener clave</b> y copiá el <b>server</b> y la <b>clave</b>.
+      </p>
+      <label className="text-xs font-semibold text-ink-muted block space-y-1">
+        <span>Server</span>
+        <input id="shelly-server" className={FIELD} placeholder="shelly-103-eu.shelly.cloud" value={shellyForm.server} onChange={(e) => setShellyForm({ ...shellyForm, server: e.target.value })} spellCheck={false} required />
+      </label>
+      <label className="text-xs font-semibold text-ink-muted block space-y-1">
+        <span>Clave de autorización</span>
+        <input id="shelly-key" className={FIELD} type="password" autoComplete="new-password" value={shellyForm.authKey} onChange={(e) => setShellyForm({ ...shellyForm, authKey: e.target.value })} required />
+      </label>
+      <label className="text-xs font-semibold text-ink-muted block space-y-1">
+        <span>Device Id (opcional, si alguno no aparece)</span>
+        <input id="shelly-ids" className={FIELD} placeholder="a8032ab1c2d3, e8db84d4b2f1" value={shellyForm.ids} onChange={(e) => setShellyForm({ ...shellyForm, ids: e.target.value })} spellCheck={false} />
+      </label>
+      <p className="text-[11px] text-ink-subtle">La nube de Shelly no deja guardar horarios en el equipo: la luz la maneja la revisión de Cultiveta, que deja programado cada cambio en el Shelly. La bomba se apaga sola igual.</p>
+      <button type="submit" id="shelly-submit" disabled={busy === 'shelly'} className="cultiveta-btn-primary text-xs w-full justify-center disabled:opacity-50">
+        {busy === 'shelly' ? 'Conectando…' : 'Conectar Shelly'}
+      </button>
+      <button type="button" id="shelly-mock" disabled={busy === 'shelly'} onClick={() => shellyConnect(true)} className="cultiveta-btn-secondary text-xs w-full justify-center disabled:opacity-50">
+        Probar con Shelly de prueba (sin cuenta)
+      </button>
+    </form>
+  );
 
   return (
     <div id="smartlife-devices" className="space-y-3">
-      <div className={`${ITEM} flex flex-wrap items-center justify-between gap-2`}>
-        <span className="text-sm font-bold text-ink">
-          Smart Life conectado{status.tuya.mock ? ' · zapatilla de prueba' : status.tuya.accessId ? ` · ${status.tuya.accessId}` : ''}
-        </span>
-        <div className="flex gap-2">
+      {brand('tuya', 'Smart Life / Tuya', 'Enchufes, zapatillas y sensores de la app Smart Life o Tuya.', st?.tuya.connected ? `Conectado${st.tuya.mock ? ' · zapatilla de prueba' : st.tuya.accessId ? ` · ${st.tuya.accessId}` : ''}` : null, tuyaForm)}
+      {brand('ewelink', 'Sonoff / eWeLink', 'Relés, enchufes y sensores Sonoff de la app eWeLink.', st?.ewelink?.connected ? `Conectado${st.ewelink.mock ? ' · Sonoff de prueba' : ''}` : null, ewelinkForm)}
+      {brand('shelly', 'Shelly', 'Enchufes, relés y sensores Shelly, por la nube de Shelly.', st?.shelly?.connected ? `Conectado${st.shelly.mock ? ' · Shelly de prueba' : st.shelly.server ? ` · ${st.shelly.server}` : ''}` : null, shellyFormEl)}
+      {!st && <p className="text-xs text-ink-muted">{error || 'Cargando tus marcas…'}</p>}
+      {st && !anyConnected && error && <p className="text-xs font-bold text-error">{error}</p>}
+      {anyConnected && (
+        <div className="flex items-center justify-between gap-2 pt-1">
+          <p className="text-sm font-bold text-ink">Tus equipos</p>
           <button type="button" onClick={() => run('refresh', loadDevices)} className="cultiveta-btn-secondary text-xs" aria-label="Actualizar equipos">
             <RefreshCw className={`w-3.5 h-3.5 ${busy === 'refresh' ? 'animate-spin' : ''}`} aria-hidden="true" />
             <span>Actualizar</span>
           </button>
-          <button type="button" id="tuya-disconnect" onClick={disconnect} className="cultiveta-btn-secondary text-xs text-error">
-            <Unplug className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Desconectar</span>
-          </button>
         </div>
-      </div>
-      {error && <p className="text-xs font-bold text-error">{error}</p>}
-      {!devices && <p className="text-xs text-ink-muted flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Leyendo tus equipos…</p>}
-      {devices && !devices.length && (
-        <p className="text-xs text-ink-muted">No aparece ningún equipo: vinculá tu cuenta de Smart Life al proyecto (Devices → Link App Account) y tocá Actualizar.</p>
       )}
-      {devices?.map((d) => (
+      {anyConnected && Object.values(listErrors).map((m) => (
+        <p key={m} className="text-xs font-bold text-coral">
+          {m}
+        </p>
+      ))}
+      {anyConnected && error && <p className="text-xs font-bold text-error">{error}</p>}
+      {anyConnected && !devices && <p className="text-xs text-ink-muted flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Leyendo tus equipos…</p>}
+      {anyConnected && devices && !devices.length && (
+        <p className="text-xs text-ink-muted">No aparece ningún equipo: agregalos primero en la app de su marca (en Smart Life, además, vinculá tu cuenta al proyecto: Devices → Link App Account) y tocá Actualizar.</p>
+      )}
+      {anyConnected && devices?.map((d) => (
         <div key={d.id} className={`smart-device ${ITEM} space-y-2`}>
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="text-sm font-bold text-ink">{d.name}</p>
               <p className="text-[11px] text-ink-subtle">
-                {d.product}
+                {VENDOR_LABEL[d.vendor] || 'Smart Life'} · {d.product}
                 {d.power ? ` · ${String(d.power.watts).replace('.', ',')} W ahora` : ''}
               </p>
             </div>
@@ -354,7 +477,7 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
                         </button>
                       )}
                       <button type="button" onClick={() => run(key, async () => { await devicesService.unbind(ch.binding!.id); await loadDevices(); }, 'Asignación quitada')} className="text-[11px] font-bold text-ink-muted hover:underline">
-                        Desasignar (vuelven tus horarios de Smart Life)
+                        {d.vendor === 'shelly' ? 'Desasignar' : `Desasignar (vuelven tus horarios de ${VENDOR_LABEL[d.vendor] || 'Smart Life'})`}
                       </button>
                     </div>
                   </div>

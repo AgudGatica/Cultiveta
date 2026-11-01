@@ -1,8 +1,10 @@
 /**
- * Equipos inteligentes de cada persona (traído de Órbita, etapa 2: Smart Life real).
+ * Equipos inteligentes de cada persona (traído de Órbita): Smart Life / Tuya, Sonoff / eWeLink y Shelly.
+ * Las tres marcas pasan por un enrutador (cloud.ts) que habla "como" Tuya; acá no se distingue la marca
+ * salvo para guardar el horario de la luz (programaciones, bucle o "se da vuelta solo").
  *
- * - La cuenta de Smart Life (Access ID + Access Secret del proyecto de iot.tuya.com) queda guardada
- *   solo del lado del servidor: la colección "deviceIntegrations" no la puede leer el navegador.
+ * - Las claves (Access ID + Secret de iot.tuya.com, el token de eWeLink, la clave de Shelly Cloud) quedan
+ *   guardadas solo del lado del servidor: la colección "deviceIntegrations" no la puede leer el navegador.
  * - Cada toma o sensor se asigna a un cultivo:
  *     · la luz (sigue el horario del cultivo);
  *     · la bomba de riego (solo prende para regar, con la cuenta regresiva del enchufe);
@@ -19,7 +21,12 @@
 import crypto from 'crypto';
 import { TuyaCloud, TuyaError, TUYA_REGIONS, channelsOf, maskId, powerOf, sensorsOf, type SensorReadings } from './tuyaClient';
 import { createMockTuya, MOCK_TUYA_ID, MOCK_TUYA_SECRET, type MockTuya } from './tuyaMock';
-import { clearSchedule, syncSchedule, SCHEDULE_CATEGORY, type LightItem, type ScheduleState } from './lightSchedule';
+import { DeviceRouter, vendorOf, VENDOR_APP, type Vendor } from './cloud';
+import { EwelinkCloud, EWELINK_REGIONS, type EwelinkConfig } from './ewelinkClient';
+import { createMockEwelink, MOCK_EWELINK_APP, MOCK_EWELINK_CODE, type MockEwelink } from './ewelinkMock';
+import { ShellyCloud, cleanShellyServer, isShellyAuthKey, isShellyDeviceId } from './shellyClient';
+import { createMockShelly, MOCK_SHELLY, type MockShelly } from './shellyMock';
+import { clearSchedule, dailyPlan, syncLoops, syncSchedule, SCHEDULE_CATEGORY, type LightItem, type ScheduleState } from './lightSchedule';
 import { isValidTimeZone, zonedParts } from './tz';
 import { LATE_MS, scheduledWaterings, wetDryStep, type WetDryState } from './autoIrrigation';
 import { HOUR_MS, lightState } from '../../utils/lightCycle';
@@ -86,6 +93,12 @@ interface CacheEntry {
 export interface DeviceIntegration {
   userId: string;
   tuya: { accessId: string; accessSecret: string; region: string; mock?: boolean; connectedAt: number } | null;
+  /** eWeLink: token de la persona en la app de Cultiveta (y los bucles que cargó Cultiveta en cada equipo). */
+  ewelink?: { region: string; at?: string; rt?: string; atExp?: number; rtExp?: number; mine: Record<string, string[]>; mock?: boolean; connectedAt: number } | null;
+  /** Shelly Cloud: el server y la clave de la nube; Device Ids cargados a mano (si la lista no los trae). */
+  shelly?: { server: string; authKey: string; ids: string[]; mock?: boolean; connectedAt: number } | null;
+  /** Inicio de sesión en eWeLink en curso (para comprobar que la vuelta es de esta persona). */
+  oauth?: { state: string; at: number } | null;
   bindings: DeviceBinding[];
   /** Programaciones de la app Smart Life que pausó Cultiveta (para reactivarlas después). */
   paused: Array<{ deviceId: string; category: string; groupId: string; code: string }>;
@@ -175,9 +188,20 @@ const SLOW_POLL_MS = 14 * 60_000;   // luz y lo que la sigue: alcanza con mirar 
 const GRACE_MS = 60_000;            // después de una orden, se espera antes de "corregir"
 const SENSOR_STALE_MS = 30 * 60_000; // una lectura más vieja que esto cuenta como "sensor sin datos"
 const SWITCH_CODE = /^switch(_\d+|_usb\d*)?$/;
+const OAUTH_MS = 15 * 60_000; // el inicio de sesión en eWeLink vale 15 min
+const VENDORS: Vendor[] = ['tuya', 'ewelink', 'shelly'];
+const connectedAny = (integ: DeviceIntegration | null | undefined) => !!(integ && (integ.tuya || integ.ewelink || integ.shelly));
+/** "countdown_N" del toma "switch_N". */
+const countdownOf = (code: string) => code.replace(/^switch/, 'countdown');
+
+export interface EwelinkApp {
+  appId: string;
+  appSecret: string;
+  redirectUrl: string;
+}
 
 function blank(userId: string, now: number): DeviceIntegration {
-  return { userId, tuya: null, bindings: [], paused: [], schedules: {}, cache: {}, lastCommand: {}, watering: {}, irrigation: {}, lastError: null, updatedAt: now };
+  return { userId, tuya: null, ewelink: null, shelly: null, oauth: null, bindings: [], paused: [], schedules: {}, cache: {}, lastCommand: {}, watering: {}, irrigation: {}, lastError: null, updatedAt: now };
 }
 
 export function validateSchedule(s: any): LightScheduleSnapshot | null {
@@ -247,7 +271,11 @@ export class DeviceService {
   private now: () => number;
   private fetchImpl?: (url: string, init?: any) => Promise<any>;
   private clients = new Map<string, TuyaCloud>();
+  private shellyClients = new Map<string, ShellyCloud>();
   private mocks = new Map<string, MockTuya>();
+  private ewelinkMocks = new Map<string, MockEwelink>();
+  private shellyMocks = new Map<string, MockShelly>();
+  private ewelinkApp: EwelinkApp | null;
   private specs = new Map<string, any>();
   private verifyCultivation: (userId: string, cultivationId: string) => Promise<{ name: string } | null>;
   private recordWatering: (userId: string, w: AutoWateringRecord) => Promise<void>;
@@ -260,12 +288,15 @@ export class DeviceService {
     verifyCultivation?: (userId: string, cultivationId: string) => Promise<{ name: string } | null>;
     /** Con Firestore Admin: anota en el cultivo cada riego automático. */
     recordWatering?: (userId: string, w: AutoWateringRecord) => Promise<void>;
+    /** La app de Cultiveta en dev.ewelink.cc (sin ella, eWeLink solo se puede probar con el de prueba). */
+    ewelinkApp?: EwelinkApp | null;
   }) {
     this.store = o.store;
     this.now = o.now || Date.now;
     this.fetchImpl = o.fetchImpl;
     this.verifyCultivation = o.verifyCultivation || (async () => null);
     this.recordWatering = o.recordWatering || (async () => {});
+    this.ewelinkApp = o.ewelinkApp && o.ewelinkApp.appId && o.ewelinkApp.appSecret && o.ewelinkApp.redirectUrl ? o.ewelinkApp : null;
   }
 
   /** La zapatilla de prueba de esa persona (para tests y para "probar sin cuenta"). */
@@ -278,9 +309,66 @@ export class DeviceService {
     return m;
   }
 
-  private client(userId: string, integ: DeviceIntegration): TuyaCloud {
-    if (!integ.tuya) throw new DeviceError('Smart Life todavía no está conectado.', 409);
-    const t = integ.tuya;
+  /** Los equipos de eWeLink de prueba de esa persona. */
+  ewelinkMockOf(userId: string): MockEwelink {
+    let m = this.ewelinkMocks.get(userId);
+    if (!m) {
+      m = createMockEwelink({ now: this.now });
+      this.ewelinkMocks.set(userId, m);
+    }
+    return m;
+  }
+  /** Los Shelly de prueba de esa persona. */
+  shellyMockOf(userId: string): MockShelly {
+    let m = this.shellyMocks.get(userId);
+    if (!m) {
+      m = createMockShelly({ now: this.now });
+      this.shellyMocks.set(userId, m);
+    }
+    return m;
+  }
+
+  /** El enrutador con las marcas conectadas de esa persona. */
+  private client(userId: string, integ: DeviceIntegration): DeviceRouter {
+    if (!connectedAny(integ)) throw new DeviceError('Todavía no hay ninguna marca de equipos conectada.', 409);
+    return new DeviceRouter({
+      tuya: integ.tuya ? this.tuyaClient(userId, integ) : undefined,
+      ewelink: integ.ewelink ? this.ewelinkClient(userId, integ) : undefined,
+      shelly: integ.shelly ? this.shellyClient(userId, integ) : undefined,
+    });
+  }
+
+  private ewelinkClient(userId: string, integ: DeviceIntegration): EwelinkCloud {
+    const e = integ.ewelink!;
+    const app = e.mock ? MOCK_EWELINK_APP : this.ewelinkApp;
+    if (!app) throw new DeviceError('eWeLink no está habilitado en este servidor.', 503);
+    // los tokens nuevos (y los bucles cargados) vuelven a lo que se guarda de la persona
+    return new EwelinkCloud({
+      cfg: { ...app, region: e.region, at: e.at, rt: e.rt, atExp: e.atExp, rtExp: e.rtExp, mine: e.mine || {} },
+      fetchImpl: e.mock ? this.ewelinkMockOf(userId).fetchImpl : this.fetchImpl,
+      now: this.now,
+      onChange: (cfg: EwelinkConfig) => {
+        if (integ.ewelink) Object.assign(integ.ewelink, { region: cfg.region, at: cfg.at, rt: cfg.rt, atExp: cfg.atExp, rtExp: cfg.rtExp, mine: { ...cfg.mine } });
+      },
+    });
+  }
+
+  private shellyClient(userId: string, integ: DeviceIntegration): ShellyCloud {
+    const sh = integ.shelly!;
+    // uno por cuenta y clave: así la fila de "una consulta por segundo" vale entre pedidos
+    const key = `${userId}|${sh.mock ? 'mock' : sh.server}|${sh.authKey.slice(-6)}|${(sh.ids || []).join(',')}`;
+    let c = this.shellyClients.get(key);
+    if (!c) {
+      c = sh.mock
+        ? new ShellyCloud({ server: MOCK_SHELLY.server, authKey: MOCK_SHELLY.authKey, ids: sh.ids, fetchImpl: this.shellyMockOf(userId).fetchImpl, now: this.now, gapMs: 0 })
+        : new ShellyCloud({ server: sh.server, authKey: sh.authKey, ids: sh.ids, fetchImpl: this.fetchImpl, now: this.now });
+      this.shellyClients.set(key, c);
+    }
+    return c;
+  }
+
+  private tuyaClient(userId: string, integ: DeviceIntegration): TuyaCloud {
+    const t = integ.tuya!;
     const key = `${userId}|${t.mock ? 'mock' : t.accessId}|${t.region}`;
     let c = this.clients.get(key);
     if (!c) {
@@ -303,7 +391,7 @@ export class DeviceService {
     await this.store.save(integ.userId, integ);
   }
 
-  private async spec(c: TuyaCloud, deviceId: string) {
+  private async spec(c: DeviceRouter, deviceId: string) {
     if (!this.specs.has(deviceId)) {
       try {
         this.specs.set(deviceId, await c.getSpecification(deviceId));
@@ -319,15 +407,19 @@ export class DeviceService {
   async status(userId: string) {
     const integ = await this.store.get(userId);
     const t = integ?.tuya;
+    const e = integ?.ewelink;
+    const sh = integ?.shelly;
     return {
       tuya: { connected: !!t, mock: !!t?.mock, region: t?.region || null, accessId: t && !t.mock ? maskId(t.accessId) : '' },
+      ewelink: { connected: !!e, mock: !!e?.mock, region: e?.region || null, available: !!this.ewelinkApp },
+      shelly: { connected: !!sh, mock: !!sh?.mock, server: sh && !sh.mock ? sh.server.replace('https://', '') : null, ids: sh?.ids || [] },
       regions: Object.fromEntries(Object.entries(TUYA_REGIONS).map(([k, r]) => [k, r.label])),
     };
   }
 
   async connectTuya(userId: string, input: { accessId?: string; accessSecret?: string; region?: string; mock?: boolean }) {
     const integ = await this.load(userId);
-    if (integ.tuya) await this.releaseAll(integ);
+    if (integ.tuya) await this.releaseVendor(integ, 'tuya');
     const cfg = input.mock
       ? { accessId: MOCK_TUYA_ID, accessSecret: MOCK_TUYA_SECRET, region: 'us', mock: true, connectedAt: this.now() }
       : { accessId: String(input.accessId || '').trim(), accessSecret: String(input.accessSecret || '').trim(), region: TUYA_REGIONS[input.region || ''] ? String(input.region) : 'us', connectedAt: this.now() };
@@ -347,33 +439,126 @@ export class DeviceService {
   }
 
   async disconnectTuya(userId: string) {
-    const integ = await this.store.get(userId);
-    if (!integ) return;
-    if (integ.tuya) await this.releaseAll(integ).catch(() => {});
+    await this.disconnectVendor(userId, 'tuya');
+  }
+  async disconnectEwelink(userId: string) {
+    await this.disconnectVendor(userId, 'ewelink');
+  }
+  async disconnectShelly(userId: string) {
+    await this.disconnectVendor(userId, 'shelly');
+  }
+  /** Al borrar la cuenta: todas las marcas. */
+  async disconnectAll(userId: string) {
+    for (const v of VENDORS) await this.disconnectVendor(userId, v);
     await this.store.remove(userId);
   }
 
-  /** Saca lo de Cultiveta de todos los equipos y reactiva las programaciones de la persona. */
-  private async releaseAll(integ: DeviceIntegration) {
-    const c = this.client(integ.userId, integ);
-    for (const deviceId of Object.keys(integ.schedules)) {
-      try {
-        await clearSchedule(c, deviceId, integ.schedules[deviceId], this.now());
-      } catch {
-        /* sigue con los demás */
-      }
-    }
-    // una bomba no queda prendida al desconectar
-    for (const b of integ.bindings.filter((x) => x.role === 'pump')) {
-      await c.sendCommands(b.deviceId, [{ code: b.code, value: false }]).catch(() => {});
-    }
-    await this.reactivate(c, integ, integ.paused.slice());
-    integ.bindings = [];
-    integ.schedules = {};
-    integ.paused = [];
+  private async disconnectVendor(userId: string, vendor: Vendor) {
+    const integ = await this.store.get(userId);
+    if (!integ || !integ[vendor]) return;
+    integ.watering = integ.watering || {};
+    integ.irrigation = integ.irrigation || {};
+    await this.releaseVendor(integ, vendor).catch(() => {});
+    integ[vendor] = null;
+    if (connectedAny(integ)) await this.persist(integ);
+    else await this.store.remove(userId);
   }
 
-  private async reactivate(c: TuyaCloud, integ: DeviceIntegration, groups: DeviceIntegration['paused']) {
+  /** Saca lo de Cultiveta de los equipos de esa marca y reactiva las programaciones de la persona. */
+  private async releaseVendor(integ: DeviceIntegration, vendor: Vendor) {
+    const mine = (deviceId: string) => vendorOf(deviceId) === vendor;
+    let c: DeviceRouter | null = null;
+    try {
+      c = this.client(integ.userId, integ);
+    } catch {
+      c = null;
+    }
+    if (c) {
+      for (const deviceId of Object.keys(integ.schedules).filter(mine)) {
+        try {
+          await clearSchedule(c, deviceId, integ.schedules[deviceId], this.now());
+        } catch {
+          /* sigue con los demás */
+        }
+      }
+      // una bomba no queda prendida al desconectar
+      for (const b of integ.bindings.filter((x) => x.role === 'pump' && mine(x.deviceId))) {
+        await c.sendCommands(b.deviceId, [{ code: b.code, value: false }]).catch(() => {});
+      }
+      await this.reactivate(c, integ, integ.paused.filter((p) => mine(p.deviceId)));
+    }
+    for (const b of integ.bindings.filter((x) => mine(x.deviceId))) {
+      delete integ.irrigation?.[b.id];
+      delete integ.watering?.[b.id];
+      delete integ.lastCommand[b.id];
+    }
+    integ.bindings = integ.bindings.filter((x) => !mine(x.deviceId));
+    integ.paused = integ.paused.filter((p) => !mine(p.deviceId));
+    for (const id of Object.keys(integ.schedules).filter(mine)) delete integ.schedules[id];
+    for (const id of Object.keys(integ.cache).filter(mine)) delete integ.cache[id];
+  }
+
+  // ---------- eWeLink ----------
+
+  /** Página de inicio de sesión de eWeLink (vuelve a /equipos con un código). */
+  async ewelinkLogin(userId: string) {
+    if (!this.ewelinkApp) throw new DeviceError('eWeLink todavía no está habilitado en Cultiveta: falta la app de Cultiveta en dev.ewelink.cc.', 503);
+    const integ = await this.load(userId);
+    const state = crypto.randomBytes(16).toString('hex');
+    integ.oauth = { state, at: this.now() };
+    await this.persist(integ);
+    const c = new EwelinkCloud({ cfg: { ...this.ewelinkApp, region: 'us', mine: {} }, now: this.now });
+    return { url: c.loginUrl(state) };
+  }
+
+  async connectEwelink(userId: string, input: { code?: string; region?: string; state?: string; mock?: boolean }) {
+    const integ = await this.load(userId);
+    const mock = input.mock === true;
+    const region = String(input.region || 'us');
+    if (!mock) {
+      if (!this.ewelinkApp) throw new DeviceError('eWeLink todavía no está habilitado en Cultiveta.', 503);
+      if (!integ.oauth || integ.oauth.state !== String(input.state || '') || this.now() - integ.oauth.at > OAUTH_MS) {
+        throw new DeviceError('El inicio de sesión de eWeLink venció o no es de esta cuenta: tocá "Conectar con eWeLink" de nuevo.');
+      }
+      if (!(EWELINK_REGIONS as readonly string[]).includes(region) || !/^[\w-]{4,200}$/.test(String(input.code || ''))) throw new DeviceError('eWeLink no devolvió un código válido.');
+    }
+    if (integ.ewelink) await this.releaseVendor(integ, 'ewelink');
+    integ.ewelink = { region: mock ? 'us' : region, mine: {}, mock, connectedAt: this.now() };
+    const c = this.ewelinkClient(userId, integ);
+    try {
+      await c.exchange(mock ? MOCK_EWELINK_CODE : String(input.code), mock ? 'us' : region);
+    } catch (e) {
+      integ.ewelink = null;
+      throw e;
+    }
+    const devices = await c.listDevices();
+    integ.oauth = null;
+    integ.lastError = null;
+    await this.persist(integ);
+    return { devices: devices.length, warning: devices.length ? null : 'Tu cuenta de eWeLink no tiene equipos: agregalos primero en la app eWeLink.' };
+  }
+
+  // ---------- Shelly ----------
+
+  async connectShelly(userId: string, input: { server?: string; authKey?: string; ids?: string | string[]; mock?: boolean }) {
+    const integ = await this.load(userId);
+    const mock = input.mock === true;
+    const ids = (Array.isArray(input.ids) ? input.ids : String(input.ids || '').split(/[\s,;]+/)).map((x) => String(x).trim()).filter(Boolean);
+    if (ids.length > 30 || ids.some((x) => !isShellyDeviceId(x))) throw new DeviceError('Los Device Id de Shelly son letras, números y guiones (app Shelly → el equipo → Configuración → Información del equipo).');
+    const server = mock ? MOCK_SHELLY.server : cleanShellyServer(String(input.server || ''));
+    const authKey = mock ? MOCK_SHELLY.authKey : String(input.authKey || '').trim();
+    if (!server) throw new DeviceError('El server de Shelly Cloud es algo como "shelly-103-eu.shelly.cloud": copialo de la app Shelly → Configuración de usuario → Clave de autorización de la nube.');
+    if (!isShellyAuthKey(authKey)) throw new DeviceError('La clave de autorización de la nube de Shelly es un texto largo: copiala entera de la app Shelly.');
+    const cfg = { server, authKey, ids: Array.from(new Set(ids)), mock, connectedAt: this.now() };
+    const devices = await this.client(userId, { ...integ, tuya: null, ewelink: null, shelly: cfg }).listDevices();
+    if (integ.shelly) await this.releaseVendor(integ, 'shelly');
+    integ.shelly = cfg;
+    integ.lastError = null;
+    await this.persist(integ);
+    return { devices: devices.length, warning: devices.length ? null : 'La clave anda, pero no aparece ningún Shelly: agregá el Device Id de cada uno.' };
+  }
+
+  private async reactivate(c: DeviceRouter, integ: DeviceIntegration, groups: DeviceIntegration['paused']) {
     for (const g of groups) {
       try {
         await c.setTimerGroupStatus(g.deviceId, g.category, g.groupId, '1');
@@ -388,9 +573,15 @@ export class DeviceService {
   // ---------- equipos ----------
 
   async devices(userId: string) {
+    return (await this.devicesWithErrors(userId)).devices;
+  }
+
+  /** Los equipos de todas las marcas conectadas; si una marca falla, las otras se ven igual. */
+  async devicesWithErrors(userId: string) {
     const integ = await this.load(userId);
     const c = this.client(userId, integ);
     const list = await c.listDevices();
+    const errors = Object.fromEntries(Object.entries(c.lastErrors).map(([v, m]) => [v, `${VENDOR_APP[v as Vendor]}: ${m}`]));
     const out = [];
     for (const d of list) {
       const spec = await this.spec(c, d.id);
@@ -398,6 +589,7 @@ export class DeviceService {
       integ.cache[d.id] = { name: d.name, online: !!d.online, status: Object.fromEntries((d.status || []).map((s: any) => [s.code, s.value])), sensors, power: powerOf(d.status), at: this.now() };
       out.push({
         id: d.id,
+        vendor: vendorOf(d.id),
         name: d.name,
         product: d.product_name || '',
         category: d.category || '',
@@ -413,7 +605,7 @@ export class DeviceService {
       });
     }
     await this.persist(integ);
-    return out;
+    return { devices: out, errors };
   }
 
   async bind(
@@ -485,7 +677,7 @@ export class DeviceService {
     return binding;
   }
 
-  private async unbindInto(c: TuyaCloud, integ: DeviceIntegration, b: DeviceBinding) {
+  private async unbindInto(c: DeviceRouter, integ: DeviceIntegration, b: DeviceBinding) {
     integ.bindings = integ.bindings.filter((x) => x.id !== b.id);
     if (integ.irrigation) delete integ.irrigation[b.id];
     if (!MANAGED.includes(b.role)) return;
@@ -596,7 +788,7 @@ export class DeviceService {
   }
 
   /** Prende la bomba con su cuenta regresiva (pasando por los topes). No guarda: lo hace quien llama. */
-  private async waterInto(c: TuyaCloud, integ: DeviceIntegration, b: DeviceBinding, seconds: number, auto: boolean) {
+  private async waterInto(c: DeviceRouter, integ: DeviceIntegration, b: DeviceBinding, seconds: number, auto: boolean) {
     let online = false;
     try {
       online = (await this.poll(c, integ, b.deviceId, 0)).online;
@@ -625,7 +817,7 @@ export class DeviceService {
   }
 
   /** Un paso del riego automático de una bomba (en la revisión). */
-  private async stepAuto(c: TuyaCloud, integ: DeviceIntegration, b: DeviceBinding, t: number) {
+  private async stepAuto(c: DeviceRouter, integ: DeviceIntegration, b: DeviceBinding, t: number) {
     const auto = b.auto;
     if (!auto || auto.mode === 'off') return;
     const st = (integ.irrigation![b.id] ||= { lastCheck: t, wetdry: null, last: null, note: null });
@@ -669,7 +861,7 @@ export class DeviceService {
     await this.autoWater(c, integ, b, st, due);
   }
 
-  private async autoWater(c: TuyaCloud, integ: DeviceIntegration, b: DeviceBinding, st: IrrigationState, due: { seconds: number; reason: string }) {
+  private async autoWater(c: DeviceRouter, integ: DeviceIntegration, b: DeviceBinding, st: IrrigationState, due: { seconds: number; reason: string }) {
     try {
       const r = await this.waterInto(c, integ, b, due.seconds, true);
       const at = this.now();
@@ -756,28 +948,49 @@ export class DeviceService {
     return null;
   }
 
-  private async syncDevice(c: TuyaCloud, integ: DeviceIntegration, deviceId: string, force = false) {
-    const items: LightItem[] = [];
-    for (const b of integ.bindings.filter((x) => x.deviceId === deviceId)) {
-      if (b.role === 'light' && b.schedule) items.push({ code: b.code, ...b.schedule });
-      if (b.role === 'climate' && b.rule && b.rule.mode !== 'sensor') {
-        // lo que sigue a la luz también queda cargado en Smart Life (al revés: luz y oscuridad invertidas)
-        const l = this.lightOf(integ, b.cultivationId)?.schedule;
-        if (!l) continue;
-        if (b.rule.mode === 'follow') items.push({ code: b.code, ...l });
-        else if (l.darkHours > 0) items.push({ code: b.code, lightHours: l.darkHours, darkHours: l.lightHours, anchorMs: l.anchorMs + l.lightHours * HOUR_MS, timeZone: l.timeZone });
-      }
+  /** El horario de un toma con horario (la luz, o lo que la sigue o va al revés): null si no tiene. */
+  private itemOf(integ: DeviceIntegration, b: DeviceBinding): LightItem | null {
+    if (b.role === 'light' && b.schedule) return { code: b.code, ...b.schedule };
+    if (b.role === 'climate' && b.rule && b.rule.mode !== 'sensor') {
+      // lo que sigue a la luz también queda cargado (al revés: luz y oscuridad invertidas)
+      const l = this.lightOf(integ, b.cultivationId)?.schedule;
+      if (!l) return null;
+      if (b.rule.mode === 'follow') return { code: b.code, ...l };
+      if (l.darkHours > 0) return { code: b.code, lightHours: l.darkHours, darkHours: l.lightHours, anchorMs: l.anchorMs + l.lightHours * HOUR_MS, timeZone: l.timeZone };
     }
+    return null;
+  }
+
+  /** Órdenes para dejar un toma en un estado. En Shelly, el toma con horario además queda "dándose vuelta solo" en el próximo cambio. */
+  private switchCommands(c: DeviceRouter, integ: DeviceIntegration, b: DeviceBinding, value: boolean, t: number) {
+    const cmds: Array<{ code: string; value: unknown }> = [{ code: b.code, value }];
+    const next = c.scheduleKind(b.deviceId) === 'toggle' ? this.nextChangeOf(integ, b, t) : null;
+    if (next != null) cmds.push({ code: countdownOf(b.code), value: Math.max(1, Math.round((next - t) / 1000)) });
+    return cmds;
+  }
+  private nextChangeOf(integ: DeviceIntegration, b: DeviceBinding, t: number): number | null {
+    const it = this.itemOf(integ, b);
+    return it ? lightState({ lightHours: it.lightHours, darkHours: it.darkHours }, it.anchorMs, t).nextChangeAt : null;
+  }
+
+  private async syncDevice(c: DeviceRouter, integ: DeviceIntegration, deviceId: string, force = false) {
+    const items = integ.bindings.filter((x) => x.deviceId === deviceId).map((b) => this.itemOf(integ, b)).filter((x): x is LightItem => !!x);
     const prev = integ.schedules[deviceId];
+    const t = this.now();
     try {
-      integ.schedules[deviceId] = await syncSchedule(c, deviceId, items, prev, this.now(), force);
+      const kind = c.scheduleKind(deviceId);
+      if (kind === 'loops') integ.schedules[deviceId] = await syncLoops(c, deviceId, items, prev, t, force);
+      else if (kind === 'toggle') {
+        // Shelly: la nube no guarda horarios; cada cambio lo deja programado la revisión (switchCommands)
+        integ.schedules[deviceId] = { mode: items.length ? 'server' : 'none', sig: 'server', until: null, span: 0, count: items.length, codes: items.map((it) => it.code), groups: [], daily: dailyPlan(items) || undefined, at: t, error: null };
+      } else integ.schedules[deviceId] = await syncSchedule(c, deviceId, items, prev, t, force);
     } catch (e: any) {
       integ.schedules[deviceId] = { ...(prev || { mode: 'none', sig: 'none', until: null, span: 0, count: 0, codes: [], groups: [] }), at: this.now(), error: e?.message || 'Error' } as ScheduleState;
     }
   }
 
   /** Deja el toma como corresponde ahora mismo (si no, el primer cambio cargado puede tardar horas). */
-  private async applyNow(c: TuyaCloud, integ: DeviceIntegration, b: DeviceBinding) {
+  private async applyNow(c: DeviceRouter, integ: DeviceIntegration, b: DeviceBinding) {
     if (b.role === 'climate' && b.rule?.mode === 'sensor') {
       // por sensor: hace falta lo que mide el sensor del cultivo y cómo está el equipo ahora
       const sensor = integ.bindings.find((x) => x.cultivationId === b.cultivationId && x.role === 'sensor_th');
@@ -792,7 +1005,7 @@ export class DeviceService {
     if (!d) return;
     b.lastReason = d.reason;
     try {
-      await c.sendCommands(b.deviceId, [{ code: b.code, value: d.value }]);
+      await c.sendCommands(b.deviceId, this.switchCommands(c, integ, b, d.value, this.now()));
       integ.lastCommand[b.id] = { at: this.now(), value: d.value };
       const entry = integ.cache[b.deviceId];
       if (entry) entry.status[b.code] = d.value;
@@ -801,7 +1014,7 @@ export class DeviceService {
     }
   }
 
-  private async poll(c: TuyaCloud, integ: DeviceIntegration, deviceId: string, maxAge = POLL_MS) {
+  private async poll(c: DeviceRouter, integ: DeviceIntegration, deviceId: string, maxAge = POLL_MS) {
     const prev = integ.cache[deviceId];
     if (prev && this.now() - prev.at < maxAge) return prev;
     const d = await c.getDevice(deviceId);
@@ -823,7 +1036,7 @@ export class DeviceService {
   /** Estado de los equipos asignados (lo que muestran la luz, el ambiente, el riego y los equipos del cultivo). */
   async overview(userId: string) {
     const integ = await this.store.get(userId);
-    if (!integ?.tuya) return { connected: false, mock: false, bindings: [] as any[] };
+    if (!integ || !connectedAny(integ)) return { connected: false, mock: false, bindings: [] as any[] };
     integ.watering = integ.watering || {};
     const c = this.client(userId, integ);
     const t = this.now();
@@ -839,6 +1052,7 @@ export class DeviceService {
       const w = integ.watering[b.id];
       out.push({
         ...b,
+        vendor: vendorOf(b.deviceId),
         online: entry?.online ?? null,
         on: MANAGED.includes(b.role) && entry ? entry.status[b.code] === true : null,
         sensors: b.role === 'sensor_th' || b.role === 'sensor_soil' ? entry?.sensors ?? null : null,
@@ -849,7 +1063,7 @@ export class DeviceService {
       });
     }
     await this.persist(integ);
-    return { connected: true, mock: !!integ.tuya.mock, bindings: out, lastError: integ.lastError };
+    return { connected: true, mock: !!(integ.tuya?.mock || integ.ewelink?.mock || integ.shelly?.mock), bindings: out, lastError: integ.lastError };
   }
 
   // ---------- revisión periódica (Cloud Scheduler, cada 5 min) ----------
@@ -857,7 +1071,7 @@ export class DeviceService {
   /** Rellena lo cargado, aplica las reglas por sensor, corrige lo que quedó al revés y lee los sensores. */
   async tick(userId: string) {
     const integ = await this.store.get(userId);
-    if (!integ?.tuya) return { devices: 0, fixes: 0, waterings: 0 };
+    if (!integ || !connectedAny(integ)) return { devices: 0, fixes: 0, waterings: 0 };
     integ.watering = integ.watering || {};
     integ.irrigation = integ.irrigation || {};
     const c = this.client(userId, integ);
@@ -889,17 +1103,29 @@ export class DeviceService {
       try {
         const here = integ.bindings.filter((x) => x.deviceId === deviceId && MANAGED.includes(x.role));
         if (here.some((b) => b.role === 'light' || (b.role === 'climate' && b.rule?.mode !== 'sensor'))) await this.syncDevice(c, integ, deviceId);
-        const fast = here.some((b) => b.role === 'pump' || (b.role === 'climate' && b.rule?.mode === 'sensor'));
+        const toggle = c.scheduleKind(deviceId) === 'toggle';
+        // Shelly con horario: cada vuelta, para dejar programado el cambio siguiente apenas pasa uno
+        const fast = toggle || here.some((b) => b.role === 'pump' || (b.role === 'climate' && b.rule?.mode === 'sensor'));
         const entry = await this.poll(c, integ, deviceId, fast ? SENSOR_POLL_MS : SLOW_POLL_MS);
         if (!entry.online) continue;
         for (const b of here) {
           const d = this.desiredFor(integ, b, t);
           if (!d) continue;
           b.lastReason = d.reason;
-          if (entry.status[b.code] === d.value) continue;
-          const last = integ.lastCommand[b.id];
-          if (last && last.value === d.value && t - last.at < GRACE_MS) continue;
-          await c.sendCommands(deviceId, [{ code: b.code, value: d.value }]);
+          if (entry.status[b.code] === d.value) {
+            // Shelly: además tiene que estar por darse vuelta en el próximo cambio (±2 min)
+            const next = toggle ? this.nextChangeOf(integ, b, t) : null;
+            if (next == null) continue;
+            const left = Number(entry.status[countdownOf(b.code)] || 0) - (t - entry.at) / 1000;
+            if (Math.abs(left - (next - t) / 1000) <= 120) continue;
+          } else {
+            const last = integ.lastCommand[b.id];
+            if (last && last.value === d.value && t - last.at < GRACE_MS) continue;
+          }
+          const cmds = this.switchCommands(c, integ, b, d.value, t);
+          await c.sendCommands(deviceId, cmds);
+          const cd = cmds.find((x) => x.code !== b.code);
+          if (cd) entry.status[cd.code] = cd.value;
           integ.lastCommand[b.id] = { at: t, value: d.value };
           entry.status[b.code] = d.value;
           fixes++;

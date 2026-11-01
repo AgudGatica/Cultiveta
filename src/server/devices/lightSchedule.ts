@@ -6,10 +6,12 @@
  *   caen en el mismo minuto van juntas (Tuya acepta 30 por equipo, contando las de la persona). El
  *   servidor rellena cuando queda poco. Termina siempre con la luz apagada.
  * Las programaciones de la app Smart Life ("category_switch_N" de la persona) no se tocan acá.
+ * En eWeLink el horario va como un bucle por toma guardado en el equipo (no vence; syncLoops).
  */
 import { cycleMs, onIntervals, DAY_MS, HOUR_MS, MIN_MS } from '../../utils/lightCycle';
 import { offsetString, zonedClock, zonedDateKey } from './tz';
-import type { TuyaCloud, TuyaTimer } from './tuyaClient';
+import type { TuyaTimer } from './tuyaClient';
+import type { DeviceCloud, LoopPlan } from './cloud';
 
 export const SCHEDULE_CATEGORY = 'cultiveta';
 const HORIZON = 7 * DAY_MS;
@@ -28,7 +30,8 @@ export interface LightItem {
 }
 
 export interface ScheduleState {
-  mode: 'once' | 'daily' | 'none';
+  /** once: semana de órdenes (Smart Life) · daily: diario · loop: bucle en el equipo (eWeLink) · server: lo sostiene la revisión (Shelly). */
+  mode: 'once' | 'daily' | 'loop' | 'server' | 'none';
   sig: string;
   until: number | null;
   span: number;
@@ -38,6 +41,8 @@ export interface ScheduleState {
   daily?: Array<{ code: string; on: string; off: string }>;
   at: number;
   error: string | null;
+  /** eWeLink: última vez que se miró que el bucle siga en el equipo. */
+  checkedAt?: number;
 }
 
 type Event = { at: number; functions: Array<{ code: string; value: boolean }> };
@@ -96,7 +101,7 @@ const signatureOf = (items: LightItem[], mode: string) =>
   JSON.stringify([1, mode, items.map((it) => [it.code, it.lightHours, it.darkHours, it.anchorMs % cycleMs(it).totalMs, it.timeZone])]);
 
 /** Borra lo que cargó Cultiveta en ese equipo. Devuelve cuántas programaciones de la persona hay. */
-async function clearOwn(client: TuyaCloud, deviceId: string, prev: ScheduleState | undefined): Promise<number> {
+async function clearOwn(client: DeviceCloud, deviceId: string, prev: ScheduleState | undefined): Promise<number> {
   const all: TuyaTimer[] = await client.getTimers(deviceId);
   const owned = new Set((prev?.groups || []).map((g) => g.groupId));
   if (all.some((x) => x.category === SCHEDULE_CATEGORY)) await client.deleteTimerCategory(deviceId, SCHEDULE_CATEGORY);
@@ -109,7 +114,7 @@ async function clearOwn(client: TuyaCloud, deviceId: string, prev: ScheduleState
 export const emptySchedule = (t: number): ScheduleState => ({ mode: 'none', sig: 'none', until: null, span: 0, count: 0, codes: [], groups: [], at: t, error: null });
 
 /** Saca todo lo de Cultiveta del equipo (al desasignar la luz o desconectar Smart Life). */
-export async function clearSchedule(client: TuyaCloud, deviceId: string, prev: ScheduleState | undefined, t: number): Promise<ScheduleState> {
+export async function clearSchedule(client: DeviceCloud, deviceId: string, prev: ScheduleState | undefined, t: number): Promise<ScheduleState> {
   await clearOwn(client, deviceId, prev);
   return emptySchedule(t);
 }
@@ -118,7 +123,7 @@ export async function clearSchedule(client: TuyaCloud, deviceId: string, prev: S
  * Pone al día lo cargado en el equipo para estas luces. Solo escribe si cambió el horario o si a lo
  * cargado le queda menos de la mitad. Devuelve el estado nuevo (o el mismo si no hizo falta nada).
  */
-export async function syncSchedule(client: TuyaCloud, deviceId: string, items: LightItem[], prev: ScheduleState | undefined, t: number, force = false): Promise<ScheduleState> {
+export async function syncSchedule(client: DeviceCloud, deviceId: string, items: LightItem[], prev: ScheduleState | undefined, t: number, force = false): Promise<ScheduleState> {
   if (!items.length) return prev && prev.mode !== 'none' ? clearSchedule(client, deviceId, prev, t) : prev || emptySchedule(t);
   const plan = dailyPlan(items);
   const sig = signatureOf(items, plan ? 'daily' : 'once');
@@ -164,4 +169,59 @@ export async function syncSchedule(client: TuyaCloud, deviceId: string, items: L
   }
   const until = list.length ? list[list.length - 1].at : t;
   return { mode: 'once', sig, until, span: until - t, count: list.length, codes: items.map((it) => it.code), groups: [], at: t, error: null };
+}
+
+// ---------- eWeLink: bucles guardados en el equipo ----------
+
+const LOOP_LEAD = 2 * MIN_MS;
+const LOOP_CHECK = 30 * MIN_MS; // cada cuánto se mira que el bucle siga en el equipo
+
+/** Un bucle por toma desde el próximo cambio (con margen): alterna solo para siempre. Siempre prendida no lleva bucle. */
+export function loopPlans(items: LightItem[], t: number): LoopPlan[] {
+  return items
+    .filter((it) => cycleMs(it).onMs > 0 && cycleMs(it).offMs > 0)
+    .map((it) => {
+      const { onMs, totalMs } = cycleMs(it);
+      const tl = t + LOOP_LEAD;
+      let at: number;
+      let on: boolean;
+      if (it.anchorMs > tl) {
+        at = it.anchorMs;
+        on = true;
+      } else {
+        const s = it.anchorMs + Math.floor((tl - it.anchorMs) / totalMs) * totalMs;
+        if (s + onMs > tl) {
+          at = s + onMs;
+          on = false;
+        } else {
+          at = s + totalMs;
+          on = true;
+        }
+      }
+      return { code: it.code, start: at, periodMin: Math.round(totalMs / MIN_MS), runMin: Math.round((on ? onMs : totalMs - onMs) / MIN_MS), startOn: on };
+    });
+}
+
+/** Pone al día el bucle de Cultiveta en un equipo de eWeLink (y cada media hora mira que siga ahí). */
+export async function syncLoops(client: DeviceCloud, deviceId: string, items: LightItem[], prev: ScheduleState | undefined, t: number, force = false): Promise<ScheduleState> {
+  const sig = signatureOf(items, 'loop');
+  if (!force && prev && !prev.error && prev.sig === sig) {
+    if (!prev.count || t - (prev.checkedAt ?? prev.at) < LOOP_CHECK) return prev;
+    if (!client.loopsPresent || (await client.loopsPresent(deviceId))) return { ...prev, checkedAt: t };
+  }
+  const plans = loopPlans(items, t);
+  if (!plans.length) {
+    if (prev && prev.mode !== 'none') await clearOwn(client, deviceId, prev);
+    return { ...emptySchedule(t), sig };
+  }
+  if (!client.setLoops) throw new Error('Este equipo no guarda bucles.');
+  await client.setLoops(deviceId, plans);
+  const tz = items[0].timeZone;
+  const daily = plans.every((p) => p.periodMin === 1440);
+  const onOff = (p: LoopPlan) => {
+    const a = p.start;
+    const b = p.start + p.runMin * MIN_MS;
+    return { code: p.code, on: zonedClock(p.startOn ? a : b, tz), off: zonedClock(p.startOn ? b : a, tz) };
+  };
+  return { mode: daily ? 'daily' : 'loop', sig, until: null, span: 0, count: plans.length, codes: plans.map((p) => p.code), groups: [], daily: daily ? plans.map(onOff) : undefined, at: t, error: null, checkedAt: t };
 }
