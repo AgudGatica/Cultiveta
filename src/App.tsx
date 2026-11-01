@@ -13,6 +13,7 @@ import { diaryService } from './services/diaryService';
 import { demoDataService } from './services/demoDataService';
 import { photoOfflineQueue } from './services/photoOfflineQueue';
 import { localStore } from './services/localStore';
+import { scrollToTop, useScrollTopOnNavigate } from './hooks/useScrollTopOnNavigate';
 
 import {
   Cultivation,
@@ -103,6 +104,7 @@ export default function App() {
   const navigate = useNavigate();
   const route = useMemo(() => parseAppRoute(location.pathname), [location.pathname]);
   const currentView: AppView = route.view;
+  useScrollTopOnNavigate();
 
   // El cultivo seleccionado también se usa como contexto de los modales (riego, foto, etc.),
   // por eso sigue siendo estado; en /cultivos/:id se sincroniza con la URL.
@@ -141,7 +143,9 @@ export default function App() {
             ? `/cultivos/${encodeURIComponent(latestSelectedIdRef.current)}`
             : '/cultivos'
           : pathForView(view);
+      // Tocar la pestaña en la que ya estás la lleva arriba de todo
       if (target !== location.pathname) navigate(target);
+      else scrollToTop(true);
     },
     [navigate, location.pathname]
   );
