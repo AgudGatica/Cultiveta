@@ -112,7 +112,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
         id="mobile-bottom-nav"
         className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-black/10 px-3 py-2 flex items-center justify-around shadow-lg"
       >
-        {/* 1. Inicio */}
+        {/* 1. Jardín (la pantalla de inicio) */}
         <button
           type="button"
           id="mobile-nav-home"
@@ -127,7 +127,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
           }`}
         >
           <LayoutDashboard className="w-5 h-5" />
-          <span className="text-[11px]">Inicio</span>
+          <span className="text-[11px]">Jardín</span>
         </button>
 
         {/* 2. Cultivos */}

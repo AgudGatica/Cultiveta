@@ -48,7 +48,7 @@ export function getDetailBackTarget(crop: Cultivation | null | undefined): 'dash
 /** Ítem de navegación resaltado: el detalle se marca como Inicio o Cultivos según el cultivo. */
 export function getNavHighlight(view: string, selectedCrop: Cultivation | null | undefined): string {
   if (view === 'cultivation_detail') return getDetailBackTarget(selectedCrop);
-  if (view === 'indoor_detail') return 'dashboard';
+  if (view === 'indoor_detail' || view === 'genetic_detail') return 'dashboard';
   return view;
 }
 

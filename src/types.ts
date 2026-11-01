@@ -126,17 +126,21 @@ export interface EnvironmentalAlertThresholds {
   humidityMaxPct?: number;
 }
 
-export type IndoorKind = 'carpa' | 'sala' | 'armario';
+/** Tipo de ambiente: interiores (carpa, sala, armario) o exteriores (patio, balcón, terraza, invernadero). */
+export type IndoorKind = 'carpa' | 'sala' | 'armario' | 'patio' | 'balcon' | 'terraza' | 'invernadero';
 
 /**
- * Indoor: una carpa, sala o armario con su luz (tipo, watts, fotoperiodo y hora de encendido), que
- * agrupa cultivos. Los cultivos de adentro comparten esa luz; los equipos de luz, clima y ambiente se
- * asignan al indoor.
+ * Ambiente (en el código, "indoor"): una carpa, sala o armario con su luz (tipo, watts, fotoperiodo y
+ * hora de encendido), o un lugar de exterior (patio, balcón, terraza, invernadero) con luz natural. Agrupa
+ * cultivos: los de un ambiente interior comparten su luz; los equipos de luz, clima y ambiente se asignan
+ * al ambiente.
  */
 export interface Indoor {
   id: string;
   userId: string;
   name: string;
+  /** Interior o exterior (los que no lo tienen son interiores). */
+  environment?: 'indoor' | 'exterior';
   kind: IndoorKind;
   widthCm?: number;
   depthCm?: number;
@@ -357,6 +361,8 @@ export interface EnvironmentRecord {
   co2Ppm?: number;
   notes?: string;
   isAutoLogged?: boolean;
+  /** Anotado desde un ambiente: la misma lectura queda en cada cultivo de adentro. */
+  indoorId?: string;
   isDemo?: boolean;
   createdAt: string;
 }

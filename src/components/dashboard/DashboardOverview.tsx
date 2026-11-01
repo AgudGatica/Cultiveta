@@ -6,8 +6,8 @@ import { isCropFinished } from '../../utils/cropCardInfo';
 import { EmptyState } from '../common/EmptyState';
 import { TodayTasksCard } from './TodayTasksCard';
 import { ActiveCropCard } from './ActiveCropCard';
-import { IndoorCard } from '../indoors/IndoorCard';
-import { cropsInIndoor } from '../../utils/indoors';
+import { AmbientCard } from '../indoors/AmbientCard';
+import { cropsInIndoor, cropsWithoutAmbient } from '../../utils/indoors';
 
 interface DashboardOverviewProps {
   cultivations: Cultivation[];
@@ -27,9 +27,10 @@ interface DashboardOverviewProps {
   onCreateCultivationClick: () => void;
   onOpenWateringModal: (cultivation?: Cultivation) => void;
   onTaskCompletedFeedback?: (message: string) => void;
-  /** Indoors (carpas, salas, armarios) que agrupan cultivos. */
+  /** Ambientes (carpas, salas o lugares de exterior) que agrupan las plantas. */
   indoors?: Indoor[];
   onOpenIndoor?: (indoor: Indoor) => void;
+  /** Nuevo ambiente. */
   onCreateIndoorClick?: () => void;
 }
 
@@ -42,8 +43,9 @@ export function getGreeting(date: Date = new Date()): string {
 }
 
 /**
- * Inicio: saludo, "Para hoy", cuatro números (cultivos, plantas, racha y nivel), los indoors y las
- * tarjetas de los cultivos activos. El detalle de cada cultivo (ambiente, riego, ciclo, gráficos) vive en su pantalla.
+ * Jardín (la pantalla de inicio): saludo, "Para hoy", cuatro números (cultivos, plantas, racha y nivel)
+ * y los ambientes. Las plantas están adentro de cada ambiente; un cultivo sin ambiente (mientras se le
+ * arma uno) se ve abajo, en "Sin ambiente". El detalle de cada cultivo (ambiente, riego, ciclo, gráficos) vive en su pantalla.
  */
 export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   cultivations,
@@ -67,6 +69,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   onCreateIndoorClick,
 }) => {
   const activeCrops = useMemo(() => cultivations.filter((c) => !isCropFinished(c)), [cultivations]);
+  const loose = useMemo(() => cropsWithoutAmbient(cultivations), [cultivations]);
   const totalPlants = activeCrops.reduce((acc, c) => acc + (c.plantCount || 1), 0);
   const firstName = (userProfile?.displayName || 'Cultivador').split(' ')[0] || 'Cultivador';
 
@@ -139,74 +142,48 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             ))}
           </section>
 
-          {/* 4. Indoors: carpas o salas que agrupan cultivos y comparten la luz */}
-          {onCreateIndoorClick && (indoors.length > 0 || activeCrops.length > 0) && (
-            <section id="home-indoors" aria-labelledby="home-indoors-title" className="space-y-3">
-              <h2 id="home-indoors-title" className="text-lg font-extrabold text-white flex items-center gap-2 px-1">
-                <Home className="w-4 h-4" aria-hidden="true" />
-                Indoors{indoors.length ? ` (${indoors.length})` : ''}
+          {/* 4. Ambientes: las plantas están adentro de cada uno */}
+          {indoors.length === 0 && activeCrops.length === 0 ? (
+            <EmptyState
+              id="home-empty-crops"
+              icon={Home}
+              title="Todavía no tenés ambientes"
+              description="Creá tu carpa, sala o lugar de exterior y sumale plantas para empezar a anotar riegos, clima y fotos."
+              actionLabel="Creá tu primer ambiente"
+              actionIcon={Plus}
+              onAction={onCreateIndoorClick || onCreateCultivationClick}
+            />
+          ) : (
+            <section id="home-ambients" aria-labelledby="home-ambients-title" className="space-y-3">
+              <h2 id="home-ambients-title" className="text-lg font-extrabold text-white flex items-center gap-2 px-1">
+                <span aria-hidden="true" className="w-2.5 h-2.5 rounded-full bg-logo-dot" />
+                Tus ambientes{indoors.length ? ` (${indoors.length})` : ''}
               </h2>
-              {indoors.length === 0 ? (
-                <div className="cultiveta-card p-4 flex flex-wrap items-center justify-between gap-3">
-                  <p className="text-sm text-ink flex-1 min-w-[200px]">Juntá tus cultivos de interior en una carpa o sala: comparten la luz, el ambiente y los equipos.</p>
-                  <button type="button" id="home-create-indoor-btn" onClick={onCreateIndoorClick} className="cultiveta-btn-primary text-sm">
-                    <Plus className="w-4 h-4" aria-hidden="true" />
-                    Crear indoor
-                  </button>
+              {indoors.length > 0 && (
+                <div id="home-ambient-grid" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                  {indoors.map((i) => (
+                    <AmbientCard key={i.id} ambient={i} crops={cropsInIndoor(cultivations, i.id)} onOpen={(x) => onOpenIndoor?.(x)} />
+                  ))}
                 </div>
-              ) : (
-                <>
-                  <div id="home-indoor-grid" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                    {indoors.map((i) => (
-                      <IndoorCard key={i.id} indoor={i} crops={cropsInIndoor(cultivations, i.id)} onOpen={(x) => onOpenIndoor?.(x)} />
-                    ))}
-                  </div>
-                  <button type="button" id="home-add-indoor-btn" onClick={onCreateIndoorClick} className="cultiveta-btn-secondary w-full text-sm">
-                    <Plus className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
-                    Nuevo indoor
-                  </button>
-                </>
               )}
+              <button type="button" id="home-add-ambient-btn" onClick={onCreateIndoorClick || onCreateCultivationClick} className="cultiveta-btn-secondary w-full text-sm">
+                <Plus className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
+                Nuevo ambiente
+              </button>
             </section>
           )}
 
-          {/* 5. Cultivos activos */}
-          {activeCrops.length === 0 ? (
-            <EmptyState
-              id="home-empty-crops"
-              icon={Sprout}
-              title="Todavía no tenés cultivos activos"
-              description="Sumá tu primer cultivo para empezar a anotar riegos, ambiente y fotos."
-              actionLabel="Creá tu primer cultivo"
-              actionIcon={Plus}
-              onAction={onCreateCultivationClick}
-            />
-          ) : (
-            <section aria-labelledby="home-crops-title" className="space-y-3">
-              <h2 id="home-crops-title" className="text-lg font-extrabold text-white flex items-center gap-2 px-1">
-                <span aria-hidden="true" className="w-2.5 h-2.5 rounded-full bg-logo-dot" />
-                Cultivos activos ({activeCrops.length})
+          {/* 5. Cultivos que todavía no están en un ambiente (se les arma uno solo) */}
+          {loose.length > 0 && (
+            <section id="home-loose-crops" aria-labelledby="home-loose-title" className="space-y-3">
+              <h2 id="home-loose-title" className="text-sm font-extrabold text-white/90 px-1">
+                Sin ambiente ({loose.length})
               </h2>
               <div id="home-crop-grid" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {activeCrops.map((crop) => (
-                  <ActiveCropCard
-                    key={crop.id}
-                    cultivation={crop}
-                    geneticsList={geneticsList}
-                    onOpen={onSelectCultivation}
-                    indoorName={crop.indoorId ? indoors.find((i) => i.id === crop.indoorId)?.name : null}
-                  />
+                {loose.map((crop) => (
+                  <ActiveCropCard key={crop.id} cultivation={crop} geneticsList={geneticsList} onOpen={onSelectCultivation} />
                 ))}
               </div>
-              <button
-                type="button"
-                id="home-add-crop-btn"
-                onClick={onCreateCultivationClick}
-                className="cultiveta-btn-secondary w-full text-sm"
-              >
-                <Plus className="w-4 h-4 stroke-[2.5]" aria-hidden="true" />
-                Sumar cultivo
-              </button>
             </section>
           )}
         </>

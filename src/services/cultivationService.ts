@@ -22,13 +22,14 @@ import { authFetch } from './apiClient';
 import { evaluateEnvironmentReading, PH_ALERT_MIN, PH_ALERT_MAX, EC_HIGH_MS } from '../utils/agronomicThresholds';
 
 export const cultivationService = {
-  subscribeCultivations(userId: string, callback: (cultivations: Cultivation[]) => void): Unsubscribe {
+  /** meta.fromCache false: la lista ya vino del servidor (no solo de este dispositivo). */
+  subscribeCultivations(userId: string, callback: (cultivations: Cultivation[], meta?: { fromCache: boolean }) => void): Unsubscribe {
     return subscribeCollection<Cultivation>({
       collectionName: 'cultivations',
       userId,
       sortFn: (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime(),
-      callback: (list) => {
-        callback(list);
+      callback: (list, meta) => {
+        callback(list, meta);
 
         // Registrar cultivos de exterior en el backend para el cron
         list.forEach((c) => {

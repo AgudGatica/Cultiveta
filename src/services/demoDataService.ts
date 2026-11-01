@@ -626,6 +626,7 @@ export const demoDataService = {
   async deleteDemoData(userId: string): Promise<void> {
     const collectionsToClean = [
       'cultivations',
+      'indoors',
       'genetics',
       'waterings',
       'environmentRecords',

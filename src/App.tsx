@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { User } from 'firebase/auth';
-import { AppView, isLegacyHarvestsPath, parseAppRoute, pathForIndoor, pathForView } from './appRoutes';
+import { AppView, isLegacyHarvestsPath, parseAppRoute, pathForGenetic, pathForIndoor, pathForView } from './appRoutes';
 import { authService } from './services/authService';
 import { cultivationService } from './services/cultivationService';
 import { wateringService } from './services/wateringService';
@@ -35,7 +35,7 @@ import { AuthScreen } from './components/auth/AuthScreen';
 
 import { DashboardOverview } from './components/dashboard/DashboardOverview';
 import { CultivationFormModal } from './components/cultivations/CultivationFormModal';
-import { IndoorFormModal } from './components/indoors/IndoorFormModal';
+import { AmbientFormModal } from './components/indoors/AmbientFormModal';
 import { getDetailBackTarget, getNavHighlight, isCropFinished } from './utils/cropCardInfo';
 import { WateringModal } from './components/logs/WateringModal';
 import { EnvironmentModal } from './components/logs/EnvironmentModal';
@@ -72,10 +72,11 @@ const CalculatorsView = React.lazy(() =>
   import('./components/tools/CalculatorsView').then((m) => ({ default: m.CalculatorsView }))
 );
 const DevicesView = React.lazy(() => import('./components/devices/DevicesView'));
-const IndoorDetailView = React.lazy(() => import('./components/indoors/IndoorDetailView'));
+const AmbientDetailView = React.lazy(() => import('./components/indoors/AmbientDetailView'));
+const GeneticDetailView = React.lazy(() => import('./components/indoors/GeneticDetailView'));
 import { devicesService, scheduleSnapshot, sameSchedule, useDevicesOverview } from './services/devicesService';
 import { indoorService } from './services/indoorService';
-import { withIndoorLighting } from './utils/indoors';
+import { autoAmbientId, cropsWithoutAmbient, withIndoorLighting } from './utils/indoors';
 const PhotoDiagnosisModal = React.lazy(() =>
   import('./components/ai/PhotoDiagnosisModal').then((m) => ({ default: m.PhotoDiagnosisModal }))
 );
@@ -167,6 +168,10 @@ export default function App() {
   const [newCropIndoorId, setNewCropIndoorId] = useState<string | null>(null);
   const openIndoor = React.useCallback((id: string) => navigate(pathForIndoor(id)), [navigate]);
   const selectedIndoor = route.indoorId ? indoors.find((i) => i.id === route.indoorId) || null : null;
+  const geneticCrop = currentView === 'genetic_detail' && route.cultivationId ? cultivations.find((c) => c.id === route.cultivationId) || null : null;
+  // Ya llegaron del servidor los cultivos y los ambientes (no solo lo guardado en este dispositivo)
+  const [serverLoaded, setServerLoaded] = useState({ crops: false, ambients: false });
+  const autoAmbientRef = React.useRef(new Set<string>());
   const [waterings, setWaterings] = useState<Watering[]>([]);
   const [envRecords, setEnvRecords] = useState<EnvironmentRecord[]>([]);
   const [photos, setPhotos] = useState<PhotoRecord[]>([]);
@@ -211,6 +216,21 @@ export default function App() {
           });
       });
   }, [cultivations, indoors, devicesOverview]);
+
+  // Cada cultivo activo sin ambiente recibe uno con su nombre (interior o exterior). Se hace recién con
+  // los datos del servidor y con un id fijo por cultivo: así no se duplica aunque se abra en dos lados.
+  useEffect(() => {
+    if (!currentUser || !serverLoaded.crops || !serverLoaded.ambients) return;
+    for (const crop of cropsWithoutAmbient(rawCultivations)) {
+      if (autoAmbientRef.current.has(crop.id)) continue;
+      autoAmbientRef.current.add(crop.id);
+      const existing = indoors.find((i) => i.id === autoAmbientId(crop.id));
+      const job = existing
+        ? cultivationService.updateCultivation(crop.id, { indoorId: existing.id }, currentUser.uid)
+        : indoorService.createAmbientForCrop(crop, currentUser.uid);
+      Promise.resolve(job).catch(() => autoAmbientRef.current.delete(crop.id));
+    }
+  }, [currentUser, serverLoaded, rawCultivations, indoors]);
 
   // Modal States
   const [isQuickActionOpen, setIsQuickActionOpen] = useState(false);
@@ -397,6 +417,7 @@ export default function App() {
     if (!currentUser) {
       setCultivations([]);
       setIndoors([]);
+      setServerLoaded({ crops: false, ambients: false });
       indoorService.reset();
       setWaterings([]);
       setEnvRecords([]);
@@ -439,12 +460,16 @@ export default function App() {
 
     const unsubCultivations = cultivationService.subscribeCultivations(
       currentUser.uid,
-      (list) => {
+      (list, meta) => {
         setCultivations(list);
         markInitialLoaded();
+        if (meta && !meta.fromCache) setServerLoaded((s) => (s.crops ? s : { ...s, crops: true }));
       }
     );
-    const unsubIndoors = indoorService.subscribeIndoors(currentUser.uid, setIndoors);
+    const unsubIndoors = indoorService.subscribeIndoors(currentUser.uid, (list, meta) => {
+      setIndoors(list);
+      if (meta && !meta.fromCache) setServerLoaded((s) => (s.ambients ? s : { ...s, ambients: true }));
+    });
     const unsubWaterings = wateringService.subscribeWaterings(
       currentUser.uid,
       (list) => {
@@ -555,6 +580,7 @@ export default function App() {
     }
     setCultivations([]);
     setIndoors([]);
+    setServerLoaded({ crops: false, ambients: false });
     indoorService.reset();
     setWaterings([]);
     setEnvRecords([]);
@@ -702,25 +728,23 @@ export default function App() {
             />
           )}
 
-          {/* VIEW: INDOOR (carpa, sala o armario) */}
+          {/* VIEW: AMBIENTE (carpa, sala o lugar de exterior) */}
           {currentView === 'indoor_detail' &&
             (selectedIndoor ? (
-              <IndoorDetailView
-                indoor={selectedIndoor}
+              <AmbientDetailView
+                ambient={selectedIndoor}
                 cultivations={cultivations}
+                envRecords={envRecords}
                 userId={currentUser.uid}
                 geneticsList={geneticsList}
                 onBack={() => setCurrentView('dashboard')}
-                onOpenCrop={(crop) => {
-                  setSelectedCultivationId(crop.id);
-                  setCurrentView('cultivation_detail');
-                }}
+                onOpenGenetic={(e) => navigate(pathForGenetic(selectedIndoor.id, e.crop.id, e.index))}
                 onEdit={(i) => {
                   setIndoorToEdit(i);
                   setIsIndoorFormOpen(true);
                 }}
                 onDeleted={() => setCurrentView('dashboard')}
-                onCreateCropHere={(i) => {
+                onAddPlants={(i) => {
                   setCultivationToEdit(null);
                   setNewCropIndoorId(i.id);
                   setIsCultivationFormOpen(true);
@@ -730,9 +754,42 @@ export default function App() {
               />
             ) : (
               <div className="cultiveta-card p-10 text-center space-y-3">
-                <p className="text-sm text-ink-muted">{isInitialLoading ? 'Cargando el indoor…' : 'Ese indoor ya no existe.'}</p>
+                <p className="text-sm text-ink-muted">{isInitialLoading ? 'Cargando el ambiente…' : 'Ese ambiente ya no existe.'}</p>
                 <button type="button" onClick={() => setCurrentView('dashboard')} className="cultiveta-btn-secondary text-sm">
-                  Volver al Inicio
+                  Volver al Jardín
+                </button>
+              </div>
+            ))}
+
+          {/* VIEW: GENÉTICA (dentro de su ambiente) */}
+          {currentView === 'genetic_detail' &&
+            (geneticCrop ? (
+              <GeneticDetailView
+                ambient={indoors.find((i) => i.id === (geneticCrop.indoorId || route.indoorId)) || null}
+                ambients={indoors}
+                crop={geneticCrop}
+                index={route.geneticIndex ?? 0}
+                waterings={waterings}
+                envRecords={envRecords}
+                geneticsList={geneticsList}
+                userId={currentUser.uid}
+                onBack={() => (geneticCrop.indoorId ? openIndoor(geneticCrop.indoorId) : setCurrentView('dashboard'))}
+                onOpenCrop={(crop) => {
+                  setSelectedCultivationId(crop.id);
+                  setCurrentView('cultivation_detail');
+                }}
+                onWater={(crop) => {
+                  setSelectedCultivationId(crop.id);
+                  setIsWateringModalOpen(true);
+                }}
+                onMoved={(to) => navigate(pathForGenetic(to.id, geneticCrop.id, route.geneticIndex ?? 0), { replace: true })}
+                showToast={showToast}
+              />
+            ) : (
+              <div className="cultiveta-card p-10 text-center space-y-3">
+                <p className="text-sm text-ink-muted">{isInitialLoading ? 'Cargando la genética…' : 'Esa genética ya no está en este ambiente.'}</p>
+                <button type="button" onClick={() => setCurrentView('dashboard')} className="cultiveta-btn-secondary text-sm">
+                  Volver al Jardín
                 </button>
               </div>
             ))}
@@ -769,10 +826,18 @@ export default function App() {
                 envRecords={envRecords}
                 photos={photos}
                 diaryEntries={diaryEntries}
-                backLabel={detailBackTarget === 'cultivations' ? 'Volver a Cultivos' : 'Volver al Inicio'}
+                backLabel={
+                  detailBackTarget === 'cultivations'
+                    ? 'Volver a Cultivos'
+                    : selectedCultivation.indoorId && indoors.some((i) => i.id === selectedCultivation.indoorId)
+                      ? `Volver a ${indoors.find((i) => i.id === selectedCultivation.indoorId)!.name}`
+                      : 'Volver al Jardín'
+                }
                 onBack={() => {
+                  const ambientId = detailBackTarget === 'dashboard' && selectedCultivation.indoorId && indoors.some((i) => i.id === selectedCultivation.indoorId) ? selectedCultivation.indoorId : null;
                   setSelectedCultivationId(null);
-                  setCurrentView(detailBackTarget);
+                  if (ambientId) openIndoor(ambientId);
+                  else setCurrentView(detailBackTarget);
                 }}
                 onEditCultivation={(crop) => {
                   setCultivationToEdit(crop);
@@ -836,7 +901,7 @@ export default function App() {
                   onClick={() => setCurrentView('dashboard')}
                   className="cultiveta-btn-secondary text-xs"
                 >
-                  Volver al Inicio
+                  Volver al Jardín
                 </button>
               </div>
             )
@@ -987,19 +1052,19 @@ export default function App() {
         onOpenAIAssistant={() => setCurrentView('ai_assistant')}
       />
 
-      {/* Indoor (carpa, sala o armario): crear o editar */}
+      {/* Ambiente (carpa, sala o lugar de exterior): crear o editar */}
       {isIndoorFormOpen && currentUser && (
-        <IndoorFormModal
+        <AmbientFormModal
           isOpen={isIndoorFormOpen}
           onClose={() => {
             setIsIndoorFormOpen(false);
             setIndoorToEdit(null);
           }}
           userId={currentUser.uid}
-          indoorToEdit={indoorToEdit}
+          ambientToEdit={indoorToEdit}
           onSaved={(saved) => {
             setIndoors((prev) => (prev.some((i) => i.id === saved.id) ? prev.map((i) => (i.id === saved.id ? saved : i)) : [...prev, saved]));
-            showToast(indoorToEdit ? `Indoor "${saved.name}" guardado.` : `Indoor "${saved.name}" creado. Sumale cultivos.`);
+            showToast(indoorToEdit ? `Ambiente "${saved.name}" guardado.` : `Ambiente "${saved.name}" creado. Sumale plantas.`);
             if (!indoorToEdit) openIndoor(saved.id);
           }}
         />

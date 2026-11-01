@@ -29,6 +29,7 @@ import {
   Indoor,
 } from '../../types';
 import { cultivationService } from '../../services/cultivationService';
+import { ambientsForCrop, cropTypeForAmbient, isExteriorAmbient } from '../../utils/indoors';
 import { PhotoperiodPresetPicker } from './PhotoperiodPresetPicker';
 import { clampLightHours, darkHoursFor } from '../../utils/photoperiods';
 import { photoService } from '../../services/photoService';
@@ -83,9 +84,9 @@ interface CultivationFormModalProps {
   initialGenetics?: Genetics | null;
   geneticsList: Genetics[];
   onSaved: (cultivation: Cultivation) => void;
-  /** Indoors de la persona (un cultivo indoor puede ir en uno; su luz pasa a ser la del indoor). */
+  /** Ambientes de la persona (en uno interior, la luz del cultivo es la del ambiente). */
   indoors?: Indoor[];
-  /** Indoor elegido de entrada (al sumar un cultivo desde un indoor). */
+  /** Ambiente elegido de entrada (al sumar plantas desde un ambiente): fija también interior o exterior. */
   initialIndoorId?: string | null;
 }
 
@@ -267,6 +268,16 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
       setStartDate(getLocalTodayDateOnly());
       setType('Indoor');
       setIndoorId(initialIndoorId || '');
+      const startAmbient = indoors.find((i) => i.id === initialIndoorId);
+      if (startAmbient) {
+        const t = cropTypeForAmbient(startAmbient);
+        setType(t);
+        if (t !== 'Indoor') {
+          setLightingType('');
+          setLightingWatts('');
+          setLightHours('');
+        }
+      }
       setPlantCount(1);
 
       if (initialGenetics) {
@@ -613,11 +624,12 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
         cultivationPayload.coverPhotoUrl = coverPhotoUrl;
       }
 
-      // Indoor: con indoor la luz es la del indoor (se cambia desde el indoor, no desde acá)
-      const chosenIndoor = type === 'Indoor' ? indoors.find((i) => i.id === indoorId) : undefined;
+      // Ambiente: en uno interior la luz es la del ambiente (se cambia desde el ambiente, no desde acá).
+      // Sin ambiente elegido, la app le arma uno con el nombre del cultivo.
+      const chosenIndoor = ambientsForCrop({ type }, indoors).find((i) => i.id === indoorId);
       if (chosenIndoor) {
         cultivationPayload.indoorId = chosenIndoor.id;
-        if (chosenIndoor.lighting) cultivationPayload.lighting = chosenIndoor.lighting;
+        if (chosenIndoor.lighting && !isExteriorAmbient(chosenIndoor)) cultivationPayload.lighting = chosenIndoor.lighting;
       } else if (cultivationToEdit?.indoorId) {
         cultivationPayload.indoorId = null;
       }
@@ -836,10 +848,10 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                   <option value="Invernadero">Invernadero</option>
                 </select>
 
-                {type === 'Indoor' && indoors.length > 0 && (
+                {ambientsForCrop({ type }, indoors).length > 0 && (
                   <div className="mt-2.5">
                     <label htmlFor="crop-indoor-select" className="block text-xs font-bold text-stone-700 mb-1">
-                      ¿En qué indoor está?
+                      ¿En qué ambiente está?
                     </label>
                     <select
                       id="crop-indoor-select"
@@ -847,8 +859,8 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                       onChange={(e) => setIndoorId(e.target.value)}
                       className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-stone-800 text-sm focus:outline-hidden focus:border-emerald-500 focus:bg-white cursor-pointer"
                     >
-                      <option value="">Sin indoor (luz propia)</option>
-                      {indoors.map((i) => (
+                      <option value="">{cultivationToEdit?.indoorId ? 'Uno nuevo para este cultivo' : 'Uno nuevo, con el nombre del cultivo'}</option>
+                      {ambientsForCrop({ type }, indoors).map((i) => (
                         <option key={i.id} value={i.id}>
                           {i.name}
                         </option>
@@ -1179,9 +1191,9 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                 </select>
               </div>
 
-              {type === 'Indoor' && indoors.some((i) => i.id === indoorId) ? (
+              {type === 'Indoor' && ambientsForCrop({ type }, indoors).some((i) => i.id === indoorId) ? (
                 <p id="crop-indoor-light-note" className="sm:col-span-3 text-xs font-semibold text-emerald-900 bg-emerald-50 border border-emerald-200 rounded-2xl px-3.5 py-2.5">
-                  La luz (tipo, watts y horas) es la del indoor {indoors.find((i) => i.id === indoorId)?.name}: se cambia desde el indoor y vale para todos sus cultivos.
+                  La luz (tipo, watts y horas) es la del ambiente {indoors.find((i) => i.id === indoorId)?.name}: se cambia desde el ambiente y vale para todas sus plantas.
                 </p>
               ) : (
               <>

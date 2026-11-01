@@ -20,7 +20,7 @@
  *  16. Ya no están los bloques viejos (cultivo principal, atención, mini-números).
  *  17. "Para hoy" muestra 4 tareas y "Ver N más" despliega el resto.
  *  18. Marcar un riego como hecho abre el formulario de riego y la tarea sale de la lista.
- *  19. Sin cultivos activos: "Todo al día" y el estado vacío con "Creá tu primer cultivo".
+ *  19. Sin cultivos activos: "Todo al día" y el estado vacío del Jardín con "Creá tu primer ambiente".
  *
  * Cultivos (FinishedCropsView):
  *  20. Muestra terminados y cosechas sin cultivo, con totales; tocar abre el detalle.
@@ -383,10 +383,10 @@ async function run() {
     assert(today?.getAttribute('data-state') === 'empty' && today.textContent?.includes('Todo al día'), today?.textContent || 'sin tarjeta');
     const empty = container.querySelector('#home-empty-crops');
     assert(empty, 'falta el estado vacío');
-    const btn = Array.from(empty.querySelectorAll('button')).find((b) => b.textContent?.includes('Creá tu primer cultivo'));
+    const btn = Array.from(empty.querySelectorAll('button')).find((b) => b.textContent?.includes('Creá tu primer ambiente'));
     assert(btn, 'falta el botón');
     await act(async () => btn.click());
-    assert(created === 1, 'no abrió el formulario de cultivo');
+    assert(created === 1, 'no abrió el formulario (sin ambientes conectados, el de cultivo)');
   });
 
   await act(async () => root3.unmount());

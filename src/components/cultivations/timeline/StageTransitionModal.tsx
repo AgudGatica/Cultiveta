@@ -52,8 +52,8 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
   // Superciclos: solo si la luz de este cultivo está en un enchufe inteligente (cada encendido se corre)
   const devicesOverview = useDevicesOverview();
   const hasSmartPlug = !!(lightBindingFor(devicesOverview, cultivation.id) || (cultivation.indoorId && lightBindingFor(devicesOverview, cultivation.indoorId)));
-  // en un indoor la luz es compartida: el fotoperiodo nuevo vale para todo el indoor
-  const indoor = useIndoors().find((i) => i.id === cultivation.indoorId) || null;
+  // en un ambiente interior la luz es compartida: el fotoperiodo nuevo vale para todo el ambiente
+  const indoor = useIndoors().find((i) => i.id === cultivation.indoorId && i.environment !== 'exterior') || null;
 
   const determineDefaultStage = (): string => {
     if (initialSelectedStage?.name) return initialSelectedStage.name;
@@ -330,7 +330,7 @@ export const StageTransitionModal: React.FC<StageTransitionModalProps> = ({
 
               {updatePhotoperiod && indoor && (
                 <p id="stage-indoor-light-note" className="text-xs font-bold text-amber-950 bg-white/70 border border-amber-300/60 rounded-xl px-3 py-2">
-                  La luz es la del indoor {indoor.name}: el fotoperiodo nuevo vale para todos los cultivos de adentro.
+                  La luz es la del ambiente {indoor.name}: el fotoperiodo nuevo vale para todas sus plantas.
                 </p>
               )}
 

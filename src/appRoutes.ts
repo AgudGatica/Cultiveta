@@ -6,6 +6,7 @@ export type AppView =
   | 'cultivations'
   | 'cultivation_detail'
   | 'indoor_detail'
+  | 'genetic_detail'
   | 'genetics'
   | 'compare_crops'
   | 'ai_assistant'
@@ -14,7 +15,7 @@ export type AppView =
   | 'achievements'
   | 'devices';
 
-const VIEW_PATHS: Record<Exclude<AppView, 'cultivation_detail' | 'indoor_detail'>, string> = {
+const VIEW_PATHS: Record<Exclude<AppView, 'cultivation_detail' | 'indoor_detail' | 'genetic_detail'>, string> = {
   dashboard: '/',
   cultivations: '/cultivos',
   genetics: '/geneticas',
@@ -31,20 +32,25 @@ export function isLegacyHarvestsPath(pathname: string): boolean {
   return (pathname.replace(/\/+$/, '') || '/') === '/cosechas';
 }
 
-/** URL de una pantalla (para el detalle de cultivo usar /cultivos/:id y de un indoor /indoors/:id). Desconocida → Inicio. */
+/** URL de una pantalla (cultivo: /cultivos/:id; ambiente: /ambientes/:id; genética: /ambientes/:id/geneticas/:cultivo/:n). Desconocida → Jardín. */
 export function pathForView(view: string): string {
   if (view === 'harvests') return VIEW_PATHS.cultivations;
   return (VIEW_PATHS as Record<string, string>)[view] ?? '/';
 }
 
-/** Pantalla, cultivo e indoor a partir de la URL. Cualquier ruta desconocida muestra el Inicio. */
-export function parseAppRoute(pathname: string): { view: AppView; cultivationId: string | null; indoorId: string | null } {
+/** Pantalla, cultivo, ambiente y genética a partir de la URL. Cualquier ruta desconocida muestra el Jardín. */
+export function parseAppRoute(pathname: string): { view: AppView; cultivationId: string | null; indoorId: string | null; geneticIndex?: number | null } {
   const clean = pathname.replace(/\/+$/, '') || '/';
   const detail = /^\/cultivos\/([^/]+)$/.exec(clean);
   if (detail) {
     return { view: 'cultivation_detail', cultivationId: decodeURIComponent(detail[1]), indoorId: null };
   }
-  const indoor = /^\/indoors\/([^/]+)$/.exec(clean);
+  const genetic = /^\/ambientes\/([^/]+)\/geneticas\/([^/]+)\/(\d+)$/.exec(clean);
+  if (genetic) {
+    return { view: 'genetic_detail', cultivationId: decodeURIComponent(genetic[2]), indoorId: decodeURIComponent(genetic[1]), geneticIndex: Number(genetic[3]) };
+  }
+  // /indoors/:id es la dirección vieja de un ambiente
+  const indoor = /^\/(?:ambientes|indoors)\/([^/]+)$/.exec(clean);
   if (indoor) {
     return { view: 'indoor_detail', cultivationId: null, indoorId: decodeURIComponent(indoor[1]) };
   }
@@ -55,5 +61,7 @@ export function parseAppRoute(pathname: string): { view: AppView; cultivationId:
   return { view: (entry ? entry[0] : 'dashboard') as AppView, cultivationId: null, indoorId: null };
 }
 
-/** URL de un indoor. */
-export const pathForIndoor = (id: string) => `/indoors/${encodeURIComponent(id)}`;
+/** URL de un ambiente. */
+export const pathForIndoor = (id: string) => `/ambientes/${encodeURIComponent(id)}`;
+/** URL de una genética (n: su posición en el cultivo) dentro de su ambiente. */
+export const pathForGenetic = (ambientId: string, cropId: string, index: number) => `/ambientes/${encodeURIComponent(ambientId)}/geneticas/${encodeURIComponent(cropId)}/${index}`;

@@ -1,16 +1,19 @@
 import { collection, doc, setDoc, deleteDoc, Unsubscribe } from 'firebase/firestore';
 import { useSyncExternalStore } from 'react';
 import { db } from '../firebase/config';
-import type { Cultivation, Indoor } from '../types';
+import type { Cultivation, EnvironmentRecord, Indoor } from '../types';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
 import { localStore } from './localStore';
 import { subscribeCollection } from './dataSyncHelper';
 import { cultivationService } from './cultivationService';
+import { environmentService } from './environmentService';
+import { ambientForCrop, autoAmbientId, isExteriorAmbient } from '../utils/indoors';
+import { getLocalTodayDateOnly } from '../utils/growthStageUtils';
 
 /**
- * Indoors (carpas, salas, armarios) de la persona: colección "indoors" con su userId (la regla general
- * de Firestore ya la protege). Los cultivos guardan el indoorId; la luz de un cultivo con indoor es la
- * del indoor, así que los cambios de luz de ese cultivo se guardan en el indoor.
+ * Ambientes de la persona (carpas, salas, armarios o lugares de exterior): colección "indoors" con su
+ * userId (la regla general de Firestore ya la protege). Los cultivos guardan el indoorId; la luz de un
+ * cultivo en un ambiente interior es la del ambiente, así que esos cambios de luz se guardan en el ambiente.
  */
 
 let cache: Indoor[] = [];
@@ -22,14 +25,15 @@ const setCache = (list: Indoor[]) => {
 const lastUserId = () => (typeof window !== 'undefined' ? localStorage.getItem('cultiveta_last_user_id') || 'default_user' : 'default_user');
 
 export const indoorService = {
-  subscribeIndoors(userId: string, callback: (indoors: Indoor[]) => void): Unsubscribe {
+  /** meta.fromCache false: la lista ya vino del servidor. */
+  subscribeIndoors(userId: string, callback: (indoors: Indoor[], meta?: { fromCache: boolean }) => void): Unsubscribe {
     return subscribeCollection<Indoor>({
       collectionName: 'indoors',
       userId,
       sortFn: (a, b) => new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime(),
-      callback: (list) => {
+      callback: (list, meta) => {
         setCache(list);
-        callback(list);
+        callback(list, meta);
       },
     });
   },
@@ -45,8 +49,9 @@ export const indoorService = {
     setCache([]);
   },
 
-  async createIndoor(data: Omit<Indoor, 'id' | 'createdAt' | 'updatedAt'>): Promise<Indoor> {
-    const ref = doc(collection(db, 'indoors'));
+  /** id: fijo, para los ambientes que se arman solos (así no se duplican). */
+  async createIndoor(data: Omit<Indoor, 'id' | 'createdAt' | 'updatedAt'>, id?: string): Promise<Indoor> {
+    const ref = id ? doc(db, 'indoors', id) : doc(collection(db, 'indoors'));
     const now = new Date().toISOString();
     const indoor: Indoor & { _isPendingLocal?: boolean } = { ...data, id: ref.id, createdAt: now, updatedAt: now, _isPendingLocal: true };
     localStore.saveItem('indoors', indoor as Indoor);
@@ -87,6 +92,47 @@ export const indoorService = {
     }
   },
 
+  /** Un cultivo sin ambiente: se le arma uno con su nombre (interior o exterior, con su luz) y queda adentro. */
+  async createAmbientForCrop(crop: Cultivation, userId?: string): Promise<Indoor> {
+    const ambient = await indoorService.createIndoor({ ...ambientForCrop(crop), userId: userId || crop.userId }, autoAmbientId(crop.id));
+    await cultivationService.updateCultivation(crop.id, { indoorId: ambient.id }, userId);
+    return ambient;
+  },
+
+  /** Pasa un cultivo a otro ambiente. Si es interior y todavía no tiene luz cargada, toma la del cultivo. */
+  async moveCrop(crop: Cultivation, to: Indoor, userId?: string): Promise<Cultivation> {
+    if (!isExteriorAmbient(to) && !to.lighting?.photoperiodHoursLight && crop.lighting) {
+      await indoorService.updateIndoor(to.id, { lighting: crop.lighting }, userId);
+    }
+    await cultivationService.updateCultivation(crop.id, { indoorId: to.id }, userId);
+    return { ...crop, indoorId: to.id };
+  },
+
+  /**
+   * Clima anotado a mano en un ambiente: la misma lectura queda en cada cultivo activo de adentro (así
+   * sus gráficos y avisos la usan), marcada con el ambiente.
+   */
+  async addAmbientReading(indoor: Indoor, crops: Cultivation[], reading: { temperatureC: number; humidityPct: number }, userId: string, now = new Date()): Promise<EnvironmentRecord[]> {
+    const time = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+    const out: EnvironmentRecord[] = [];
+    for (const c of crops) {
+      out.push(
+        await environmentService.addEnvironmentRecord({
+          userId,
+          cultivationId: c.id,
+          date: getLocalTodayDateOnly(),
+          time,
+          temperatureC: reading.temperatureC,
+          humidityPct: reading.humidityPct,
+          vpdKPa: environmentService.calculateVPD(reading.temperatureC, reading.humidityPct),
+          indoorId: indoor.id,
+          notes: `Anotado en el ambiente ${indoor.name}`,
+        })
+      );
+    }
+    return out;
+  },
+
   /** Mete un cultivo en el indoor. Si el indoor todavía no tiene luz cargada, toma la del cultivo. */
   async addCrop(indoor: Indoor, crop: Cultivation, userId?: string): Promise<Cultivation> {
     if (!indoor.lighting?.photoperiodHoursLight && crop.lighting) {
@@ -104,13 +150,14 @@ export const indoorService = {
   },
 
   /**
-   * Guarda cambios de un cultivo. Si está en un indoor, la luz (fotoperiodo, hora de encendido) se
-   * guarda en el indoor: vale para todos los cultivos de adentro.
+   * Guarda cambios de un cultivo. Si está en un ambiente interior, la luz (fotoperiodo, hora de
+   * encendido) se guarda en el ambiente: vale para todas sus plantas.
    */
   async saveCropUpdates(crop: Cultivation, updates: Partial<Cultivation>, userId?: string): Promise<void> {
     const { lighting, ...rest } = updates;
-    if (crop.indoorId && lighting) {
-      const indoor = cache.find((i) => i.id === crop.indoorId);
+    const indoor = crop.indoorId ? cache.find((i) => i.id === crop.indoorId) : undefined;
+    // en exterior no hay luz compartida: la del cultivo se guarda en el cultivo
+    if (crop.indoorId && lighting && !(indoor && isExteriorAmbient(indoor))) {
       await indoorService.updateIndoor(crop.indoorId, { lighting: { ...(indoor?.lighting || {}), ...lighting } as Indoor['lighting'] }, userId);
       if (Object.keys(rest).length) await cultivationService.updateCultivation(crop.id, rest, userId);
       return;

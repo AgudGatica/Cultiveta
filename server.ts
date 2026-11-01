@@ -2215,7 +2215,7 @@ const deviceService = new DeviceService({
   verifyCultivation: async (uid, cultivationId, kind) => {
     if (!hasAdminCredentials()) return null;
     const snap = await getFirebaseAdmin().firestore().collection(kind === 'indoor' ? 'indoors' : 'cultivations').doc(cultivationId).get();
-    if (!snap.exists || snap.data()?.userId !== uid) throw new DeviceError(kind === 'indoor' ? 'El indoor no pertenece a tu cuenta.' : 'El cultivo no pertenece a tu cuenta.', 403);
+    if (!snap.exists || snap.data()?.userId !== uid) throw new DeviceError(kind === 'indoor' ? 'El ambiente no pertenece a tu cuenta.' : 'El cultivo no pertenece a tu cuenta.', 403);
     return { name: String(snap.data()?.name || 'Cultivo') };
   },
   // Cada riego automático queda anotado en los riegos del cultivo (como uno hecho desde la app).

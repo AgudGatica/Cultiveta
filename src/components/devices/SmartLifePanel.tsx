@@ -19,7 +19,7 @@ const ITEM = 'bg-surface rounded-3xl p-4 border border-line';
 const VENDOR_LABEL: Record<DeviceVendor, string> = { tuya: 'Smart Life', ewelink: 'eWeLink', shelly: 'Shelly' };
 const SMALL = 'min-h-9 px-2 rounded-xl bg-white border border-line text-xs text-ink';
 
-/** Indoor o cultivo al que se asigna un toma o un sensor. */
+/** Ambiente o cultivo al que se asigna un toma o un sensor. */
 type Target = { key: string; kind: 'cultivation' | 'indoor'; id: string; name: string; lighting?: Cultivation['lighting'] };
 
 /** Para qué se usa un toma: la luz, la bomba de riego o un equipo de clima. */
@@ -205,20 +205,22 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
   };
 
   /**
-   * A qué se puede asignar: la luz, el clima y el sensor de ambiente van a un indoor (o a un cultivo que
+   * A qué se puede asignar: la luz, el clima y el sensor de ambiente van a un ambiente (o a un cultivo que
    * no está en ninguno); la bomba y la sonda de sustrato, a un cultivo (cada maceta se riega aparte).
    */
   const targetsFor = (u: Use | 'sensor_th' | 'sensor_soil'): Target[] => {
     const asCrop = (c: Cultivation): Target => ({ key: `crop:${c.id}`, kind: 'cultivation', id: c.id, name: c.name, lighting: c.lighting });
     if (u === 'pump' || u === 'sensor_soil') return cultivations.map(asCrop);
     const loose = cultivations.filter((c) => !c.indoorId && (u !== 'light' || c.type === 'Indoor'));
-    return [...indoors.map((i): Target => ({ key: `indoor:${i.id}`, kind: 'indoor', id: i.id, name: i.name, lighting: i.lighting })), ...loose.map(asCrop)];
+    // la luz, solo en ambientes interiores
+    const ambients = u === 'light' ? indoors.filter((i) => i.environment !== 'exterior') : indoors;
+    return [...ambients.map((i): Target => ({ key: `indoor:${i.id}`, kind: 'indoor', id: i.id, name: i.name, lighting: i.lighting })), ...loose.map(asCrop)];
   };
   const pickTarget = (key: string, list: Target[]) => list.find((t) => t.key === target[key]) || list[0];
   const assign = (d: SmartDevice, code: string, u: Use | 'sensor_th' | 'sensor_soil') => {
     const key = `${d.id}|${code}`;
     const crop = pickTarget(key, targetsFor(u));
-    if (!crop) return setError(u === 'light' ? 'Primero creá un indoor o un cultivo indoor.' : 'Primero creá un cultivo.');
+    if (!crop) return setError(u === 'light' ? 'Primero creá un ambiente interior.' : 'Primero creá un ambiente con plantas.');
     const role = u === 'light' || u === 'pump' || u === 'sensor_th' || u === 'sensor_soil' ? u : 'climate';
     run(key, async () => {
       await devicesService.bind({
@@ -512,10 +514,10 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
                             </option>
                           ))}
                         </select>
-                        <select className={SMALL} value={chosen?.key} onChange={(e) => setTarget({ ...target, [key]: e.target.value })} aria-label="Indoor o cultivo">
+                        <select className={SMALL} value={chosen?.key} onChange={(e) => setTarget({ ...target, [key]: e.target.value })} aria-label="Ambiente o cultivo">
                           {list.map((t) => (
                             <option key={t.key} value={t.key}>
-                              {t.kind === 'indoor' ? `${t.name} (indoor)` : t.name}
+                              {t.kind === 'indoor' ? `${t.name} (ambiente)` : t.name}
                             </option>
                           ))}
                         </select>
@@ -549,11 +551,11 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
                     className="min-h-9 px-2 rounded-xl bg-white border border-line text-xs text-ink"
                     value={pickTarget(`${d.id}|sensor`, targetsFor(d.sensors.soil != null ? 'sensor_soil' : 'sensor_th'))?.key}
                     onChange={(e) => setTarget({ ...target, [`${d.id}|sensor`]: e.target.value })}
-                    aria-label="Indoor o cultivo"
+                    aria-label="Ambiente o cultivo"
                   >
                     {targetsFor(d.sensors.soil != null ? 'sensor_soil' : 'sensor_th').map((t) => (
                       <option key={t.key} value={t.key}>
-                        {t.kind === 'indoor' ? `${t.name} (indoor)` : t.name}
+                        {t.kind === 'indoor' ? `${t.name} (ambiente)` : t.name}
                       </option>
                     ))}
                   </select>

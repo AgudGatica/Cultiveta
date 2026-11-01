@@ -7,7 +7,7 @@ y de la mascota de la app. Fuente: "Cultiveta — Hoja de ruta de pendientes" (d
 |---|---|---|
 | 1 | Línea de tiempo con forma de planta | En curso |
 | 2 | Enchufes inteligentes por Wi-Fi | Hecho (2026-10-31): a mano + Equipos, Smart Life, bomba y clima, riego automático, eWeLink y Shelly. Falta habilitar la app de eWeLink (ver PENDIENTES) |
-| 3 | Indoors / carpas | Hecho (2026-10-31): el indoor agrupa cultivos y comparte la luz; luz, clima y ambiente por indoor |
+| 3 | Indoors / carpas | Hecho (2026-11-01): ambientes interiores y exteriores; el Jardín muestra ambientes → genéticas |
 | 4 | Comunidad | Pendiente. Necesita servidor y moderación (exigida por Google Play) |
 | 5 | Privacidad y ubicación | Pendiente. Tiene que estar antes o junto con la Comunidad |
 | 6 | Mascota personalizable | Falta definir la mascota oficial. Experiencia, niveles, logros y racha ya están hechos |
@@ -106,6 +106,21 @@ la sonda de sustrato siguen por cultivo).
   que vale para todos. Al sacar un cultivo o borrar el indoor, el cultivo se queda con esa luz.
 - Equipos: en Equipos se elige el indoor o el cultivo; el servidor guarda `targetKind` y comprueba que el indoor sea de
   la persona.
+
+**Jardín y ambientes (2026-11-01).** Pedido del dueño: capas como una mamushka, Jardín → ambiente → genética.
+- El Inicio se llama **Jardín** y muestra **ambientes** (no cultivos): portada de interior o exterior, luz prendida o
+  apagada (o luz natural), plantas y genéticas. "Nuevo ambiente": **interior** (carpa, sala, armario, con su luz) o
+  **exterior** (patio, balcón, terraza, invernadero, luz natural). En el código siguen siendo `indoors`.
+- **Cada cultivo activo sin ambiente recibe uno** con su nombre (decisión del dueño), recién cuando cultivos y ambientes
+  vinieron del servidor y con id fijo `auto_<cultivo>`: no se duplica aunque se abra en dos dispositivos.
+- **Ambiente** (`/ambientes/:id`): luz con los 7 días (interior), **clima** con la franja húmedo / óptimo / seco de
+  Órbita (rangos de la etapa; floración si alguna planta florece) por sensor o **anotado una vez para todo el ambiente**
+  (la lectura queda en cada cultivo de adentro; a mano sirve 12 h), equipos de clima y las **genéticas** con su foto,
+  plantas, etapa y cuánto falta para cortar.
+- **Genética** (`/ambientes/:id/geneticas/:cultivo/:n`, página nueva por decisión del dueño): ficha con foto, para cortar
+  (fecha estimada con la floración de esa genética), riegos del cultivo, ventana de riego, "ver todo" (el cultivo
+  completo) y pasar a otro ambiente del mismo tipo.
+- Las fotos de las genéticas salen del catálogo (servidor con Firebase Admin): en desarrollo local no aparecen.
 
 ## 4. Comunidad (red social)
 

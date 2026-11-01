@@ -117,7 +117,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
   geneticsList = [],
   catalogPhotos: catalogPhotosProp,
   onBack,
-  backLabel = 'Volver al Inicio',
+  backLabel = 'Volver al Jardín',
   onEditCultivation,
   onDeleteCultivation,
   onOpenWateringModal,
@@ -135,7 +135,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
   onOpenIndoor,
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'fertilization' | 'photos' | 'table' | 'diary' | 'calendar'>('overview');
-  // Indoor donde está: su luz es la del cultivo, y la luz, el clima y el ambiente se asignan al indoor
+  // Ambiente donde está: si es interior, su luz es la del cultivo; la luz, el clima y el sensor se asignan al ambiente
   const indoor = useIndoors().find((i) => i.id === cultivation.indoorId) || null;
   // Equipos asignados a este cultivo (enchufe de la luz, sensor de ambiente y sonda de sustrato)
   const devicesOverview = useDevicesOverview();
@@ -878,7 +878,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
           {!isCosechado && cultivation.type === 'Indoor' && (
             <LightCycleCard
               cultivation={cultivation}
-              sharedNote={indoor ? `Luz del indoor ${indoor.name}: es la misma para todos los cultivos de adentro.` : null}
+              sharedNote={indoor && indoor.environment !== 'exterior' ? `Luz del ambiente ${indoor.name}: es la misma para todas sus plantas.` : null}
               onSaveSchedule={async (schedule: LightSchedule) => {
                 const lighting = { ...(cultivation.lighting ?? { type: '' }), ...schedule };
                 await indoorService.saveCropUpdates(cultivation, { lighting }, userId);

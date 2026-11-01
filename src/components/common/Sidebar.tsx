@@ -39,7 +39,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const toggleCollapse = externalOnToggleCollapse || (() => setInternalCollapsed(!internalCollapsed));
 
   const navItems = [
-    { id: 'dashboard', label: 'Inicio', icon: LayoutDashboard, badge: '' },
+    { id: 'dashboard', label: 'Jardín', icon: LayoutDashboard, badge: '' },
     // Cultivos: historial de terminados y cosechas (los activos están en el Inicio)
     { id: 'cultivations', label: 'Cultivos', icon: Sprout, badge: cultivationsCount > 0 ? `${cultivationsCount}` : '' },
     { id: 'genetics', label: 'Genéticas', icon: Dna, badge: geneticsCount > 0 ? `${geneticsCount}` : '' },
