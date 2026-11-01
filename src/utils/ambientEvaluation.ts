@@ -59,3 +59,48 @@ export function evaluateAmbient(reading: { temperatureC: number; humidityPct: nu
 
 /** Una lectura a mano sirve 12 horas (después hay que volver a cargarla). */
 export const MANUAL_READING_TTL_MS = 12 * 3_600_000;
+
+export interface AmbientPoint {
+  at: number;
+  temp: number;
+  rh: number;
+  vpd: number;
+}
+
+/** Cuándo se tomó una lectura (ms): la hora guardada o, si no hay, la fecha y la hora anotadas. */
+export const envRecordAt = (r: { createdAt?: string; date: string; time?: string }): number =>
+  Date.parse(r.createdAt || '') || Date.parse(`${r.date}T${r.time || '12:00'}`) || 0;
+
+/**
+ * Histórico del clima de un ambiente desde `from` (ms), de la más vieja a la más nueva. Una lectura
+ * anotada para todo el ambiente queda en cada cultivo de adentro: se cuenta una sola vez.
+ */
+export function ambientHistory(
+  records: Array<{ createdAt?: string; date: string; time?: string; temperatureC: number; humidityPct: number }>,
+  from = 0
+): AmbientPoint[] {
+  const seen = new Set<string>();
+  const out: AmbientPoint[] = [];
+  for (const r of records) {
+    if (!Number.isFinite(r.temperatureC) || !Number.isFinite(r.humidityPct)) continue;
+    const at = envRecordAt(r);
+    if (!at || at < from) continue;
+    const key = `${Math.round(at / 60000)}|${r.temperatureC}|${r.humidityPct}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ at, temp: r.temperatureC, rh: r.humidityPct, vpd: Math.round(vpdAir(r.temperatureC, r.humidityPct) * 100) / 100 });
+  }
+  return out.sort((a, b) => a.at - b.at);
+}
+
+/** Mínimo, promedio, máximo y qué parte de las lecturas cayó en el rango óptimo. */
+export function historyStats(values: number[], [lo, hi]: [number, number]) {
+  if (!values.length) return null;
+  const sum = values.reduce((a, v) => a + v, 0);
+  return {
+    min: Math.min(...values),
+    max: Math.max(...values),
+    avg: sum / values.length,
+    inRangePct: Math.round((values.filter((v) => v >= lo && v <= hi).length / values.length) * 100),
+  };
+}

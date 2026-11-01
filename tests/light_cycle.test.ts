@@ -24,6 +24,7 @@ import {
   lightAnchor,
   lightState,
   lightProjection,
+  phaseProgress,
   formatCountdown,
   whenText,
   HOUR_MS,
@@ -116,6 +117,9 @@ async function run() {
     assert(JSON.stringify(hours) === JSON.stringify([11, 11, 11, 11, 13, 13, 13]), `horas: ${hours}`);
     const s = lightState(c, anchor, now);
     assert(!s.on && s.nextChangeAt === at(2026, 10, 31, 18), 'apagada hasta las 18');
+    // el anillo: apagada desde las 5, van 10 de las 13 h de oscuridad
+    assert(Math.abs(phaseProgress(c, anchor, now) - 10 / 13) < 1e-9, `anillo: ${phaseProgress(c, anchor, now)}`);
+    assert(phaseProgress(c, anchor, anchor - 1000) === 0 && phaseProgress({ lightHours: 24, darkHours: 0 }, anchor, now) === 1, 'antes de arrancar 0; siempre prendida 1');
   });
 
   await check('5. Sin hora o con una hora inválida no se calcula', () => {
@@ -155,7 +159,12 @@ async function run() {
       React.createElement(LightCycleCard, { cultivation: crop({ photoperiodHoursLight: 18, photoperiodHoursDark: 6, lightsOnTime: '18:00' }), onSaveSchedule: () => {}, onConnectPlug: () => {}, now: at(2026, 10, 31, 10) })
     );
     assert(container.querySelector('#light-state-pill')?.textContent === 'PRENDIDA', 'PRENDIDA');
-    assert(container.querySelector('#light-countdown')?.textContent === 'Se apaga en 2:00:00', container.querySelector('#light-countdown')?.textContent || '');
+    const countdown = container.querySelector('#light-countdown');
+    assert(countdown?.textContent === '2:00:00' && countdown.getAttribute('aria-label') === 'Se apaga en 2:00:00', countdown?.textContent || '');
+    // anillo de Órbita: prendida desde las 18 de ayer, van 16 de las 18 h de luz
+    const ring = container.querySelector('#light-ring');
+    assert(ring?.getAttribute('data-on') === 'true' && ring.getAttribute('data-progress') === '0.889', `anillo: ${ring?.outerHTML.slice(0, 80)}`);
+    assert(/ON/.test(ring?.textContent || '') && /SE APAGA/.test(container.querySelector('#light-next')?.textContent || ''), 'ON y próximo cambio');
     assert(container.querySelectorAll('.light-day').length === 7, '7 días');
     assert([...container.querySelectorAll('.light-tick')].map((x) => x.textContent).join(',') === '0,3,6,9,12,15,18,21,24', 'marcas');
     assert(!/promedio/i.test(container.textContent || ''), 'sin promedio en 24 h');

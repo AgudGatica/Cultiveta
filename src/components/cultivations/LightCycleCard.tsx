@@ -12,6 +12,7 @@ import {
   lightAnchor,
   lightProjection,
   lightState,
+  phaseProgress,
   shiftHoursPerCycle,
   weekdayShort,
   whenText,
@@ -42,6 +43,36 @@ const TICKS = [0, 3, 6, 9, 12, 15, 18, 21, 24];
 const GRID =
   'repeating-linear-gradient(90deg, transparent 0 calc(25% - 1px), rgba(255,255,255,0.9) calc(25% - 1px) 25%),' +
   'repeating-linear-gradient(90deg, transparent 0 calc(12.5% - 1px), rgba(255,255,255,0.5) calc(12.5% - 1px) 12.5%)';
+
+/**
+ * Anillo de Órbita: se va llenando con lo que pasó del tramo actual (luz u oscuridad).
+ * Amarillo con la luz prendida, azul con la luz apagada.
+ */
+function LightRing({ on, progress, children }: { on: boolean; progress: number; children: React.ReactNode }) {
+  const r = 52;
+  const c = 2 * Math.PI * r;
+  const p = Math.min(1, Math.max(0, progress || 0));
+  return (
+    <div id="light-ring" data-on={on ? 'true' : 'false'} data-progress={p.toFixed(3)} className="relative w-[132px] h-[132px] shrink-0">
+      <svg viewBox="0 0 120 120" className="w-full h-full" aria-hidden="true">
+        <circle cx="60" cy="60" r={r} fill="none" strokeWidth="10" className="stroke-track" />
+        <circle
+          cx="60"
+          cy="60"
+          r={r}
+          fill="none"
+          strokeWidth="10"
+          strokeLinecap="round"
+          strokeDasharray={c}
+          strokeDashoffset={c * (1 - p)}
+          transform="rotate(-90 60 60)"
+          className={`${on ? 'stroke-warn-line' : 'stroke-brand'} transition-[stroke-dashoffset] duration-1000 ease-linear motion-reduce:transition-none`}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center text-center">{children}</div>
+    </div>
+  );
+}
 
 const hoursText = (h: number): string => (Number.isInteger(h) ? String(h) : h.toFixed(1).replace('.', ','));
 const todayKey = (ms: number): string => {
@@ -209,6 +240,8 @@ export const LightCycleCard: React.FC<LightCycleCardProps> = ({ cultivation, sha
   }
 
   const state = lightState(cycle, anchor, now);
+  // el anillo sigue al horario; si el enchufe dice otra cosa, la píldora de arriba muestra lo del equipo
+  const ringOn = state.alwaysOn || state.on;
   const shift = shiftHoursPerCycle(cycle);
   const onH = hoursText(onMs / 3_600_000);
 
@@ -217,32 +250,42 @@ export const LightCycleCard: React.FC<LightCycleCardProps> = ({ cultivation, sha
       {header(state)}
       {shared}
 
-      <div>
-        {state.alwaysOn ? (
-          <p className="text-2xl font-extrabold text-ink">Siempre prendida</p>
-        ) : (
-          <>
-            <p id="light-countdown" className="text-2xl font-extrabold text-ink tabular-nums">
-              {state.nextChange === 'off' ? 'Se apaga en ' : 'Se prende en '}
+      <div className="flex items-center gap-4 sm:gap-6">
+        <LightRing on={ringOn} progress={phaseProgress(cycle, anchor, now)}>
+          <b className="text-[28px] font-black leading-none tracking-wide text-ink">{state.alwaysOn ? 'ON' : ringOn ? 'ON' : 'OFF'}</b>
+          {state.alwaysOn ? (
+            <small className="text-sm font-bold text-ink-muted mt-1">siempre</small>
+          ) : (
+            <small
+              id="light-countdown"
+              aria-label={`${state.nextChange === 'off' ? 'Se apaga en' : 'Se prende en'} ${formatCountdown(state.remainingMs ?? 0)}`}
+              className="text-sm font-bold text-ink-muted mt-1 tabular-nums"
+            >
               {formatCountdown(state.remainingMs ?? 0)}
-            </p>
-            <p className="text-xs text-ink-muted mt-0.5">{state.nextChangeAt ? whenText(state.nextChangeAt, now) : ''}</p>
-          </>
-        )}
+            </small>
+          )}
+        </LightRing>
+        <dl className="flex-1 min-w-0 space-y-2 text-xs">
+          {!state.alwaysOn && state.nextChangeAt && (
+            <div id="light-next">
+              <dt className="text-ink-subtle font-semibold">Próximo</dt>
+              <dd className="font-black text-ink">
+                {state.nextChange === 'off' ? 'SE APAGA' : 'SE PRENDE'} {whenText(state.nextChangeAt, now)}
+              </dd>
+            </div>
+          )}
+          <div>
+            <dt className="text-ink-subtle font-semibold">{daily ? 'Luz por día' : 'Cada vuelta'}</dt>
+            <dd className="font-bold text-ink">
+              {onH} h de luz · {hoursText(offMs / 3_600_000)} h de oscuridad
+            </dd>
+          </div>
+          <div>
+            <dt className="text-ink-subtle font-semibold">{daily ? 'Se prende' : 'Encendido de referencia'}</dt>
+            <dd className="font-bold text-ink">{daily ? `todos los días a las ${savedTime}` : `${weekdayShort(anchor)} ${new Date(anchor).getDate()}, ${clockText(anchor)}`}</dd>
+          </div>
+        </dl>
       </div>
-
-      <dl className="grid grid-cols-2 gap-3 text-xs">
-        <div>
-          <dt className="text-ink-subtle font-semibold">{daily ? 'Luz por día' : 'Cada vuelta'}</dt>
-          <dd className="font-bold text-ink">
-            {onH} h de luz · {hoursText(offMs / 3_600_000)} h de oscuridad
-          </dd>
-        </div>
-        <div>
-          <dt className="text-ink-subtle font-semibold">{daily ? 'Se prende' : 'Encendido de referencia'}</dt>
-          <dd className="font-bold text-ink">{daily ? `todos los días a las ${savedTime}` : `${weekdayShort(anchor)} ${new Date(anchor).getDate()}, ${clockText(anchor)}`}</dd>
-        </div>
-      </dl>
 
       <div>
         <h4 className="text-xs font-bold uppercase tracking-wider text-ink-muted mb-1.5">Próximos 7 días</h4>

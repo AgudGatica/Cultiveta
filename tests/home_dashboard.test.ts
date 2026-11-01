@@ -276,9 +276,9 @@ async function run() {
     assert(/^(Buen día|Buenas tardes|Buenas noches), Agustín$/.test(h1), `recibido: ${h1}`);
   });
 
-  await check('13. Cuatro números: 2 cultivos activos, 7 plantas, racha y nivel', () => {
+  await check('13. Cuatro números: ambientes, 7 plantas, racha y nivel', () => {
     const num = (id: string) => container.querySelector(`#${id} b`)?.textContent;
-    assert(num('home-stat-crops') === '2', `cultivos: ${num('home-stat-crops')}`);
+    assert(num('home-stat-ambients') === '0', `ambientes: ${num('home-stat-ambients')}`);
     assert(num('home-stat-plants') === '7', `plantas: ${num('home-stat-plants')}`);
     assert(num('home-stat-streak') === String(progress.stats.streak), `racha: ${num('home-stat-streak')}`);
     assert(progress.stats.streak === 1, 'el riego de hoy da racha 1');

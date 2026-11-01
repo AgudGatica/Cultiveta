@@ -1,14 +1,15 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowLeft, ChevronRight, Dna, Fan, Pencil, Plus, Sun, Trash2 } from 'lucide-react';
+import { ArrowLeft, Dna, Fan, Pencil, Plus, Sun, Trash2 } from 'lucide-react';
 import type { Cultivation, EnvironmentRecord, Genetics, Indoor } from '../../types';
 import { indoorService } from '../../services/indoorService';
 import { climateBindingsFor, devicesService, lightBindingFor, sensorBindingFor, useDevicesOverview } from '../../services/devicesService';
 import { useGeneticsCatalogPhotos } from '../../hooks/useGeneticsCatalogPhotos';
 import { CLIMATE_ROLES, describeClimateRule } from '../../utils/deviceRules';
-import { targetsForStages } from '../../utils/ambientEvaluation';
-import { INDOOR_KINDS, ambientCoverImage, cropsInIndoor, geneticEntries, harvestText, indoorMetrics, indoorSizeText, isExteriorAmbient, type GeneticEntry } from '../../utils/indoors';
+import { ambientHistory, envRecordAt, targetsForStages } from '../../utils/ambientEvaluation';
+import { INDOOR_KINDS, ambientCoverImage, cropsInIndoor, geneticEntries, indoorMetrics, indoorSizeText, isExteriorAmbient, type GeneticEntry } from '../../utils/indoors';
 import { LightCycleCard, type LightSchedule } from '../cultivations/LightCycleCard';
 import { AmbientClimateCard, type AmbientReading } from './AmbientClimateCard';
+import { GeneticCard } from './GeneticCard';
 
 interface AmbientDetailViewProps {
   ambient: Indoor;
@@ -29,11 +30,6 @@ interface AmbientDetailViewProps {
 }
 
 const CARD = 'bg-white rounded-[28px] p-5 sm:p-6 border border-line shadow-2xs';
-const dateText = (d: string) => {
-  const [y, m, day] = d.split('-').map(Number);
-  return y ? new Date(y, m - 1, day).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }) : '';
-};
-const recordAt = (r: EnvironmentRecord) => Date.parse(r.createdAt) || Date.parse(`${r.date}T${r.time || '12:00'}`) || 0;
 
 /**
  * Un ambiente: su luz (si es interior, la de todas sus plantas), el clima (sensor o a mano, con la franja
@@ -70,13 +66,18 @@ export const AmbientDetailView: React.FC<AmbientDetailViewProps> = ({
 
   // Clima: el sensor del ambiente si mide; si no, lo último anotado en cualquiera de sus plantas
   const sensor = sensorBindingFor(overview, ambient.id, 'sensor_th');
-  const cropIds = new Set(crops.map((c) => c.id));
-  const lastRecord = envRecords.filter((r) => cropIds.has(r.cultivationId) && Number.isFinite(r.temperatureC) && Number.isFinite(r.humidityPct)).sort((a, b) => recordAt(b) - recordAt(a))[0];
+  const cropKey = crops.map((c) => c.id).join(',');
+  const ambientRecords = useMemo(() => {
+    const ids = new Set(cropKey.split(','));
+    return envRecords.filter((r) => ids.has(r.cultivationId) || r.indoorId === ambient.id);
+  }, [envRecords, cropKey, ambient.id]);
+  const history = useMemo(() => ambientHistory(ambientRecords), [ambientRecords]);
+  const lastRecord = ambientRecords.filter((r) => Number.isFinite(r.temperatureC) && Number.isFinite(r.humidityPct)).sort((a, b) => envRecordAt(b) - envRecordAt(a))[0];
   let reading: AmbientReading | null = null;
   if (sensor?.online === false) reading = { temperatureC: 0, humidityPct: 0, at: sensor.readAt || 0, source: 'sensor', deviceName: sensor.deviceName, offline: true };
   else if (sensor?.sensors?.temperature != null && sensor.sensors.humidity != null) {
     reading = { temperatureC: sensor.sensors.temperature, humidityPct: sensor.sensors.humidity, at: sensor.readAt || Date.now(), source: 'sensor', deviceName: sensor.deviceName };
-  } else if (lastRecord) reading = { temperatureC: lastRecord.temperatureC, humidityPct: lastRecord.humidityPct, at: recordAt(lastRecord), source: 'manual' };
+  } else if (lastRecord) reading = { temperatureC: lastRecord.temperatureC, humidityPct: lastRecord.humidityPct, at: envRecordAt(lastRecord), source: 'manual' };
 
   const remove = () => {
     if (crops.length) {
@@ -162,6 +163,7 @@ export const AmbientDetailView: React.FC<AmbientDetailViewProps> = ({
       <AmbientClimateCard
         reading={reading}
         targets={targets}
+        history={history}
         now={now}
         manualBlockedReason={crops.length ? null : 'Sumá plantas al ambiente para anotar su clima.'}
         onSaveManual={async (r) => {
@@ -203,38 +205,7 @@ export const AmbientDetailView: React.FC<AmbientDetailViewProps> = ({
         )}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {entries.map((e) => (
-            <button
-              key={`${e.crop.id}_${e.index}`}
-              type="button"
-              data-genetic-card={`${e.crop.id}_${e.index}`}
-              onClick={() => onOpenGenetic(e)}
-              className="cultiveta-card cultiveta-card-hover overflow-hidden text-left flex cursor-pointer"
-              aria-label={`Abrir ${e.card.name}`}
-            >
-              <div className="w-28 shrink-0 bg-icon-bg relative">
-                {e.card.photoUrl ? (
-                  <img src={e.card.photoUrl} alt="" loading="lazy" referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center text-brand">
-                    <Dna className="w-8 h-8 stroke-[1.5]" aria-hidden="true" />
-                  </div>
-                )}
-              </div>
-              <div className="p-3 min-w-0 flex-1 space-y-1">
-                <div className="flex items-start justify-between gap-1">
-                  <h3 className="text-sm font-extrabold text-ink leading-tight">{e.card.name}</h3>
-                  <ChevronRight className="w-4 h-4 text-ink-subtle shrink-0" aria-hidden="true" />
-                </div>
-                {e.card.seedBank && <p className="text-[11px] text-ink-muted truncate">{e.card.seedBank}</p>}
-                <p className="text-[11px] font-semibold text-ink">
-                  {e.plants} planta{e.plants === 1 ? '' : 's'} · {e.stage}
-                </p>
-                <p className="genetic-harvest text-[11px] font-black text-brand">
-                  {harvestText(e.daysToHarvest)}
-                  {e.daysToHarvest > 0 && e.harvestDate ? ` · ${dateText(e.harvestDate)}` : ''}
-                </p>
-              </div>
-            </button>
+            <GeneticCard key={`${e.crop.id}_${e.index}`} entry={e} onOpen={onOpenGenetic} />
           ))}
         </div>
       </section>

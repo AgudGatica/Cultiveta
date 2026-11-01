@@ -122,6 +122,19 @@ la sonda de sustrato siguen por cultivo).
   completo) y pasar a otro ambiente del mismo tipo.
 - Las fotos de las genéticas salen del catálogo (servidor con Firebase Admin): en desarrollo local no aparecen.
 
+**Ajustes de vista (2026-11-01, pedido del dueño).**
+- **Luz con el anillo de Órbita**: ON / OFF y la cuenta regresiva adentro de un círculo que se llena con lo que pasó
+  del tramo actual (amarillo con luz, azul a oscuras); al lado, el próximo cambio y las horas.
+- **Clima**: una lectura a mano de más de 12 h dice **"Última lectura"** (no "lectura vieja"). Abajo, **Histórico**
+  desplegable: 7 días, 30 días o todo; temperatura, humedad o VPD, con la franja óptima de la etapa en verde, mín.,
+  promedio, máx. y qué parte cayó en rango. Una lectura anotada para todo el ambiente se cuenta una vez.
+- **Jardín como Canopia**: pestañas **Ambientes** (primero) y **Plantas** (cada genética con su ambiente); la elegida
+  queda al volver. Los números son ambientes, plantas, racha y nivel.
+- **Genética como una planta de Canopia**: foto grande arriba con nombre, etapa, ambiente y plantas; "Anotar riego" y
+  "Cambiar etapa"; pestañas **Resumen** (para cortar, números, riegos, ventana de riego, ficha, ver todo, pasar de
+  ambiente), **Etapas** (por las que pasó, la actual y las que vienen) y **Timeline** (la planta que crece desde la
+  maceta hasta el cogollo, con las fotos y notas).
+
 ## 4. Comunidad (red social)
 
 - **Identidad a elección del usuario:**

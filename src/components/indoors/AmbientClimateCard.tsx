@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Pencil, Thermometer, Wifi } from 'lucide-react';
-import { MANUAL_READING_TTL_MS, evaluateAmbient, type AmbientTargets, type Level } from '../../utils/ambientEvaluation';
+import { ChevronDown, LineChart, Pencil, Thermometer, Wifi } from 'lucide-react';
+import { MANUAL_READING_TTL_MS, evaluateAmbient, type AmbientPoint, type AmbientTargets, type Level } from '../../utils/ambientEvaluation';
+import { AmbientHistory } from './AmbientHistory';
 
 export interface AmbientReading {
   temperatureC: number;
@@ -21,6 +22,8 @@ interface AmbientClimateCardProps {
   /** Por qué no se puede anotar a mano (por ejemplo, el ambiente no tiene plantas). */
   manualBlockedReason?: string | null;
   onConnectSensor?: () => void;
+  /** Lecturas del ambiente para el histórico desplegable (sin repetir). */
+  history?: AmbientPoint[];
   now?: number;
   children?: React.ReactNode;
 }
@@ -37,8 +40,9 @@ const num = (v: number, d = 1) => (Math.round(v * 10 ** d) / 10 ** d).toString()
  * Clima del ambiente (como en Órbita): temperatura, humedad y VPD con la franja "húmedo / óptimo /
  * seco" de la etapa. Con sensor, lo que mide; sin sensor, lo último anotado a mano (sirve 12 horas).
  */
-export const AmbientClimateCard: React.FC<AmbientClimateCardProps> = ({ reading, targets, onSaveManual, manualBlockedReason = null, onConnectSensor, now = Date.now(), children }) => {
+export const AmbientClimateCard: React.FC<AmbientClimateCardProps> = ({ reading, targets, onSaveManual, manualBlockedReason = null, onConnectSensor, history = [], now = Date.now(), children }) => {
   const [editing, setEditing] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [form, setForm] = useState({ t: '', h: '' });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -70,8 +74,8 @@ export const AmbientClimateCard: React.FC<AmbientClimateCardProps> = ({ reading,
           Clima · {targets.label}
         </span>
         {evalr && stale ? (
-          <span id="ambient-band" className="px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider bg-warn-bg border border-warn-line text-warn-ink">
-            LECTURA VIEJA
+          <span id="ambient-band" className="px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider bg-surface border border-line text-ink-muted">
+            ÚLTIMA LECTURA
           </span>
         ) : evalr ? (
           <span id="ambient-band" className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider ${evalr.band === 'optimo' ? 'bg-ok-bg text-ok-ink border border-ok-line' : 'bg-coral/15 text-coral'}`}>
@@ -115,7 +119,7 @@ export const AmbientClimateCard: React.FC<AmbientClimateCardProps> = ({ reading,
             {reading.source === 'sensor' ? <Wifi className="w-3 h-3" aria-hidden="true" /> : <Pencil className="w-3 h-3" aria-hidden="true" />}
             {reading.source === 'sensor' ? `Medido por ${reading.deviceName || 'el sensor'} · ${ago(reading.at, now)}` : `Anotado a mano ${ago(reading.at, now)}`}
           </p>
-          {stale && <p className="text-[11px] font-bold text-warn-ink">La lectura a mano tiene más de 12 horas: volvé a cargar lo que marca el termómetro.</p>}
+          {stale && <p className="text-[11px] text-ink-muted">Es lo último que anotaste. Para saber cómo está ahora, cargá lo que marca el termómetro.</p>}
         </>
       ) : reading?.offline ? (
         <p className="text-xs text-coral font-bold">El sensor {reading.deviceName} no responde.</p>
@@ -164,6 +168,24 @@ export const AmbientClimateCard: React.FC<AmbientClimateCardProps> = ({ reading,
       )}
       {manualBlockedReason && !editing && reading?.source !== 'sensor' && <p className="text-[11px] text-ink-subtle">{manualBlockedReason}</p>}
       {children}
+      <div className="border-t border-line pt-2">
+        <button
+          type="button"
+          id="ambient-history-toggle"
+          aria-expanded={historyOpen}
+          aria-controls="ambient-history"
+          onClick={() => setHistoryOpen((o) => !o)}
+          className="w-full min-h-11 flex items-center justify-between gap-2 text-sm font-bold text-ink"
+        >
+          <span className="flex items-center gap-1.5">
+            <LineChart className="w-4 h-4 text-brand" aria-hidden="true" />
+            Histórico
+            {history.length > 0 && <small className="text-[11px] font-semibold text-ink-subtle">· {history.length === 1 ? '1 lectura' : `${history.length} lecturas`}</small>}
+          </span>
+          <ChevronDown className={`w-5 h-5 text-ink-muted transition-transform motion-reduce:transition-none ${historyOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+        </button>
+        {historyOpen && <AmbientHistory points={history} targets={targets} now={now} />}
+      </div>
     </section>
   );
 };

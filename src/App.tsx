@@ -721,6 +721,7 @@ export default function App() {
               }}
               indoors={indoors}
               onOpenIndoor={(i) => openIndoor(i.id)}
+              onOpenGenetic={(e) => navigate(pathForGenetic(e.crop.indoorId || '', e.crop.id, e.index))}
               onCreateIndoorClick={() => {
                 setIndoorToEdit(null);
                 setIsIndoorFormOpen(true);
@@ -771,9 +772,15 @@ export default function App() {
                 index={route.geneticIndex ?? 0}
                 waterings={waterings}
                 envRecords={envRecords}
+                photos={photos}
+                diaryEntries={diaryEntries}
                 geneticsList={geneticsList}
                 userId={currentUser.uid}
                 onBack={() => (geneticCrop.indoorId ? openIndoor(geneticCrop.indoorId) : setCurrentView('dashboard'))}
+                onCropUpdated={(updated) => {
+                  setCultivations((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
+                  showToast('Etapa actualizada.');
+                }}
                 onOpenCrop={(crop) => {
                   setSelectedCultivationId(crop.id);
                   setCurrentView('cultivation_detail');

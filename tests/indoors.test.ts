@@ -22,7 +22,7 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Cultivation, EnvironmentRecord, Indoor, Watering } from '../src/types';
 import { withIndoorLighting, indoorGenetics, indoorMetrics, indoorSizeText, ambientForCrop, autoAmbientId, cropsWithoutAmbient, ambientsForCrop, geneticEntries } from '../src/utils/indoors';
-import { evaluateAmbient, targetsForStages } from '../src/utils/ambientEvaluation';
+import { ambientHistory, evaluateAmbient, historyStats, targetsForStages } from '../src/utils/ambientEvaluation';
 import { parseAppRoute, pathForIndoor, pathForGenetic } from '../src/appRoutes';
 import { getNavHighlight } from '../src/utils/cropCardInfo';
 import { indoorService } from '../src/services/indoorService';
@@ -201,6 +201,8 @@ async function run() {
     assert(card?.querySelector('[data-cover="interior"] img') && m.container.querySelector('[data-ambient-card="ex1"] [data-cover="exterior"]'), 'portada interior y exterior');
     assert(/LUZ NATURAL/.test(m.container.querySelector('[data-ambient-card="ex1"]')?.textContent || ''), 'exterior: luz natural');
     assert(/Nuevo ambiente/.test(m.container.querySelector('#home-add-ambient-btn')?.textContent || ''), 'botón Nuevo ambiente');
+    assert(m.container.querySelector('#home-tab-ambientes')?.getAttribute('aria-selected') === 'true' && /Ambientes \(2\)/.test(m.container.querySelector('#home-tab-ambientes')?.textContent || ''), 'arranca en Ambientes');
+    assert(m.container.querySelector('#home-stat-ambients b')?.textContent === '2', 'número de ambientes');
     const loose = [...m.container.querySelectorAll('#home-loose-crops [data-crop-card]')].map((x) => x.getAttribute('data-crop-card'));
     assert(loose.join() === 'Suelto' && !m.container.querySelector('#home-ambients [data-crop-card]'), `solo el suelto como cultivo: ${loose}`);
     await m.unmount();
@@ -269,6 +271,17 @@ async function run() {
     assert(rows.length === 1 && /1,5 L · pH 6.2/.test(rows[0]), `solo los riegos de su cultivo: ${rows}`);
     const opts = [...c.querySelectorAll('#genetic-move-select option')].map((o) => o.textContent);
     assert(opts.join() === 'Armario', `solo otros ambientes interiores: ${opts}`);
+    // arriba: foto, nombre, etapa y ambiente; abajo, pestañas Resumen / Etapas / Timeline
+    const hero = c.querySelector('#genetic-hero')?.textContent || '';
+    assert(/Gelato 33/.test(hero) && /Floración/.test(c.querySelector('#genetic-stage-chip')?.textContent || '') && /Carpa 120/.test(hero), hero);
+    assert([...c.querySelectorAll('[role="tab"]')].map((t) => t.textContent).join() === 'Resumen,Etapas,Timeline', 'pestañas');
+    assert(c.querySelector('#genetic-stats') && /Riegos1/.test(c.querySelector('#genetic-stats')?.textContent || ''), c.querySelector('#genetic-stats')?.textContent || '');
+    await act(async () => (c.querySelector('#genetic-tab-etapas') as HTMLButtonElement).click());
+    const stages = [...c.querySelectorAll('.genetic-stage')];
+    assert(stages.length > 2 && stages.some((x) => x.getAttribute('data-stage-status') === 'active' && /Floración/.test(x.textContent || '')), stages.map((x) => x.textContent).join(' | '));
+    assert(stages.some((x) => x.getAttribute('data-stage-status') === 'completed'), 'etapas por las que pasó');
+    await act(async () => (c.querySelector('#genetic-tab-timeline') as HTMLButtonElement).click());
+    assert(c.querySelector('#genetic-panel-timeline #plant-timeline'), 'la línea de tiempo con la maceta');
     await m.unmount();
   });
 
@@ -312,6 +325,83 @@ async function run() {
   await check('13. Genéticas del ambiente ordenadas por lo que falta para cortar', () => {
     const e = geneticEntries(crops.filter((c) => c.indoorId === 'in1'));
     assert(e.length === 2 && e[0].daysToHarvest <= e[1].daysToHarvest && e[0].card.name === 'Gelato 33', e.map((x) => `${x.card.name}:${x.daysToHarvest}`).join());
+  });
+
+  await check('14. Jardín, pestaña Plantas: cada genética con su ambiente y abre su página', async () => {
+    const opened: string[] = [];
+    const m = await mount(
+      React.createElement(DashboardOverview, {
+        cultivations: crops,
+        waterings: [],
+        envRecords: [],
+        photos: [],
+        onSelectCultivation: () => {},
+        onCreateCultivationClick: () => {},
+        onOpenWateringModal: () => {},
+        indoors: [carpa, patio],
+        onOpenIndoor: () => {},
+        onOpenGenetic: (e: any) => opened.push(`${e.crop.indoorId}/${e.crop.id}/${e.index}`),
+      })
+    );
+    const c = m.container;
+    assert(/Plantas \(3\)/.test(c.querySelector('#home-tab-plantas')?.textContent || ''), c.querySelector('#home-tab-plantas')?.textContent || '');
+    await act(async () => (c.querySelector('#home-tab-plantas') as HTMLButtonElement).click());
+    assert(!c.querySelector('#home-ambients') && c.querySelector('#home-plants'), 'cambia de pestaña');
+    const cards = [...c.querySelectorAll('#home-plants [data-genetic-card]')];
+    assert(cards.length === 3, `3 genéticas en ambientes (el suelto no): ${cards.length}`);
+    const tomates = cards.find((x) => /Northern Lights/.test(x.textContent || ''));
+    assert(/Patio/.test(tomates?.querySelector('.genetic-ambient')?.textContent || ''), 'dice en qué ambiente está');
+    await act(async () => (tomates as HTMLButtonElement).click());
+    assert(opened.join() === 'ex1/Tomates/0', `abre la genética: ${opened}`);
+    await m.unmount();
+    // la pestaña elegida queda al volver
+    const again = await mount(React.createElement(DashboardOverview, { cultivations: crops, waterings: [], envRecords: [], photos: [], onSelectCultivation: () => {}, onCreateCultivationClick: () => {}, onOpenWateringModal: () => {}, indoors: [carpa, patio] }));
+    assert(again.container.querySelector('#home-tab-plantas')?.getAttribute('aria-selected') === 'true', 'recuerda la pestaña');
+    await act(async () => (again.container.querySelector('#home-tab-ambientes') as HTMLButtonElement).click());
+    await again.unmount();
+  });
+
+  await check('15. Histórico del clima: una lectura del ambiente se cuenta una vez', () => {
+    const at = new Date(2026, 9, 31, 9).toISOString();
+    const pts = ambientHistory([
+      { cultivationId: 'Lote A', date: '2026-10-31', time: '09:00', temperatureC: 24, humidityPct: 50, createdAt: at },
+      { cultivationId: 'Lote B', date: '2026-10-31', time: '09:00', temperatureC: 24, humidityPct: 50, createdAt: at },
+      { cultivationId: 'Lote A', date: '2026-10-20', time: '10:00', temperatureC: 30, humidityPct: 35, createdAt: '' },
+      { cultivationId: 'Lote A', date: '2026-10-21', time: '10:00', temperatureC: NaN, humidityPct: 35, createdAt: '' },
+    ] as any);
+    assert(pts.length === 2 && pts[0].temp === 30 && pts[1].temp === 24, JSON.stringify(pts));
+    assert(ambientHistory(pts.map((p) => ({ date: '', temperatureC: p.temp, humidityPct: p.rh, createdAt: new Date(p.at).toISOString() })), Date.parse(at) - 1000).length === 1, 'desde una fecha');
+    const st = historyStats([20, 24, 28, 31], [20, 27]);
+    assert(st && st.min === 20 && st.max === 31 && st.avg === 25.75 && st.inRangePct === 50, JSON.stringify(st));
+    assert(historyStats([], [20, 27]) === null, 'sin lecturas');
+  });
+
+  await check('16. Clima: "Última lectura" y el histórico se despliega con la flechita', async () => {
+    (globalThis as any).ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} };
+    const later = now + 2 * 86400_000;
+    const shared = new Date(now - 3600_000).toISOString();
+    const records: EnvironmentRecord[] = [
+      ...env,
+      { id: 'e2', userId: 'u1', cultivationId: 'Lote B', indoorId: 'in1', date: '2026-10-31', time: '09:00', temperatureC: 24, humidityPct: 70, createdAt: shared },
+    ];
+    const m = await mount(
+      React.createElement(AmbientDetailView, { ambient: carpa, cultivations: crops, envRecords: records, userId: 'u1', onBack: () => {}, onOpenGenetic: () => {}, onEdit: () => {}, onDeleted: () => {}, onAddPlants: () => {}, now: later })
+    );
+    const c = m.container;
+    assert(c.querySelector('#ambient-band')?.textContent?.trim() === 'ÚLTIMA LECTURA', c.querySelector('#ambient-band')?.textContent || '');
+    assert(!/LECTURA VIEJA/.test(c.textContent || ''), 'ya no dice lectura vieja');
+    const toggle = c.querySelector('#ambient-history-toggle') as HTMLButtonElement;
+    assert(toggle && toggle.getAttribute('aria-expanded') === 'false' && !c.querySelector('#ambient-history'), 'cerrado de entrada');
+    assert(/2 lecturas/.test(toggle.textContent || ''), `la del ambiente se cuenta una vez: ${toggle.textContent}`);
+    await act(async () => toggle.click());
+    assert(toggle.getAttribute('aria-expanded') === 'true' && c.querySelector('#ambient-history'), 'se abre');
+    const stats = c.querySelector('#ambient-history-stats')?.textContent || '';
+    assert(/20 °CMín./.test(stats) && /24 °CMáx./.test(stats) && /En rango/.test(stats), stats);
+    await act(async () => (c.querySelector('[data-metric="rh"]') as HTMLButtonElement).click());
+    assert(/70 %Máx./.test(c.querySelector('#ambient-history-stats')?.textContent || ''), 'humedad');
+    await act(async () => toggle.click());
+    assert(!c.querySelector('#ambient-history'), 'se cierra');
+    await m.unmount();
   });
 
   console.log('\n================================================================');

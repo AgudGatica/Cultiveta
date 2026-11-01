@@ -113,6 +113,18 @@ export function lightState(c: LightCycle, anchor: number, now: number): LightCyc
   return { started: true, on, alwaysOn: false, nextChange: on ? 'off' : 'on', nextChangeAt: now + remainingMs, remainingMs };
 }
 
+/**
+ * Cuánto va del tramo actual, de 0 a 1 (como el anillo de Órbita): con la luz prendida, la parte ya
+ * pasada de las horas de luz; apagada, la de las horas de oscuridad. Antes de arrancar, 0.
+ */
+export function phaseProgress(c: LightCycle, anchor: number, now: number): number {
+  const { onMs, offMs, totalMs } = cycleMs(c);
+  if (!(totalMs > 0) || !onMs || now < anchor) return 0;
+  if (offMs === 0) return 1;
+  const pos = (now - anchor) % totalMs;
+  return pos < onMs ? pos / onMs : (pos - onMs) / offMs;
+}
+
 /** Tramos con la luz prendida entre from y to (ms), recortados a ese rango. */
 export function onIntervals(c: LightCycle, anchor: number, from: number, to: number): Array<[number, number]> {
   const { onMs, totalMs } = cycleMs(c);
