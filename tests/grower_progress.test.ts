@@ -237,4 +237,4 @@ const watering = (date: string, extra: Record<string, unknown> = {}) => ({
 }
 
 console.log(`\nResultado: ${passed} pasados, ${failed} fallidos`);
-if (failed > 0) process.exit(1);
+process.exit(failed > 0 ? 1 : 0);
