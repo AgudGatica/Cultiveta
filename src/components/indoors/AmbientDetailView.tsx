@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { ArrowLeft, Dna, Fan, Pencil, Plus, Sun, Trash2 } from 'lucide-react';
 import type { Cultivation, EnvironmentRecord, Genetics, Indoor } from '../../types';
 import { indoorService } from '../../services/indoorService';
+import { cultivationService } from '../../services/cultivationService';
 import { climateBindingsFor, devicesService, lightBindingFor, sensorBindingFor, useDevicesOverview } from '../../services/devicesService';
 import { useGeneticsCatalogPhotos } from '../../hooks/useGeneticsCatalogPhotos';
 import { CLIMATE_ROLES, describeClimateRule } from '../../utils/deviceRules';
@@ -26,6 +27,8 @@ interface AmbientDetailViewProps {
   onAddPlants: (ambient: Indoor) => void;
   onOpenDevices?: (focus: 'luz' | 'ambiente' | 'riego') => void;
   showToast?: (msg: string) => void;
+  /** Después de guardar la ubicación de sus plantas (exterior). */
+  onCropsUpdated?: (crops: Cultivation[]) => void;
   now?: number;
 }
 
@@ -33,7 +36,8 @@ const CARD = 'bg-white rounded-[28px] p-5 sm:p-6 border border-line shadow-2xs';
 
 /**
  * Un ambiente: su luz (si es interior, la de todas sus plantas), el clima (sensor o a mano, con la franja
- * húmedo / óptimo / seco) y sus genéticas, cada una con su foto y cuánto le falta para cortar.
+ * húmedo / óptimo / seco; en exterior, el de la zona que se mide solo cada hora) y sus genéticas, cada una
+ * con su foto y cuánto le falta para cortar.
  */
 export const AmbientDetailView: React.FC<AmbientDetailViewProps> = ({
   ambient,
@@ -48,6 +52,7 @@ export const AmbientDetailView: React.FC<AmbientDetailViewProps> = ({
   onAddPlants,
   onOpenDevices,
   showToast,
+  onCropsUpdated,
   now,
 }) => {
   const overview = useDevicesOverview();
@@ -64,8 +69,9 @@ export const AmbientDetailView: React.FC<AmbientDetailViewProps> = ({
   const targets = targetsForStages(crops.map((c) => c.currentStage));
   const climate = climateBindingsFor(overview, ambient.id);
 
-  // Clima: el sensor del ambiente si mide; si no, lo último anotado en cualquiera de sus plantas
-  const sensor = sensorBindingFor(overview, ambient.id, 'sensor_th');
+  // Clima: el sensor del ambiente si mide; si no, lo último anotado en cualquiera de sus plantas.
+  // En exterior no hay sensor: el clima de la zona se mide solo cada hora (servidor, Open-Meteo).
+  const sensor = exterior ? null : sensorBindingFor(overview, ambient.id, 'sensor_th');
   const cropKey = crops.map((c) => c.id).join(',');
   const ambientRecords = useMemo(() => {
     const ids = new Set(cropKey.split(','));
@@ -77,7 +83,20 @@ export const AmbientDetailView: React.FC<AmbientDetailViewProps> = ({
   if (sensor?.online === false) reading = { temperatureC: 0, humidityPct: 0, at: sensor.readAt || 0, source: 'sensor', deviceName: sensor.deviceName, offline: true };
   else if (sensor?.sensors?.temperature != null && sensor.sensors.humidity != null) {
     reading = { temperatureC: sensor.sensors.temperature, humidityPct: sensor.sensors.humidity, at: sensor.readAt || Date.now(), source: 'sensor', deviceName: sensor.deviceName };
-  } else if (lastRecord) reading = { temperatureC: lastRecord.temperatureC, humidityPct: lastRecord.humidityPct, at: envRecordAt(lastRecord), source: 'manual' };
+  } else if (lastRecord) reading = { temperatureC: lastRecord.temperatureC, humidityPct: lastRecord.humidityPct, at: envRecordAt(lastRecord), source: lastRecord.isAutoLogged ? 'auto' : 'manual' };
+  const located = crops.some((c) => c.locationCoordinates && typeof c.locationCoordinates.lat === 'number');
+
+  // Exterior: la zona de las plantas para medir el clima solo (redondeada: alcanza con el barrio, unos 1 km)
+  const useLocation = async () => {
+    if (typeof navigator === 'undefined' || !navigator.geolocation) throw new Error('Este dispositivo no puede dar la ubicación.');
+    const pos = await new Promise<GeolocationPosition>((resolve, reject) =>
+      navigator.geolocation.getCurrentPosition(resolve, () => reject(new Error('No diste permiso para usar la ubicación. Activalo en el navegador y probá de nuevo.')), { timeout: 10000 })
+    );
+    const coords = { lat: Math.round(pos.coords.latitude * 100) / 100, lon: Math.round(pos.coords.longitude * 100) / 100 };
+    for (const c of crops.filter((x) => !x.locationCoordinates)) await cultivationService.updateCultivation(c.id, { locationCoordinates: coords }, userId);
+    showToast?.('Listo: el clima se va a medir solo cada hora.');
+    onCropsUpdated?.(crops.map((c) => (c.locationCoordinates ? c : { ...c, locationCoordinates: coords })));
+  };
 
   const remove = () => {
     if (crops.length) {
@@ -166,6 +185,7 @@ export const AmbientDetailView: React.FC<AmbientDetailViewProps> = ({
         history={history}
         now={now}
         manualBlockedReason={crops.length ? null : 'Sumá plantas al ambiente para anotar su clima.'}
+        outdoor={exterior ? { located, hasPlants: crops.length > 0, onUseLocation: useLocation } : undefined}
         onSaveManual={async (r) => {
           await indoorService.addAmbientReading(ambient, crops, r, userId);
           showToast?.('Clima anotado para todo el ambiente.');

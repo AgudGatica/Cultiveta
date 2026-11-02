@@ -67,6 +67,7 @@ import { analyzeWateringUrgency } from '../../utils/wateringAlertUtils';
 import { calculateIrrigationForecast } from '../../services/irrigationForecastService';
 import { evaluateEnvironmentReading } from '../../utils/agronomicThresholds';
 import { resolveCultivationDisplayPhoto } from '../../utils/cultivationPhotoResolver';
+import { isExteriorAmbient } from '../../utils/indoors';
 import { useGeneticsCatalogPhotos } from '../../hooks/useGeneticsCatalogPhotos';
 import { GeneticsHeaderPhoto } from './GeneticsHeaderPhoto';
 import { LightCycleCard, type LightSchedule } from './LightCycleCard';
@@ -140,7 +141,9 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
   // Equipos asignados a este cultivo (enchufe de la luz, sensor de ambiente y sonda de sustrato)
   const devicesOverview = useDevicesOverview();
   const lightDevice = lightBindingFor(devicesOverview, cultivation.id) || (indoor ? lightBindingFor(devicesOverview, indoor.id) : null);
-  const envSensor = sensorBindingFor(devicesOverview, cultivation.id, 'sensor_th') || (indoor ? sensorBindingFor(devicesOverview, indoor.id, 'sensor_th') : null);
+  // En exterior no hay sensor de ambiente: el clima de la zona se mide solo cada hora
+  const outdoor = indoor ? isExteriorAmbient(indoor) : cultivation.type !== 'Indoor';
+  const envSensor = outdoor ? null : sensorBindingFor(devicesOverview, cultivation.id, 'sensor_th') || (indoor ? sensorBindingFor(devicesOverview, indoor.id, 'sensor_th') : null);
   const soilSensor = sensorBindingFor(devicesOverview, cultivation.id, 'sensor_soil');
   const sensorAgo = (ms: number | null) => {
     if (!ms) return '';
@@ -935,7 +938,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
 
             <div className="bg-white rounded-3xl p-5 border border-line shadow-2xs relative group">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-ink-subtle block">{envSensor ? 'Ambiente ahora' : 'Último Ambiente'}</span>
+                <span className="text-xs font-semibold text-ink-subtle block">{outdoor ? 'Clima de tu zona' : envSensor ? 'Ambiente ahora' : 'Último Ambiente'}</span>
                 <button
                   type="button"
                   onClick={() => onEditCultivation(cultivation)}
@@ -953,6 +956,15 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                     ? `${lastEnv.temperatureC}°C | ${lastEnv.humidityPct}%`
                     : 'Sin registros'}
               </div>
+              {outdoor && (
+                <span id="env-auto-source" className="block text-[11px] font-bold text-brand">
+                  {lastEnv?.isAutoLogged
+                    ? `Se mide solo cada hora · ${sensorAgo(Date.parse(lastEnv.createdAt))}`
+                    : cultivation.locationCoordinates
+                      ? 'Se mide solo cada hora: la primera medición llega pronto'
+                      : 'Se mide solo cada hora con la ubicación de tus plantas'}
+                </span>
+              )}
               {envSensor && (
                 <span id="env-sensor-source" className="block text-[11px] font-bold text-brand">
                   {envSensor.online === false ? 'Sensor sin conexión' : `Medido por ${envSensor.deviceName} · ${sensorAgo(envSensor.readAt)}`}
@@ -975,7 +987,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                     : '11°-35°C | 25-75%'}
                 </span>
               </div>
-              {onOpenDevices && !envSensor && (
+              {onOpenDevices && !envSensor && !outdoor && (
                 <button
                   type="button"
                   id="connect-env-sensor"

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, LineChart, Pencil, Thermometer, Wifi } from 'lucide-react';
+import { ChevronDown, CloudSun, LineChart, MapPin, Pencil, Thermometer, Wifi } from 'lucide-react';
 import { MANUAL_READING_TTL_MS, evaluateAmbient, type AmbientPoint, type AmbientTargets, type Level } from '../../utils/ambientEvaluation';
 import { AmbientHistory } from './AmbientHistory';
 
@@ -8,7 +8,8 @@ export interface AmbientReading {
   humidityPct: number;
   /** Cuándo se midió (ms). */
   at: number;
-  source: 'sensor' | 'manual';
+  /** auto: clima de la zona, medido solo cada hora (exterior). */
+  source: 'sensor' | 'manual' | 'auto';
   /** Sensor que midió (si es por sensor). */
   deviceName?: string;
   offline?: boolean;
@@ -24,6 +25,11 @@ interface AmbientClimateCardProps {
   onConnectSensor?: () => void;
   /** Lecturas del ambiente para el histórico desplegable (sin repetir). */
   history?: AmbientPoint[];
+  /**
+   * Exterior: el clima de la zona se mide solo cada hora (no hay sensor ni se anota a mano) y el gráfico se
+   * ve de entrada. located: si sus plantas ya tienen la ubicación general; hasPlants: si tiene alguna.
+   */
+  outdoor?: { located: boolean; hasPlants: boolean; onUseLocation?: () => Promise<void> };
   now?: number;
   children?: React.ReactNode;
 }
@@ -33,21 +39,39 @@ const ago = (ms: number, now: number) => {
   return min < 1 ? 'recién' : min < 60 ? `hace ${min} min` : min < 48 * 60 ? `hace ${Math.round(min / 60)} h` : `hace ${Math.round(min / 1440)} días`;
 };
 const LEVEL_TEXT: Record<Level, string> = { baja: 'BAJA', bien: 'BIEN', alta: 'ALTA' };
+/** El clima de exterior llega cada hora: más viejo que esto, algo se atrasó. */
+export const AUTO_READING_TTL_MS = 3 * 60 * 60 * 1000;
 const levelClass = (l: Level) => (l === 'bien' ? 'text-ok-ink' : 'text-coral');
 const num = (v: number, d = 1) => (Math.round(v * 10 ** d) / 10 ** d).toString().replace('.', ',');
 
 /**
  * Clima del ambiente (como en Órbita): temperatura, humedad y VPD con la franja "húmedo / óptimo /
  * seco" de la etapa. Con sensor, lo que mide; sin sensor, lo último anotado a mano (sirve 12 horas).
+ * En exterior, el clima de la zona que se mide solo cada hora, con el gráfico a la vista.
  */
-export const AmbientClimateCard: React.FC<AmbientClimateCardProps> = ({ reading, targets, onSaveManual, manualBlockedReason = null, onConnectSensor, history = [], now = Date.now(), children }) => {
+export const AmbientClimateCard: React.FC<AmbientClimateCardProps> = ({ reading, targets, onSaveManual, manualBlockedReason = null, onConnectSensor, history = [], outdoor, now = Date.now(), children }) => {
   const [editing, setEditing] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(Boolean(outdoor));
+  const [locating, setLocating] = useState(false);
+  const [locError, setLocError] = useState<string | null>(null);
   const [form, setForm] = useState({ t: '', h: '' });
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const evalr = reading && !reading.offline ? evaluateAmbient(reading, targets) : null;
-  const stale = reading?.source === 'manual' && now - reading.at > MANUAL_READING_TTL_MS;
+  const stale = reading?.source === 'manual' ? now - reading.at > MANUAL_READING_TTL_MS : reading?.source === 'auto' ? now - reading.at > AUTO_READING_TTL_MS : false;
+
+  const useLocation = async () => {
+    if (!outdoor?.onUseLocation) return;
+    setLocating(true);
+    setLocError(null);
+    try {
+      await outdoor.onUseLocation();
+    } catch (e: any) {
+      setLocError(e?.message || 'No se pudo tomar la ubicación.');
+    } finally {
+      setLocating(false);
+    }
+  };
 
   const save = async () => {
     const t = Number(form.t.replace(',', '.'));
@@ -73,6 +97,11 @@ export const AmbientClimateCard: React.FC<AmbientClimateCardProps> = ({ reading,
           <Thermometer className="w-4 h-4 text-brand" aria-hidden="true" />
           Clima · {targets.label}
         </span>
+        {outdoor && !evalr && (
+          <span id="ambient-auto-badge" className="px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider bg-surface border border-line text-ink-muted">
+            AUTOMÁTICO
+          </span>
+        )}
         {evalr && stale ? (
           <span id="ambient-band" className="px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider bg-surface border border-line text-ink-muted">
             ÚLTIMA LECTURA
@@ -81,7 +110,7 @@ export const AmbientClimateCard: React.FC<AmbientClimateCardProps> = ({ reading,
           <span id="ambient-band" className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider ${evalr.band === 'optimo' ? 'bg-ok-bg text-ok-ink border border-ok-line' : 'bg-coral/15 text-coral'}`}>
             {evalr.band === 'optimo' ? 'EN BANDA' : evalr.band === 'seco' ? 'AIRE SECO' : 'AIRE HÚMEDO'}
           </span>
-        ) : (
+        ) : outdoor ? null : (
           <span className="px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider bg-surface border border-line text-ink-muted">SIN DATOS</span>
         )}
       </div>
@@ -115,19 +144,46 @@ export const AmbientClimateCard: React.FC<AmbientClimateCardProps> = ({ reading,
               <span>seco</span>
             </div>
           </div>
-          <p className="text-[11px] text-ink-subtle flex items-center gap-1">
-            {reading.source === 'sensor' ? <Wifi className="w-3 h-3" aria-hidden="true" /> : <Pencil className="w-3 h-3" aria-hidden="true" />}
-            {reading.source === 'sensor' ? `Medido por ${reading.deviceName || 'el sensor'} · ${ago(reading.at, now)}` : `Anotado a mano ${ago(reading.at, now)}`}
+          <p id="ambient-reading-source" className="text-[11px] text-ink-subtle flex items-center gap-1">
+            {reading.source === 'sensor' ? <Wifi className="w-3 h-3" aria-hidden="true" /> : reading.source === 'auto' ? <CloudSun className="w-3 h-3" aria-hidden="true" /> : <Pencil className="w-3 h-3" aria-hidden="true" />}
+            {reading.source === 'sensor'
+              ? `Medido por ${reading.deviceName || 'el sensor'} · ${ago(reading.at, now)}`
+              : reading.source === 'auto'
+                ? `Clima de tu zona, medido solo cada hora · ${ago(reading.at, now)}`
+                : `Anotado a mano ${ago(reading.at, now)}`}
           </p>
-          {stale && <p className="text-[11px] text-ink-muted">Es lo último que anotaste. Para saber cómo está ahora, cargá lo que marca el termómetro.</p>}
+          {stale && (
+            <p className="text-[11px] text-ink-muted">
+              {reading.source === 'auto' ? 'La medición se atrasó: la próxima llega sola.' : 'Es lo último que anotaste. Para saber cómo está ahora, cargá lo que marca el termómetro.'}
+            </p>
+          )}
         </>
       ) : reading?.offline ? (
         <p className="text-xs text-coral font-bold">El sensor {reading.deviceName} no responde.</p>
+      ) : outdoor ? (
+        <div id="ambient-auto-empty" className="space-y-2">
+          <p className="text-xs text-ink-muted flex gap-1.5">
+            <CloudSun className="w-4 h-4 text-brand shrink-0" aria-hidden="true" />
+            {!outdoor.hasPlants
+              ? 'En exterior el clima se mide solo, cada hora, con el de tu zona. Empieza cuando sumes plantas.'
+              : outdoor.located
+                ? 'En exterior el clima se mide solo, cada hora, con el de tu zona. La primera medición llega en menos de una hora.'
+                : 'En exterior el clima se mide solo, cada hora, con el de tu zona. Para eso Cultiveta necesita saber en qué zona están tus plantas.'}
+          </p>
+          {outdoor.hasPlants && !outdoor.located && outdoor.onUseLocation && (
+            <button type="button" id="ambient-use-location" disabled={locating} onClick={useLocation} className="cultiveta-btn-primary text-xs disabled:opacity-50">
+              <MapPin className="w-3.5 h-3.5" aria-hidden="true" />
+              {locating ? 'Buscando…' : 'Usar mi ubicación'}
+            </button>
+          )}
+          {outdoor.hasPlants && !outdoor.located && <p className="text-[11px] text-ink-subtle">Se guarda solo la zona (no la dirección) y nunca se publica.</p>}
+          {locError && <p className="text-[11px] font-bold text-error">{locError}</p>}
+        </div>
       ) : (
         <p className="text-xs text-ink-muted">Sin datos de temperatura y humedad. Conectá un sensor o cargá lo que marca tu termómetro: Cultiveta no inventa valores.</p>
       )}
 
-      {editing ? (
+      {outdoor ? null : editing ? (
         <div id="ambient-manual-form" className="rounded-2xl bg-surface border border-line p-3 space-y-2">
           <div className="grid grid-cols-2 gap-2">
             <label className="text-[11px] font-semibold text-ink-muted space-y-1">
@@ -166,7 +222,7 @@ export const AmbientClimateCard: React.FC<AmbientClimateCardProps> = ({ reading,
           )}
         </div>
       )}
-      {manualBlockedReason && !editing && reading?.source !== 'sensor' && <p className="text-[11px] text-ink-subtle">{manualBlockedReason}</p>}
+      {!outdoor && manualBlockedReason && !editing && reading?.source !== 'sensor' && <p className="text-[11px] text-ink-subtle">{manualBlockedReason}</p>}
       {children}
       <div className="border-t border-line pt-2">
         <button

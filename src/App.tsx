@@ -780,6 +780,7 @@ export default function App() {
                   setIsCultivationFormOpen(true);
                 }}
                 onOpenDevices={openDevices}
+                onCropsUpdated={(updated) => setCultivations((prev) => prev.map((c) => updated.find((u) => u.id === c.id) || c))}
                 showToast={showToast}
               />
             ) : (

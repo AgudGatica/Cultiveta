@@ -15,6 +15,7 @@
  * 10. Genética: ficha, para cortar, riegos y pasar a otro ambiente del mismo tipo.
  * 11. Formulario de cultivo: sumar plantas a un ambiente exterior lo deja exterior y en ese ambiente.
  * 12. Equipos: la luz va a un ambiente; la bomba no (va en un cultivo).
+ * 17. Exterior: el clima de la zona se mide solo cada hora (sin sensor ni "a mano") y el gráfico se ve de entrada.
  */
 
 import './helpers/setupDom';
@@ -402,6 +403,34 @@ async function run() {
     await act(async () => toggle.click());
     assert(!c.querySelector('#ambient-history'), 'se cierra');
     await m.unmount();
+  });
+
+  await check('17. Exterior: el clima se mide solo cada hora, sin sensor ni "a mano", con el gráfico a la vista', async () => {
+    (globalThis as any).ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} };
+    const tomates = crop('Tomates', { indoorId: 'ex1', type: 'Outdoor', geneticsName: 'Northern Lights' });
+    const auto: EnvironmentRecord[] = [0, 1, 2].map((h) => ({ id: `auto-${h}`, userId: 'u1', cultivationId: 'Tomates', date: '2026-10-31', time: `0${h}:00`, temperatureC: 18 + h, humidityPct: 60, isAutoLogged: true, createdAt: new Date(now - (3 - h) * 3600_000).toISOString() }));
+    const props = { ambient: patio, cultivations: [tomates], userId: 'u1', onBack: () => {}, onOpenGenetic: () => {}, onEdit: () => {}, onDeleted: () => {}, onAddPlants: () => {}, onOpenDevices: () => {}, now };
+    const m = await mount(React.createElement(AmbientDetailView, { ...props, envRecords: auto }));
+    const c = m.container;
+    const card = c.querySelector('#ambient-climate')?.textContent || '';
+    assert(!c.querySelector('#ambient-manual-open') && !/Anotar a mano/.test(card) && !/Conectar mi sensor/.test(card), 'sin "a mano" ni sensor');
+    assert(/Clima de tu zona, medido solo cada hora · hace 1 h/.test(c.querySelector('#ambient-reading-source')?.textContent || ''), c.querySelector('#ambient-reading-source')?.textContent || '');
+    assert(c.querySelector('#ambient-history-toggle')?.getAttribute('aria-expanded') === 'true' && c.querySelector('#ambient-history'), 'el gráfico se ve de entrada');
+    assert(/3 lecturas/.test(c.querySelector('#ambient-history-toggle')?.textContent || ''), 'las mediciones automáticas');
+    await m.unmount();
+    // sin mediciones todavía y sin ubicación: explica y ofrece usar la ubicación
+    const n = await mount(React.createElement(AmbientDetailView, { ...props, envRecords: [] }));
+    assert(/se mide solo, cada hora/.test(n.container.querySelector('#ambient-auto-empty')?.textContent || '') && n.container.querySelector('#ambient-use-location'), 'pide la ubicación');
+    assert(/AUTOMÁTICO/.test(n.container.querySelector('#ambient-auto-badge')?.textContent || ''), 'dice que es automático');
+    await n.unmount();
+    // con ubicación: avisa que la primera medición llega sola
+    const l = await mount(React.createElement(AmbientDetailView, { ...props, cultivations: [{ ...tomates, locationCoordinates: { lat: -31.4, lon: -64.2 } }], envRecords: [] }));
+    assert(/primera medición llega en menos de una hora/.test(l.container.textContent || '') && !l.container.querySelector('#ambient-use-location'), 'ya tiene ubicación');
+    await l.unmount();
+    // en interior sigue todo como antes
+    const i = await mount(React.createElement(AmbientDetailView, { ...props, ambient: carpa, cultivations: crops, envRecords: env }));
+    assert(i.container.querySelector('#ambient-manual-open') && /Conectar mi sensor/.test(i.container.textContent || ''), 'interior: a mano y sensor');
+    await i.unmount();
   });
 
   console.log('\n================================================================');
