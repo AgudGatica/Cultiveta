@@ -6,7 +6,7 @@ y de la mascota de la app. Fuente: "Cultiveta — Hoja de ruta de pendientes" (d
 | # | Función | Estado (2026-10-27) |
 |---|---|---|
 | 1 | Línea de tiempo con forma de planta | En curso |
-| 2 | Enchufes inteligentes por Wi-Fi | Hecho (2026-10-31): a mano + Equipos, Smart Life, bomba y clima, riego automático, eWeLink y Shelly. Falta habilitar la app de eWeLink (ver PENDIENTES) |
+| 2 | Enchufes inteligentes por Wi-Fi | Hecho (2026-10-31): a mano + Equipos, Smart Life, bomba y clima, riego automático, eWeLink y Shelly. App de eWeLink habilitada el 2026-11-02 |
 | 3 | Indoors / carpas | Hecho (2026-11-01): ambientes interiores y exteriores; el Jardín muestra ambientes → genéticas |
 | 4 | Comunidad | Hecho (2026-11-01): como en Canopia. Perfil de grower, compartir cada genética (Privado / No listado / Público), página del growlog, Explorar, Siguiendo, Seguir, me gusta, comentarios, vistas, avisos, bloquear, denuncias y admin |
 | 5 | Privacidad y ubicación | En curso (2026-11-01): todas las fotos se guardan sin datos internos ni ubicación. Falta la ubicación general opcional al publicar (va con la Comunidad) |
