@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Compass, Dna, Eye, Flag, Globe, Link2, Lock, Search, Share2, ShieldAlert, Trophy, Users } from 'lucide-react';
+import { Bell, Compass, Dna, Eye, Flag, Globe, Heart, Link2, Lock, Search, Share2, ShieldAlert, Trophy, Users } from 'lucide-react';
 import type { Cultivation, Genetics } from '../../types';
 import { communityService, growlogFor, useCommunityMe } from '../../services/communityService';
 import { useGeneticsCatalogPhotos } from '../../hooks/useGeneticsCatalogPhotos';
@@ -8,6 +8,7 @@ import { exploreSections, growlogMatches, type GrowerCard, type GrowlogCard } fr
 import { Avatar } from './Avatar';
 import { CommunityOnboarding } from './CommunityOnboarding';
 import { GrowlogTile, kfmt } from './GrowlogTile';
+import { NotificationsPanel } from './NotificationsPanel';
 import { ShareGrowlogModal } from './ShareGrowlogModal';
 
 type CommunityTab = 'explorar' | 'siguiendo' | 'mios';
@@ -60,6 +61,8 @@ export const CommunityView: React.FC<Props> = ({ userId, cultivations, geneticsL
   };
   const [explore, setExplore] = useState(initialExplore || null);
   const [feed, setFeed] = useState<GrowlogCard[] | null>(initialFeed || null);
+  const [liked, setLiked] = useState<Set<string>>(new Set());
+  const [notices, setNotices] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [onboarding, setOnboarding] = useState<'new' | 'edit' | null>(null);
   const [sharing, setSharing] = useState<{ cropId: string; index: number; name: string } | null>(null);
@@ -79,7 +82,10 @@ export const CommunityView: React.FC<Props> = ({ userId, cultivations, geneticsL
     if (initialFeed || tab !== 'siguiendo' || feed) return;
     communityService
       .feed()
-      .then(setFeed)
+      .then((d) => {
+        setFeed(d.growlogs);
+        setLiked(new Set(d.liked));
+      })
       .catch((e) => setError(e?.message || null));
   }, [tab, feed, initialFeed]);
 
@@ -91,6 +97,21 @@ export const CommunityView: React.FC<Props> = ({ userId, cultivations, geneticsL
     return explore && q ? explore.growers.filter((p) => p.handle.includes(q) || p.displayName.toLowerCase().includes(q)) : [];
   }, [explore, query]);
   const myPublic = (explore?.growlogs || []).filter((g) => g.ownerUid === userId);
+
+  const toggleLike = async (g: GrowlogCard) => {
+    if (!me?.profile) return setOnboarding('new');
+    const next = !liked.has(g.id);
+    const set = new Set(liked);
+    if (next) set.add(g.id);
+    else set.delete(g.id);
+    setLiked(set);
+    try {
+      const r = await communityService.like(g.id, next);
+      setFeed((list) => (list || []).map((x) => (x.id === g.id ? { ...x, likes: r.likes } : x)));
+    } catch (e: any) {
+      showToast?.(e?.message || 'No se pudo.');
+    }
+  };
 
   if (onboarding) {
     return (
@@ -118,6 +139,14 @@ export const CommunityView: React.FC<Props> = ({ userId, cultivations, geneticsL
       <div className="flex items-center justify-between gap-3 pt-1">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Comunidad</h1>
         <div className="flex items-center gap-2">
+          <button type="button" id="community-bell" onClick={() => setNotices(true)} aria-label={me?.unread ? `Avisos: ${me.unread} sin leer` : 'Avisos'} className="relative min-h-10 min-w-10 rounded-full bg-white/15 text-white inline-flex items-center justify-center hover:bg-white/25">
+            <Bell className="w-5 h-5" aria-hidden="true" />
+            {!!me?.unread && (
+              <span id="community-unread" className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 rounded-full bg-coral text-white text-[10px] font-black inline-flex items-center justify-center">
+                {me.unread > 9 ? '9+' : me.unread}
+              </span>
+            )}
+          </button>
           {me?.isAdmin && (
             <button type="button" id="community-admin" onClick={onOpenAdmin} aria-label="Denuncias" className="min-h-10 min-w-10 rounded-full bg-white/15 text-white inline-flex items-center justify-center hover:bg-white/25">
               <ShieldAlert className="w-5 h-5" aria-hidden="true" />
@@ -250,6 +279,10 @@ export const CommunityView: React.FC<Props> = ({ userId, cultivations, geneticsL
                 </button>
                 {g.lastNote && <p className="px-4 pt-3 text-sm text-ink line-clamp-3">{g.lastNote}</p>}
                 <div className="flex items-center gap-3 px-4 py-3 text-xs text-ink-muted">
+                  <button type="button" data-like={g.id} aria-pressed={liked.has(g.id)} onClick={() => toggleLike(g)} className={`inline-flex items-center gap-1 min-h-9 px-3 rounded-full border ${liked.has(g.id) ? 'border-coral text-coral' : 'border-line'}`}>
+                    <Heart className={`w-3.5 h-3.5 ${liked.has(g.id) ? 'fill-coral' : ''}`} aria-hidden="true" />
+                    {kfmt(g.likes)}
+                  </button>
                   <span className="inline-flex items-center gap-1">
                     <Eye className="w-3.5 h-3.5" aria-hidden="true" />
                     {kfmt(g.views)}
@@ -317,6 +350,8 @@ export const CommunityView: React.FC<Props> = ({ userId, cultivations, geneticsL
       )}
 
       <p className="text-[11px] text-white/70 text-center px-4 pb-2">Comunidad para mayores de 18 años. Nada de venta. Las fotos se publican sin ubicación.</p>
+
+      {notices && <NotificationsPanel onClose={() => setNotices(false)} onOpenGrowlog={onOpenGrowlog} onOpenGrower={onOpenGrower} />}
 
       {sharing && (
         <ShareGrowlogModal

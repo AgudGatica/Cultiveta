@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, Flag, MapPin } from 'lucide-react';
+import { ArrowLeft, Ban, Flag, MapPin } from 'lucide-react';
 import { communityService } from '../../services/communityService';
 import type { GrowlogCard, PublicProfile } from '../../utils/growlog';
 import { Avatar } from './Avatar';
@@ -17,7 +17,7 @@ interface Props {
 
 /** Perfil de un grower (como en Canopia): foto, bio, seguidores, growlogs, vistas, Seguir y sus growlogs. */
 export const GrowerView: React.FC<Props> = ({ handle, userId, onBack, onOpenGrowlog, onEditProfile, showToast }) => {
-  const [data, setData] = useState<{ profile: PublicProfile; growlogs: GrowlogCard[]; following: boolean } | null>(null);
+  const [data, setData] = useState<{ profile: PublicProfile; growlogs: GrowlogCard[]; following: boolean; blocked: boolean } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [reporting, setReporting] = useState(false);
@@ -41,6 +41,27 @@ export const GrowerView: React.FC<Props> = ({ handle, userId, onBack, onOpenGrow
     try {
       const r = await communityService.follow(data.profile.uid, !data.following);
       setData({ ...data, following: r.following, profile: { ...data.profile, followers: r.followers } });
+    } catch (e: any) {
+      showToast?.(e?.message || 'No se pudo.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleBlock = async () => {
+    if (!data) return;
+    const next = !data.blocked;
+    if (next && !window.confirm(`¿Bloquear a @${data.profile.handle}? No vas a ver sus growlogs ni sus comentarios, no te va a poder comentar ni seguir, y se dejan de seguir.`)) return;
+    setBusy(true);
+    try {
+      await communityService.block(data.profile.uid, next);
+      if (next) {
+        setData({ ...data, blocked: true, following: false, growlogs: [] });
+        showToast?.(`Bloqueaste a @${data.profile.handle}.`);
+      } else {
+        setData(await communityService.grower(handle));
+        showToast?.(`Desbloqueaste a @${data.profile.handle}.`);
+      }
     } catch (e: any) {
       showToast?.(e?.message || 'No se pudo.');
     } finally {
@@ -106,13 +127,25 @@ export const GrowerView: React.FC<Props> = ({ handle, userId, onBack, onOpenGrow
             Editar perfil
           </button>
         ) : (
-          <button type="button" id="grower-follow" disabled={busy} onClick={toggleFollow} className={`${data.following ? 'cultiveta-btn-secondary' : 'cultiveta-btn-primary'} text-sm w-full justify-center disabled:opacity-50`}>
-            {data.following ? 'Siguiendo' : 'Seguir'}
-          </button>
+          <div className="space-y-2">
+            {!data.blocked && (
+              <button type="button" id="grower-follow" disabled={busy} onClick={toggleFollow} className={`${data.following ? 'cultiveta-btn-secondary' : 'cultiveta-btn-primary'} text-sm w-full justify-center disabled:opacity-50`}>
+                {data.following ? 'Siguiendo' : 'Seguir'}
+              </button>
+            )}
+            <button type="button" id="grower-block" disabled={busy} onClick={toggleBlock} className="w-full text-xs font-bold text-ink-muted hover:text-error inline-flex items-center justify-center gap-1 min-h-9">
+              <Ban className="w-3.5 h-3.5" aria-hidden="true" />
+              {data.blocked ? 'Desbloquear' : 'Bloquear'}
+            </button>
+          </div>
         )}
       </section>
       <h2 className="text-lg font-black text-white">Growlogs</h2>
-      {data.growlogs.length === 0 ? (
+      {data.blocked ? (
+        <p id="grower-blocked" className="bg-white rounded-[24px] border border-line p-5 text-sm text-ink-muted">
+          Bloqueaste a @{p.handle}: no ves sus growlogs ni sus comentarios.
+        </p>
+      ) : data.growlogs.length === 0 ? (
         <p className="bg-white rounded-[24px] border border-line p-5 text-sm text-ink-muted">Todavía no compartió ningún growlog.</p>
       ) : (
         <div id="grower-growlogs" className="grid grid-cols-2 sm:grid-cols-3 gap-3">

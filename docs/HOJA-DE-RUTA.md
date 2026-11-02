@@ -8,7 +8,7 @@ y de la mascota de la app. Fuente: "Cultiveta — Hoja de ruta de pendientes" (d
 | 1 | Línea de tiempo con forma de planta | En curso |
 | 2 | Enchufes inteligentes por Wi-Fi | Hecho (2026-10-31): a mano + Equipos, Smart Life, bomba y clima, riego automático, eWeLink y Shelly. Falta habilitar la app de eWeLink (ver PENDIENTES) |
 | 3 | Indoors / carpas | Hecho (2026-11-01): ambientes interiores y exteriores; el Jardín muestra ambientes → genéticas |
-| 4 | Comunidad | En curso (2026-11-01): como en Canopia. Hecho: perfil de grower, compartir cada genética (Privado / No listado / Público), página del growlog, Explorar, Siguiendo, Seguir, denuncias y admin. Falta: me gusta, comentarios, vistas, avisos y bloquear |
+| 4 | Comunidad | Hecho (2026-11-01): como en Canopia. Perfil de grower, compartir cada genética (Privado / No listado / Público), página del growlog, Explorar, Siguiendo, Seguir, me gusta, comentarios, vistas, avisos, bloquear, denuncias y admin |
 | 5 | Privacidad y ubicación | En curso (2026-11-01): todas las fotos se guardan sin datos internos ni ubicación. Falta la ubicación general opcional al publicar (va con la Comunidad) |
 | 6 | Mascota personalizable | Falta definir la mascota oficial. Experiencia, niveles, logros y racha ya están hechos |
 | 7 | Minijuego endless runner | Depende de la mascota. Declarar bien la clasificación por edad en Play Store |
@@ -146,7 +146,12 @@ Perfil de grower `/comunidad/growers/:usuario` con Seguir. Lo público es una **
 (`src/server/community/`, `src/utils/growlog.ts`): los cultivos siguen privados y las colecciones nuevas solo las
 toca el servidor (reglas). Las fotos se copian limpias (sin ubicación) a `community/growlogs/{id}/`. Denunciar
 growlog o grower; con 3 denuncias de personas distintas se oculta solo; pantalla de denuncias para el admin.
-**Falta (fase 3):** me gusta, comentarios, contador de vistas, avisos y bloquear.
+Interacción: me gusta (también en Siguiendo), comentarios de hasta 280 letras (10 por minuto como mucho; los borra
+quien los escribió, el dueño del growlog o el admin), una vista por persona por día, avisos en la campana de
+Comunidad (te siguieron, me gusta, comentarios) y bloquear desde el perfil del grower (no ves lo suyo, no te comenta
+ni te sigue y no te avisa). Borrar la cuenta se lleva también sus comentarios, me gusta y seguidos.
+**Para más adelante:** avisos fuera de la app (notificaciones del celular) y el nivel del grower calculado en el
+servidor (hoy lo manda la app).
 
 - **Identidad a elección del usuario:**
   - Cuenta de Google.

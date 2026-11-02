@@ -2450,8 +2450,8 @@ function sendCommunityError(res: express.Response, err: unknown, logTag: string)
 app.get('/api/community/me', verifyFirebaseAuth, async (req, res) => {
   try {
     const uid = req.userId!;
-    const [profile, growlogs] = await Promise.all([communityService.getProfile(uid), communityService.myGrowlogs(uid)]);
-    res.json({ profile, growlogs: growlogs.map(growlogCard), isAdmin: isRequestAdmin(req), googlePhoto: req.user?.picture || null });
+    const [profile, growlogs, unread] = await Promise.all([communityService.getProfile(uid), communityService.myGrowlogs(uid), communityService.unreadCount(uid)]);
+    res.json({ profile, growlogs: growlogs.map(growlogCard), isAdmin: isRequestAdmin(req), googlePhoto: req.user?.picture || null, unread });
   } catch (err) {
     return sendCommunityError(res, err, 'community/me');
   }
@@ -2499,7 +2499,8 @@ app.post('/api/community/refresh', verifyFirebaseAuth, async (req, res) => {
 
 app.get('/api/community/growlogs/:id', verifyFirebaseAuth, async (req, res) => {
   try {
-    res.json({ growlog: await communityService.getGrowlog(req.userId!, String(req.params.id), { isAdmin: isRequestAdmin(req) }) });
+    const growlog = await communityService.getGrowlog(req.userId!, String(req.params.id), { isAdmin: isRequestAdmin(req) });
+    res.json({ growlog, viewer: await communityService.viewerState(req.userId!, growlog) });
   } catch (err) {
     return sendCommunityError(res, err, 'community/growlog');
   }
@@ -2524,7 +2525,7 @@ app.get('/api/community/explore', verifyFirebaseAuth, async (req, res) => {
 
 app.get('/api/community/feed', verifyFirebaseAuth, async (req, res) => {
   try {
-    res.json({ growlogs: await communityService.feed(req.userId!) });
+    res.json(await communityService.feed(req.userId!));
   } catch (err) {
     return sendCommunityError(res, err, 'community/feed');
   }
@@ -2543,6 +2544,72 @@ app.post('/api/community/follow', verifyFirebaseAuth, async (req, res) => {
     res.json(await communityService.follow(req.userId!, req.body || {}));
   } catch (err) {
     return sendCommunityError(res, err, 'community/follow');
+  }
+});
+
+app.post('/api/community/growlogs/:id/view', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json(await communityService.view(req.userId!, String(req.params.id)));
+  } catch (err) {
+    return sendCommunityError(res, err, 'community/view');
+  }
+});
+
+app.post('/api/community/growlogs/:id/like', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json(await communityService.like(req.userId!, String(req.params.id), req.body?.like !== false));
+  } catch (err) {
+    return sendCommunityError(res, err, 'community/like');
+  }
+});
+
+app.get('/api/community/growlogs/:id/comments', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json({ comments: await communityService.comments(req.userId!, String(req.params.id), { isAdmin: isRequestAdmin(req) }) });
+  } catch (err) {
+    return sendCommunityError(res, err, 'community/comments');
+  }
+});
+
+app.post('/api/community/growlogs/:id/comments', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json({ comment: await communityService.addComment(req.userId!, String(req.params.id), req.body || {}) });
+  } catch (err) {
+    return sendCommunityError(res, err, 'community/comment');
+  }
+});
+
+app.delete('/api/community/growlogs/:id/comments/:cid', verifyFirebaseAuth, async (req, res) => {
+  try {
+    await communityService.deleteComment(req.userId!, String(req.params.id), String(req.params.cid), { isAdmin: isRequestAdmin(req) });
+    res.json({ success: true });
+  } catch (err) {
+    return sendCommunityError(res, err, 'community/comment-delete');
+  }
+});
+
+app.post('/api/community/block', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json(await communityService.block(req.userId!, req.body || {}));
+  } catch (err) {
+    return sendCommunityError(res, err, 'community/block');
+  }
+});
+
+app.get('/api/community/notifications', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json({ notifications: await communityService.notifications(req.userId!) });
+  } catch (err) {
+    return sendCommunityError(res, err, 'community/notifications');
+  }
+});
+
+app.post('/api/community/notifications/read', verifyFirebaseAuth, async (req, res) => {
+  try {
+    await communityService.markRead(req.userId!);
+    res.json({ success: true });
+  } catch (err) {
+    return sendCommunityError(res, err, 'community/notifications-read');
   }
 });
 

@@ -290,6 +290,79 @@ async function run() {
     await click(c.querySelector('#grower-follow'));
     await settle();
     assert(c.querySelector('#grower-follow')?.textContent === 'Siguiendo' && /9seguidores/.test((c.querySelector('#grower-stats')?.textContent || '').replace(/\s/g, '')), 'sigue');
+    // bloquear: pide confirmación, deja de mostrar sus growlogs y se puede deshacer
+    routes['POST /block'] = (b) => ({ blocked: b.block });
+    (window as any).confirm = () => true;
+    await click(c.querySelector('#grower-block'));
+    await settle();
+    assert(c.querySelector('#grower-blocked') && !c.querySelector('#grower-growlogs') && !c.querySelector('#grower-follow'), 'bloqueado');
+    assert(c.querySelector('#grower-block')?.textContent?.includes('Desbloquear'), 'se puede desbloquear');
+    await m.unmount();
+  });
+
+  await check('9. Me gusta, Seguir y comentarios en el growlog', async () => {
+    let likes = 4;
+    const comments: any[] = [
+      { id: 'k1', growlogId: 'g3', authorUid: 'u3', authorHandle: 'pato', authorName: 'Pato', authorAvatarUrl: null, authorAvatarColor: '#123', text: 'Qué lindo color', hidden: false, reports: 0, createdAt: new Date(Date.now() - 3 * 3600_000).toISOString() },
+    ];
+    routes = {
+      'GET /me': () => ({ profile, growlogs: [], isAdmin: false, googlePhoto: null, unread: 0 }),
+      'GET /growlogs/g3/comments': () => ({ comments }),
+      'GET /growlogs/g3': () => ({ growlog: growlog('g3', { ownerUid: 'u2', ownerHandle: 'luna', ownerName: 'Luna', likes, comments: 1 }), viewer: { liked: false, following: false, blocked: false } }),
+      'POST /growlogs/g3/view': () => ({ views: 1 }),
+      'POST /growlogs/g3/like': (b) => ({ liked: b.like, likes: (likes += b.like ? 1 : -1) }),
+      'POST /growlogs/g3/comments': (b) => ({ comment: { ...comments[0], id: 'k2', authorUid: 'u1', authorHandle: 'agus', text: b.text, createdAt: new Date().toISOString() } }),
+      'POST /follow': (b) => ({ following: b.follow, followers: 1 }),
+    };
+    await communityService.loadMe(true);
+    calls.length = 0;
+    const m = await mount(React.createElement(GrowlogView, { growlogId: 'g3', userId: 'u1', onBack: () => {} }));
+    await settle();
+    const c = m.container;
+    assert(calls.some((x) => x.method === 'POST' && x.url.endsWith('/g3/view')), 'cuenta la vista');
+    await click(c.querySelector('#growlog-like'));
+    await settle();
+    assert(c.querySelector('#growlog-like')?.getAttribute('aria-pressed') === 'true' && /5/.test(c.querySelector('#growlog-like')?.textContent || ''), 'me gusta');
+    await click(c.querySelector('#growlog-follow'));
+    await settle();
+    assert(c.querySelector('#growlog-follow')?.textContent === 'Siguiendo', 'sigue al grower');
+    await click(c.querySelector('#growlog-tab-comentarios'));
+    await settle();
+    assert(/Qué lindo color/.test(c.querySelector('#growlog-comments')?.textContent || '') && /hace 3 h/.test(c.querySelector('#growlog-comments')?.textContent || ''), 'lista de comentarios');
+    assert(c.querySelector('[data-report-comment="k1"]') && !c.querySelector('[data-delete-comment="k1"]'), 'el de otro se denuncia, no se borra');
+    await type(c.querySelector('#growlog-comment-input'), 'Gracias por compartir');
+    await act(async () => (c.querySelector('#growlog-composer') as HTMLFormElement).dispatchEvent(new Event('submit', { bubbles: true, cancelable: true })));
+    await settle();
+    assert(c.querySelectorAll('[data-comment]').length === 2 && c.querySelector('[data-delete-comment="k2"]'), 'el propio se agrega y se puede borrar');
+    assert((c.querySelector('#growlog-comment-input') as HTMLInputElement).value === '', 'limpia la caja');
+    assert(/Comentarios \(2\)/.test(c.querySelector('#growlog-tab-comentarios')?.textContent || ''), 'cuenta');
+    await m.unmount();
+  });
+
+  await check('10. Campana de avisos: sin leer, lista y se marcan leídos', async () => {
+    routes = {
+      'GET /me': () => ({ profile, growlogs: [], isAdmin: false, googlePhoto: null, unread: 2 }),
+      'GET /notifications': () => ({
+        notifications: [
+          { id: 'n1', kind: 'comment', fromUid: 'u2', fromHandle: 'luna', fromName: 'Luna', fromAvatarUrl: null, fromAvatarColor: '#123', growlogId: 'g1', growlogTitle: 'Gelato 33', text: 'Hermosa', read: false, createdAt: '' },
+          { id: 'n2', kind: 'follow', fromUid: 'u3', fromHandle: 'pato', fromName: 'Pato', fromAvatarUrl: null, fromAvatarColor: '#123', growlogId: null, growlogTitle: null, text: null, read: false, createdAt: '' },
+        ],
+      }),
+      'POST /notifications/read': () => ({ success: true }),
+    };
+    await communityService.loadMe(true);
+    const opened: string[] = [];
+    const m = await mount(React.createElement(CommunityView, { userId: 'u1', cultivations: [], onOpenGrowlog: (id: string) => opened.push(id), onOpenGrower: (h: string) => opened.push('@' + h), onOpenAdmin: () => {}, initialExplore: { growlogs: [], growers: [], following: [] }, initialFeed: [] }));
+    await settle();
+    const c = m.container;
+    assert(c.querySelector('#community-unread')?.textContent === '2', 'muestra 2 sin leer');
+    calls.length = 0;
+    await click(c.querySelector('#community-bell'));
+    await settle();
+    assert(/@luna comentó en Gelato 33/.test(c.querySelector('#notices-panel')?.textContent || '') && /@pato te empezó a seguir/.test(c.querySelector('#notices-panel')?.textContent || ''), c.querySelector('#notices-panel')?.textContent || '');
+    assert(calls.some((x) => x.url.endsWith('/notifications/read')) && !c.querySelector('#community-unread'), 'quedan leídos');
+    await click(c.querySelector('[data-notice="follow"]'));
+    assert(opened.includes('@pato') && !c.querySelector('#notices-panel'), 'abre el grower');
     await m.unmount();
   });
 

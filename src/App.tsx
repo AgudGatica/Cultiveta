@@ -854,6 +854,7 @@ export default function App() {
               userId={currentUser.uid}
               onBack={() => (window.history.length > 1 ? navigate(-1) : setCurrentView('community'))}
               onOpenGrower={(handle) => navigate(pathForGrower(handle))}
+              onNeedProfile={() => setCurrentView('community')}
               onEditShare={(g) => {
                 const crop = cultivations.find((c) => c.id === g.cropId);
                 if (crop) navigate(pathForGenetic(crop.indoorId || 'sin-ambiente', crop.id, g.geneticIndex));

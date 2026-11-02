@@ -275,13 +275,107 @@ async function run() {
     await svc.follow('u2', { uid: 'u1', follow: true });
     assert(f.following && (await db.get('profiles/u1')).followers === 1 && (await db.get('profiles/u2')).following === 1, 'sigue una vez');
     assert((await svc.grower('u2', 'agus_grow')).following, 'figura como seguido');
-    const feed = await svc.feed('u2');
+    const feed = (await svc.feed('u2')).growlogs;
     assert(feed.map((g) => g.id).join() === pub.id, 'Siguiendo: lo público de a quien seguís');
     await svc.follow('u2', { uid: 'u1', follow: false });
-    assert((await db.get('profiles/u1')).followers === 0 && (await svc.feed('u2')).length === 0, 'deja de seguir');
+    assert((await db.get('profiles/u1')).followers === 0 && (await svc.feed('u2')).growlogs.length === 0, 'deja de seguir');
     for (const u of ['u3', 'u4', 'u5']) await svc.report(u, { kind: 'profile', targetId: 'u1', reason: 'spam' });
     assert((await svc.explore('u2')).growlogs.length === 0, 'grower oculto: sus growlogs salen de Explorar');
     await rejects(svc.grower('u2', 'agus_grow'), /No encontramos/, 404);
+  });
+
+  await check('13. Me gusta y vistas: una por persona, avisos al dueño', async () => {
+    const { svc, db } = setup();
+    await svc.saveProfile('u1', profileInput);
+    await svc.saveProfile('u2', { ...profileInput, handle: 'luna', displayName: 'Luna' });
+    const g = await svc.publish('u1', { cropId: 'c1', geneticIndex: 0, privacy: 'public' });
+    await rejects(svc.like('u3', g.id, true), /perfil/, 409);
+    assert((await svc.like('u2', g.id, true)).likes === 1 && (await svc.like('u2', g.id, true)).likes === 1, 'me gusta una vez');
+    assert((await svc.viewerState('u2', (await db.get(`growlogs/${g.id}`)) as any)).liked, 'figura el me gusta');
+    const notes = await svc.notifications('u1');
+    assert(notes.length === 1 && notes[0].kind === 'like' && notes[0].fromHandle === 'luna' && notes[0].growlogTitle === 'Gelato 33', JSON.stringify(notes));
+    assert((await svc.unreadCount('u1')) === 1, 'sin leer');
+    await svc.markRead('u1');
+    assert((await svc.unreadCount('u1')) === 0, 'leídos');
+    assert((await svc.like('u2', g.id, false)).likes === 0 && ((await db.get(`growlogs/${g.id}`)) as any).likes === 0, 'saca el me gusta');
+    await svc.like('u1', g.id, true);
+    assert((await svc.notifications('u1')).length === 1, 'tu propio me gusta no avisa');
+    assert((await svc.view('u2', g.id)).views === 1 && (await svc.view('u2', g.id)).views === 1, 'una vista por día');
+    assert((await svc.view('u1', g.id)).views === 1, 'las del dueño no cuentan');
+    tick(86400_000);
+    assert((await svc.view('u2', g.id)).views === 2, 'otro día cuenta');
+    assert((await db.get('profiles/u1')).views === 2, 'suma al perfil');
+  });
+
+  await check('14. Comentarios: largo, límite por minuto, quién borra y denuncias', async () => {
+    const { svc, db } = setup();
+    await svc.saveProfile('u1', profileInput);
+    await svc.saveProfile('u2', { ...profileInput, handle: 'luna', displayName: 'Luna' });
+    await svc.saveProfile('u3', { ...profileInput, handle: 'pato', displayName: 'Pato' });
+    const g = await svc.publish('u1', { cropId: 'c1', geneticIndex: 0, privacy: 'public' });
+    await rejects(svc.addComment('u2', g.id, { text: '   ' }), /Escribí/);
+    const c = await svc.addComment('u2', g.id, { text: 'x'.repeat(400) });
+    assert(c.text.length === 280 && c.authorHandle === 'luna', 'recorta a 280');
+    assert(((await db.get(`growlogs/${g.id}`)) as any).comments === 1, 'cuenta');
+    assert((await svc.notifications('u1')).some((n) => n.kind === 'comment' && n.text?.startsWith('xxx')), 'avisa al dueño');
+    for (let i = 0; i < 9; i++) await svc.addComment('u2', g.id, { text: `hola ${i}` });
+    await rejects(svc.addComment('u2', g.id, { text: 'uno más' }), /muy seguido/, 429);
+    tick(61_000);
+    await svc.addComment('u2', g.id, { text: 'ya pasó el minuto' });
+    await rejects(svc.deleteComment('u3', g.id, c.id), /no es tuyo/, 403);
+    await svc.deleteComment('u1', g.id, c.id);
+    assert(!(await db.get(`growlogs/${g.id}/comments/${c.id}`)) && ((await db.get(`growlogs/${g.id}`)) as any).comments === 10, 'el dueño del growlog borra');
+    const list = await svc.comments('u3', g.id);
+    assert(list.length === 10 && list[0].text === 'hola 0', 'el más viejo primero');
+    for (const u of ['u3', 'u4', 'u5']) await svc.report(u, { kind: 'comment', targetId: list[0].id, growlogId: g.id, reason: 'spam' });
+    assert((await svc.comments('u3', g.id)).length === 9, 'con 3 denuncias se oculta');
+    assert((await svc.comments('u2', g.id)).length === 10, 'su autor lo sigue viendo');
+  });
+
+  await check('15. Bloquear: no ves lo suyo, no te comenta ni te sigue y no te avisa', async () => {
+    const { svc } = setup();
+    await svc.saveProfile('u1', profileInput);
+    await svc.saveProfile('u2', { ...profileInput, handle: 'luna', displayName: 'Luna' });
+    const g = await svc.publish('u1', { cropId: 'c1', geneticIndex: 0, privacy: 'public' });
+    await svc.follow('u2', { uid: 'u1' });
+    await svc.addComment('u2', g.id, { text: 'antes' });
+    await rejects(svc.block('u1', { uid: 'u1' }), /vos/);
+    await svc.block('u1', { uid: 'u2' });
+    assert((await svc.getProfile('u1'))?.followers === 0, 'se dejan de seguir');
+    await rejects(svc.addComment('u2', g.id, { text: 'después' }), /No podés comentar/, 403);
+    await rejects(svc.follow('u2', { uid: 'u1' }), /No podés seguir/, 403);
+    assert((await svc.comments('u1', g.id)).length === 0, 'no ves sus comentarios');
+    await svc.saveProfile('u1', profileInput);
+    await svc.publish('u1', { cropId: 'c1', geneticIndex: 1, privacy: 'public' });
+    const before = (await svc.notifications('u1')).length;
+    await svc.like('u2', g.id, true);
+    assert((await svc.notifications('u1')).length === before, 'no te avisa');
+    // quien bloquea no ve al bloqueado
+    const ex = await svc.explore('u1');
+    assert(!ex.growers.some((p) => p.uid === 'u2'), 'no aparece en growers');
+    assert((await svc.grower('u1', 'luna')).blocked, 'figura bloqueado');
+    await svc.block('u1', { uid: 'u2', block: false });
+    assert(!(await svc.grower('u1', 'luna')).blocked, 'desbloquea');
+  });
+
+  await check('16. Borrar la cuenta se lleva sus comentarios, me gusta y seguidos', async () => {
+    const { svc, db } = setup();
+    await svc.saveProfile('u1', profileInput);
+    await svc.saveProfile('u2', { ...profileInput, handle: 'luna', displayName: 'Luna' });
+    const g = await svc.publish('u1', { cropId: 'c1', geneticIndex: 0, privacy: 'public' });
+    await svc.like('u2', g.id, true);
+    await svc.addComment('u2', g.id, { text: 'hola' });
+    await svc.follow('u2', { uid: 'u1' });
+    await svc.follow('u1', { uid: 'u2' });
+    // una referencia trucha a un comentario ajeno no se borra
+    const mine = await svc.addComment('u1', g.id, { text: 'del dueño' });
+    await db.set(`users/u2/communityRefs/c_${g.id}_${mine.id}`, { kind: 'comment', growlogId: g.id, commentId: mine.id });
+    await svc.deleteAllForUser('u2');
+    const after = (await db.get(`growlogs/${g.id}`)) as any;
+    assert(after.likes === 0 && after.comments === 1, `contadores: ${after.likes} ${after.comments}`);
+    assert(await db.get(`growlogs/${g.id}/comments/${mine.id}`), 'el comentario ajeno sigue');
+    const p1 = (await db.get('profiles/u1')) as any;
+    assert(p1.followers === 0 && p1.following === 0 && (await db.query('follows')).length === 0, 'sin seguidos');
   });
 
   await check('11. Ayudas: búsqueda, sustrato y ubicación', () => {

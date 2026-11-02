@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, BarChart3, Camera, Clock, Dna, Eye, Flag, Heart, Home, Layers, MapPin, MessageCircle, Share2, Sparkles, Sprout, Sun, Timer } from 'lucide-react';
+import { ArrowLeft, BarChart3, Camera, Clock, Dna, Eye, Flag, Heart, Home, Layers, MapPin, MessageCircle, Send, Share2, Sparkles, Sprout, Sun, Timer, Trash2 } from 'lucide-react';
 import type { PhotoRecord } from '../../types';
-import { communityService, growlogLink } from '../../services/communityService';
+import { communityService, growlogLink, useCommunityMe, type Comment, type GrowlogViewer } from '../../services/communityService';
 import { buildCultivationStageSchedule } from '../../utils/growthStageUtils';
 import { targetsForStages } from '../../utils/ambientEvaluation';
 import { growlogSummary, wateringsByWeek, type Growlog } from '../../utils/growlog';
@@ -24,15 +24,33 @@ interface Props {
   onOpenGrower?: (handle: string) => void;
   /** El dueño quiere cambiar la privacidad (abre Compartir desde su genética). */
   onEditShare?: (g: Growlog) => void;
+  /** Para comentar o dar me gusta hace falta el perfil de grower. */
+  onNeedProfile?: () => void;
   showToast?: (msg: string) => void;
 }
+
+const timeAgo = (iso: string, now = Date.now()) => {
+  const m = Math.max(0, Math.round((now - Date.parse(iso)) / 60000));
+  if (m < 1) return 'recién';
+  if (m < 60) return `hace ${m} min`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `hace ${h} h`;
+  const d = Math.round(h / 24);
+  return d === 1 ? 'ayer' : d < 30 ? `hace ${d} días` : new Date(iso).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' });
+};
 
 /**
  * Un growlog público (como en Canopia): portada, genética, etapa y semanas; el grower; vistas, me gusta,
  * comentarios y fotos; y cinco pestañas: Resumen, Etapas, Gráficos, Comentarios y Timeline (la maceta).
  */
-export const GrowlogView: React.FC<Props> = ({ growlogId, userId, onBack, onOpenGrower, onEditShare, showToast }) => {
+export const GrowlogView: React.FC<Props> = ({ growlogId, userId, onBack, onOpenGrower, onEditShare, onNeedProfile, showToast }) => {
+  const me = useCommunityMe();
   const [g, setG] = useState<Growlog | null>(null);
+  const [viewer, setViewer] = useState<GrowlogViewer>({ liked: false, following: false, blocked: false });
+  const [comments, setComments] = useState<Comment[] | null>(null);
+  const [draft, setDraft] = useState('');
+  const [sending, setSending] = useState(false);
+  const [reportingComment, setReportingComment] = useState<Comment | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('resumen');
   const [reporting, setReporting] = useState(false);
@@ -42,14 +60,88 @@ export const GrowlogView: React.FC<Props> = ({ growlogId, userId, onBack, onOpen
     let alive = true;
     setG(null);
     setError(null);
+    setComments(null);
     communityService
       .getGrowlog(growlogId)
-      .then((d) => alive && setG(d))
+      .then((d) => {
+        if (!alive) return;
+        setG(d.growlog);
+        setViewer(d.viewer || { liked: false, following: false, blocked: false });
+        // una vista por persona por día (las del dueño no cuentan)
+        if (d.growlog.ownerUid !== userId) communityService.view(growlogId).then((v) => alive && setG((cur) => (cur ? { ...cur, views: v.views } : cur))).catch(() => {});
+      })
       .catch((e) => alive && setError(e?.message || 'No se pudo abrir.'));
     return () => {
       alive = false;
     };
-  }, [growlogId]);
+  }, [growlogId, userId]);
+
+  useEffect(() => {
+    if (tab !== 'comentarios' || comments) return;
+    communityService
+      .comments(growlogId)
+      .then(setComments)
+      .catch(() => setComments([]));
+  }, [tab, comments, growlogId]);
+
+  const needProfile = () => {
+    if (me?.profile) return false;
+    showToast?.('Primero armá tu perfil de grower.');
+    onNeedProfile?.();
+    return true;
+  };
+
+  const toggleLike = async () => {
+    if (!g || needProfile()) return;
+    const next = !viewer.liked;
+    setViewer((v) => ({ ...v, liked: next }));
+    setG({ ...g, likes: Math.max(0, g.likes + (next ? 1 : -1)) });
+    try {
+      const r = await communityService.like(g.id, next);
+      setViewer((v) => ({ ...v, liked: r.liked }));
+      setG((cur) => (cur ? { ...cur, likes: r.likes } : cur));
+    } catch (e: any) {
+      setViewer((v) => ({ ...v, liked: !next }));
+      showToast?.(e?.message || 'No se pudo.');
+    }
+  };
+
+  const toggleFollow = async () => {
+    if (!g || needProfile()) return;
+    try {
+      const r = await communityService.follow(g.ownerUid, !viewer.following);
+      setViewer((v) => ({ ...v, following: r.following }));
+    } catch (e: any) {
+      showToast?.(e?.message || 'No se pudo.');
+    }
+  };
+
+  const send = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!g || !draft.trim() || needProfile()) return;
+    setSending(true);
+    try {
+      const c = await communityService.addComment(g.id, draft);
+      setComments((list) => [...(list || []), c]);
+      setG((cur) => (cur ? { ...cur, comments: cur.comments + 1 } : cur));
+      setDraft('');
+    } catch (err: any) {
+      showToast?.(err?.message || 'No se pudo comentar.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const removeComment = async (c: Comment) => {
+    if (!g || !window.confirm('¿Borrar este comentario?')) return;
+    try {
+      await communityService.deleteComment(g.id, c.id);
+      setComments((list) => (list || []).filter((x) => x.id !== c.id));
+      setG((cur) => (cur ? { ...cur, comments: Math.max(0, cur.comments - 1) } : cur));
+    } catch (err: any) {
+      showToast?.(err?.message || 'No se pudo borrar.');
+    }
+  };
 
   const schedule = useMemo(() => (g ? buildCultivationStageSchedule(g.crop, []) : null), [g]);
   const photos: PhotoRecord[] = useMemo(
@@ -154,25 +246,38 @@ export const GrowlogView: React.FC<Props> = ({ growlogId, userId, onBack, onOpen
             {g.privacy === 'public' ? 'Público' : 'No listado'}
           </button>
         ) : (
-          <button type="button" id="growlog-report" onClick={() => setReporting(true)} aria-label="Denunciar" className="min-h-10 min-w-10 rounded-full inline-flex items-center justify-center text-ink-muted hover:text-error hover:bg-surface">
-            <Flag className="w-4 h-4" aria-hidden="true" />
-          </button>
+          <>
+            <button type="button" id="growlog-follow" onClick={toggleFollow} className={`${viewer.following ? 'cultiveta-btn-secondary' : 'cultiveta-btn-primary'} text-xs`}>
+              {viewer.following ? 'Siguiendo' : 'Seguir'}
+            </button>
+            <button type="button" id="growlog-report" onClick={() => setReporting(true)} aria-label="Denunciar" className="min-h-10 min-w-10 rounded-full inline-flex items-center justify-center text-ink-muted hover:text-error hover:bg-surface">
+              <Flag className="w-4 h-4" aria-hidden="true" />
+            </button>
+          </>
         )}
       </div>
 
       <div id="growlog-metrics" className="grid grid-cols-4 gap-2 text-center">
-        {[
-          [Eye, kfmt(g.views), 'vistas'],
-          [Heart, kfmt(g.likes), 'me gusta'],
-          [MessageCircle, String(g.comments), 'comentarios'],
-          [Camera, String(g.photos.length), 'fotos'],
-        ].map(([Icon, v, l]: any) => (
-          <div key={l} className="cultiveta-card p-2.5">
-            <Icon className="w-4 h-4 mx-auto text-brand" aria-hidden="true" />
-            <b className="block text-base font-black text-ink leading-tight">{v}</b>
-            <small className="block text-[10px] text-ink-muted">{l}</small>
-          </div>
-        ))}
+        <div className="cultiveta-card p-2.5">
+          <Eye className="w-4 h-4 mx-auto text-brand" aria-hidden="true" />
+          <b className="block text-base font-black text-ink leading-tight">{kfmt(g.views)}</b>
+          <small className="block text-[10px] text-ink-muted">vistas</small>
+        </div>
+        <button type="button" id="growlog-like" aria-pressed={viewer.liked} onClick={toggleLike} className={`cultiveta-card p-2.5 ${viewer.liked ? 'ring-2 ring-coral' : ''}`}>
+          <Heart className={`w-4 h-4 mx-auto ${viewer.liked ? 'text-coral fill-coral' : 'text-brand'}`} aria-hidden="true" />
+          <b className="block text-base font-black text-ink leading-tight">{kfmt(g.likes)}</b>
+          <small className="block text-[10px] text-ink-muted">me gusta</small>
+        </button>
+        <button type="button" onClick={() => setTab('comentarios')} className="cultiveta-card p-2.5">
+          <MessageCircle className="w-4 h-4 mx-auto text-brand" aria-hidden="true" />
+          <b className="block text-base font-black text-ink leading-tight">{g.comments}</b>
+          <small className="block text-[10px] text-ink-muted">comentarios</small>
+        </button>
+        <button type="button" onClick={() => setTab('timeline')} className="cultiveta-card p-2.5">
+          <Camera className="w-4 h-4 mx-auto text-brand" aria-hidden="true" />
+          <b className="block text-base font-black text-ink leading-tight">{g.photos.length}</b>
+          <small className="block text-[10px] text-ink-muted">fotos</small>
+        </button>
       </div>
 
       <div role="tablist" aria-label="Secciones" className="flex overflow-x-auto p-1 rounded-2xl bg-white/15 gap-1 [scrollbar-width:none]">
@@ -183,7 +288,10 @@ export const GrowlogView: React.FC<Props> = ({ growlogId, userId, onBack, onOpen
             role="tab"
             id={`growlog-tab-${t}`}
             aria-selected={tab === t}
-            onClick={() => setTab(t)}
+            onClick={(e) => {
+              setTab(t);
+              e.currentTarget.scrollIntoView?.({ block: 'nearest', inline: 'nearest', behavior: 'smooth' });
+            }}
             className={`shrink-0 min-h-11 px-3.5 rounded-xl text-sm font-extrabold whitespace-nowrap transition-colors ${tab === t ? 'bg-white text-ink shadow-xs' : 'text-white hover:bg-white/10'}`}
           >
             {tabs[t]}
@@ -271,11 +379,57 @@ export const GrowlogView: React.FC<Props> = ({ growlogId, userId, onBack, onOpen
 
       {tab === 'comentarios' && (
         <div id="growlog-panel-comentarios" role="tabpanel">
-          <section className={`${CARD} text-center space-y-1`}>
-            <MessageCircle className="w-6 h-6 mx-auto text-brand" aria-hidden="true" />
-            <b className="block text-sm text-ink">Muy pronto vas a poder comentar</b>
-            <p className="text-xs text-ink-muted">Los comentarios y los me gusta llegan en la próxima versión.</p>
+          <section id="growlog-comments" className={`${CARD} space-y-3`}>
+            {!comments ? (
+              <p className="text-xs text-ink-muted">Cargando comentarios…</p>
+            ) : comments.length === 0 ? (
+              <p className="text-xs text-ink-muted">Todavía no hay comentarios. ¡Dejá el primero!</p>
+            ) : (
+              <ul className="space-y-3">
+                {comments.map((c) => {
+                  const canDelete = c.authorUid === userId || own || me?.isAdmin;
+                  return (
+                    <li key={c.id} data-comment={c.id} className="flex gap-2.5">
+                      <button type="button" onClick={() => onOpenGrower?.(c.authorHandle)} aria-label={`@${c.authorHandle}`}>
+                        <Avatar url={c.authorAvatarUrl} name={c.authorName} color={c.authorAvatarColor} size={32} />
+                      </button>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <b className="text-xs text-ink truncate">{c.authorUid === userId ? 'Vos' : `@${c.authorHandle}`}</b>
+                          <small className="text-[11px] text-ink-subtle">{timeAgo(c.createdAt)}</small>
+                          {c.hidden && <small className="text-[11px] font-bold text-error">oculto</small>}
+                        </div>
+                        <p className="text-sm text-ink whitespace-pre-line break-words">{c.text}</p>
+                      </div>
+                      {canDelete ? (
+                        <button type="button" data-delete-comment={c.id} onClick={() => removeComment(c)} aria-label="Borrar comentario" className="self-start p-1.5 rounded-full text-ink-subtle hover:text-error hover:bg-surface">
+                          <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
+                        </button>
+                      ) : (
+                        <button type="button" data-report-comment={c.id} onClick={() => setReportingComment(c)} aria-label="Denunciar comentario" className="self-start p-1.5 rounded-full text-ink-subtle hover:text-error hover:bg-surface">
+                          <Flag className="w-3.5 h-3.5" aria-hidden="true" />
+                        </button>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </section>
+          <form id="growlog-composer" onSubmit={send} className="flex items-center gap-2 bg-white rounded-full border border-line p-1.5 pl-4">
+            <input
+              id="growlog-comment-input"
+              value={draft}
+              maxLength={280}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder={me?.profile ? 'Escribí un comentario…' : 'Armá tu perfil para comentar'}
+              aria-label="Comentario"
+              className="flex-1 min-w-0 min-h-10 bg-transparent text-sm text-ink focus:outline-hidden"
+            />
+            <button type="submit" id="growlog-comment-send" disabled={sending || !draft.trim()} aria-label="Enviar" className="w-10 h-10 rounded-full bg-primary text-ink inline-flex items-center justify-center disabled:opacity-40">
+              <Send className="w-4 h-4" aria-hidden="true" />
+            </button>
+          </form>
         </div>
       )}
 
@@ -286,6 +440,9 @@ export const GrowlogView: React.FC<Props> = ({ growlogId, userId, onBack, onOpen
       )}
 
       {reporting && <ReportModal kind="growlog" targetId={g.id} what={`el growlog ${g.title}`} onClose={() => setReporting(false)} showToast={showToast} />}
+      {reportingComment && (
+        <ReportModal kind="comment" targetId={reportingComment.id} growlogId={g.id} what={`el comentario de @${reportingComment.authorHandle}`} onClose={() => setReportingComment(null)} showToast={showToast} />
+      )}
     </div>
   );
 };

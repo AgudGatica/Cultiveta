@@ -6,12 +6,24 @@
 import { useSyncExternalStore } from 'react';
 import { authFetch } from './apiClient';
 import type { GrowerCard, Growlog, GrowlogCard, GrowlogPrivacy, PublicProfile } from '../utils/growlog';
+import type { Comment, Notice } from '../server/community/communityService';
+
+export type { Comment, Notice };
 
 export interface CommunityMe {
   profile: PublicProfile | null;
   growlogs: GrowlogCard[];
   isAdmin: boolean;
   googlePhoto: string | null;
+  /** Avisos sin leer. */
+  unread?: number;
+}
+
+/** Lo que ve quien abre un growlog. */
+export interface GrowlogViewer {
+  liked: boolean;
+  following: boolean;
+  blocked: boolean;
 }
 
 export interface ReportGroup {
@@ -108,8 +120,41 @@ export const communityService = {
     if (me) setMe({ ...me, growlogs: me.growlogs.filter((g) => g.id !== id) });
   },
 
-  async getGrowlog(id: string): Promise<Growlog> {
-    return (await call<{ growlog: Growlog }>('/growlogs/' + encodeURIComponent(id))).growlog;
+  async getGrowlog(id: string): Promise<{ growlog: Growlog; viewer: GrowlogViewer }> {
+    return call('/growlogs/' + encodeURIComponent(id));
+  },
+
+  async view(id: string): Promise<{ views: number }> {
+    return call('/growlogs/' + encodeURIComponent(id) + '/view', { method: 'POST' });
+  },
+
+  async like(id: string, like: boolean): Promise<{ liked: boolean; likes: number }> {
+    return call('/growlogs/' + encodeURIComponent(id) + '/like', { method: 'POST', body: JSON.stringify({ like }) });
+  },
+
+  async comments(id: string): Promise<Comment[]> {
+    return (await call<{ comments: Comment[] }>('/growlogs/' + encodeURIComponent(id) + '/comments')).comments;
+  },
+
+  async addComment(id: string, text: string): Promise<Comment> {
+    return (await call<{ comment: Comment }>('/growlogs/' + encodeURIComponent(id) + '/comments', { method: 'POST', body: JSON.stringify({ text }) })).comment;
+  },
+
+  async deleteComment(id: string, commentId: string) {
+    await call('/growlogs/' + encodeURIComponent(id) + '/comments/' + encodeURIComponent(commentId), { method: 'DELETE' });
+  },
+
+  async block(uid: string, block: boolean): Promise<{ blocked: boolean }> {
+    return call('/block', { method: 'POST', body: JSON.stringify({ uid, block }) });
+  },
+
+  async notifications(): Promise<Notice[]> {
+    return (await call<{ notifications: Notice[] }>('/notifications')).notifications;
+  },
+
+  async markRead() {
+    await call('/notifications/read', { method: 'POST' });
+    if (me) setMe({ ...me, unread: 0 });
   },
 
   /** El cultivo cambió: si tiene growlogs, se actualizan en un rato (varios cambios seguidos cuentan como uno). */
@@ -131,11 +176,11 @@ export const communityService = {
     return call('/explore');
   },
 
-  async feed(): Promise<GrowlogCard[]> {
-    return (await call<{ growlogs: GrowlogCard[] }>('/feed')).growlogs;
+  async feed(): Promise<{ growlogs: GrowlogCard[]; liked: string[] }> {
+    return call('/feed');
   },
 
-  async grower(handle: string): Promise<{ profile: PublicProfile; growlogs: GrowlogCard[]; following: boolean }> {
+  async grower(handle: string): Promise<{ profile: PublicProfile; growlogs: GrowlogCard[]; following: boolean; blocked: boolean }> {
     return call('/growers/' + encodeURIComponent(handle));
   },
 
