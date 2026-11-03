@@ -20,6 +20,7 @@ import { subscribeCollection } from './dataSyncHelper';
 import { daysBetween, getLocalTodayDateOnly } from '../utils/growthStageUtils';
 import { authFetch } from './apiClient';
 import { evaluateEnvironmentReading, PH_ALERT_MIN, PH_ALERT_MAX, EC_HIGH_MS } from '../utils/agronomicThresholds';
+import { growMethodOf } from '../utils/growMethod';
 
 export const cultivationService = {
   /** meta.fromCache false: la lista ya vino del servidor (no solo de este dispositivo). */
@@ -229,9 +230,13 @@ export const cultivationService = {
       }
     }
 
-    // Check watering pH / EC if recorded
-    if (latestWatering) {
-      if (latestWatering.phIn && (latestWatering.phIn < PH_ALERT_MIN || latestWatering.phIn > PH_ALERT_MAX)) {
+    // pH y EC del riego (en living soil no se riega con pH ni EC: no se evalúan)
+    // En hidroponía el pH va más bajo (5,6–6,0): solo se avisa fuera de 5,5–6,5.
+    const method = growMethodOf(cultivation);
+    const phMin = method === 'hidro' ? 5.5 : PH_ALERT_MIN;
+    const phMax = method === 'hidro' ? 6.5 : PH_ALERT_MAX;
+    if (latestWatering && method !== 'living_soil') {
+      if (latestWatering.phIn && (latestWatering.phIn < phMin || latestWatering.phIn > phMax)) {
         issues.push(`pH de riego fuera del rango recomendado (${latestWatering.phIn})`);
       }
       if (latestWatering.ecIn && latestWatering.ecIn > EC_HIGH_MS) {

@@ -11,8 +11,10 @@ import { PlantTimeline } from '../cultivations/PlantTimeline';
 import { StageTransitionModal } from '../cultivations/timeline/StageTransitionModal';
 import { PhotoImageView } from '../common/PhotoImageView';
 import { StageList, dateText } from './StageList';
-import { FeedTargetCard } from '../cultivations/FeedTargetCard';
-import { feedTargetFor } from '../../utils/feedTargets';
+import { FeedTargetCard, LivingSoilCard } from '../cultivations/FeedTargetCard';
+import { HydroTankCard } from '../cultivations/HydroTankCard';
+import { tankStatus } from '../../utils/hydroTank';
+import { feedTargetFor, livingSoilGuide } from '../../utils/feedTargets';
 import { ShareGrowlogModal } from '../community/ShareGrowlogModal';
 import { communityService, growlogFor, useCommunityMe } from '../../services/communityService';
 
@@ -111,6 +113,9 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
   const exterior = ambient ? isExteriorAmbient(ambient) : crop.type !== 'Indoor';
   // pH y EC para el próximo riego (con el tipo de esta genética: las automáticas, más suave)
   const feed = useMemo(() => feedTargetFor(one, cropWaterings), [one, cropWaterings]);
+  const living = useMemo(() => livingSoilGuide(one), [one]);
+  // Hidroponía: el tanque en lugar de "próximo riego" y del pronóstico de riego
+  const tank = useMemo(() => tankStatus(one, cropWaterings), [one, cropWaterings]);
 
   const move = async () => {
     const to = moveTargets.find((a) => a.id === (moveTo || moveTargets[0]?.id));
@@ -186,7 +191,7 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
       <div className="flex gap-2">
         <button type="button" id="genetic-water" onClick={() => onWater(crop)} className="cultiveta-btn-primary text-sm flex-1 justify-center">
           <Droplets className="w-4 h-4" aria-hidden="true" />
-          Anotar riego
+          {tank ? 'Control del tanque' : 'Anotar riego'}
         </button>
         {nextStage && (
           <button type="button" id="genetic-change-stage" onClick={() => setStageModal(true)} className="cultiveta-btn-secondary text-sm">
@@ -241,7 +246,7 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
             </div>
           </section>
 
-          {feed && <FeedTargetCard target={feed} />}
+          {tank ? <HydroTankCard status={tank} /> : living ? <LivingSoilCard guide={living} /> : feed && <FeedTargetCard target={feed} />}
 
           <section id="genetic-stats" aria-label="Números" className="grid grid-cols-3 gap-2">
             {[
@@ -270,7 +275,7 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
           <section id="genetic-waterings" className={`${CARD} space-y-3`}>
             <span className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
               <Droplets className="w-4 h-4 text-brand" aria-hidden="true" />
-              Últimos riegos
+              {tank ? 'Últimos controles' : 'Últimos riegos'}
             </span>
             {cropWaterings.length === 0 ? (
               <p className="text-xs text-ink-muted">Todavía no hay riegos anotados.</p>
@@ -295,7 +300,7 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
             )}
           </section>
 
-          <IrrigationForecastCard cultivation={crop} waterings={waterings} envRecords={envRecords} />
+          {!tank && <IrrigationForecastCard cultivation={crop} waterings={waterings} envRecords={envRecords} />}
 
           <section id="genetic-showcase" className={`${CARD} space-y-3`}>
             <span className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">

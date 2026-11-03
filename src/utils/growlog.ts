@@ -12,6 +12,7 @@ import type { Cultivation, DiaryEntry, Indoor, PhotoRecord, Watering } from '../
 import { ambientHistory, type AmbientPoint } from './ambientEvaluation';
 import { isCropFinished } from './cropCardInfo';
 import { cropForGenetic } from './indoors';
+import { growMethodOf } from './growMethod';
 
 export type GrowlogPrivacy = 'unlisted' | 'public';
 export type AvatarMode = 'google' | 'photo' | 'incognito';
@@ -74,7 +75,7 @@ export interface Growlog {
   plants: number;
   env: 'indoor' | 'exterior';
   ambientKind: string | null;
-  medium: 'tierra' | 'coco' | 'hidro' | 'otro';
+  medium: 'tierra' | 'coco' | 'hidro' | 'living' | 'otro';
   substrateText: string;
   light: string;
   potLiters: number | null;
@@ -167,6 +168,7 @@ export function publicCrop(one: Cultivation, growlogId: string, coverUrl: string
     stagesTimeline: (one.stagesTimeline || []).map((s) => ({ ...s, notes: undefined })),
     cycleStartKnown: one.cycleStartKnown,
     timelineHistoryMode: one.timelineHistoryMode,
+    growMethod: one.growMethod,
     substrate: { type: one.substrate?.type || '', potVolumeLiters: num(one.substrate?.potVolumeLiters) || 0, potType: one.substrate?.potType },
     lighting: one.lighting
       ? { type: one.lighting.type, nominalWatts: num(one.lighting.nominalWatts), usedWatts: num(one.lighting.usedWatts), photoperiodHoursLight: num(one.lighting.photoperiodHoursLight), photoperiodHoursDark: num(one.lighting.photoperiodHoursDark) }
@@ -263,7 +265,7 @@ export function buildGrowlog(input: BuildGrowlogInput): Growlog {
     plants: Math.max(1, Number(one.plantCount) || 1),
     env: exterior ? 'exterior' : 'indoor',
     ambientKind: ambient?.kind || null,
-    medium: mediumOf(one.substrate?.type),
+    medium: growMethodOf(one) === 'living_soil' ? 'living' : growMethodOf(one) === 'hidro' ? 'hidro' : mediumOf(one.substrate?.type),
     substrateText: one.substrate?.type || '',
     light,
     potLiters: num(one.substrate?.potVolumeLiters) || null,
@@ -385,7 +387,7 @@ export function growerCard(p: PublicProfile): GrowerCard {
 }
 
 export interface ExploreSection {
-  id: 'vistos' | 'indoor' | 'exterior' | 'auto' | 'hidro' | 'tierra';
+  id: 'vistos' | 'indoor' | 'exterior' | 'auto' | 'living' | 'hidro' | 'tierra';
   title: string;
   growlogs: GrowlogCard[];
 }
@@ -402,6 +404,7 @@ export function exploreSections(cards: GrowlogCard[], now: Date): { top: Growlog
     { id: 'indoor', title: 'Indoor', growlogs: cards.filter((g) => g.env === 'indoor') },
     { id: 'exterior', title: 'Exterior', growlogs: cards.filter((g) => g.env === 'exterior') },
     { id: 'auto', title: 'Automáticas', growlogs: cards.filter(isAuto) },
+    { id: 'living', title: 'Living soil', growlogs: cards.filter((g) => g.medium === 'living') },
     { id: 'hidro', title: 'Hidroponía', growlogs: cards.filter((g) => g.medium === 'hidro') },
     { id: 'tierra', title: 'En tierra', growlogs: cards.filter((g) => g.medium === 'tierra') },
   ];

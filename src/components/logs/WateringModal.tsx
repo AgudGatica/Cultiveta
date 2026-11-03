@@ -5,6 +5,7 @@ import { wateringService } from '../../services/wateringService';
 import { fertilizationService } from '../../services/fertilizationService';
 import { getLocalTodayDateOnly } from '../../utils/growthStageUtils';
 import { checkReading, feedTargetFor, num, type FeedRange } from '../../utils/feedTargets';
+import { growMethodOf } from '../../utils/growMethod';
 
 interface WateringModalProps {
   isOpen: boolean;
@@ -104,6 +105,13 @@ export const WateringModal: React.FC<WateringModalProps> = ({
   // pH y EC recomendados para este riego, según la etapa y el sustrato del cultivo
   const selectedCrop = cultivations.find((c) => c.id === cultivationId);
   const feed = useMemo(() => (selectedCrop ? feedTargetFor(selectedCrop, waterings) : null), [selectedCrop, waterings]);
+  // Living soil: solo agua (pH y EC, si se quiere, aparte). Hidroponía: control del tanque en vez de riego.
+  const method = selectedCrop ? growMethodOf(selectedCrop) : 'tierra';
+  const living = method === 'living_soil';
+  const tank = method === 'hidro';
+  const [measureAnyway, setMeasureAnyway] = useState(false);
+  const [solutionChange, setSolutionChange] = useState(false);
+  const showPhEc = !living || measureAnyway;
 
   useEffect(() => {
     if (cultivationId) {
@@ -172,7 +180,7 @@ export const WateringModal: React.FC<WateringModalProps> = ({
       setError('Elegí un cultivo.');
       return;
     }
-    if (!volumeLiters || Number(volumeLiters) <= 0) {
+    if (!tank && (!volumeLiters || Number(volumeLiters) <= 0)) {
       setError('Indicá cuántos litros regaste.');
       return;
     }
@@ -182,7 +190,7 @@ export const WateringModal: React.FC<WateringModalProps> = ({
       setError(null);
 
       const targetCrop = cultivations.find((c) => c.id === cultivationId);
-      const vol = Number(volumeLiters);
+      const vol = Number(volumeLiters) || 0;
 
       // Recalcular totalAmountMl con el volumen final
       const finalProducts = usedNutrients
@@ -202,9 +210,11 @@ export const WateringModal: React.FC<WateringModalProps> = ({
         ecIn: ecIn !== '' ? Number(ecIn) : undefined,
         phRunoff: phRunoff !== '' ? Number(phRunoff) : undefined,
         ecRunoff: ecRunoff !== '' ? Number(ecRunoff) : undefined,
-        drainageLevel,
+        drainageLevel: tank ? undefined : drainageLevel,
         runoffVolumeLiters: runoffVolumeLiters !== '' ? Number(runoffVolumeLiters) : undefined,
-        potLiftBeforeWatering: potLiftBeforeWatering || undefined,
+        potLiftBeforeWatering: tank ? undefined : potLiftBeforeWatering || undefined,
+        kind: tank ? 'tanque' : undefined,
+        solutionChange: tank && solutionChange ? true : undefined,
         potWeightBeforeWateringKg: undefined,
         potWeightAfterWateringKg: undefined,
         substrateMoistureBeforePct: substrateMoistureBeforePct !== '' ? Number(substrateMoistureBeforePct) : undefined,
@@ -243,8 +253,8 @@ export const WateringModal: React.FC<WateringModalProps> = ({
               <Droplets className="w-6 h-6" aria-hidden="true" />
             </div>
             <div>
-              <h2 id="watering-modal-title" className="text-xl font-black text-ink">Anotá el riego</h2>
-              <p className="text-sm text-ink-muted">Cargá solo lo que mediste u observaste.</p>
+              <h2 id="watering-modal-title" className="text-xl font-black text-ink">{tank ? 'Control del tanque' : 'Anotá el riego'}</h2>
+              <p className="text-sm text-ink-muted">{tank ? 'pH, EC y temperatura del tanque, y lo que agregaste.' : 'Cargá solo lo que mediste u observaste.'}</p>
             </div>
           </div>
           <button
@@ -316,15 +326,21 @@ export const WateringModal: React.FC<WateringModalProps> = ({
           {/* Cantidad */}
           <div>
             <label htmlFor="watering-volume-input" className="block text-sm font-bold text-ink mb-1">
-              Cantidad (litros)
+              {tank ? (
+                <>
+                  Litros que agregaste <span className="font-semibold text-ink-muted">(opcional)</span>
+                </>
+              ) : (
+                'Cantidad (litros)'
+              )}
             </label>
             <input
               id="watering-volume-input"
               type="number"
               inputMode="decimal"
               step="0.1"
-              min="0.1"
-              required
+              min={tank ? '0' : '0.1'}
+              required={!tank}
               value={volumeLiters}
               onChange={(e) => setVolumeLiters(parseNumber(e.target.value))}
               className={`${fieldClass} font-black`}
@@ -333,7 +349,7 @@ export const WateringModal: React.FC<WateringModalProps> = ({
 
           {/* Con qué */}
           <fieldset className="space-y-2">
-            <legend className="text-sm font-bold text-ink mb-1">¿Con qué regaste?</legend>
+            <legend className="text-sm font-bold text-ink mb-1">{tank ? '¿Con qué repusiste?' : '¿Con qué regaste?'}</legend>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -349,9 +365,20 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                 onClick={() => setUsedNutrients(true)}
                 className={chipClass(usedNutrients)}
               >
-                Con nutrientes
+                {living ? 'Con té o enmienda' : tank ? 'Solución (con nutrientes)' : 'Con nutrientes'}
               </button>
             </div>
+            {tank && (
+              <button
+                type="button"
+                id="watering-solution-change"
+                aria-pressed={solutionChange}
+                onClick={() => setSolutionChange((v) => !v)}
+                className={`${chipClass(solutionChange)} w-full`}
+              >
+                Cambié toda la solución
+              </button>
+            )}
 
             {usedNutrients && (
               <div className="p-4 rounded-2xl bg-surface border border-line space-y-3 animate-in fade-in duration-200">
@@ -452,24 +479,44 @@ export const WateringModal: React.FC<WateringModalProps> = ({
             )}
           </fieldset>
 
+          {/* Living soil: solo agua. pH y EC, solo si se quieren medir igual */}
+          {living && (
+            <div id="watering-living-note" className="rounded-2xl bg-ok-bg border border-ok-line p-3 space-y-1">
+              <p className="text-xs text-ink">
+                <b>Living soil:</b> solo agua, sin corregir pH ni medir EC.
+              </p>
+              {!measureAnyway && (
+                <button type="button" id="watering-measure-anyway" onClick={() => setMeasureAnyway(true)} className="text-[11px] font-bold text-brand underline">
+                  Medir pH y EC igual (opcional)
+                </button>
+              )}
+            </div>
+          )}
+
           {/* pH y EC opcionales, con lo recomendado para la etapa */}
           {feed && (
             <div id="watering-feed-guide" className="rounded-2xl bg-surface border border-line p-3 space-y-1">
               <p className="text-xs text-ink">
-                <b>Para este riego</b> <span className="text-ink-muted">({feed.label.toLowerCase()})</span>: pH {num(feed.ph.target)}
-                {usedNutrients ? ` · EC ${num(feed.ec.target)}` : ''}
+                <b>{tank ? 'El tanque' : 'Para este riego'}</b> <span className="text-ink-muted">({feed.label.toLowerCase()})</span>: pH {num(feed.ph.target)}
+                {usedNutrients || tank ? ` · EC ${num(feed.ec.target)}` : ''}
               </p>
               <p className="text-[11px] text-ink-muted">
                 pH entre {num(feed.ph.min)} y {num(feed.ph.max)}
-                {usedNutrients ? ` · EC entre ${num(feed.ec.min)} y ${num(feed.ec.max)} mS/cm (con el agua)` : ' · con agua sola, la EC es la de tu agua'}
+                {tank
+                  ? ` · EC entre ${num(feed.ec.min)} y ${num(feed.ec.max)} · agua a 18–22 °C`
+                  : usedNutrients
+                  ? ` · EC entre ${num(feed.ec.min)} y ${num(feed.ec.max)} mS/cm (con el agua)`
+                  : ' · con agua sola, la EC es la de tu agua'}
               </p>
-              {feed.note && usedNutrients && <p className="text-[11px] font-semibold text-warn-ink">{feed.note}</p>}
+              {feed.note && usedNutrients && !tank && <p className="text-[11px] font-semibold text-warn-ink">{feed.note}</p>}
             </div>
           )}
+          {showPhEc && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
-              { id: 'watering-ph-in-input', label: 'pH', value: phIn, set: setPhIn, step: '0.05', min: '3', max: '9' },
-              { id: 'watering-ec-in-input', label: 'EC (mS/cm)', value: ecIn, set: setEcIn, step: '0.05', min: '0', max: '6' },
+              { id: 'watering-ph-in-input', label: tank ? 'pH del tanque' : 'pH', value: phIn, set: setPhIn, step: '0.05', min: '3', max: '9' },
+              { id: 'watering-ec-in-input', label: tank ? 'EC del tanque (mS/cm)' : 'EC (mS/cm)', value: ecIn, set: setEcIn, step: '0.05', min: '0', max: '6' },
+              ...(tank ? [{ id: 'watering-tank-temp-input', label: 'Temperatura del agua (°C)', value: waterTempC, set: setWaterTempC, step: '0.5', min: '0', max: '40' }] : []),
             ].map((f) => (
               <div key={f.id}>
                 <div className="flex items-center justify-between mb-1">
@@ -499,12 +546,15 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                   </button>
                 </div>
                 {feed && f.id === 'watering-ph-in-input' && <ReadingHint id="watering-ph-check" value={f.value} range={feed.ph} />}
-                {feed && usedNutrients && f.id === 'watering-ec-in-input' && <ReadingHint id="watering-ec-check" value={f.value} range={feed.ec} />}
+                {feed && (usedNutrients || tank) && f.id === 'watering-ec-in-input' && <ReadingHint id="watering-ec-check" value={f.value} range={feed.ec} />}
+                {f.id === 'watering-tank-temp-input' && <ReadingHint id="watering-temp-check" value={f.value} range={{ min: 18, max: 22, target: 20 }} />}
               </div>
             ))}
           </div>
+          )}
 
           {/* Drenaje */}
+          {!tank && (
           <fieldset>
             <legend className="text-sm font-bold text-ink mb-1">
               Drenaje <span className="font-semibold text-ink-muted">(opcional)</span>
@@ -524,8 +574,10 @@ export const WateringModal: React.FC<WateringModalProps> = ({
               ))}
             </div>
           </fieldset>
+          )}
 
           {/* Peso de la maceta antes de regar (percepción a mano, sin balanza) */}
+          {!tank && (
           <fieldset>
             <legend className="text-sm font-bold text-ink mb-1">
               Peso de la maceta antes de regar <span className="font-semibold text-ink-muted">(opcional)</span>
@@ -553,6 +605,7 @@ export const WateringModal: React.FC<WateringModalProps> = ({
               ))}
             </div>
           </fieldset>
+          )}
 
           {/* Notas */}
           <div>
@@ -568,7 +621,8 @@ export const WateringModal: React.FC<WateringModalProps> = ({
             />
           </div>
 
-          {/* Más datos técnicos (campos existentes, todos opcionales) */}
+          {/* Más datos técnicos (campos existentes, todos opcionales). En el tanque, la temperatura ya está arriba */}
+          {!tank && (
           <div className="border border-line rounded-2xl overflow-hidden bg-surface">
             <button
               type="button"
@@ -611,6 +665,7 @@ export const WateringModal: React.FC<WateringModalProps> = ({
               </div>
             )}
           </div>
+          )}
 
           {/* Acciones */}
           <div className="pt-3 border-t border-line flex items-center justify-end gap-3">

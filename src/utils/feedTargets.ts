@@ -18,6 +18,7 @@
 import type { Cultivation, Watering } from '../types';
 import { buildCultivationStageSchedule } from './growthStageUtils';
 import { RUNOFF_EC_RATIO_ALERT } from './agronomicThresholds';
+import { growMethodFromText, growMethodOf } from './growMethod';
 
 export type FeedMedium = 'tierra' | 'coco' | 'hidro';
 export type FeedPhase = 'plantula' | 'vege_inicio' | 'vegetativo' | 'floracion' | 'final';
@@ -80,12 +81,10 @@ const norm = (s: string) =>
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '');
 
-/** Tierra, coco o hidroponía según el sustrato cargado (lo que no se reconoce cuenta como tierra). */
+/** Tierra, coco (y sustratos sin tierra) o hidroponía según el sustrato cargado (lo que no se reconoce cuenta como tierra). */
 export function feedMediumOf(substrateType: string | undefined): FeedMedium {
-  const s = norm(substrateType || '');
-  if (/hidro|aero|dwc|nft|agua/.test(s)) return 'hidro';
-  if (/coco|lana de roca|rockwool|perlita/.test(s)) return 'coco';
-  return 'tierra';
+  const m = growMethodFromText(substrateType);
+  return m === 'hidro' ? 'hidro' : m === 'sustrato' ? 'coco' : 'tierra';
 }
 
 /** En qué parte del ciclo está (null si ya no se riega: cosechada, secando o curando). */
@@ -100,11 +99,18 @@ export function feedPhaseFor(crop: Cultivation): FeedPhase | null {
   return 'vegetativo';
 }
 
-/** Lo recomendado para el próximo riego. waterings: los del cultivo (para mirar el último drenaje). */
+/**
+ * Lo recomendado para el próximo riego. waterings: los del cultivo (para mirar el último drenaje).
+ * En living soil no hay pH ni EC que recomendar (null: ver livingSoilGuide).
+ */
 export function feedTargetFor(crop: Cultivation, waterings: Watering[] = []): FeedTarget | null {
   const phase = feedPhaseFor(crop);
   if (!phase) return null;
-  const medium = feedMediumOf(crop.substrate?.type);
+  const method = growMethodOf(crop);
+  if (method === 'living_soil') return null;
+  const medium: FeedMedium = method === 'hidro' ? 'hidro' : method === 'sustrato' ? 'coco' : 'tierra';
+  // turba, perlita o lana de roca: mismos valores que el coco, pero se dice "sustrato"
+  const mediumLabel = method === 'sustrato' && !/coco/i.test(crop.substrate?.type || '') ? 'sustrato' : MEDIUM_LABEL[medium];
   const auto = /auto/i.test(crop.photoperiodType || '');
   const base = EC[phase][medium];
   const k = auto && phase !== 'plantula' ? AUTO_FACTOR : 1;
@@ -120,7 +126,7 @@ export function feedTargetFor(crop: Cultivation, waterings: Watering[] = []): Fe
   }
   const soilNote = medium === 'tierra' && (phase === 'plantula' || phase === 'vege_inicio') ? 'Si la tierra vino abonada, estas semanas alcanza con agua (con el pH bien).' : null;
 
-  return { medium, phase, label: `${PHASE_LABEL[phase]} en ${MEDIUM_LABEL[medium]}`, auto, ph: { ...PH[medium] }, ec, note, soilNote };
+  return { medium, phase, label: `${PHASE_LABEL[phase]} en ${mediumLabel}`, auto, ph: { ...PH[medium] }, ec, note, soilNote };
 }
 
 export type ReadingCheck = 'bien' | 'bajo' | 'alto';
@@ -130,6 +136,30 @@ export function checkReading(value: number, range: FeedRange): ReadingCheck {
   if (value < range.min) return 'bajo';
   if (value > range.max) return 'alto';
   return 'bien';
+}
+
+export interface LivingSoilGuide {
+  phase: FeedPhase;
+  /** "Floración en living soil". */
+  label: string;
+  /** Una sola sugerencia para la etapa. */
+  tip: string;
+}
+
+const LIVING_TIPS: Record<FeedPhase, string> = {
+  plantula: 'Mantené la tierra apenas húmeda: la plántula no necesita nada más.',
+  vege_inicio: 'Solo agua. La tierra ya tiene lo que la planta necesita para arrancar.',
+  vegetativo: 'Cada 3 a 4 semanas, sumá una capa de humus de lombriz o compost arriba de la tierra (cobertura).',
+  floracion: 'Al empezar la floración, una enmienda de floración en la cobertura; si querés, tés de compost.',
+  final: 'Solo agua hasta la cosecha.',
+};
+
+/** Living soil: no se riega con pH ni EC; una sugerencia según la etapa. */
+export function livingSoilGuide(crop: Cultivation): LivingSoilGuide | null {
+  if (growMethodOf(crop) !== 'living_soil') return null;
+  const phase = feedPhaseFor(crop);
+  if (!phase) return null;
+  return { phase, label: `${PHASE_LABEL[phase]} en living soil`, tip: LIVING_TIPS[phase] };
 }
 
 /** 6,0 / 1,4 (coma decimal, un decimal). */

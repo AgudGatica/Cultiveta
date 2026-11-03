@@ -40,8 +40,10 @@ import { EditHarvestModal } from '../harvests/EditHarvestModal';
 import { EnvironmentChart } from '../charts/EnvironmentChart';
 import { CropLifecycleCard } from './CropLifecycleCard';
 import { IrrigationForecastCard } from './IrrigationForecastCard';
-import { FeedTargetCard } from './FeedTargetCard';
-import { feedTargetFor } from '../../utils/feedTargets';
+import { FeedTargetCard, LivingSoilCard } from './FeedTargetCard';
+import { HydroTankCard } from './HydroTankCard';
+import { tankStatus } from '../../utils/hydroTank';
+import { feedTargetFor, livingSoilGuide } from '../../utils/feedTargets';
 import { CropGeneticsSection } from './CropGeneticsSection';
 import { PlantTimeline } from './PlantTimeline';
 import { describePhotoperiod } from '../../utils/photoperiods';
@@ -186,6 +188,8 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
   const lastWatering = cropWaterings[0];
   const lastEnv = cropEnv[0];
   const feedTarget = React.useMemo(() => feedTargetFor(cultivation, cropWaterings), [cultivation, cropWaterings]);
+  const livingGuide = React.useMemo(() => livingSoilGuide(cultivation), [cultivation]);
+  const tank = React.useMemo(() => tankStatus(cultivation, cropWaterings), [cultivation, cropWaterings]);
 
   const wateringAnalysis = React.useMemo(() => {
     return analyzeWateringUrgency(
@@ -384,7 +388,14 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                 <Clock className="w-4 h-4 text-brand" />
               </div>
               <div className="space-y-1">
-                {wateringAnalysis.isOverdue ? (
+                {tank ? (
+                  <>
+                    <span id="detail-today-tank" className={`text-sm font-extrabold block ${tank.alert.kind === 'ok' ? 'text-ok-ink' : 'text-warn-ink'}`}>
+                      {tank.alert.kind === 'ok' ? 'Tanque en rango' : tank.alert.kind === 'check' ? 'Revisá el tanque' : tank.alert.kind === 'change' ? 'Cambiá la solución' : 'Corregí el tanque'}
+                    </span>
+                    <span className="text-xs text-ink-muted block">{tank.alert.text}</span>
+                  </>
+                ) : wateringAnalysis.isOverdue ? (
                   <>
                     <span className="text-sm font-extrabold text-error block">
                       Revisá el riego (+{wateringAnalysis.daysOverdue} d)
@@ -419,7 +430,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
 
             <div className="pt-2 border-t border-line">
               <span className="text-[11px] text-ink-subtle font-semibold">
-                Referencia de la etapa: cada {wateringAnalysis.recommendedIntervalDays} d
+                {tank ? 'pH y EC del tanque todos los días' : `Referencia de la etapa: cada ${wateringAnalysis.recommendedIntervalDays} d`}
               </span>
             </div>
           </div>
@@ -428,15 +439,19 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
           <div className="p-4 sm:p-5 rounded-2xl bg-surface border border-line flex flex-col justify-between space-y-3">
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-ink-subtle">Último Riego</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-ink-subtle">{tank ? 'Último control' : 'Último Riego'}</span>
                 <Droplets className="w-4 h-4 text-ok" />
               </div>
               <div className="space-y-1">
                 <span className="text-sm font-extrabold text-ink block">
-                  {lastWatering ? `${lastWatering.volumeLiters} L` : 'Sin registros aún'}
+                  {tank ? (lastWatering ? `pH ${lastWatering.phIn || '—'} · EC ${lastWatering.ecIn || '—'}` : 'Sin controles aún') : lastWatering ? `${lastWatering.volumeLiters} L` : 'Sin registros aún'}
                 </span>
                 <span className="text-xs text-ink-muted block">
-                  {lastWatering
+                  {tank
+                    ? lastWatering
+                      ? `Hace ${wateringAnalysis.daysSinceWatering}d${lastWatering.volumeLiters ? ` · agregaste ${lastWatering.volumeLiters} L` : ''}`
+                      : 'Anotá el primer control'
+                    : lastWatering
                     ? `pH ${lastWatering.phIn || '—'} · EC ${lastWatering.ecIn || '—'} · Hace ${wateringAnalysis.daysSinceWatering}d`
                     : 'Anotá el primer riego'}
                 </span>
@@ -449,7 +464,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                 onClick={onOpenWateringModal}
                 className="text-xs font-bold text-brand hover:underline cursor-pointer flex items-center gap-1"
               >
-                <span>+ Regar ahora</span>
+                <span>{tank ? '+ Anotar control' : '+ Regar ahora'}</span>
               </button>
             </div>
           </div>
@@ -877,11 +892,12 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
 
           {/* Ventana para revisar la maceta (antes en el Inicio) */}
           {!isCosechado && (
-            <IrrigationForecastCard cultivation={cultivation} waterings={waterings} envRecords={envRecords} />
+            !tank && <IrrigationForecastCard cultivation={cultivation} waterings={waterings} envRecords={envRecords} />
           )}
 
           {/* pH y EC para el próximo riego, según la etapa y el sustrato */}
-          {!isCosechado && feedTarget && <FeedTargetCard target={feedTarget} />}
+          {!isCosechado &&
+            (tank ? <HydroTankCard status={tank} onCheck={onOpenWateringModal} /> : livingGuide ? <LivingSoilCard guide={livingGuide} /> : feedTarget && <FeedTargetCard target={feedTarget} />)}
 
           {/* Luz del cultivo (indoor): prendida o apagada, cuenta regresiva y próximos 7 días */}
           {!isCosechado && cultivation.type === 'Indoor' && (
@@ -906,7 +922,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-ink-subtle block">Último Riego</span>
+                <span className="text-xs font-semibold text-ink-subtle block">{tank ? 'Último control' : 'Último Riego'}</span>
                 {wateringAnalysis.isOverdue && (
                   <span className="px-2 py-0.5 rounded-full bg-coral/15 text-coral font-mono font-bold text-[10px] tracking-wider uppercase">
                     ATRASADO

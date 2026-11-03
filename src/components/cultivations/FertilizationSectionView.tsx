@@ -19,6 +19,9 @@ import { Cultivation, Watering, FertilizationSchedule, FertilizationWeek, Wateri
 import { fertilizationService } from '../../services/fertilizationService';
 import { AssociateFertilizationModal } from './AssociateFertilizationModal';
 import { EditScheduleModal } from './EditScheduleModal';
+import { LivingSoilCard } from './FeedTargetCard';
+import { growMethodOf } from '../../utils/growMethod';
+import { livingSoilGuide } from '../../utils/feedTargets';
 
 interface FertilizationSectionViewProps {
   cultivation: Cultivation;
@@ -45,9 +48,18 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [wateringToAssociate, setWateringToAssociate] = useState<Watering | null>(null);
 
+  // Living soil: no hay tabla de fertilizantes (se alimenta la tierra); no se arma la de Biobizz
+  const living = growMethodOf(cultivation) === 'living_soil';
+
   // Load schedule for this cultivation
   useEffect(() => {
     let mounted = true;
+    if (living) {
+      setLoading(false);
+      return () => {
+        mounted = false;
+      };
+    }
     const fetchSchedule = async () => {
       setLoading(true);
       try {
@@ -82,7 +94,7 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
     return () => {
       mounted = false;
     };
-  }, [cultivation.id, userId]);
+  }, [cultivation.id, userId, living]);
 
   const currentCropWeek = fertilizationService.calculateCurrentWeek(cultivation);
   const activeWeekData = schedule?.weeks.find((w) => w.weekNumber === activeWeekTab) || schedule?.weeks[0];
@@ -129,6 +141,35 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
 
   const totalFertilizations = cropWaterings.filter((w) => w.productsUsed && w.productsUsed.length > 0).length;
   const totalWaterOnly = cropWaterings.length - totalFertilizations;
+
+  if (living) {
+    const guide = livingSoilGuide(cultivation);
+    const amendments = cropWaterings.filter((w) => w.productsUsed && w.productsUsed.length > 0).sort((a, b) => b.date.localeCompare(a.date));
+    return (
+      <div id="living-soil-nutrition" className="space-y-4 animate-in fade-in">
+        <section className="bg-white rounded-3xl p-6 border border-chip-line shadow-xs space-y-2">
+          <h3 className="text-lg font-black text-ink">En living soil se alimenta la tierra</h3>
+          <p className="text-sm text-ink-muted">No hay tabla de fertilizantes: la cobertura de compost o humus, las enmiendas y los tés alimentan la vida de la tierra, y ella a la planta. Anotá cada enmienda o té como un riego “con té o enmienda”.</p>
+        </section>
+        {guide && <LivingSoilCard guide={guide} />}
+        <section className="bg-white rounded-3xl p-6 border border-chip-line shadow-xs space-y-2">
+          <h3 className="text-sm font-bold text-ink">Enmiendas y tés anotados ({amendments.length})</h3>
+          {amendments.length === 0 ? (
+            <p className="text-xs text-ink-muted">Todavía no anotaste ninguna.</p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {amendments.map((w) => (
+                <li key={w.id} className="py-2 text-xs text-ink flex justify-between gap-2">
+                  <span className="font-semibold">{w.date}</span>
+                  <span className="text-ink-muted text-right">{(w.productsUsed || []).map((p) => p.name).join(', ')}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in">

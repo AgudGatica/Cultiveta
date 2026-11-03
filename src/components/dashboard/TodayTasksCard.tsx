@@ -92,7 +92,7 @@ export const TodayTasksCard: React.FC<TodayTasksCardProps> = ({
       // El riego se guarda solo con los datos que carga la persona: se abre el formulario vacío.
       if (task.type === 'watering' && onOpenWateringModal) {
         onOpenWateringModal(crop);
-        onTaskCompletedFeedback?.(`Tarea marcada. Anotá los datos del riego de "${task.cultivationName}".`);
+        onTaskCompletedFeedback?.(`Tarea marcada. Anotá los datos ${task.categoryLabel.includes('Tanque') ? 'del tanque' : 'del riego'} de "${task.cultivationName}".`);
       } else {
         onTaskCompletedFeedback?.(`Listo: "${task.title}".`);
       }

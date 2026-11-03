@@ -1,6 +1,7 @@
 import { Cultivation, Watering, IrrigationForecast } from '../types';
 import { WATERING_INTERVAL_DAYS } from './agronomicThresholds';
 import { daysBetween, getLocalTodayDateOnly } from './growthStageUtils';
+import { growMethodOf } from './growMethod';
 
 const DAY_MS = 1000 * 60 * 60 * 24;
 
@@ -137,6 +138,35 @@ export function analyzeWateringUrgency(
       alertTitle: 'Cultivo Cosechado',
       alertMessage: 'Este cultivo ya fue cosechado. No requiere riegos activos.',
       notificationMessage: `Cultivo ${cultivation.name} finalizado.`,
+    };
+  }
+
+  // Hidroponía: no se riega, se controla el tanque (hydroTank.ts). Nunca hay "riego atrasado".
+  if (growMethodOf(cultivation) === 'hidro') {
+    return {
+      cultivationId: cultivation.id,
+      cultivationName: cultivation.name,
+      currentStage: stage,
+      recommendedIntervalDays: recommendedInterval,
+      latestWateringDate: latestWatering?.date || null,
+      daysSinceWatering: latestWatering?.date ? Math.max(0, daysBetween(latestWatering.date, getLocalTodayDateOnly(currentDate))) : null,
+      isFinished: false,
+      isOverdue: false,
+      isDueToday: false,
+      isUpcoming: false,
+      isOptimal: true,
+      daysOverdue: 0,
+      urgencyLevel: 'optimal',
+      badgeText: 'Hidroponía',
+      dotClass: 'bg-emerald-500 dot-green',
+      glowClass: '',
+      badgeBg: 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30',
+      textClass: 'text-emerald-400',
+      pulse: false,
+      label: 'Hidroponía: se controla el tanque, no hay riegos.',
+      alertTitle: `Tanque (${cultivation.name})`,
+      alertMessage: 'En hidroponía no se riega: revisá pH y EC del tanque todos los días.',
+      notificationMessage: `Revisá el tanque de "${cultivation.name}".`,
     };
   }
 

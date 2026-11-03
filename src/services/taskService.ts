@@ -10,6 +10,9 @@ import {
   PH_TARGET_TEXT,
   isFlowerOrRipeningStage,
 } from '../utils/agronomicThresholds';
+import { CHECK_DUE_HOURS, tankStatus } from '../utils/hydroTank';
+import { num } from '../utils/feedTargets';
+import { growMethodOf } from '../utils/growMethod';
 
 const COMPLETED_TASKS_KEY_PREFIX = 'cultiveta_completed_tasks_';
 
@@ -105,6 +108,59 @@ export const taskService = {
         return wDate === todayStr;
       });
 
+      // 1. Hidroponía: no hay riegos. "Revisar el tanque" todos los días y "Cambiar la solución" cada 14 días.
+      const tank = tankStatus(crop, cropWaterings);
+      if (tank) {
+        const checkTaskId = `tank_${crop.id}_${todayStr}`;
+        const checkedToday = wateredToday || !!completedMap[checkTaskId];
+        const late = tank.hoursSinceCheck === null || tank.hoursSinceCheck > CHECK_DUE_HOURS;
+        const goal = `pH ${num(tank.target.ph.target)} y EC ${num(tank.target.ec.target)}`;
+        tasks.push({
+          id: checkTaskId,
+          cultivationId: crop.id,
+          cultivationName: crop.name,
+          geneticsName: crop.geneticsName,
+          stage: crop.currentStage,
+          type: 'watering',
+          title: checkedToday ? 'Tanque revisado hoy' : late ? '¡Revisá el tanque!' : 'Revisar el tanque',
+          description: checkedToday
+            ? tank.alert.text
+            : late && tank.hoursSinceCheck !== null
+              ? `Hace ${Math.round(tank.hoursSinceCheck / 24)} días sin control. Medí pH, EC y temperatura del agua (apuntá a ${goal}).`
+              : `Medí pH, EC y temperatura del agua, a la misma hora todos los días (apuntá a ${goal}).`,
+          dueDate: todayStr,
+          urgency: !checkedToday && late && tank.hoursSinceCheck !== null ? 'overdue' : 'today',
+          priority: checkedToday ? 'high' : 'critical',
+          isCompleted: checkedToday,
+          completedAt: completedMap[checkTaskId]?.completedAt,
+          categoryLabel: '💧 Tanque & Nutrición',
+          actionHint: checkedToday ? 'Completado' : 'Anotar control',
+        });
+        if (tank.changeInDays !== null && tank.changeInDays <= 1) {
+          const changeTaskId = `solution_${crop.id}_${todayStr}`;
+          const changedToday = !!completedMap[changeTaskId];
+          const due = new Date(today);
+          due.setDate(due.getDate() + tank.changeInDays);
+          tasks.push({
+            id: changeTaskId,
+            cultivationId: crop.id,
+            cultivationName: crop.name,
+            geneticsName: crop.geneticsName,
+            stage: crop.currentStage,
+            type: 'watering',
+            title: tank.changeInDays === 0 ? 'Cambiar la solución' : 'Cambio de solución (mañana)',
+            description: `Pasaron ${tank.daysSinceChange} días: vaciá el tanque y prepará solución nueva a ${goal}. Anotalo con "Cambié toda la solución".`,
+            dueDate: getLocalTodayDateOnly(due),
+            urgency: tank.changeInDays === 0 ? 'today' : 'tomorrow',
+            priority: tank.changeInDays === 0 ? 'critical' : 'high',
+            isCompleted: changedToday,
+            completedAt: completedMap[changeTaskId]?.completedAt,
+            categoryLabel: '💧 Tanque & Nutrición',
+            actionHint: changedToday ? 'Completado' : 'Anotar cambio',
+          });
+        }
+      }
+
       // 1. Next Watering Event Task
       const wateringTaskId = `watering_${crop.id}_${todayStr}`;
       const isWateringManuallyCompleted = !!completedMap[wateringTaskId];
@@ -139,7 +195,9 @@ export const taskService = {
         ? `, ~${Math.round(crop.substrate.potVolumeLiters * 0.15 * 10) / 10} L por planta como referencia`
         : '';
 
-      const targetPh = PH_TARGET_TEXT;
+      // Living soil: solo agua, sin pH
+      const living = growMethodOf(crop) === 'living_soil';
+      const phHint = living ? '' : `pH recomendado ${PH_TARGET_TEXT}`;
 
       if (isWateringDone) {
         wateringUrgency = 'today';
@@ -150,12 +208,12 @@ export const taskService = {
         wateringUrgency = 'overdue';
         wateringPriority = 'critical';
         wateringTitle = `¡Riego atrasado!`;
-        wateringDesc = `${wateringAnalysis.alertMessage} pH recomendado ${targetPh}${litersHint}.`;
+        wateringDesc = `${wateringAnalysis.alertMessage}${phHint || litersHint ? ` ${[phHint, litersHint.replace(/^, /, '')].filter(Boolean).join(', ')}` : ''}.`;
       } else if (!latestWatering || nextWateringDate <= today || wateringAnalysis.isDueToday) {
         wateringUrgency = 'today';
         wateringPriority = 'critical';
         wateringTitle = `Riego Programado para Hoy`;
-        wateringDesc = `Revisá la maceta de ${crop.name} y regá si hace falta (pH recomendado ${targetPh}${litersHint}).`;
+        wateringDesc = `Revisá la maceta de ${crop.name} y regá si hace falta${phHint || litersHint ? ` (${[phHint, litersHint.replace(/^, /, '')].filter(Boolean).join(', ')})` : ''}.`;
       } else {
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
@@ -164,7 +222,7 @@ export const taskService = {
           wateringUrgency = 'tomorrow';
           wateringPriority = 'high';
           wateringTitle = `Riego Próximo (Mañana)`;
-          wateringDesc = `Dejar reposar agua para desclorar y preparar nutrientes para mañana.`;
+          wateringDesc = living ? `Dejá reposar el agua para mañana.` : `Dejar reposar agua para desclorar y preparar nutrientes para mañana.`;
         } else {
           wateringUrgency = 'upcoming';
           wateringPriority = 'medium';
@@ -173,7 +231,7 @@ export const taskService = {
         }
       }
 
-      tasks.push({
+      if (!tank) tasks.push({
         id: wateringTaskId,
         cultivationId: crop.id,
         cultivationName: crop.name,
@@ -204,7 +262,7 @@ export const taskService = {
         const totalFlowDaysExpected = floweringWeeks * 7;
         const flushStartDay = totalFlowDaysExpected - 12;
 
-        if (flowDays >= flushStartDay && flowDays <= totalFlowDaysExpected + 5) {
+        if (!living && flowDays >= flushStartDay && flowDays <= totalFlowDaysExpected + 5) {
           const flushTaskId = `flush_${crop.id}_${todayStr}`;
           const isFlushCompleted = !!completedMap[flushTaskId];
           tasks.push({
@@ -215,7 +273,9 @@ export const taskService = {
             stage: crop.currentStage,
             type: 'flush',
             title: `Lavado de Raíces (Flush Crítico)`,
-            description: `Día ${flowDays} de flora. Comenzar riegos con agua desclorada pura sin abonos para metabolizar sales minerales residuales en las flores.`,
+            description: tank
+              ? `Día ${flowDays} de flora. Cambiá la solución del tanque por agua sola (con pH) hasta la cosecha.`
+              : `Día ${flowDays} de flora. Comenzar riegos con agua desclorada pura sin abonos para metabolizar sales minerales residuales en las flores.`,
             dueDate: todayStr,
             urgency: 'today',
             priority: 'critical',

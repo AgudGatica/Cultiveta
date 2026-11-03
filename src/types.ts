@@ -1,6 +1,8 @@
 export type CultivationType = 'Indoor' | 'Outdoor' | 'Invernadero';
 export type PhotoperiodType = 'Fotoperiódica' | 'Automática' | 'CBD' | 'Regular';
 export type PotType = 'Geotextil' | 'Plástico' | 'Airpot' | 'Tierra madre' | 'Hidropónico' | 'Otro';
+/** Tierra con fertilizantes, living soil (tierra viva), coco o sustrato sin tierra, o hidroponía. */
+export type GrowMethod = 'tierra' | 'living_soil' | 'sustrato' | 'hidro';
 export type PotLiftFeeling = 'heavy' | 'medium' | 'light' | 'very_light';
 export type DrainageLevel = 'none' | 'low' | 'normal' | 'high';
 export type StageDateKnowledge = 'actual' | 'projected' | 'unknown';
@@ -171,6 +173,8 @@ export interface Cultivation {
   stagesTimeline?: CultivationGrowthStage[];
   cycleStartKnown?: boolean;
   timelineHistoryMode?: 'known_from_start' | 'unknown_before_current_stage' | 'partially_known';
+  /** Cómo se cultiva: decide si se riega con pH y EC (tierra, sustrato), solo agua (living soil) o con un tanque (hidroponía). Sin él, se deduce del sustrato. */
+  growMethod?: GrowMethod;
   substrate: {
     type: string;
     brand?: string;
@@ -311,6 +315,10 @@ export interface Watering {
   potWeightAfterWateringKg?: number;
   substrateMoistureBeforePct?: number;
   substrateMoistureAfterPct?: number;
+  /** Hidroponía: un control del tanque (pH, EC, temperatura y lo que se repuso) en vez de un riego. */
+  kind?: 'riego' | 'tanque';
+  /** Hidroponía: se cambió toda la solución del tanque. */
+  solutionChange?: boolean;
 }
 
 export interface FertilizationProductDosage {

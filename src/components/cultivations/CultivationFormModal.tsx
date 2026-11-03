@@ -27,7 +27,9 @@ import {
   CultivationGeneticsItem,
   EnvironmentalAlertThresholds,
   Indoor,
+  GrowMethod,
 } from '../../types';
+import { GROW_METHODS, growMethodFromText } from '../../utils/growMethod';
 import { cultivationService } from '../../services/cultivationService';
 import { ambientsForCrop, cropTypeForAmbient, isExteriorAmbient } from '../../utils/indoors';
 import { PhotoperiodPresetPicker } from './PhotoperiodPresetPicker';
@@ -109,6 +111,9 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
   const [geneticsEntries, setGeneticsEntries] = useState<FormGeneticsEntry[]>([]);
   const [currentStage, setCurrentStage] = useState('Vegetativo');
   const [substrateType, setSubstrateType] = useState('Turba / Perlita / Humus');
+  // null: se deduce del texto del sustrato (los cultivos de antes no lo tienen elegido)
+  const [growMethod, setGrowMethod] = useState<GrowMethod | null>(null);
+  const shownMethod = growMethod ?? growMethodFromText(substrateType);
   const [potVolumeLiters, setPotVolumeLiters] = useState(11);
   const [potType, setPotType] = useState<PotType>('Geotextil');
   const [lightingType, setLightingType] = useState('LED Quantum Board');
@@ -215,6 +220,7 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
 
       setCurrentStage(cultivationToEdit.currentStage || 'Vegetativo');
       setSubstrateType(cultivationToEdit.substrate?.type || 'Turba / Perlita');
+      setGrowMethod(cultivationToEdit.growMethod ?? null);
       setPotVolumeLiters(cultivationToEdit.substrate?.potVolumeLiters || 11);
       setPotType(cultivationToEdit.substrate?.potType || 'Geotextil');
       setLightingType(cultivationToEdit.lighting?.type || '');
@@ -310,6 +316,7 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
 
       setCurrentStage('Vegetativo');
       setSubstrateType('Turba / Perlita / Humus');
+      setGrowMethod(null);
       setPotVolumeLiters(11);
       setPotType('Geotextil');
       setLightingType('LED Quantum Board');
@@ -593,6 +600,7 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
         timelineHistoryMode,
         cycleStartKnown,
         stagesTimeline: updatedStagesTimeline,
+        growMethod: shownMethod,
         substrate: {
           type: substrateType || 'Turba / Perlita / Humus',
           potVolumeLiters: Number(potVolumeLiters) || 11,
@@ -1147,6 +1155,31 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
               <Sun className="w-3.5 h-3.5" />
               3. Sustrato e Iluminación
             </h3>
+
+            {/* Cómo se cultiva: cambia cómo se riega (pH y EC, solo agua o control del tanque) */}
+            <fieldset id="crop-grow-method">
+              <legend className="block text-xs font-bold text-stone-700 mb-1">¿Cómo cultivás?</legend>
+              <div className="grid grid-cols-2 gap-2">
+                {GROW_METHODS.map((m) => {
+                  const on = shownMethod === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      id={`crop-grow-method-${m.id}`}
+                      aria-pressed={on}
+                      onClick={() => setGrowMethod(m.id)}
+                      className={`text-left px-3 py-2 rounded-2xl border transition-colors cursor-pointer ${
+                        on ? 'bg-emerald-50 border-emerald-500 ring-1 ring-emerald-500' : 'bg-stone-50 border-stone-200 hover:border-emerald-300'
+                      }`}
+                    >
+                      <span className={`block text-xs font-bold ${on ? 'text-emerald-900' : 'text-stone-800'}`}>{m.label}</span>
+                      <span className="block text-[11px] text-stone-500 leading-snug">{m.desc}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
