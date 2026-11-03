@@ -40,6 +40,8 @@ import { EditHarvestModal } from '../harvests/EditHarvestModal';
 import { EnvironmentChart } from '../charts/EnvironmentChart';
 import { CropLifecycleCard } from './CropLifecycleCard';
 import { IrrigationForecastCard } from './IrrigationForecastCard';
+import { FeedTargetCard } from './FeedTargetCard';
+import { feedTargetFor } from '../../utils/feedTargets';
 import { CropGeneticsSection } from './CropGeneticsSection';
 import { PlantTimeline } from './PlantTimeline';
 import { describePhotoperiod } from '../../utils/photoperiods';
@@ -183,6 +185,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
 
   const lastWatering = cropWaterings[0];
   const lastEnv = cropEnv[0];
+  const feedTarget = React.useMemo(() => feedTargetFor(cultivation, cropWaterings), [cultivation, cropWaterings]);
 
   const wateringAnalysis = React.useMemo(() => {
     return analyzeWateringUrgency(
@@ -876,6 +879,9 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
           {!isCosechado && (
             <IrrigationForecastCard cultivation={cultivation} waterings={waterings} envRecords={envRecords} />
           )}
+
+          {/* pH y EC para el próximo riego, según la etapa y el sustrato */}
+          {!isCosechado && feedTarget && <FeedTargetCard target={feedTarget} />}
 
           {/* Luz del cultivo (indoor): prendida o apagada, cuenta regresiva y próximos 7 días */}
           {!isCosechado && cultivation.type === 'Indoor' && (

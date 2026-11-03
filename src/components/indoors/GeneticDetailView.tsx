@@ -11,6 +11,8 @@ import { PlantTimeline } from '../cultivations/PlantTimeline';
 import { StageTransitionModal } from '../cultivations/timeline/StageTransitionModal';
 import { PhotoImageView } from '../common/PhotoImageView';
 import { StageList, dateText } from './StageList';
+import { FeedTargetCard } from '../cultivations/FeedTargetCard';
+import { feedTargetFor } from '../../utils/feedTargets';
 import { ShareGrowlogModal } from '../community/ShareGrowlogModal';
 import { communityService, growlogFor, useCommunityMe } from '../../services/communityService';
 
@@ -107,6 +109,8 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
   const liters = cropWaterings.reduce((a, w) => a + (Number(w.volumeLiters) || 0), 0);
   const phs = cropWaterings.map((w) => Number(w.phIn)).filter((v) => Number.isFinite(v) && v > 0);
   const exterior = ambient ? isExteriorAmbient(ambient) : crop.type !== 'Indoor';
+  // pH y EC para el próximo riego (con el tipo de esta genética: las automáticas, más suave)
+  const feed = useMemo(() => feedTargetFor(one, cropWaterings), [one, cropWaterings]);
 
   const move = async () => {
     const to = moveTargets.find((a) => a.id === (moveTo || moveTargets[0]?.id));
@@ -236,6 +240,8 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
               <div className="h-full bg-accent" style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
             </div>
           </section>
+
+          {feed && <FeedTargetCard target={feed} />}
 
           <section id="genetic-stats" aria-label="Números" className="grid grid-cols-3 gap-2">
             {[

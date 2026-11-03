@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { X, Droplets, Plus, Trash2, Save, FlaskConical, ChevronDown, Plug } from 'lucide-react';
 import { Cultivation, Watering, WateringProductItem, FertilizationSchedule, PotLiftFeeling, DrainageLevel } from '../../types';
 import { wateringService } from '../../services/wateringService';
 import { fertilizationService } from '../../services/fertilizationService';
 import { getLocalTodayDateOnly } from '../../utils/growthStageUtils';
+import { checkReading, feedTargetFor, num, type FeedRange } from '../../utils/feedTargets';
 
 interface WateringModalProps {
   isOpen: boolean;
@@ -18,7 +19,20 @@ interface WateringModalProps {
   onWateringAdded: (watering: Watering) => void;
   /** Lleva a Equipos para conectar una bomba o una sonda de sustrato. */
   onConnectDevice?: () => void;
+  /** Riegos anteriores (para avisar si el último drenaje salió salado). */
+  waterings?: Watering[];
 }
+
+/** Debajo de pH o EC: si lo medido está en el rango recomendado. */
+const ReadingHint: React.FC<{ id: string; value: number | ''; range: FeedRange }> = ({ id, value, range }) => {
+  if (value === '' || !Number.isFinite(value)) return null;
+  const c = checkReading(Number(value), range);
+  return (
+    <p id={id} data-check={c} className={`mt-1 text-[11px] font-bold ${c === 'bien' ? 'text-ok-ink' : 'text-coral'}`}>
+      {c === 'bien' ? 'Bien, está en el rango.' : `${c === 'alto' ? 'Alto' : 'Bajo'}: apuntá a ${num(range.target)}.`}
+    </p>
+  );
+};
 
 const DRAINAGE_OPTIONS: Array<{ value: DrainageLevel; label: string }> = [
   { value: 'none', label: 'No drenó' },
@@ -57,6 +71,7 @@ export const WateringModal: React.FC<WateringModalProps> = ({
   initialWeekNumber,
   onWateringAdded,
   onConnectDevice,
+  waterings = [],
 }) => {
   const [cultivationId, setCultivationId] = useState(defaultCultivationId || (cultivations[0]?.id || ''));
   const [date, setDate] = useState(getLocalTodayDateOnly());
@@ -86,6 +101,9 @@ export const WateringModal: React.FC<WateringModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cropSchedule, setCropSchedule] = useState<FertilizationSchedule | null>(null);
+  // pH y EC recomendados para este riego, según la etapa y el sustrato del cultivo
+  const selectedCrop = cultivations.find((c) => c.id === cultivationId);
+  const feed = useMemo(() => (selectedCrop ? feedTargetFor(selectedCrop, waterings) : null), [selectedCrop, waterings]);
 
   useEffect(() => {
     if (cultivationId) {
@@ -434,7 +452,20 @@ export const WateringModal: React.FC<WateringModalProps> = ({
             )}
           </fieldset>
 
-          {/* pH y EC opcionales */}
+          {/* pH y EC opcionales, con lo recomendado para la etapa */}
+          {feed && (
+            <div id="watering-feed-guide" className="rounded-2xl bg-surface border border-line p-3 space-y-1">
+              <p className="text-xs text-ink">
+                <b>Para este riego</b> <span className="text-ink-muted">({feed.label.toLowerCase()})</span>: pH {num(feed.ph.target)}
+                {usedNutrients ? ` · EC ${num(feed.ec.target)}` : ''}
+              </p>
+              <p className="text-[11px] text-ink-muted">
+                pH entre {num(feed.ph.min)} y {num(feed.ph.max)}
+                {usedNutrients ? ` · EC entre ${num(feed.ec.min)} y ${num(feed.ec.max)} mS/cm (con el agua)` : ' · con agua sola, la EC es la de tu agua'}
+              </p>
+              {feed.note && usedNutrients && <p className="text-[11px] font-semibold text-warn-ink">{feed.note}</p>}
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {[
               { id: 'watering-ph-in-input', label: 'pH', value: phIn, set: setPhIn, step: '0.05', min: '3', max: '9' },
@@ -467,6 +498,8 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                     Sin medir
                   </button>
                 </div>
+                {feed && f.id === 'watering-ph-in-input' && <ReadingHint id="watering-ph-check" value={f.value} range={feed.ph} />}
+                {feed && usedNutrients && f.id === 'watering-ec-in-input' && <ReadingHint id="watering-ec-check" value={f.value} range={feed.ec} />}
               </div>
             ))}
           </div>

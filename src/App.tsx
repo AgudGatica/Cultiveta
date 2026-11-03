@@ -1196,6 +1196,7 @@ export default function App() {
           }}
           userId={currentUser.uid}
           cultivations={cultivations.filter((c) => !c.isFinished)}
+          waterings={waterings}
           defaultCultivationId={selectedCultivationId || undefined}
           initialProducts={wateringModalInitialRecipe?.products}
           initialPh={wateringModalInitialRecipe?.ph}
