@@ -1,3 +1,4 @@
+import { calculateVPD } from '../utils/vpd';
 import {
   collection,
   doc,
@@ -50,10 +51,7 @@ export const environmentService = {
   },
 
   calculateVPD(airTempC: number, humidityPct: number, leafTempC?: number): number {
-    const leafTemp = leafTempC ?? airTempC - 2;
-    const vpsat = 0.61078 * Math.exp((17.27 * leafTemp) / (leafTemp + 237.3));
-    const vpair = 0.61078 * Math.exp((17.27 * airTempC) / (airTempC + 237.3)) * (humidityPct / 100);
-    return Number(Math.max(0, vpsat - vpair).toFixed(2));
+    return calculateVPD(airTempC, humidityPct, leafTempC);
   },
 
   async getEnvironmentRecordsByCultivation(cultivationId: string, userId?: string): Promise<EnvironmentRecord[]> {

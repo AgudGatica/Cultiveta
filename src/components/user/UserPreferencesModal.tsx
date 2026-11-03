@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
   X,
-  Bell,
   Thermometer,
   Droplets,
   CalendarCheck,
@@ -12,7 +11,6 @@ import {
   RotateCcw,
   Sparkles,
   ShieldCheck,
-  Send,
   Sliders,
   Settings,
   AlertTriangle,
@@ -21,6 +19,7 @@ import {
 import { UserProfile, UserPreferences, UserAlertPreferences } from '../../types';
 import { authService } from '../../services/authService';
 import { browserNotificationService } from '../../services/browserNotificationService';
+import { PushSettingsSection } from './PushSettingsSection';
 
 export interface UserPreferencesModalProps {
   isOpen: boolean;
@@ -59,7 +58,6 @@ export const UserPreferencesModal: React.FC<UserPreferencesModalProps> = ({
   const [notificationPermission, setNotificationPermission] =
     useState<NotificationPermission>('default');
   const [isSaving, setIsSaving] = useState(false);
-  const [testSent, setTestSent] = useState(false);
 
   // Cargar preferencias existentes del perfil
   useEffect(() => {
@@ -94,21 +92,6 @@ export const UserPreferencesModal: React.FC<UserPreferencesModalProps> = ({
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
-
-  const handleRequestPermission = async () => {
-    const res = await browserNotificationService.requestPermission();
-    setNotificationPermission(res);
-    if (res === 'granted') {
-      onShowToast?.('🔔 Permiso de notificaciones activado en tu navegador');
-    }
-  };
-
-  const handleSendTestNotification = async () => {
-    setTestSent(true);
-    await browserNotificationService.sendTestNotification();
-    onShowToast?.('🔔 Notificación de prueba enviada al sistema');
-    setTimeout(() => setTestSent(false), 2500);
-  };
 
   const handleResetDefaults = () => {
     setClimateAlerts(DEFAULT_ALERT_PREFERENCES.climateAlerts);
@@ -429,71 +412,13 @@ export const UserPreferencesModal: React.FC<UserPreferencesModalProps> = ({
             </div>
           </div>
 
-          {/* CANALES Y NOTIFICACIONES DEL SISTEMA */}
+          {/* AVISOS AL CELULAR (los manda el servidor aunque la app esté cerrada) */}
+          <PushSettingsSection onShowToast={onShowToast} />
+
+          {/* SONIDO DE LAS ALERTAS DENTRO DE LA APP */}
           <div className="p-4 rounded-2xl bg-zinc-950/70 border border-zinc-800 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold font-mono uppercase tracking-[0.18em] text-zinc-400 flex items-center gap-2">
-                <Bell className="w-3.5 h-3.5 text-zinc-400" />
-                Canales de Entrega & Sistema
-              </span>
-              <span
-                className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${
-                  notificationPermission === 'granted'
-                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                    : notificationPermission === 'denied'
-                    ? 'bg-rose-500/10 text-rose-400 border-rose-500/30'
-                    : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                }`}
-              >
-                {notificationPermission === 'granted'
-                  ? 'Permitidas en Navegador'
-                  : notificationPermission === 'denied'
-                  ? 'Bloqueadas en Navegador'
-                  : 'Pendiente de Permiso'}
-              </span>
-            </div>
-
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1">
-              <div className="text-xs text-zinc-400">
-                {notificationPermission === 'granted' ? (
-                  <span>
-                    El navegador tiene permisos activos para mostrar alertas de escritorio incluso en segundo plano.
-                  </span>
-                ) : (
-                  <span>
-                    Activa los permisos del navegador para recibir avisos acústicos y notificaciones fuera de la pestaña.
-                  </span>
-                )}
-              </div>
-
-              <div className="flex items-center gap-2 shrink-0">
-                {notificationPermission !== 'granted' && (
-                  <button
-                    type="button"
-                    id="request-permission-btn"
-                    onClick={handleRequestPermission}
-                    className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition-colors cursor-pointer"
-                  >
-                    Activar en Navegador
-                  </button>
-                )}
-                {notificationPermission === 'granted' && (
-                  <button
-                    type="button"
-                    id="send-test-alert-btn"
-                    onClick={handleSendTestNotification}
-                    disabled={testSent}
-                    className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                  >
-                    <Send className="w-3 h-3 text-emerald-400" />
-                    <span>{testSent ? 'Enviada' : 'Probar Alerta'}</span>
-                  </button>
-                )}
-              </div>
-            </div>
-
             {/* Sonido de Alertas Acústico */}
-            <div className="pt-2 border-t border-zinc-800/80 flex items-center justify-between">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs text-zinc-300">
                 {soundEnabled ? (
                   <Volume2 className="w-4 h-4 text-emerald-400" />

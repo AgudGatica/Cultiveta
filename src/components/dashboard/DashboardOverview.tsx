@@ -5,6 +5,7 @@ import type { GrowerProgress } from '../../utils/growerProgress';
 import { isCropFinished } from '../../utils/cropCardInfo';
 import { EmptyState } from '../common/EmptyState';
 import { TodayTasksCard } from './TodayTasksCard';
+import { PushPromptCard } from './PushPromptCard';
 import { ActiveCropCard } from './ActiveCropCard';
 import { AmbientCard } from '../indoors/AmbientCard';
 import { GeneticCard } from '../indoors/GeneticCard';
@@ -152,6 +153,9 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             onOpenWateringModal={onOpenWateringModal}
             onTaskCompletedFeedback={onTaskCompletedFeedback}
           />
+
+          {/* Avisos al celular: se ofrece una sola vez */}
+          {cultivations.some((c) => !c.isFinished) && <PushPromptCard />}
 
           {/* 3. Cuatro números */}
           <section aria-label="Resumen" className="grid grid-cols-4 gap-2 sm:gap-3">

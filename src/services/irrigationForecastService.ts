@@ -1,5 +1,5 @@
 import { Cultivation, Watering, EnvironmentRecord, IrrigationForecast, PotLiftFeeling } from '../types';
-import { environmentService } from './environmentService';
+import { calculateVPD } from '../utils/vpd';
 import { getRecommendedWateringIntervalDays } from '../utils/wateringAlertUtils';
 import {
   getLocalTodayDateOnly,
@@ -217,7 +217,7 @@ export function buildWateringEpisodes(
         const t = e.temperatureC;
         const h = e.humidityPct;
         if (typeof t === 'number' && typeof h === 'number') {
-          return environmentService.calculateVPD(t, h, e.leafTempC);
+          return calculateVPD(t, h, e.leafTempC);
         }
         return null;
       }).filter((v): v is number => typeof v === 'number');
@@ -569,7 +569,7 @@ export function calculateIrrigationForecast(
       const t = e.temperatureC;
       const h = e.humidityPct;
       if (typeof t === 'number' && typeof h === 'number') {
-        return environmentService.calculateVPD(t, h, e.leafTempC);
+        return calculateVPD(t, h, e.leafTempC);
       }
       return null;
     }).filter((v): v is number => typeof v === 'number');

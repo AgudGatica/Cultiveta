@@ -116,6 +116,8 @@ const newId = () => crypto.randomBytes(12).toString('base64url');
 export class CommunityService {
   /** Cuándo comentó cada persona en el último minuto (por instancia del servidor). */
   private commentTimes = new Map<string, number[]>();
+  /** Avisos al celular: cada aviso nuevo de la campana (me gusta, comentario, seguidor). */
+  onNotice: ((to: string, notice: Notice) => void) | null = null;
 
   constructor(
     private db: CommunityDb,
@@ -580,6 +582,7 @@ export class CommunityService {
       createdAt: this.iso(),
     };
     await this.db.set(`users/${to}/notifications/${id}`, notice);
+    this.onNotice?.(to, notice);
   }
 
   async notifications(uid: string): Promise<Notice[]> {

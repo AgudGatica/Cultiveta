@@ -425,7 +425,12 @@ export default function App() {
     };
 
     const handleNotifClicked = (e: Event) => {
-      const ce = e as CustomEvent<{ cultivationId?: string }>;
+      const ce = e as CustomEvent<{ cultivationId?: string; url?: string }>;
+      // Avisos al celular: cada uno trae a dónde lleva (el cultivo, Equipos, la Comunidad…)
+      if (ce.detail?.url && ce.detail.url.startsWith('/')) {
+        navigate(ce.detail.url);
+        return;
+      }
       if (ce.detail?.cultivationId) {
         setSelectedCultivationId(ce.detail.cultivationId);
         setCurrentView('cultivation_detail');

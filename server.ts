@@ -24,6 +24,8 @@ import { DeviceService, MemoryDeviceStore, FirestoreDeviceStore, DeviceError } f
 import { TuyaError } from './src/server/devices/tuyaClient';
 import { EwelinkError } from './src/server/devices/ewelinkClient';
 import { ShellyError } from './src/server/devices/shellyClient';
+import webpush from 'web-push';
+import { FirestorePushStore, MemoryPushStore, PushError, PushService, type DayData, type PushSender } from './src/server/push/pushService';
 
 dotenv.config();
 
@@ -975,6 +977,9 @@ const sseClients = new Map<string, SSEClient>();
 /** Envía una notificación SSE solo a las conexiones del usuario indicado (nunca a todos). */
 export function broadcastNotification(payload: any, targetUserId: string) {
   if (!targetUserId) return;
+  if (payload?.type === 'env_alert' && payload.task) {
+    pushService.climateAlert(targetUserId, payload.task).catch((e) => console.warn('[Avisos] Alerta de clima no enviada:', e?.message || e));
+  }
   const data = JSON.stringify(payload);
   sseClients.forEach((client) => {
     if (client.userId === targetUserId) {
@@ -1442,8 +1447,13 @@ app.post('/api/internal/outdoor-weather', async (req, res) => {
     return res.status(401).json({ error: 'No autorizado.' });
   }
   try {
+    // El resumen del día (avisos al celular) va primero: no depende del clima ni de Gemini
+    const summaries = await pushService.dailySummaries().catch((e) => {
+      console.warn('[Avisos] Error en los resúmenes del día:', e?.message || e);
+      return { sent: 0 };
+    });
     const result = await syncHourlyOutdoorWeather();
-    res.json({ success: true, ...result });
+    res.json({ success: true, ...result, summaries: summaries.sent });
   } catch (err) {
     return sendServerError(res, 500, 'Error en la sincronización programada.', err, 'internal/outdoor-weather');
   }
@@ -1768,6 +1778,8 @@ app.post('/api/account/delete', verifyFirebaseAuth, async (req, res) => {
       console.warn('[account/delete] No se pudo liberar los equipos:', devErr);
       await db.collection('deviceIntegrations').doc(userId).delete().catch(() => {});
     }
+    // Avisos al celular: sus suscripciones (no van en USER_DATA_COLLECTIONS: tienen claves y no se exportan)
+    await db.collection('pushDevices').doc(userId).delete().catch(() => {});
     // Comunidad: perfil público, @usuario, growlogs y sus fotos
     await communityService.deleteAllForUser(userId);
     // recursiveDelete: el perfil y sus subcolecciones (progress, etc.); delete() las dejaba huérfanas
@@ -2205,6 +2217,91 @@ app.delete('/api/admin/genetics/delete-photo', verifyFirebaseAuth, verifyAdminRo
   }
 });
 
+// ─────────────────────────────────────────────────────────────
+// AVISOS AL CELULAR (Web Push con claves VAPID)
+// ─────────────────────────────────────────────────────────────
+// VAPID_PUBLIC_KEY y VAPID_PRIVATE_KEY van en los Secrets de AI Studio (se generan con
+// npx web-push generate-vapid-keys). Sin ellas los avisos al celular quedan apagados (Ajustes lo dice).
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || '';
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
+const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'https://cultiveta.ai.studio';
+let pushSender: PushSender | null = null;
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+  try {
+    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+    pushSender = {
+      send: async (sub, payload, opts) => {
+        await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, payload, { TTL: opts.ttlSeconds, urgency: opts.urgency });
+      },
+    };
+  } catch (e: any) {
+    console.warn('[Avisos] Claves VAPID inválidas: los avisos al celular quedan apagados.', e?.message || e);
+  }
+}
+
+/** Cultivos, riegos y ambiente de una persona, para el resumen del día. */
+async function loadPushDay(uid: string): Promise<DayData> {
+  if (!hasAdminCredentials()) return { cultivations: [], waterings: [], envRecords: [] };
+  const db = getFirebaseAdmin().firestore();
+  const read = async (name: string) => (await db.collection(name).where('userId', '==', uid).get()).docs.map((d) => ({ id: d.id, ...d.data() }) as any);
+  const [cultivations, waterings, envRecords] = await Promise.all([read('cultivations'), read('waterings'), read('environmentRecords')]);
+  return { cultivations, waterings, envRecords };
+}
+
+const pushService = new PushService({
+  store: hasAdminCredentials() ? new FirestorePushStore(getFirebaseAdmin().firestore()) : new MemoryPushStore(),
+  sender: pushSender,
+  publicKey: VAPID_PUBLIC_KEY || null,
+  timeZone: APP_TIMEZONE,
+  loadDay: loadPushDay,
+});
+
+function sendPushError(res: express.Response, err: unknown, logTag: string) {
+  if (err instanceof PushError) return res.status(err.status).json({ error: err.message });
+  return sendServerError(res, 500, 'Error con los avisos.', err, logTag);
+}
+
+app.get('/api/push/status', verifyFirebaseAuth, async (req, res) => {
+  try {
+    const status = await pushService.status(req.userId!, String(req.query.endpoint || ''));
+    res.json({ ...status, publicKey: pushService.key() });
+  } catch (err) {
+    sendPushError(res, err, 'push/status');
+  }
+});
+
+app.post('/api/push/subscribe', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json(await pushService.subscribe(req.userId!, req.body?.subscription, req.get('user-agent')));
+  } catch (err) {
+    sendPushError(res, err, 'push/subscribe');
+  }
+});
+
+app.post('/api/push/unsubscribe', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json(await pushService.unsubscribe(req.userId!, String(req.body?.endpoint || '')));
+  } catch (err) {
+    sendPushError(res, err, 'push/unsubscribe');
+  }
+});
+
+app.post('/api/push/settings', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json({ settings: await pushService.saveSettings(req.userId!, req.body || {}) });
+  } catch (err) {
+    sendPushError(res, err, 'push/settings');
+  }
+});
+
+app.post('/api/push/test', verifyFirebaseAuth, async (req, res) => {
+  try {
+    res.json(await pushService.test(req.userId!));
+  } catch (err) {
+    sendPushError(res, err, 'push/test');
+  }
+});
+
 // Vite middleware & Static serving
 // ─────────────────────────────────────────────────────────────
 // EQUIPOS INTELIGENTES (Smart Life / Tuya), traído de Órbita
@@ -2232,6 +2329,11 @@ const deviceService = new DeviceService({
     if (!hasAdminCredentials()) return;
     const ref = getFirebaseAdmin().firestore().collection('waterings').doc();
     await ref.set({ ...w, userId: uid, id: ref.id, createdAt: new Date().toISOString() });
+    const crop = await getFirebaseAdmin().firestore().collection('cultivations').doc(w.cultivationId).get().catch(() => null);
+    pushService.autoWatering(uid, w.cultivationId, String(crop?.data()?.name || 'tu cultivo'), w.volumeLiters).catch(() => {});
+  },
+  onProblem: (uid, text) => {
+    pushService.deviceProblem(uid, text).catch(() => {});
   },
 });
 
@@ -2441,6 +2543,9 @@ const communityService = hasAdminCredentials()
       new StorageCommunityFiles(getStorage(getFirebaseAdmin()).bucket(getStorageBucketName()))
     )
   : new CommunityService(new MemoryCommunityDb(), new MemoryCommunityFiles());
+communityService.onNotice = (to, n) => {
+  pushService.communityNotice(to, n).catch(() => {});
+};
 
 function sendCommunityError(res: express.Response, err: unknown, logTag: string) {
   if (err instanceof CommunityError) return res.status(err.status).json({ error: err.message });

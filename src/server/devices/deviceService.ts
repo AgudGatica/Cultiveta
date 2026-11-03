@@ -282,6 +282,7 @@ export class DeviceService {
   private specs = new Map<string, any>();
   private verifyCultivation: (userId: string, cultivationId: string, kind: 'cultivation' | 'indoor') => Promise<{ name: string } | null>;
   private recordWatering: (userId: string, w: AutoWateringRecord) => Promise<void>;
+  private onProblem: (userId: string, text: string) => void;
 
   constructor(o: {
     store: DeviceStore;
@@ -291,6 +292,8 @@ export class DeviceService {
     verifyCultivation?: (userId: string, cultivationId: string, kind: 'cultivation' | 'indoor') => Promise<{ name: string } | null>;
     /** Con Firestore Admin: anota en el cultivo cada riego automático. */
     recordWatering?: (userId: string, w: AutoWateringRecord) => Promise<void>;
+    /** Avisos al celular: en la revisión programada apareció un error nuevo con los equipos. */
+    onProblem?: (userId: string, text: string) => void;
     /** La app de Cultiveta en dev.ewelink.cc (sin ella, eWeLink solo se puede probar con el de prueba). */
     ewelinkApp?: EwelinkApp | null;
   }) {
@@ -299,6 +302,7 @@ export class DeviceService {
     this.fetchImpl = o.fetchImpl;
     this.verifyCultivation = o.verifyCultivation || (async () => null);
     this.recordWatering = o.recordWatering || (async () => {});
+    this.onProblem = o.onProblem || (() => {});
     this.ewelinkApp = o.ewelinkApp && o.ewelinkApp.appId && o.ewelinkApp.appSecret && o.ewelinkApp.redirectUrl ? o.ewelinkApp : null;
   }
 
@@ -1082,6 +1086,7 @@ export class DeviceService {
     integ.irrigation = integ.irrigation || {};
     const c = this.client(userId, integ);
     const t = this.now();
+    const errorBefore = integ.lastError;
     let fixes = 0;
     let waterings = 0;
     // los sensores de cultivos con reglas por sensor o riego por humedad se leen en cada vuelta (antes que los equipos)
@@ -1142,6 +1147,7 @@ export class DeviceService {
       }
     }
     await this.persist(integ);
+    if (integ.lastError && integ.lastError !== errorBefore) this.onProblem(userId, integ.lastError);
     return { devices: deviceIds.length, fixes, waterings };
   }
 

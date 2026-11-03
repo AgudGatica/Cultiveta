@@ -1,6 +1,6 @@
 // Service Worker de Cultiveta
 // 1. Caché del "shell" de la app para que abra sin conexión (los datos ya son offline-first).
-// 2. Notificaciones del navegador para alertas climáticas.
+// 2. Avisos al celular (push del servidor, aunque la app esté cerrada) y notificaciones de la app abierta.
 
 const CACHE_VERSION = 'cultiveta-v2';
 const SHELL_CACHE = `${CACHE_VERSION}-shell`;
@@ -115,54 +115,53 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// Eventos Push del navegador
+// Avisos al celular: el servidor manda { title, body, url, tag } (src/server/push/pushService.ts)
 self.addEventListener('push', (event) => {
   let data = {};
   if (event.data) {
     try {
       data = event.data.json();
     } catch {
-      data = { description: event.data.text() };
+      data = { body: event.data.text() };
     }
   }
 
-  const title = data.title || 'Alerta climática (Cultiveta)';
+  const title = data.title || 'Cultiveta';
   const body =
-    data.description ||
     data.body ||
+    data.description ||
     (data.task ? `${data.task.cultivationName}: ${data.task.description}` : 'Revisá el estado de tu cultivo.');
+  const url = typeof data.url === 'string' && data.url.startsWith('/') ? data.url : data.task && data.task.cultivationId ? `/cultivos/${encodeURIComponent(data.task.cultivationId)}` : '/';
 
   const options = {
     body,
     icon: NOTIFICATION_ICON,
     badge: NOTIFICATION_ICON,
-    vibrate: [300, 150, 300, 150, 400],
-    requireInteraction: true,
-    tag: data.id || (data.task && data.task.id) || `env-alert-${Date.now()}`,
+    vibrate: [200, 100, 200],
+    tag: data.tag || data.id || (data.task && data.task.id) || `cultiveta-${Date.now()}`,
     renotify: true,
-    data: data.task || data,
+    data: { url },
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
-// Al tocar la notificación: enfocar la app o abrirla
+// Al tocar el aviso: la app abierta va a ese lugar; si estaba cerrada, se abre ahí
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  const data = event.notification.data || {};
+  const url = typeof data.url === 'string' && data.url.startsWith('/') ? data.url : data.cultivationId ? `/cultivos/${encodeURIComponent(data.cultivationId)}` : '/';
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
       for (const client of clientList) {
         if ('focus' in client) {
-          client.postMessage({
-            type: 'NOTIFICATION_CLICKED',
-            data: event.notification.data,
-          });
+          client.postMessage({ type: 'NOTIFICATION_CLICKED', data: { ...data, url } });
           return client.focus();
         }
       }
       if (self.clients.openWindow) {
-        return self.clients.openWindow('/');
+        return self.clients.openWindow(url);
       }
     })
   );
