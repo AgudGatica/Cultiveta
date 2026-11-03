@@ -6,6 +6,7 @@ import { fertilizationService } from '../../services/fertilizationService';
 import { getLocalTodayDateOnly } from '../../utils/growthStageUtils';
 import { checkReading, feedTargetFor, num, type FeedRange } from '../../utils/feedTargets';
 import { growMethodOf } from '../../utils/growMethod';
+import { FeedTableDetails } from '../cultivations/FeedTable';
 
 interface WateringModalProps {
   isOpen: boolean;
@@ -509,6 +510,7 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                   : ' · con agua sola, la EC es la de tu agua'}
               </p>
               {feed.note && usedNutrients && !tank && <p className="text-[11px] font-semibold text-warn-ink">{feed.note}</p>}
+              <FeedTableDetails key={cultivationId} idPrefix="watering-feed" medium={feed.medium} phase={feed.phase} auto={feed.auto} starts={feed.starts} />
             </div>
           )}
           {showPhEc && (

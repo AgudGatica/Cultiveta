@@ -16,7 +16,7 @@
  * Si la marca del fertilizante indica otra EC, manda la de la marca.
  */
 import type { Cultivation, Watering } from '../types';
-import { buildCultivationStageSchedule } from './growthStageUtils';
+import { addDays, buildCultivationStageSchedule, getLocalTodayDateOnly } from './growthStageUtils';
 import { RUNOFF_EC_RATIO_ALERT } from './agronomicThresholds';
 import { growMethodFromText, growMethodOf } from './growMethod';
 
@@ -42,9 +42,12 @@ export interface FeedTarget {
   note: string | null;
   /** Tierra abonada al principio: con agua alcanza. */
   soilNote: string | null;
+  /** Desde cuándo (aprox., YYYY-MM-DD) arranca cada etapa que todavía no empezó. */
+  starts: Partial<Record<FeedPhase, string>>;
 }
 
 export const MEDIUM_LABEL: Record<FeedMedium, string> = { tierra: 'tierra', coco: 'coco', hidro: 'hidroponía' };
+export const FEED_PHASES: FeedPhase[] = ['plantula', 'vege_inicio', 'vegetativo', 'floracion', 'final'];
 export const PHASE_LABEL: Record<FeedPhase, string> = {
   plantula: 'Plántula',
   vege_inicio: 'Vegetativo (primeras semanas)',
@@ -81,6 +84,61 @@ const norm = (s: string) =>
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '');
 
+/** La EC de una etapa en un medio (automáticas: un 20 % menos, salvo en plántula). */
+function ecFor(phase: FeedPhase, medium: FeedMedium, auto: boolean): FeedRange {
+  const base = EC[phase][medium];
+  const k = auto && phase !== 'plantula' ? AUTO_FACTOR : 1;
+  return { min: round1(base.min * k), max: round1(base.max * k), target: round1(base.target * k) };
+}
+
+/**
+ * Desde cuándo arranca (aprox.) cada etapa que todavía no empezó, según el calendario del cultivo:
+ * vegetativo a las 2 semanas del inicio del vegetativo; floración con la prefloración o la floración;
+ * el final, 10 días antes de la cosecha estimada (o con la maduración, si viene antes).
+ */
+export function feedPhaseStarts(crop: Cultivation): Partial<Record<FeedPhase, string>> {
+  const schedule = buildCultivationStageSchedule(crop, []);
+  const today = getLocalTodayDateOnly();
+  const startOf = (re: RegExp) => schedule.stages.find((st) => re.test(norm(st.name)) && st.startDate)?.startDate;
+  const vege = startOf(/vege/);
+  const madur = startOf(/madur/);
+  const harvestFinal = schedule.estimatedHarvestDate ? addDays(schedule.estimatedHarvestDate, -FINAL_DAYS) : undefined;
+  const all: Partial<Record<FeedPhase, string | undefined>> = {
+    plantula: startOf(/germin|plantula/),
+    vege_inicio: vege,
+    vegetativo: vege ? addDays(vege, VEGE_START_DAYS + 1) : undefined,
+    floracion: startOf(/flor/),
+    final: madur && harvestFinal ? (madur < harvestFinal ? madur : harvestFinal) : madur || harvestFinal,
+  };
+  const out: Partial<Record<FeedPhase, string>> = {};
+  for (const p of FEED_PHASES) if (all[p] && all[p]! > today) out[p] = all[p]!;
+  return out;
+}
+
+export interface FeedTableRow {
+  phase: FeedPhase;
+  label: string;
+  ph: FeedRange;
+  ec: FeedRange;
+  /** Ya pasó, es la de ahora, es la próxima o viene después. */
+  when: 'antes' | 'ahora' | 'proxima' | 'despues';
+  /** Desde cuándo (aprox.), solo las que vienen y si se sabe. */
+  from: string | null;
+}
+
+/** La tabla completa de pH y EC por etapa para un medio, marcando la etapa de ahora y la próxima. */
+export function feedTable(medium: FeedMedium, auto: boolean, current: FeedPhase | null, starts: Partial<Record<FeedPhase, string>> = {}): FeedTableRow[] {
+  const now = current ? FEED_PHASES.indexOf(current) : -1;
+  return FEED_PHASES.map((phase, i) => ({
+    phase,
+    label: PHASE_LABEL[phase],
+    ph: { ...PH[medium] },
+    ec: ecFor(phase, medium, auto),
+    when: now < 0 ? 'despues' : i < now ? 'antes' : i === now ? 'ahora' : i === now + 1 ? 'proxima' : 'despues',
+    from: i > now ? starts[phase] || null : null,
+  }));
+}
+
 /** Tierra, coco (y sustratos sin tierra) o hidroponía según el sustrato cargado (lo que no se reconoce cuenta como tierra). */
 export function feedMediumOf(substrateType: string | undefined): FeedMedium {
   const m = growMethodFromText(substrateType);
@@ -112,9 +170,7 @@ export function feedTargetFor(crop: Cultivation, waterings: Watering[] = []): Fe
   // turba, perlita o lana de roca: mismos valores que el coco, pero se dice "sustrato"
   const mediumLabel = method === 'sustrato' && !/coco/i.test(crop.substrate?.type || '') ? 'sustrato' : MEDIUM_LABEL[medium];
   const auto = /auto/i.test(crop.photoperiodType || '');
-  const base = EC[phase][medium];
-  const k = auto && phase !== 'plantula' ? AUTO_FACTOR : 1;
-  const ec: FeedRange = { min: round1(base.min * k), max: round1(base.max * k), target: round1(base.target * k) };
+  const ec = ecFor(phase, medium, auto);
 
   // El último riego con drenaje medido: si salió bastante más salado que lo que entró, se acumulan sales
   const last = waterings
@@ -126,7 +182,7 @@ export function feedTargetFor(crop: Cultivation, waterings: Watering[] = []): Fe
   }
   const soilNote = medium === 'tierra' && (phase === 'plantula' || phase === 'vege_inicio') ? 'Si la tierra vino abonada, estas semanas alcanza con agua (con el pH bien).' : null;
 
-  return { medium, phase, label: `${PHASE_LABEL[phase]} en ${mediumLabel}`, auto, ph: { ...PH[medium] }, ec, note, soilNote };
+  return { medium, phase, label: `${PHASE_LABEL[phase]} en ${mediumLabel}`, auto, ph: { ...PH[medium] }, ec, note, soilNote, starts: feedPhaseStarts(crop) };
 }
 
 export type ReadingCheck = 'bien' | 'bajo' | 'alto';

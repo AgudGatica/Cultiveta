@@ -13,6 +13,8 @@
  *  7. Lo medido: bien, bajo o alto.
  *  8. Tarjeta "Próximo riego": valores, rango y "¿De dónde sale?".
  *  9. Anotar riego: muestra lo recomendado y dice si lo medido está bien (la EC solo con nutrientes).
+ * 10. Tabla completa por etapa: la de ahora, la próxima y desde cuándo vienen las que faltan.
+ * 11. La tabla en la tarjeta y al anotar el riego: cerrada de entrada, se abre y se puede mirar otro medio.
  */
 
 import './helpers/setupDom';
@@ -20,7 +22,7 @@ import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
 import type { Cultivation, Watering } from '../src/types';
 import { addDays, getLocalTodayDateOnly } from '../src/utils/growthStageUtils';
-import { checkReading, feedMediumOf, feedPhaseFor, feedTargetFor } from '../src/utils/feedTargets';
+import { checkReading, feedMediumOf, feedPhaseFor, feedPhaseStarts, feedTable, feedTargetFor } from '../src/utils/feedTargets';
 import { FeedTargetCard } from '../src/components/cultivations/FeedTargetCard';
 import { WateringModal } from '../src/components/logs/WateringModal';
 
@@ -171,6 +173,39 @@ async function run() {
     assert(/EC 1,4/.test(c.querySelector('#watering-feed-guide')?.textContent || ''), 'con nutrientes muestra la EC');
     assert(c.querySelector('#watering-ec-check')?.getAttribute('data-check') === 'alto', 'EC alta');
     await m.unmount();
+  });
+
+  await check('10. Tabla por etapa: la de ahora, la próxima y desde cuándo', () => {
+    const rows = feedTable('coco', false, 'floracion', { final: '2030-01-10' });
+    assert(rows.map((r) => r.when).join() === 'antes,antes,antes,ahora,proxima', rows.map((r) => r.when).join());
+    assert(rows.every((r) => r.ph.target === 6.0) && rows[3].ec.target === 1.8 && rows[4].from === '2030-01-10' && rows[0].from === null, 'valores y fecha');
+    const auto = feedTable('hidro', true, null);
+    assert(auto.every((r) => r.when === 'despues') && auto[0].ec.target === 0.6 && auto[3].ec.target === 1.6 && auto[3].ph.target === 5.8, 'automática: 20 % menos salvo plántula');
+    const starts = feedPhaseStarts(crop({ startDate: ago(20), currentStage: 'Vegetativo', stageStartDate: ago(5) }));
+    assert(starts.vegetativo === addDays(ago(5), 15) && !!starts.floracion && !!starts.final && !starts.plantula && !starts.vege_inicio, JSON.stringify(starts));
+    assert(starts.floracion! > starts.vegetativo! && starts.final! > starts.floracion!, 'en orden');
+    assert(feedTargetFor(crop({ currentStage: 'Vegetativo', stageStartDate: ago(5) }))!.starts.vegetativo === starts.vegetativo, 'viene con lo recomendado');
+  });
+
+  await check('11. La tabla en la tarjeta y al anotar el riego', async () => {
+    const m = await mount(React.createElement(FeedTargetCard, { target: feedTargetFor(crop({ currentStage: 'Vegetativo', stageStartDate: ago(5) }))! }));
+    const c = m.container;
+    assert(c.querySelector('#feed-table-toggle')?.getAttribute('aria-expanded') === 'false' && !c.querySelector('#feed-table'), 'cerrada de entrada');
+    await act(async () => (c.querySelector('#feed-table-toggle') as HTMLButtonElement).click());
+    assert(c.querySelectorAll('#feed-table tbody tr').length === 5, 'cinco etapas');
+    const now = c.querySelector('#feed-table tr[data-when="ahora"]');
+    assert(now?.getAttribute('data-phase') === 'vege_inicio' && /Ahora/.test(now.textContent || ''), 'la de ahora');
+    assert(/Próxima · desde el/.test(c.querySelector('#feed-table tr[data-when="proxima"]')?.textContent || ''), 'la próxima con fecha');
+    assert(c.querySelector('#feed-table button[data-medium="coco"]')?.getAttribute('aria-pressed') === 'true', 'arranca en el medio del cultivo');
+    await act(async () => (c.querySelector('#feed-table button[data-medium="tierra"]') as HTMLButtonElement).click());
+    assert(/6,5/.test(c.querySelector('#feed-table tbody tr')?.textContent || ''), 'tierra: pH 6,5');
+    await m.unmount();
+    const w = await mount(React.createElement(WateringModal, { isOpen: true, onClose: () => {}, userId: 'u1', cultivations: [crop()], defaultCultivationId: 'c1', onWateringAdded: () => {} }));
+    const t = w.container.querySelector('#watering-feed-guide #watering-feed-table-toggle') as HTMLButtonElement;
+    assert(t && !w.container.querySelector('#watering-feed-table'), 'en Anotar riego, cerrada');
+    await act(async () => t.click());
+    assert(w.container.querySelectorAll('#watering-feed-table tbody tr').length === 5, 'se abre');
+    await w.unmount();
   });
 
   console.log('\n================================================================');

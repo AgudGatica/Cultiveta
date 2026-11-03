@@ -190,6 +190,9 @@ async function run() {
     assert(/hace 2 h/.test(c.textContent || '') && /5,6–6,0/.test(c.textContent || ''), 'último control y rango');
     await click(c.querySelector('#tank-check'));
     assert(checks === 1, 'abre el control del tanque');
+    await click(c.querySelector('#tank-table-toggle'));
+    assert(c.querySelector('#tank-table button[data-medium="hidro"]')?.getAttribute('aria-pressed') === 'true' && c.querySelectorAll('#tank-table tbody tr').length === 5, 'tabla por etapa, en hidroponía');
+    assert(c.querySelector('#tank-table tr[data-when="ahora"]')?.getAttribute('data-phase') === 'vegetativo', 'la etapa de ahora');
     await tk.unmount();
   });
 

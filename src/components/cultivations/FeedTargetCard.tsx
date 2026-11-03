@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChevronDown, Droplets, Info, Sprout } from 'lucide-react';
 import type { FeedTarget, LivingSoilGuide } from '../../utils/feedTargets';
 import { num } from '../../utils/feedTargets';
+import { FeedTableDetails } from './FeedTable';
 
 /**
  * Living soil: no se riega con pH ni EC. Dice eso, una sugerencia para la etapa y, en "¿De dónde sale?",
@@ -103,6 +104,7 @@ export const FeedTargetCard: React.FC<{ target: FeedTarget; className?: string }
           <p>Es la EC total, con el agua. Si la marca de tu fertilizante indica otra, seguí la de la marca.</p>
         </div>
       )}
+      <FeedTableDetails idPrefix="feed" medium={target.medium} phase={target.phase} auto={target.auto} starts={target.starts} />
     </section>
   );
 };

@@ -2,6 +2,7 @@ import React from 'react';
 import { CheckCircle2, ClipboardCheck, Container } from 'lucide-react';
 import { num } from '../../utils/feedTargets';
 import { TANK_TEMP_RANGE, type TankStatus } from '../../utils/hydroTank';
+import { FeedTableDetails } from './FeedTable';
 
 const ago = (h: number) => (h < 1 ? 'recién' : h < 48 ? `hace ${Math.round(h)} h` : `hace ${Math.round(h / 24)} días`);
 
@@ -52,6 +53,7 @@ export const HydroTankCard: React.FC<{ status: TankStatus; onCheck?: () => void;
         {status.alert.text}
       </p>
       <p className="text-[11px] text-ink-muted">pH y EC todos los días a la misma hora; toda la solución nueva cada 2 semanas.</p>
+      <FeedTableDetails idPrefix="tank" medium={target.medium} phase={target.phase} auto={target.auto} starts={target.starts} />
       {onCheck && (
         <button type="button" id="tank-check" onClick={onCheck} className="cultiveta-btn-primary text-sm w-full justify-center">
           <ClipboardCheck className="w-4 h-4" aria-hidden="true" />
