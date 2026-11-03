@@ -6,6 +6,7 @@
  *  1. El resumen del día: qué dice cada tarea, hasta 3 y "y N más", a dónde lleva; nada si no hay tareas.
  *  2. Anotar el celular: solo con el servidor configurado, suscripción válida, como mucho 5, cuál es el equipo.
  *  3. Enviar: a todos los celulares; el que se dio de baja (410) se saca; aviso de prueba.
+ * 3b. Seguridad: claves derivadas del secreto del servidor, documentos de otra cuenta ignorados, solo servicios de push.
  *  4. Resumen del día por persona: a su hora (y 2 horas más), una vez por día, nada si está apagado o no hay tareas;
  *     tierra, living soil e hidroponía.
  *  5. Clima, equipos y Comunidad: preferencias, horas de silencio (23 a 8), un me gusta por publicación por hora,
@@ -25,7 +26,9 @@ import path from 'path';
 import vm from 'vm';
 import type { Cultivation, CultivationTask, Watering } from '../src/types';
 import { addDays, getLocalTodayDateOnly } from '../src/utils/growthStageUtils';
-import { MemoryPushStore, PushService, deviceLabel, summaryMessage, type PushSender, type StoredSubscription } from '../src/server/push/pushService';
+import { MemoryPushStore, PushService, deviceLabel, isPushEndpoint, summaryMessage, vapidKeysFromSecret, type PushSender, type StoredSubscription } from '../src/server/push/pushService';
+import crypto from 'crypto';
+import webpush from 'web-push';
 import { zonedToMs } from '../src/server/devices/tz';
 import { buildDailyTasks } from '../src/utils/dailyTasks';
 import { taskService } from '../src/services/taskService';
@@ -167,6 +170,41 @@ async function run() {
     assert((await svc.status('u1')).devices.length === 1, 'el que dio 410 se sacó');
     sender.gone.add(SUB(1).endpoint);
     await rejects(svc.test('u1'), /Volvé a activar/, 502);
+  });
+
+  await check('3b. Seguridad: claves del servidor, documentos de otra cuenta y solo servicios de push', async () => {
+    const a = vapidKeysFromSecret('secreto-del-servidor');
+    const b = vapidKeysFromSecret('secreto-del-servidor');
+    const c = vapidKeysFromSecret('otro-secreto');
+    assert(a.publicKey === b.publicKey && a.privateKey === b.privateKey && a.publicKey !== c.publicKey, 'siempre las mismas para el mismo secreto');
+    assert(Buffer.from(a.publicKey, 'base64url').length === 65 && Buffer.from(a.privateKey, 'base64url').length === 32, 'tamaños de VAPID');
+    const ecdh = crypto.createECDH('prime256v1');
+    ecdh.generateKeys();
+    const req = webpush.generateRequestDetails(
+      { endpoint: 'https://fcm.googleapis.com/fcm/send/x', keys: { p256dh: ecdh.getPublicKey().toString('base64url'), auth: crypto.randomBytes(16).toString('base64url') } },
+      '{"title":"x"}',
+      { vapidDetails: { subject: 'https://cultiveta.ai.studio', publicKey: a.publicKey, privateKey: a.privateKey } }
+    );
+    assert(/^vapid t=/.test(String(req.headers.Authorization)), 'web-push las acepta');
+
+    assert(isPushEndpoint('https://fcm.googleapis.com/fcm/send/a') && isPushEndpoint('https://web.push.apple.com/QO1') && isPushEndpoint('https://updates.push.services.mozilla.com/wpush/v2/a') && isPushEndpoint('https://wns2-bl2p.notify.windows.com/w/?token=a'), 'servicios de push');
+    assert(!isPushEndpoint('https://evil.com/fcm.googleapis.com') && !isPushEndpoint('https://fcm.googleapis.com.evil.com/x') && !isPushEndpoint('http://fcm.googleapis.com/x'), 'nada más');
+    const { svc, store, sender } = setup();
+    await rejects(svc.subscribe('u1', { ...SUB(1), endpoint: 'https://mi-servidor.com/robar' }), /no mandó una suscripción válida/);
+
+    // Alguien creó (con la regla general de Firestore) el documento de u1 con su propio celular
+    await store.set('u1', { userId: 'atacante', subscriptions: [{ endpoint: SUB(9).endpoint, keys: SUB(9).keys, device: 'Android', createdAt: '' }], settings: { resumen: true, summaryHour: 9, clima: true, equipos: true, comunidad: true }, sent: {}, updatedAt: '' });
+    assert((await svc.status('u1')).devices.length === 0 && (await store.listUserIds()).length === 0, 'un documento de otra cuenta no cuenta');
+    await svc.climateAlert('u1', { title: 'x', description: 'y', cultivationId: 'c1' });
+    assert(sender.sent.length === 0, 'y no le llega nada al atacante');
+    await svc.subscribe('u1', SUB(1));
+    const doc = await store.get('u1');
+    assert(doc!.userId === 'u1' && doc!.subscriptions.length === 1 && doc!.subscriptions[0].endpoint === SUB(1).endpoint, 'al activar, queda solo lo de u1');
+
+    // Un endpoint que no es de un servicio de push (cargado a mano en Firestore) no se usa y se saca
+    await store.set('u2', { userId: 'u2', subscriptions: [{ endpoint: 'https://mi-servidor.com/x', keys: SUB(1).keys, device: 'Android', createdAt: '' }, { endpoint: SUB(2).endpoint, keys: SUB(2).keys, device: 'Android', createdAt: '' }], settings: { resumen: true, summaryHour: 9, clima: true, equipos: true, comunidad: true }, sent: {}, updatedAt: '' });
+    await svc.climateAlert('u2', { title: 'x', description: 'y', cultivationId: 'c1' });
+    assert(sender.sent.length === 1 && sender.sent[0].endpoint === SUB(2).endpoint && (await store.get('u2'))!.subscriptions.length === 1, 'solo al servicio de push');
   });
 
   await check('4. Resumen del día: a su hora, una vez, según el método', async () => {

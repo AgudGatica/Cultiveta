@@ -12,7 +12,12 @@
  * Comunidad y riego automático no suenan de 23 a 8 (los de la Comunidad quedan igual en la campana).
  *
  * En iPhone el push solo funciona con la app agregada a la pantalla de inicio (iOS 16.4+): eso lo resuelve la app.
+ *
+ * Seguridad: la regla general de Firestore deja que cada persona cree documentos con su userId en cualquier colección,
+ * así que un documento de pushDevices cuyo userId no es el de su id se ignora (si no, alguien podría anotar su
+ * celular en la cuenta de otro). Y solo se manda a los servicios de push de verdad (Google, Apple, Mozilla, Microsoft).
  */
+import crypto from 'crypto';
 import type { Cultivation, CultivationTask, EnvironmentRecord, Watering } from '../../types';
 import { buildDailyTasks } from '../../utils/dailyTasks';
 import { zonedDateKey, zonedParts } from '../devices/tz';
@@ -99,6 +104,29 @@ const QUIET_TO = 8;
 const SUMMARY_ITEMS = 3;
 
 const B64URL = /^[A-Za-z0-9_-]+={0,2}$/;
+/** Los servicios de push de los navegadores (Chrome/Android, Safari/iPhone, Firefox, Edge). */
+const PUSH_HOSTS = /^(fcm\.googleapis\.com|android\.googleapis\.com|web\.push\.apple\.com|updates\.push\.services\.mozilla\.com|[a-z0-9-]+\.notify\.windows\.com)$/;
+
+export const isPushEndpoint = (endpoint: string): boolean => {
+  try {
+    const u = new URL(endpoint);
+    return u.protocol === 'https:' && PUSH_HOSTS.test(u.hostname) && endpoint.length <= 1000;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Las claves VAPID salen de un secreto que el servidor ya tiene (siempre las mismas, en cualquier instancia y
+ * después de reiniciar; no se guardan en ningún lado). Si ese secreto cambia, cada celular tiene que volver a
+ * activar los avisos.
+ */
+export function vapidKeysFromSecret(secret: string): { publicKey: string; privateKey: string } {
+  const priv = crypto.createHmac('sha256', secret).update('cultiveta-vapid-v1').digest();
+  const ecdh = crypto.createECDH('prime256v1');
+  ecdh.setPrivateKey(priv);
+  return { publicKey: ecdh.getPublicKey().toString('base64url'), privateKey: priv.toString('base64url') };
+}
 
 export class MemoryPushStore implements PushStore {
   docs = new Map<string, PushDoc>();
@@ -110,7 +138,7 @@ export class MemoryPushStore implements PushStore {
     this.docs.set(uid, JSON.parse(JSON.stringify(doc)));
   }
   async listUserIds() {
-    return [...this.docs.values()].filter((d) => d.subscriptions.length).map((d) => d.userId);
+    return [...this.docs.entries()].filter(([id, d]) => d.userId === id && d.subscriptions.length).map(([id]) => id);
   }
 }
 
@@ -125,7 +153,7 @@ export class FirestorePushStore implements PushStore {
   }
   async listUserIds() {
     const snap = await this.db.collection('pushDevices').get();
-    return snap.docs.filter((d) => (d.data().subscriptions || []).length).map((d) => d.id);
+    return snap.docs.filter((d) => d.data().userId === d.id && (d.data().subscriptions || []).length).map((d) => d.id);
   }
 }
 
@@ -193,7 +221,9 @@ export class PushService {
   }
 
   private async load(uid: string): Promise<PushDoc> {
-    const d = await this.store.get(uid);
+    const stored = await this.store.get(uid);
+    // un documento con el userId de otra cuenta no es de esta persona: se empieza de cero
+    const d = stored && stored.userId === uid ? stored : null;
     return d
       ? { ...d, settings: { ...DEFAULT_PUSH_SETTINGS, ...d.settings }, sent: d.sent || {}, subscriptions: d.subscriptions || [] }
       : { userId: uid, subscriptions: [], settings: { ...DEFAULT_PUSH_SETTINGS }, sent: {}, updatedAt: this.iso() };
@@ -220,13 +250,7 @@ export class PushService {
     const endpoint = String(input?.endpoint || '');
     const p256dh = String(input?.keys?.p256dh || '');
     const auth = String(input?.keys?.auth || '');
-    let url: URL | null = null;
-    try {
-      url = new URL(endpoint);
-    } catch {
-      url = null;
-    }
-    if (!url || url.protocol !== 'https:' || endpoint.length > 1000) throw new PushError('El celular no mandó una suscripción válida.');
+    if (!isPushEndpoint(endpoint)) throw new PushError('El celular no mandó una suscripción válida.');
     if (!B64URL.test(p256dh) || !B64URL.test(auth) || p256dh.length > 200 || auth.length > 100) throw new PushError('El celular no mandó una suscripción válida.');
     const d = await this.load(uid);
     d.subscriptions = d.subscriptions.filter((s) => s.endpoint !== endpoint);
@@ -271,6 +295,10 @@ export class PushService {
     let ok = 0;
     const gone: string[] = [];
     for (const sub of d.subscriptions) {
+      if (!isPushEndpoint(sub.endpoint)) {
+        gone.push(sub.endpoint);
+        continue;
+      }
       try {
         await this.sender.send(sub, payload, { ttlSeconds: 6 * 3600, urgency });
         ok++;

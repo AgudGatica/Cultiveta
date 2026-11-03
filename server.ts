@@ -25,7 +25,7 @@ import { TuyaError } from './src/server/devices/tuyaClient';
 import { EwelinkError } from './src/server/devices/ewelinkClient';
 import { ShellyError } from './src/server/devices/shellyClient';
 import webpush from 'web-push';
-import { FirestorePushStore, MemoryPushStore, PushError, PushService, type DayData, type PushSender } from './src/server/push/pushService';
+import { FirestorePushStore, MemoryPushStore, PushError, PushService, vapidKeysFromSecret, type DayData, type PushSender } from './src/server/push/pushService';
 
 dotenv.config();
 
@@ -2220,15 +2220,25 @@ app.delete('/api/admin/genetics/delete-photo', verifyFirebaseAuth, verifyAdminRo
 // ─────────────────────────────────────────────────────────────
 // AVISOS AL CELULAR (Web Push con claves VAPID)
 // ─────────────────────────────────────────────────────────────
-// VAPID_PUBLIC_KEY y VAPID_PRIVATE_KEY van en los Secrets de AI Studio (se generan con
-// npx web-push generate-vapid-keys). Sin ellas los avisos al celular quedan apagados (Ajustes lo dice).
-const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || '';
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || '';
+// Las claves VAPID salen de OUTDOOR_SYNC_SECRET (ya está en los Secrets de AI Studio): no hay que cargar nada.
+// Se pueden fijar a mano con VAPID_PUBLIC_KEY y VAPID_PRIVATE_KEY. En desarrollo, sin secreto, valen por sesión.
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || 'https://cultiveta.ai.studio';
-let pushSender: PushSender | null = null;
-if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+function resolveVapidKeys(): { publicKey: string; privateKey: string } | null {
+  if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) return { publicKey: process.env.VAPID_PUBLIC_KEY, privateKey: process.env.VAPID_PRIVATE_KEY };
   try {
-    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+    if (OUTDOOR_SYNC_SECRET) return vapidKeysFromSecret(OUTDOOR_SYNC_SECRET);
+    if (process.env.NODE_ENV !== 'production') return webpush.generateVAPIDKeys();
+  } catch (e: any) {
+    console.warn('[Avisos] No se pudieron armar las claves VAPID:', e?.message || e);
+  }
+  return null;
+}
+const VAPID_KEYS = resolveVapidKeys();
+const VAPID_PUBLIC_KEY = VAPID_KEYS?.publicKey || '';
+let pushSender: PushSender | null = null;
+if (VAPID_KEYS) {
+  try {
+    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_KEYS.publicKey, VAPID_KEYS.privateKey);
     pushSender = {
       send: async (sub, payload, opts) => {
         await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, payload, { TTL: opts.ttlSeconds, urgency: opts.urgency });
