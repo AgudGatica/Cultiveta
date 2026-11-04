@@ -148,7 +148,8 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
             <Dna className="w-24 h-24 stroke-[1.2]" aria-hidden="true" />
           </div>
         )}
-        {/* sin capa oscura encima: la foto se ve tal cual y los textos se leen por su sombra */}
+        {/* el degradé negro de siempre, a mitad de intensidad: la foto se ve con su luz y los textos se leen */}
+        <div id="genetic-hero-shade" aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/30 opacity-50" />
         <button
           type="button"
           onClick={onBack}

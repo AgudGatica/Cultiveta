@@ -285,7 +285,9 @@ async function run() {
     // arriba: foto, nombre, etapa y ambiente; abajo, pestañas Resumen / Etapas / Timeline
     const hero = c.querySelector('#genetic-hero')?.textContent || '';
     assert(/Gelato 33/.test(hero) && /Floración/.test(c.querySelector('#genetic-stage-chip')?.textContent || '') && /Carpa 120/.test(hero), hero);
-    assert(!c.querySelector('#genetic-hero [class*="bg-gradient"]'), 'la portada sin capa oscura encima');
+    const shade = c.querySelector('#genetic-hero-shade');
+    assert(shade && /bg-gradient-to-t/.test(shade.className) && /\bopacity-50\b/.test(shade.className), `degradé negro al 50%: ${shade?.className}`);
+    assert(c.querySelectorAll('#genetic-hero [class*="bg-gradient"]').length === 1, 'una sola capa de degradé');
     assert([...c.querySelectorAll('[role="tab"]')].map((t) => t.textContent).join() === 'Resumen,Etapas,Timeline', 'pestañas');
     assert(c.querySelector('#genetic-stats') && /Riegos1/.test(c.querySelector('#genetic-stats')?.textContent || ''), c.querySelector('#genetic-stats')?.textContent || '');
     await act(async () => (c.querySelector('#genetic-tab-etapas') as HTMLButtonElement).click());
