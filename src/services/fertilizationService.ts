@@ -2,6 +2,7 @@ import { doc, collection, getDocs, setDoc, deleteDoc, query, where } from 'fireb
 import { db } from '../firebase/config';
 import { Cultivation, FertilizationSchedule, FertilizationWeek, FertilizationProductDosage } from '../types';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
+import { parseLocalDate } from '../utils/growthStageUtils';
 import { localStore } from './localStore';
 
 export interface FertilizationPresetMeta {
@@ -370,7 +371,8 @@ export const fertilizationService = {
 
   calculateCurrentWeek(cultivation: Cultivation): number {
     try {
-      const startMs = new Date(cultivation.startDate).getTime();
+      // medianoche local del inicio (new Date("YYYY-MM-DD") es UTC: en Argentina cambiaba de semana a las 21)
+      const startMs = (parseLocalDate(cultivation.startDate) || new Date(cultivation.startDate)).getTime();
       const nowMs = Date.now();
       const diffDays = Math.max(1, Math.floor((nowMs - startMs) / (1000 * 60 * 60 * 24)));
       const week = Math.ceil(diffDays / 7);

@@ -224,6 +224,8 @@ async function run() {
     assert(/pH recomendado/.test(coco.find((t) => t.id.startsWith('watering_'))!.description) && coco.some((t) => t.type === 'flush'), 'coco como antes');
     const hydroFlush = taskService.getTasksForDashboard([hydro(flowering)], [w(2)], [], 'u1').find((t) => t.type === 'flush')!;
     assert(hydroFlush && /solución del tanque por agua sola/.test(hydroFlush.description), hydroFlush?.description);
+    // la flora empezó hace 58 días: día 58 (antes, en Argentina, la fecha se leía en UTC y decía 59)
+    assert(/^Día 58 de flora/.test(hydroFlush.description), hydroFlush.description);
   });
 
   const modal = (c: Cultivation) =>

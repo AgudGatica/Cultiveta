@@ -36,6 +36,7 @@ import {
   ReferenceLine,
 } from 'recharts';
 import { Cultivation, Harvest, EnvironmentRecord, Watering } from '../../types';
+import { parseLocalDate } from '../../utils/growthStageUtils';
 
 interface CropComparisonViewProps {
   cultivations: Cultivation[];
@@ -204,7 +205,7 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
     const dryGrams = harvestA?.finalDryWeightGrams ?? 0;
     const plants = cropA?.plantCount || harvestA?.plantCount || 1;
     const gramsPerPlant = harvestA?.gramsPerPlant ?? (plants > 0 ? Number((dryGrams / plants).toFixed(1)) : 0);
-    const totalDays = harvestA?.totalDays ?? (cropA ? Math.max(1, Math.round((new Date().getTime() - new Date(cropA.startDate).getTime()) / (1000 * 3600 * 24))) : 0);
+    const totalDays = harvestA?.totalDays ?? (cropA ? Math.max(1, Math.round((new Date().getTime() - (parseLocalDate(cropA.startDate) || new Date(cropA.startDate)).getTime()) / (1000 * 3600 * 24))) : 0);
     const watts = cropA?.lighting?.usedWatts || cropA?.lighting?.nominalWatts || 0;
     const gramsPerWatt = watts > 0 && dryGrams > 0 ? Number((dryGrams / watts).toFixed(2)) : null;
     const gramsPerDay = totalDays > 0 && dryGrams > 0 ? Number((dryGrams / totalDays).toFixed(2)) : null;
@@ -225,7 +226,7 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
     const dryGrams = harvestB?.finalDryWeightGrams ?? 0;
     const plants = cropB?.plantCount || harvestB?.plantCount || 1;
     const gramsPerPlant = harvestB?.gramsPerPlant ?? (plants > 0 ? Number((dryGrams / plants).toFixed(1)) : 0);
-    const totalDays = harvestB?.totalDays ?? (cropB ? Math.max(1, Math.round((new Date().getTime() - new Date(cropB.startDate).getTime()) / (1000 * 3600 * 24))) : 0);
+    const totalDays = harvestB?.totalDays ?? (cropB ? Math.max(1, Math.round((new Date().getTime() - (parseLocalDate(cropB.startDate) || new Date(cropB.startDate)).getTime()) / (1000 * 3600 * 24))) : 0);
     const watts = cropB?.lighting?.usedWatts || cropB?.lighting?.nominalWatts || 0;
     const gramsPerWatt = watts > 0 && dryGrams > 0 ? Number((dryGrams / watts).toFixed(2)) : null;
     const gramsPerDay = totalDays > 0 && dryGrams > 0 ? Number((dryGrams / totalDays).toFixed(2)) : null;

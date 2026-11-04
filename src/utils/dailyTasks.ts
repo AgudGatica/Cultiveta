@@ -193,7 +193,8 @@ export function buildDailyTasks(
 
     // Milestone A: Flush (Lavado de raíces)
     if (crop.currentStage === 'Floración' || crop.currentStage === 'Maduración') {
-      const flowStart = crop.floweringStartDate ? new Date(crop.floweringStartDate) : new Date(startDate);
+      // día local (new Date("YYYY-MM-DD") lo toma en UTC y en Argentina suma un día de flora)
+      const flowStart = (crop.floweringStartDate && parseLocalDate(crop.floweringStartDate)) || new Date(startDate);
       flowStart.setHours(0, 0, 0, 0);
       const flowDays = Math.floor((today.getTime() - flowStart.getTime()) / (1000 * 60 * 60 * 24));
       const totalFlowDaysExpected = floweringWeeks * 7;

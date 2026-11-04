@@ -35,6 +35,7 @@ import { ambientsForCrop, cropTypeForAmbient, isExteriorAmbient } from '../../ut
 import { PhotoperiodPresetPicker } from './PhotoperiodPresetPicker';
 import { clampLightHours, darkHoursFor } from '../../utils/photoperiods';
 import { photoService } from '../../services/photoService';
+import { PhotoPrepError, preparePhoto } from '../../services/imagePrep';
 import { auth } from '../../firebase/config';
 import { GENETICS_DATABASE } from '../../data/predefinedGenetics';
 import {
@@ -431,16 +432,20 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const picked = e.target.files?.[0];
+    e.target.value = '';
+    if (!picked) return;
     try {
       setLoading(true);
+      setError(null);
+      // cualquier formato del celular (también HEIC), achicada y sin datos internos
+      const { file } = await preparePhoto(picked, { maxEdge: 1600 });
       const photoId = 'cover_' + Date.now();
       const ext = file.name.split('.').pop() || 'jpg';
       const result = await photoService.uploadPhotoFile(userId, 'covers', photoId, file, ext);
       setCoverPhotoUrl(result.downloadUrl);
-    } catch {
-      setError('Error al procesar la fotografía.');
+    } catch (err) {
+      setError(err instanceof PhotoPrepError ? err.message : 'No se pudo subir la foto de portada. Probá de nuevo con conexión.');
     } finally {
       setLoading(false);
     }

@@ -2,19 +2,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   Camera,
-  Upload,
+  Image as ImageIcon,
   Sparkles,
   Save,
   WifiOff,
   AlertTriangle,
   Info,
-  Calendar,
-  Layers,
-  Tag,
   CheckCircle2
 } from 'lucide-react';
 import { Cultivation, PhotoCategory, PhotoRecord, CultivationStageName } from '../../types';
 import { photoService } from '../../services/photoService';
+import { PhotoPrepError, preparePhoto } from '../../services/imagePrep';
+import { parseLocalDate } from '../../utils/growthStageUtils';
 
 interface PhotoUploadModalProps {
   isOpen: boolean;
@@ -112,8 +111,8 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
     }
     const [ey, em, ed] = date.split('-').map(Number);
     const evidenceDate = new Date(ey, em - 1, ed);
-    const cropStartRaw = new Date(selectedCrop.startDate);
-    const cropStartDate = new Date(cropStartRaw.getFullYear(), cropStartRaw.getMonth(), cropStartRaw.getDate());
+    // el día local de inicio ("2026-09-01" con new Date queda el 31/8 en Argentina)
+    const cropStartDate = parseLocalDate(selectedCrop.startDate) || new Date(NaN);
 
     if (isNaN(evidenceDate.getTime())) {
       setDateWarning('La fecha seleccionada no es válida.');
@@ -146,73 +145,40 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
     };
   }, []);
 
-  // Validación rigurosa de tipo, decodificación y dimensiones de la imagen (FASE 4)
+  /**
+   * La foto de la cámara o de la galería se prepara antes de mostrarla: se abre en cualquier formato del
+   * celular (también HEIC), se achica si es enorme y pierde los datos internos. Si no se puede, el error
+   * dice por qué (en vez de "puede estar dañado").
+   */
   const handleFileChange = async (file: File) => {
     setError(null);
     const token = ++currentTokenRef.current;
-
-    // 1. Validar extensiones y tipo MIME
-    const fileName = file.name.toLowerCase();
-    const isHeic = fileName.endsWith('.heic') || fileName.endsWith('.heif') || file.type === 'image/heic';
-    if (isHeic) {
-      setError(
-        'El formato HEIC/HEIF de Apple no puede procesarse directamente en el navegador. Por favor conviértelo a JPEG, PNG o WebP antes de cargarlo.'
-      );
-      return;
-    }
-
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
-    const hasValidMime = validTypes.includes(file.type);
-    const hasValidExt = /\.(jpe?g|png|webp)$/i.test(fileName);
-
-    if (!hasValidMime && !hasValidExt) {
-      setError('Formato no soportado. Por favor selecciona una imagen en formato JPG, PNG o WebP.');
-      return;
-    }
-
-    // 2. Límite de tamaño: 15 MB
-    const maxBytes = 15 * 1024 * 1024;
-    if (file.size > maxBytes) {
-      setError(
-        `La imagen es demasiado pesada (${(file.size / (1024 * 1024)).toFixed(1)} MB). El límite máximo es de 15 MB.`
-      );
-      return;
-    }
-
-    // 3. Validación de decodificación y dimensiones reales
     setValidatingImage(true);
-    cleanupObjectUrl();
-
-    const objUrl = URL.createObjectURL(file);
-    activeObjectUrlRef.current = objUrl;
-
-    const img = new Image();
-    img.src = objUrl;
-
-    img.onload = () => {
-      if (currentTokenRef.current !== token) return; // Evitar carrera con selección posterior
-      setValidatingImage(false);
-
-      if (img.naturalWidth === 0 || img.naturalHeight === 0) {
-        setError('El archivo parece estar corrupto o no contiene píxeles legibles.');
-        cleanupObjectUrl();
-        setSelectedFile(null);
-        setPreviewUrl(null);
-        return;
-      }
-
-      setSelectedFile(file);
+    try {
+      const prepared = await preparePhoto(file);
+      if (currentTokenRef.current !== token) return; // eligió otra mientras tanto
+      cleanupObjectUrl();
+      const objUrl = URL.createObjectURL(prepared.file);
+      activeObjectUrlRef.current = objUrl;
+      setSelectedFile(prepared.file);
       setPreviewUrl(objUrl);
-    };
-
-    img.onerror = () => {
+    } catch (err) {
       if (currentTokenRef.current !== token) return;
-      setValidatingImage(false);
-      setError('No se pudo decodificar el archivo como imagen. Verifica que el archivo no esté dañado.');
+      console.warn('[Fotos] No se pudo preparar la foto:', { name: file.name, type: file.type, size: file.size, kind: (err as PhotoPrepError)?.kind, error: (err as Error)?.message });
+      setError(err instanceof PhotoPrepError ? err.message : 'No se pudo abrir la foto. Probá con otra o sacala con el botón Cámara.');
       cleanupObjectUrl();
       setSelectedFile(null);
       setPreviewUrl(null);
-    };
+    } finally {
+      if (currentTokenRef.current === token) setValidatingImage(false);
+    }
+  };
+
+  /** Al elegir (o sacar) una foto; se limpia el campo para poder volver a elegir la misma. */
+  const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (file) handleFileChange(file);
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -230,12 +196,11 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
       if (!ey || !em || !ed) return 1;
       const evidenceLocal = new Date(ey, em - 1, ed);
 
-      const start = new Date(selectedCrop.startDate);
-      if (isNaN(start.getTime())) return 1;
+      // medianoche local del día de inicio (new Date("YYYY-MM-DD") daba un día de más en Argentina)
+      const startLocal = parseLocalDate(selectedCrop.startDate);
+      if (!startLocal) return 1;
 
-      const startLocal = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-
-      const diffDays = Math.floor((evidenceLocal.getTime() - startLocal.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+      const diffDays = Math.round((evidenceLocal.getTime() - startLocal.getTime()) / (1000 * 60 * 60 * 24)) + 1;
       return Math.max(1, diffDays);
     } catch {
       return 1;
@@ -402,54 +367,45 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
             </div>
           </div>
 
-          {/* Dropzone de fotografía con previsualización segura */}
+          {/* Foto: sacarla con la cámara o elegirla de la galería (en la compu, también arrastrarla) */}
           <div>
-            <label className="block text-xs font-bold text-ink mb-1">Archivo de imagen *</label>
+            <span className="block text-xs font-bold text-ink mb-1">Foto *</span>
             <div
+              id="photo-drop-zone"
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
-              className="border-2 border-dashed border-line hover:border-brand rounded-3xl p-5 text-center transition-all relative overflow-hidden bg-surface cursor-pointer group"
+              className="border-2 border-dashed border-line rounded-3xl p-4 text-center bg-surface space-y-3"
             >
               {validatingImage ? (
-                <div className="py-8 flex flex-col items-center justify-center gap-2">
+                <div className="py-6 flex flex-col items-center justify-center gap-2">
                   <div className="w-8 h-8 rounded-full border-2 border-brand border-t-transparent animate-spin" />
-                  <p className="text-xs text-ink-muted">Verificando resolución y formato...</p>
+                  <p className="text-xs text-ink-muted">Preparando la foto…</p>
                 </div>
               ) : previewUrl ? (
                 <div className="flex flex-col items-center gap-2">
-                  <img
-                    src={previewUrl}
-                    alt="Preview"
-                    className="max-h-52 rounded-2xl object-contain border border-line shadow-xs"
-                  />
+                  <img id="photo-preview" src={previewUrl} alt="Foto elegida" className="max-h-52 rounded-2xl object-contain border border-line shadow-xs" />
                   <div className="flex items-center gap-2 text-xs font-bold text-ok">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>{selectedFile?.name} ({(selectedFile ? selectedFile.size / 1024 : 0).toFixed(0)} KB)</span>
+                    <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
+                    <span>Lista para guardar ({(selectedFile ? selectedFile.size / 1024 : 0).toFixed(0)} KB)</span>
                   </div>
-                  <span className="text-[11px] text-ink-muted group-hover:text-brand transition-colors">
-                    Hacé clic o arrastrá para cambiar la foto
-                  </span>
                 </div>
               ) : (
-                <div className="flex flex-col items-center gap-2 py-4">
-                  <div className="w-12 h-12 rounded-2xl bg-brand/10 text-brand flex items-center justify-center group-hover:scale-105 transition-transform">
-                    <Upload className="w-5 h-5" />
-                  </div>
-                  <p className="text-xs font-bold text-ink">Arrastrá una foto acá o hacé clic para explorar</p>
-                  <p className="text-[11px] text-ink-subtle">Formatos soportados: JPG, PNG, WEBP (hasta 15 MB)</p>
-                </div>
+                <p className="text-xs text-ink-muted py-1">Sacá una foto ahora o elegí una de la galería.</p>
               )}
-              <input
-                id="photo-file-input"
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    handleFileChange(e.target.files[0]);
-                  }
-                }}
-                className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-              />
+              {/* un label por botón: abre la cámara o la galería sin depender de JavaScript (anda en todos los celulares) */}
+              <div className="grid grid-cols-2 gap-2">
+                <label htmlFor="photo-camera-input" id="photo-camera-btn" className="cultiveta-btn-primary text-xs justify-center cursor-pointer min-h-11">
+                  <Camera className="w-4 h-4" aria-hidden="true" />
+                  <span>{previewUrl ? 'Sacar otra' : 'Sacar foto'}</span>
+                </label>
+                <label htmlFor="photo-file-input" id="photo-gallery-btn" className="cultiveta-btn-secondary text-xs justify-center cursor-pointer min-h-11">
+                  <ImageIcon className="w-4 h-4" aria-hidden="true" />
+                  <span>{previewUrl ? 'Elegir otra' : 'Galería'}</span>
+                </label>
+              </div>
+              <input id="photo-camera-input" type="file" accept="image/*" capture="environment" onChange={onPick} className="sr-only" tabIndex={-1} />
+              <input id="photo-file-input" type="file" accept="image/*" onChange={onPick} className="sr-only" />
+              <p className="text-[11px] text-ink-subtle">JPG, PNG, WebP o HEIC. Las fotos grandes se achican solas y se guardan sin la ubicación del celular.</p>
             </div>
           </div>
 

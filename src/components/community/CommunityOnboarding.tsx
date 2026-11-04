@@ -1,6 +1,7 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Camera, ShieldCheck, Users } from 'lucide-react';
 import { communityService, type CommunityMe } from '../../services/communityService';
+import { PhotoPrepError, preparePhoto } from '../../services/imagePrep';
 import type { AvatarMode } from '../../utils/growlog';
 import { Avatar } from './Avatar';
 
@@ -49,10 +50,32 @@ export const CommunityOnboarding: React.FC<Props> = ({ me, suggestedName, sugges
   const [accepted, setAccepted] = useState(Boolean(prev));
   const [file, setFile] = useState<File | null>(null);
   const [busy, setBusy] = useState(false);
+  const [preparing, setPreparing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const previewUrl = mode === 'google' ? me?.googlePhoto : mode === 'photo' ? (file ? URL.createObjectURL(file) : prev?.avatarUrl) : null;
+  // la vista previa de la foto elegida (una sola URL por foto, que se libera al cambiarla)
+  const filePreview = useMemo(() => (file ? URL.createObjectURL(file) : null), [file]);
+  useEffect(() => () => {
+    if (filePreview) URL.revokeObjectURL(filePreview);
+  }, [filePreview]);
+  const previewUrl = mode === 'google' ? me?.googlePhoto : mode === 'photo' ? filePreview || prev?.avatarUrl : null;
+
+  /** Cualquier foto del celular (también HEIC): se achica y pierde los datos internos antes de subirla. */
+  const pickPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const picked = e.target.files?.[0];
+    e.target.value = '';
+    if (!picked) return;
+    setError(null);
+    setPreparing(true);
+    try {
+      setFile((await preparePhoto(picked, { maxEdge: 1024 })).file);
+    } catch (err) {
+      setError(err instanceof PhotoPrepError ? err.message : 'No se pudo abrir la foto. Probá con otra.');
+    } finally {
+      setPreparing(false);
+    }
+  };
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,7 +124,8 @@ export const CommunityOnboarding: React.FC<Props> = ({ me, suggestedName, sugges
               Incógnito
             </button>
           </div>
-          <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => setFile(e.target.files?.[0] || null)} />
+          <input ref={fileRef} id="avatar-file" type="file" accept="image/*" className="sr-only" tabIndex={-1} onChange={pickPhoto} />
+          {preparing && <p className="text-[11px] text-ink-muted">Preparando la foto…</p>}
         </div>
       </div>
 
@@ -156,7 +180,7 @@ export const CommunityOnboarding: React.FC<Props> = ({ me, suggestedName, sugges
             Cancelar
           </button>
         )}
-        <button type="submit" id="community-save" disabled={busy} className="cultiveta-btn-primary text-sm flex-1 justify-center disabled:opacity-50">
+        <button type="submit" id="community-save" disabled={busy || preparing} className="cultiveta-btn-primary text-sm flex-1 justify-center disabled:opacity-50">
           {busy ? 'Guardando…' : editing ? 'Guardar' : 'Entrar a la comunidad'}
         </button>
       </div>
