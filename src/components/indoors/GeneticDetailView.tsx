@@ -148,7 +148,7 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
             <Dna className="w-24 h-24 stroke-[1.2]" aria-hidden="true" />
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/30" />
+        {/* sin capa oscura encima: la foto se ve tal cual y los textos se leen por su sombra */}
         <button
           type="button"
           onClick={onBack}
@@ -157,9 +157,9 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
           <ArrowLeft className="w-4 h-4" aria-hidden="true" />
           {ambient ? ambient.name : 'Jardín'}
         </button>
-        <div className="absolute left-4 right-4 bottom-4 space-y-2 text-white">
-          <h1 className="text-3xl sm:text-4xl font-black tracking-tight leading-none">{card.name}</h1>
-          <p className="text-sm text-white/85">
+        <div id="genetic-hero-text" className="absolute left-4 right-4 bottom-4 space-y-2 text-white">
+          <h1 className="text-3xl sm:text-4xl font-black tracking-tight leading-none [text-shadow:0_1px_2px_rgba(0,0,0,0.6),0_2px_14px_rgba(0,0,0,0.55)]">{card.name}</h1>
+          <p className="text-sm font-semibold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.7),0_1px_10px_rgba(0,0,0,0.6)]">
             {[card.seedBank, card.dominance, card.photoperiodType].filter(Boolean).join(' · ') || 'Genética'}
           </p>
           <div className="flex flex-wrap gap-1.5">

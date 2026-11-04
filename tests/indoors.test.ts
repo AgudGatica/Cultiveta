@@ -264,6 +264,11 @@ async function run() {
         index: 0,
         waterings,
         envRecords: env,
+        // una foto subida y otra que quedó solo en este aparato (sin subir)
+        photos: [
+          { id: 'p1', userId: 'u1', cultivationId: 'Lote A', url: 'https://x/p1.jpg', date: '2026-10-20', syncStatus: 'synced', createdAt: '' },
+          { id: 'p2', userId: 'u1', cultivationId: 'Lote A', url: '', date: '2026-10-03', syncStatus: 'error', isPendingSync: true, createdAt: '' },
+        ] as any,
         userId: 'u1',
         onBack: () => {},
         onOpenCrop: () => {},
@@ -280,6 +285,7 @@ async function run() {
     // arriba: foto, nombre, etapa y ambiente; abajo, pestañas Resumen / Etapas / Timeline
     const hero = c.querySelector('#genetic-hero')?.textContent || '';
     assert(/Gelato 33/.test(hero) && /Floración/.test(c.querySelector('#genetic-stage-chip')?.textContent || '') && /Carpa 120/.test(hero), hero);
+    assert(!c.querySelector('#genetic-hero [class*="bg-gradient"]'), 'la portada sin capa oscura encima');
     assert([...c.querySelectorAll('[role="tab"]')].map((t) => t.textContent).join() === 'Resumen,Etapas,Timeline', 'pestañas');
     assert(c.querySelector('#genetic-stats') && /Riegos1/.test(c.querySelector('#genetic-stats')?.textContent || ''), c.querySelector('#genetic-stats')?.textContent || '');
     await act(async () => (c.querySelector('#genetic-tab-etapas') as HTMLButtonElement).click());
@@ -288,6 +294,8 @@ async function run() {
     assert(stages.some((x) => x.getAttribute('data-stage-status') === 'completed'), 'etapas por las que pasó');
     await act(async () => (c.querySelector('#genetic-tab-timeline') as HTMLButtonElement).click());
     assert(c.querySelector('#genetic-panel-timeline #plant-timeline'), 'la línea de tiempo con la maceta');
+    const notes = [...c.querySelectorAll('.photo-sync-note')];
+    assert(notes.length === 1 && notes[0].getAttribute('data-sync') === 'error' && /solo está en este aparato/.test(notes[0].textContent || ''), `la foto sin subir lo dice (y la subida no): ${notes.map((n) => n.textContent)}`);
     await m.unmount();
   });
 

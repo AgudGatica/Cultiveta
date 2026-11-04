@@ -195,6 +195,16 @@ function stageLine(e: PlantTimelineEvent): string | null {
 function PhotoCard({ event, userId }: { event: PlantTimelineEvent; userId?: string }) {
   const caption = event.photo?.caption?.trim();
   const stage = stageLine(event);
+  // una foto que todavía no llegó a la nube solo se ve en el aparato donde se sacó: se avisa
+  const sync = event.photo?.syncStatus;
+  const localOnly = !!event.photo && sync !== 'synced' && sync !== 'saving_metadata' && (event.photo.isPendingSync || !!sync);
+  const syncNote = !localOnly
+    ? null
+    : sync === 'error'
+      ? 'No se pudo subir: solo está en este aparato. Reintentala desde Fotos.'
+      : sync === 'uploading'
+        ? 'Subiendo…'
+        : 'Todavía no se subió: solo está en este aparato.';
   return (
     <figure
       data-event-kind="photo"
@@ -214,6 +224,11 @@ function PhotoCard({ event, userId }: { event: PlantTimelineEvent; userId?: stri
         <span className="text-ink-muted">{dateLine(event)}</span>
         {stage && <span className="px-2 py-0.5 rounded-full bg-ok-bg border border-ok-line text-ok-ink">{stage}</span>}
       </div>
+      {syncNote && (
+        <p className="photo-sync-note px-1 pb-0.5 text-center text-[11px] font-bold text-warn-ink" data-sync={sync || 'queued'}>
+          {syncNote}
+        </p>
+      )}
     </figure>
   );
 }
