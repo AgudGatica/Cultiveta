@@ -12,7 +12,8 @@
  *    cumplen solas (sin servidor) a la hora de Argentina.
  * 6. Revisión periódica: si alguien cambió el toma, lo vuelve a poner como corresponde.
  * 7. Cambiar la hora de encendido vuelve a cargar el horario.
- * 8. Un toma con la luz asignada no se prende "a mano"; uno libre sí.
+ * 8. La luz a mano, como en un timer: queda así hasta el próximo cambio del horario y después sigue
+ *    sola (o vuelve al horario si se la deja como dice); un toma libre se prende sin más.
  * 9. Sensor de ambiente asignado: el cultivo ve temperatura y humedad.
  * 10. Desasignar y desconectar: se borra lo de Cultiveta y vuelven los horarios de la persona.
  * 11. Bomba: riega con la cuenta regresiva del toma, se apaga sola y respeta los topes.
@@ -25,6 +26,8 @@
  * 17. Riego a hora fija en 3 pulsos; topes y sonda que faltan se rechazan; el horario nuevo de la luz
  *     llega a la bomba.
  * 18. Riego por humedad: riega al llegar a seco, con pausas, hasta el tope por día; de noche espera.
+ * 19. Extractor sin sensor: sigue a la luz; siempre prendido; a mano una hora; horario propio que pasa
+ *     la medianoche (cargado en Smart Life) y que no se mueve si cambia la luz.
  */
 
 import { tuyaSign, signUrl, channelsOf, sensorsOf } from '../src/server/devices/tuyaClient';
@@ -150,17 +153,35 @@ async function run() {
     assert((await svc.setSchedule('u1', 'c1', { lightHours: 18, darkHours: 6, anchorMs: ar('20261024', '06:00'), timeZone: TZ })).changed === false, 'igual: no reescribe');
   });
 
-  await check('8. Un toma con la luz asignada no se prende a mano; uno libre sí', async () => {
-    const { svc, mock } = setup(ar('20261031', '10:00'));
+  await check('8. La luz a mano, como en un timer: queda así hasta el próximo cambio y después sigue sola; un toma libre, sin más', async () => {
+    const { now, svc, mock } = setup(ar('20261031', '10:00'));
     await svc.connectTuya('u1', { mock: true });
     await svc.bind('u1', { deviceId: 'mockstrip01', code: 'switch_1', role: 'light', cultivationId: 'c1', cultivationName: 'Carpa', schedule: { lightHours: 18, darkHours: 6, anchorMs: ar('20261024', '18:00'), timeZone: TZ } });
-    let err: any = null;
-    try {
-      await svc.command('u1', 'mockstrip01', 'switch_1', false);
-    } catch (e) {
-      err = e;
-    }
-    assert(err?.status === 409 && /Carpa/.test(err.message), 'rechazado');
+    const sw1 = () => mock().devices.mockstrip01.status.switch_1;
+    assert(sw1() === true, 'a las 10 prendida (de 18 a 12)');
+    const off = await svc.command('u1', 'mockstrip01', 'switch_1', false);
+    assert(sw1() === false && off.manual?.value === false && off.manual.until === ar('20261031', '12:00'), `apagada a mano hasta las 12: ${JSON.stringify(off)}`);
+    now.t = ar('20261031', '10:20');
+    const t1 = await svc.tick('u1');
+    assert(sw1() === false && t1.fixes === 0, 'la revisión no la vuelve a prender');
+    let ov = await svc.overview('u1');
+    assert(ov.bindings[0].manual?.value === false && /apagado a mano hasta las 12:00/.test(ov.bindings[0].lastReason || ''), JSON.stringify(ov.bindings[0]));
+    // a las 12 el horario la apaga igual: deja de estar a mano
+    now.t = ar('20261031', '12:20');
+    await svc.tick('u1');
+    ov = await svc.overview('u1');
+    assert(ov.bindings[0].manual === null && sw1() === false, 'pasado el cambio, sigue el horario');
+    now.t = ar('20261031', '18:20');
+    await svc.tick('u1');
+    assert(sw1() === true, 'a las 18 prende con su horario');
+    // de noche (apagada por horario) se prende a mano hasta las 18; al apagarla, vuelve al horario
+    now.t = ar('20261101', '13:00');
+    await svc.tick('u1');
+    assert(sw1() === false, 'a las 13 apagada');
+    const on = await svc.command('u1', 'mockstrip01', 'switch_1', true);
+    assert(sw1() === true && on.manual?.until === ar('20261101', '18:00'), `prendida a mano hasta las 18: ${JSON.stringify(on)}`);
+    const back = await svc.command('u1', 'mockstrip01', 'switch_1', false);
+    assert(back.manual === null && sw1() === false, 'al dejarla como dice el horario, vuelve al horario');
     await svc.command('u1', 'mockstrip01', 'switch_2', true);
     assert(mock().devices.mockstrip01.status.switch_2 === true, 'toma libre prendido');
   });
@@ -406,6 +427,50 @@ async function run() {
     assert(count() === 3 && /de noche/.test(await note()), `de noche no riega: ${await note()}`);
     await ticksUntil(env, ar('20261102', '18:05'));
     assert(count() === 4 && records[3].time === '18:00', `prende la luz y riega: ${records.map((r) => r.time)}`);
+  });
+
+  await check('19. Extractor sin sensor: sigue a la luz; siempre prendido; a mano una hora; horario propio que pasa la medianoche', async () => {
+    const { now, svc, mock } = setup(ar('20261031', '10:00'));
+    await svc.connectTuya('u1', { mock: true });
+    await svc.bind('u1', { deviceId: 'mockstrip01', code: 'switch_1', role: 'light', cultivationId: 'c1', schedule: light18 });
+    const st = () => mock().devices.mockstrip01.status;
+    const times = (code: string) => (userTimers(mock(), `category_${code}`)?.groups || []).flatMap((g: any) => g.timers.filter((t: any) => t.status === 1).map((t: any) => `${t.time}${t.functions[0].value ? '+' : '-'}`)).sort().join(' ');
+    // sin sensor en el lugar, por sensor quedaría apagado siempre: arranca siguiendo a la luz
+    const ex = await svc.bind('u1', { deviceId: 'mockstrip01', code: 'switch_3', role: 'climate', climateRole: 'exhaust', cultivationId: 'c1' });
+    assert(ex.rule?.mode === 'follow' && st().switch_3 === true && times('switch_3') === '12:00- 18:00+', `sigue a la luz: ${ex.rule?.mode} ${times('switch_3')}`);
+    // siempre prendido: sin horario cargado y, si alguien lo apaga, la revisión lo vuelve a prender
+    await svc.setRule('u1', ex.id, { mode: 'always' });
+    assert(times('switch_3') === '' && st().switch_3 === true, `siempre prendido: "${times('switch_3')}"`);
+    mock().flip('switch_3');
+    now.t += 15 * 60_000;
+    await svc.tick('u1');
+    assert(st().switch_3 === true, 'lo volvió a prender');
+    // a mano: apagado por una hora (no tiene horario) y después vuelve solo
+    const m = await svc.command('u1', 'mockstrip01', 'switch_3', false);
+    assert(st().switch_3 === false && m.manual?.until === now.t + 3_600_000, `apagado a mano una hora: ${JSON.stringify(m)}`);
+    now.t += 30 * 60_000;
+    await svc.tick('u1');
+    assert(st().switch_3 === false, 'a la media hora sigue apagado');
+    now.t += 35 * 60_000;
+    await svc.tick('u1');
+    assert(st().switch_3 === true, 'pasada la hora, vuelve a prender');
+    // horario propio de 20 a 8: queda cargado en Smart Life y de madrugada va prendido
+    let err: any = null;
+    try {
+      await svc.bind('u1', { deviceId: 'mockstrip01', code: 'switch_4', role: 'climate', climateRole: 'intake', cultivationId: 'c1', rule: { mode: 'schedule', times: { on: '08:00', off: '08:00' }, timeZone: TZ } });
+    } catch (e) {
+      err = e;
+    }
+    assert(err && /distintas/.test(err.message), `misma hora: ${err?.message}`);
+    const intake = await svc.bind('u1', { deviceId: 'mockstrip01', code: 'switch_4', role: 'climate', climateRole: 'intake', cultivationId: 'c1', rule: { mode: 'schedule', times: { on: '20:00', off: '08:00' }, timeZone: TZ } });
+    assert(times('switch_4') === '08:00- 20:00+' && st().switch_4 === false, `horario propio cargado: ${times('switch_4')} · ${st().switch_4}`);
+    now.t = ar('20261101', '02:00');
+    await svc.tick('u1');
+    const ov = await svc.overview('u1');
+    assert(st().switch_4 === true && /horario propio/.test(ov.bindings.find((b: any) => b.id === intake.id).lastReason || ''), `a las 2 prendido: ${st().switch_4}`);
+    // la luz cambia de horario: lo que tiene horario propio no se mueve
+    await svc.setSchedule('u1', 'c1', { ...light18, anchorMs: ar('20261024', '06:00') });
+    assert(times('switch_4') === '08:00- 20:00+', `sigue su horario: ${times('switch_4')}`);
   });
 
   console.log('\n================================================================');

@@ -10,6 +10,8 @@
  * 5. El menú "Más" del celular tiene Equipos.
  * 7. Marcas: Smart Life con sus pasos, eWeLink sin la app de Cultiveta solo con el de prueba y Shelly con
  *    server y clave; con equipos de varias marcas, cada uno dice de cuál es.
+ * 8. Marca conectada: arriba "Agregar otro" (pasos y "Buscar equipos nuevos") y abajo, en Tus equipos,
+ *    "Desconectar"; la luz asignada se prende y apaga a mano.
  */
 
 import './helpers/setupDom';
@@ -155,9 +157,79 @@ async function run() {
       m = await mount(React.createElement(DevicesView, { cultivations: [] }));
       await flush();
       const card = m.container.querySelector('#device-brand-ewelink')?.textContent || '';
-      assert(/Conectado · Sonoff de prueba/.test(card) && m.container.querySelector('#ewelink-disconnect'), `eWeLink conectado: ${card}`);
+      assert(/Conectado · Sonoff de prueba/.test(card) && m.container.querySelector('#devices-list #ewelink-disconnect'), `eWeLink conectado: ${card}`);
       const dev = m.container.querySelector('.smart-device')?.textContent || '';
       assert(/eWeLink · BASICR2/.test(dev) && /Toma 1/.test(dev), `equipo con su marca: ${dev}`);
+      await m.unmount();
+    } finally {
+      (globalThis as any).fetch = realFetch;
+      devicesService.reset();
+    }
+  });
+
+  await check('8. Marca conectada: arriba "Agregar otro" y abajo, en Tus equipos, "Desconectar"; la luz asignada se prende y apaga a mano', async () => {
+    const realFetch = globalThis.fetch;
+    const calls: Array<{ path: string; body: any }> = [];
+    const strip = (n: number) => ({
+      id: `mockstrip0${n}`,
+      vendor: 'tuya',
+      name: n === 1 ? 'Zapatilla' : 'Extractor nuevo',
+      product: 'Power Strip',
+      category: 'pc',
+      online: true,
+      channels: [
+        {
+          code: 'switch_1',
+          label: 'Toma 1',
+          on: true,
+          hasCountdown: true,
+          binding: n === 1 ? { id: 'l1', deviceId: 'mockstrip01', deviceName: 'Zapatilla', code: 'switch_1', label: 'Toma 1', cultivationId: 'in1', cultivationName: 'Carpa', role: 'light', targetKind: 'indoor', schedule: null, manual: null } : null,
+        },
+      ],
+      sensors: null,
+      sensorBindings: [],
+      power: null,
+    });
+    let list = [strip(1)];
+    (globalThis as any).fetch = async (url: string, init: any = {}) => {
+      const path = String(url).replace(/^https?:\/\/[^/]+/, '');
+      calls.push({ path, body: init.body ? JSON.parse(init.body) : null });
+      const body =
+        path === '/api/devices/status'
+          ? { tuya: { connected: true, mock: true, region: 'us', accessId: '' }, ewelink: { connected: false, mock: false, region: null, available: false }, shelly: { connected: false, mock: false, server: null, ids: [] }, regions: { us: 'Western America' } }
+          : path === '/api/devices'
+            ? { devices: list, errors: {} }
+            : path.endsWith('/command')
+              ? { success: true, manual: { value: false, until: Date.now() + 3600_000 } }
+              : { connected: true, mock: true, bindings: [] };
+      return { ok: true, status: 200, json: async () => body };
+    };
+    const flush = async () => {
+      for (let i = 0; i < 4; i++) await act(async () => new Promise((r) => setTimeout(r, 0)));
+    };
+    const toasts: string[] = [];
+    try {
+      const m = await mount(React.createElement(DevicesView, { cultivations: [], showToast: (t: string) => toasts.push(t) }));
+      await flush();
+      const c = m.container;
+      const top = c.querySelector('#device-brand-tuya');
+      assert(top?.querySelector('#tuya-add') && !top.querySelector('#tuya-disconnect') && /Conectado · zapatilla de prueba/.test(top.textContent || ''), `arriba: ${top?.textContent}`);
+      assert(c.querySelector('#devices-list #device-connected-tuya #tuya-disconnect'), 'Desconectar, abajo en Tus equipos');
+      // Agregar otro: los pasos y buscar equipos nuevos
+      await act(async () => (c.querySelector('#tuya-add') as HTMLButtonElement).click());
+      const steps = c.querySelector('#tuya-add-steps')?.textContent || '';
+      assert(/app Smart Life/.test(steps) && /Link App Account/.test(steps), steps);
+      list = [strip(1), strip(2)];
+      await act(async () => (c.querySelector('#tuya-search') as HTMLButtonElement).click());
+      await flush();
+      assert(toasts.some((t) => /apareció Extractor nuevo/.test(t)) && c.querySelectorAll('.smart-device').length === 2, `buscar: ${toasts.join(' | ')}`);
+      // la luz asignada se apaga a mano
+      const power = c.querySelector('.smart-device .manual-power') as HTMLButtonElement;
+      assert(power && /Apagar/.test(power.textContent || ''), 'botón de la luz');
+      await act(async () => power.click());
+      await flush();
+      const cmd = calls.find((x) => x.path === '/api/devices/mockstrip01/command');
+      assert(cmd?.body.code === 'switch_1' && cmd.body.value === false && toasts.some((t) => /Apagada a mano hasta/.test(t)), `${JSON.stringify(cmd)} ${toasts.join(' | ')}`);
       await m.unmount();
     } finally {
       (globalThis as any).fetch = realFetch;

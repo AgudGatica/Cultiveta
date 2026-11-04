@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   CLIMATE_METRICS,
+  CLIMATE_MODE_LABEL,
   CLIMATE_ROLES,
   ruleDirection,
   validateClimateRule,
@@ -9,19 +10,25 @@ import {
   type ClimateRole,
   type ClimateRule,
 } from '../../utils/deviceRules';
+import { localTimeZone } from '../../services/devicesService';
 
 interface ClimateRuleEditorProps {
   role: ClimateRole;
   rule: ClimateRule;
   onSave: (rule: ClimateRule) => Promise<void> | void;
   onCancel: () => void;
+  /** ¿Ese lugar tiene la luz con enchufe? (sin eso, "sigue a la luz" no sabe cuándo es de día). */
+  hasLight?: boolean;
+  /** ¿Ese lugar tiene sensor de ambiente? (sin eso, "por sensor" no tiene datos). */
+  hasSensor?: boolean;
 }
 
 const FIELD = 'min-h-9 px-2 rounded-xl bg-white border border-line text-xs text-ink w-full';
 const toNum = (v: string) => Number(String(v).replace(',', '.'));
+const MODES: ClimateMode[] = ['follow', 'follow_inverted', 'always', 'schedule', 'sensor'];
 
-/** Cómo se maneja un equipo de clima: por sensor (con sus valores) o siguiendo a la luz. */
-export const ClimateRuleEditor: React.FC<ClimateRuleEditorProps> = ({ role, rule, onSave, onCancel }) => {
+/** Cómo se maneja un equipo de clima: sigue a la luz (o al revés), siempre prendido, su propio horario o por sensor. */
+export const ClimateRuleEditor: React.FC<ClimateRuleEditorProps> = ({ role, rule, onSave, onCancel, hasLight, hasSensor }) => {
   const info = CLIMATE_ROLES[role];
   const [mode, setMode] = useState<ClimateMode>(rule.mode);
   const [metric, setMetric] = useState<ClimateMetric>(rule.metric);
@@ -31,6 +38,8 @@ export const ClimateRuleEditor: React.FC<ClimateRuleEditorProps> = ({ role, rule
   const [nOn, setNOn] = useState(String(rule.night?.on ?? rule.on));
   const [nOff, setNOff] = useState(String(rule.night?.off ?? rule.off));
   const [sensorLoss, setSensorLoss] = useState(rule.sensorLoss);
+  const [onTime, setOnTime] = useState(rule.times?.on || '08:00');
+  const [offTime, setOffTime] = useState(rule.times?.off || '20:00');
   const [errors, setErrors] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -45,6 +54,8 @@ export const ClimateRuleEditor: React.FC<ClimateRuleEditorProps> = ({ role, rule
       off: toNum(off),
       night: mode === 'sensor' && useNight ? { on: toNum(nOn), off: toNum(nOff) } : null,
       sensorLoss,
+      times: mode === 'schedule' ? { on: onTime, off: offTime } : null,
+      timeZone: mode === 'schedule' ? localTimeZone() : null,
     };
     const errs = validateClimateRule(role, next);
     setErrors(errs);
@@ -63,12 +74,26 @@ export const ClimateRuleEditor: React.FC<ClimateRuleEditorProps> = ({ role, rule
     <div className="climate-rule-editor space-y-2 rounded-2xl bg-surface border border-line p-3">
       <label className="text-[11px] font-semibold text-ink-muted block space-y-1">
         <span>Cómo se maneja</span>
-        <select className={FIELD} value={mode} onChange={(e) => setMode(e.target.value as ClimateMode)} aria-label="Cómo se maneja">
-          {!info.noSensor && <option value="sensor">Por sensor</option>}
-          <option value="follow">Sigue a la luz</option>
-          <option value="follow_inverted">Al revés de la luz</option>
+        <select className={`climate-rule-mode ${FIELD}`} value={mode} onChange={(e) => setMode(e.target.value as ClimateMode)} aria-label="Cómo se maneja">
+          {MODES.filter((m) => m !== 'sensor' || !info.noSensor).map((m) => (
+            <option key={m} value={m}>
+              {CLIMATE_MODE_LABEL[m]}
+            </option>
+          ))}
         </select>
       </label>
+      {mode === 'schedule' && (
+        <div className="grid grid-cols-2 gap-2">
+          <label className="text-[11px] font-semibold text-ink-muted space-y-1">
+            <span>Prende a las</span>
+            <input type="time" className={`climate-rule-on-time ${FIELD}`} value={onTime} onChange={(e) => setOnTime(e.target.value)} aria-label="Prende a las" />
+          </label>
+          <label className="text-[11px] font-semibold text-ink-muted space-y-1">
+            <span>Apaga a las</span>
+            <input type="time" className={`climate-rule-off-time ${FIELD}`} value={offTime} onChange={(e) => setOffTime(e.target.value)} aria-label="Apaga a las" />
+          </label>
+        </div>
+      )}
       {mode === 'sensor' && (
         <>
           <label className="text-[11px] font-semibold text-ink-muted block space-y-1">
@@ -109,18 +134,31 @@ export const ClimateRuleEditor: React.FC<ClimateRuleEditorProps> = ({ role, rule
               <option value="keep">Dejarlo como está</option>
             </select>
           </label>
+          {hasSensor === false && (
+            <p className="climate-rule-warning text-[11px] font-bold text-warn-ink">
+              Este lugar no tiene un sensor de ambiente asignado: sin datos, el equipo hace lo que elijas arriba. Asigná uno en Equipos.
+            </p>
+          )}
         </>
       )}
-      {mode !== 'sensor' && (
-        <p className="text-[11px] text-ink-muted">Queda cargado en Smart Life junto con la luz: sigue andando aunque cierres Cultiveta.</p>
+      {(mode === 'follow' || mode === 'follow_inverted') && (
+        <p className="text-[11px] text-ink-muted">
+          {hasLight === false
+            ? 'La luz de este lugar todavía no tiene un enchufe asignado: sin eso, Cultiveta no sabe cuándo es de día. Asigná la luz en Equipos.'
+            : mode === 'follow'
+              ? 'Prende y apaga a la misma hora que la luz. Queda cargado en el enchufe: sigue andando aunque cierres Cultiveta.'
+              : 'Prende cuando la luz se apaga y apaga cuando se prende. Queda cargado en el enchufe: sigue andando aunque cierres Cultiveta.'}
+        </p>
       )}
+      {mode === 'schedule' && <p className="text-[11px] text-ink-muted">Todos los días a esas horas. Queda cargado en el enchufe: sigue andando aunque cierres Cultiveta.</p>}
+      {mode === 'always' && <p className="text-[11px] text-ink-muted">Queda prendido todo el día. Si alguien lo apaga, Cultiveta lo vuelve a prender en su próxima revisión.</p>}
       {errors.map((e) => (
         <p key={e} className="text-[11px] font-bold text-error">
           {e}
         </p>
       ))}
       <div className="flex gap-2">
-        <button type="button" disabled={saving} onClick={save} className="cultiveta-btn-primary text-xs disabled:opacity-50">
+        <button type="button" disabled={saving} onClick={save} className="climate-rule-save cultiveta-btn-primary text-xs disabled:opacity-50">
           {saving ? 'Guardando…' : 'Guardar'}
         </button>
         <button type="button" onClick={onCancel} className="cultiveta-btn-secondary text-xs">

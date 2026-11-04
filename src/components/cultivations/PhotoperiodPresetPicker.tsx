@@ -80,7 +80,7 @@ export const PhotoperiodPresetPicker: React.FC<PhotoperiodPresetPickerProps> = (
         onClick={() => !disabled && onSelect(p.light, p.dark)}
         disabled={disabled}
         aria-pressed={active}
-        title={disabled ? `${p.hint} Necesita un enchufe inteligente Wi-Fi.` : p.hint}
+        title={disabled ? `${p.hint} Necesita un enchufe inteligente Wi-Fi que maneje esta luz.` : p.hint}
         className={`min-h-11 px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all flex items-center gap-1.5 border text-left ${
           disabled
             ? 'bg-surface text-ink-subtle border-line cursor-not-allowed'
@@ -141,7 +141,7 @@ export const PhotoperiodPresetPicker: React.FC<PhotoperiodPresetPickerProps> = (
         <p className="text-[11px] text-ink-muted leading-snug">
           {supercyclesEnabled
             ? 'Ciclos de más de 24 horas, manejados por tu enchufe inteligente.'
-            : 'Ciclos de más de 24 horas. Solo se pueden usar con un enchufe inteligente Wi-Fi conectado a Cultiveta (próximamente): un temporizador común no puede hacerlos.'}
+            : 'Ciclos de más de 24 horas. Solo se pueden usar con un enchufe inteligente Wi-Fi que maneje esta luz (se asigna en Equipos): un temporizador común no puede hacerlos.'}
         </p>
       </Group>
 

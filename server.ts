@@ -2464,7 +2464,8 @@ app.delete('/api/devices/bindings/:id', verifyFirebaseAuth, async (req, res) => 
   }
 });
 
-// Equipo de clima: cómo se maneja (por sensor con sus valores, sigue a la luz o al revés).
+// Equipo de clima: cómo se maneja (por sensor con sus valores, sigue a la luz o al revés, siempre
+// prendido u horario propio).
 app.post('/api/devices/bindings/:id/rule', verifyFirebaseAuth, async (req, res) => {
   try {
     res.json({ binding: await deviceService.setRule(req.userId!, String(req.params.id), (req.body || {}).rule) });
@@ -2522,8 +2523,9 @@ app.post('/api/devices/schedule', verifyFirebaseAuth, async (req, res) => {
 app.post('/api/devices/:deviceId/command', verifyFirebaseAuth, async (req, res) => {
   try {
     const b = req.body || {};
-    await deviceService.command(req.userId!, String(req.params.deviceId), String(b.code || ''), b.value === true);
-    res.json({ success: true });
+    // la luz y los equipos de clima quedan "a mano" hasta el próximo cambio de su horario (manual.until)
+    const r = await deviceService.command(req.userId!, String(req.params.deviceId), String(b.code || ''), b.value === true);
+    res.json({ success: true, ...r });
   } catch (err) {
     return sendDeviceError(res, err, 'devices/command');
   }

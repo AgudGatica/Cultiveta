@@ -11,12 +11,14 @@
  * 6. Riego: sin conexión, sin cuenta regresiva o pasado de los topes, no riega.
  * 7. La tarjeta muestra la bomba con "Regar" (y su riego automático) y cada equipo de clima con su estado y por qué.
  * 8. Riego automático: valores inválidos, descripción y riego atado a la luz en un superciclo.
+ * 9. Siempre prendido, horario propio (también pasando la medianoche) y que un equipo sin sensor arranque
+ *    siguiendo a la luz.
  */
 
 import './helpers/setupDom';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { evaluateClimate, validateClimateRule, defaultClimateRule, checkWaterOrder, describeClimateRule, DEFAULT_PUMP, DEFAULT_AUTO_IRRIGATION, validateAutoIrrigation, describeAutoIrrigation } from '../src/utils/deviceRules';
+import { evaluateClimate, validateClimateRule, defaultClimateRule, checkWaterOrder, describeClimateRule, DEFAULT_PUMP, DEFAULT_AUTO_IRRIGATION, validateAutoIrrigation, describeAutoIrrigation, scheduleOnHours } from '../src/utils/deviceRules';
 import { scheduledWaterings } from '../src/server/devices/autoIrrigation';
 import { CropDevicesCard } from '../src/components/cultivations/CropDevicesCard';
 import { devicesService } from '../src/services/devicesService';
@@ -145,6 +147,22 @@ async function run() {
     const before = scheduledWaterings({ ...base, mode: 'scheduled', scheduled: { ...base.scheduled, trigger: 'before_off', offsetMin: 60 } }, light, anchor, anchor + 26 * H);
     assert(before.length === 1 && before[0].at === anchor + 12 * H, 'una hora antes de apagar');
     assert(scheduledWaterings({ ...base, mode: 'scheduled' }, null, anchor, anchor + 72 * H).length === 0, 'sin horario de luz no riega lo atado a la luz');
+  });
+
+  await check('9. Siempre prendido, horario propio y cómo arranca un equipo sin sensor', () => {
+    assert(defaultClimateRule('exhaust').mode === 'sensor' && defaultClimateRule('exhaust', { hasSensor: false }).mode === 'follow', 'sin sensor, sigue a la luz');
+    assert(defaultClimateRule('humidifier', { hasSensor: true }).mode === 'sensor', 'con sensor, por sensor');
+    const always = { ...defaultClimateRule('intake'), mode: 'always' as const };
+    assert(validateClimateRule('intake', always).length === 0 && evaluateClimate('intake', always, { readings: null, lightOn: false, currentOn: false }).on, 'siempre prendido, también de noche');
+    assert(describeClimateRule('intake', always) === 'siempre prendido', describeClimateRule('intake', always));
+    const own = { ...defaultClimateRule('exhaust'), mode: 'schedule' as const, times: { on: '20:00', off: '08:00' }, timeZone: 'America/Argentina/Buenos_Aires' };
+    assert(validateClimateRule('exhaust', own).length === 0, 'horario propio que pasa la medianoche sirve');
+    assert(scheduleOnHours(own.times) === 12 && scheduleOnHours({ on: '08:30', off: '20:15' }) === 11.75, 'horas prendido');
+    assert(describeClimateRule('exhaust', own) === 'prende a las 20:00 y apaga a las 08:00, todos los días', describeClimateRule('exhaust', own));
+    assert(evaluateClimate('exhaust', own, { readings: null, lightOn: null, currentOn: false, scheduleOn: true }).on, 'le toca: prendido');
+    assert(validateClimateRule('exhaust', { ...own, times: { on: '20:00', off: '20:00' } }).some((e) => /distintas/.test(e)), 'misma hora');
+    assert(validateClimateRule('exhaust', { ...own, times: { on: '25:00', off: '08:00' } }).some((e) => /a qué hora/.test(e)), 'hora inválida');
+    assert(validateClimateRule('fan', { ...defaultClimateRule('fan'), mode: 'schedule', times: { on: '09:00', off: '21:00' } }).length === 0, 'el ventilador también puede tener horario');
   });
 
   console.log('\n================================================================');

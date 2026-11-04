@@ -4,6 +4,7 @@ import type { Indoor, IndoorKind } from '../../types';
 import { indoorService } from '../../services/indoorService';
 import { AMBIENT_KINDS, ambientEnvironment, indoorMetrics, type AmbientEnvironment } from '../../utils/indoors';
 import { darkHoursFor } from '../../utils/photoperiods';
+import { lightBindingFor, useDevicesOverview } from '../../services/devicesService';
 import { PhotoperiodPresetPicker } from '../cultivations/PhotoperiodPresetPicker';
 
 interface AmbientFormModalProps {
@@ -35,6 +36,9 @@ export const AmbientFormModal: React.FC<AmbientFormModalProps> = ({ isOpen, onCl
   const [darkHours, setDarkHours] = useState<number | null>(6);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // los superciclos (13/13, 14/14) necesitan un enchufe inteligente que maneje la luz de este ambiente
+  const overview = useDevicesOverview();
+  const hasSmartPlug = !!(ambientToEdit && lightBindingFor(overview, ambientToEdit.id));
 
   useEffect(() => {
     if (!isOpen) return;
@@ -179,11 +183,17 @@ export const AmbientFormModal: React.FC<AmbientFormModalProps> = ({ isOpen, onCl
                 idPrefix="ambient-photoperiod"
                 light={lightHours}
                 dark={darkHours}
+                hasSmartPlug={hasSmartPlug}
                 onSelect={(light, dark) => {
                   setLightHours(light);
                   setDarkHours(dark);
                 }}
               />
+              {lightHours !== '' && Number(lightHours) + darkHoursFor(Number(lightHours), darkHours) > 24 && !ambientToEdit?.lighting?.lightsOnDate && (
+                <p id="ambient-supercycle-note" className="text-[11px] text-ink-muted">
+                  Después, en la tarjeta de la luz, elegí el día y la hora de un encendido: con eso Cultiveta calcula los demás.
+                </p>
+              )}
             </div>
           </>
         ) : (

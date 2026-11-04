@@ -64,15 +64,8 @@ export const DevicesView: React.FC<DevicesViewProps> = ({ focus = null, cultivat
         </p>
       </section>
 
-      <section id="devices-connect" className={`${CARD} space-y-3`}>
-        <div>
-          <h2 className="text-sm font-bold text-ink">Conectar un equipo nuevo</h2>
-          <p className="text-xs text-ink-muted mt-1">
-            Cada equipo se agrega primero en la app de su marca (Smart Life, eWeLink o Shelly). Después se conecta la marca acá y cada toma o sensor se asigna a un cultivo.
-          </p>
-        </div>
-        <SmartLifePanel cultivations={cultivations} showToast={showToast} onDevicesChange={onDevicesChange} />
-      </section>
+      {/* Arriba, conectar una marca o sumar otro equipo; abajo, Tus equipos (y desconectar cada marca) */}
+      <SmartLifePanel cultivations={cultivations} showToast={showToast} onDevicesChange={onDevicesChange} />
 
       <section id="devices-uses" className={`${CARD} space-y-3`}>
         <h2 className="text-sm font-bold text-ink">Qué hace cada equipo en tu cultivo</h2>

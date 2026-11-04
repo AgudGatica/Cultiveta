@@ -8,9 +8,12 @@
  * - Cada toma o sensor se asigna a un cultivo:
  *     · la luz (sigue el horario del cultivo);
  *     · la bomba de riego (solo prende para regar, con la cuenta regresiva del enchufe);
- *     · un equipo de clima (extractor, humidificador…): por sensor, o siguiendo a la luz (o al revés);
+ *     · un equipo de clima (extractor, humidificador…): por sensor, siguiendo a la luz (o al revés),
+ *       siempre prendido o con su propio horario;
  *     · un sensor de ambiente o una sonda de sustrato.
- *   Las demás tomas se manejan a mano desde Equipos.
+ *   Las demás tomas se manejan a mano desde Equipos. La luz y los equipos de clima también se pueden
+ *   prender o apagar a mano, como en un timer: quedan así hasta el próximo cambio de su horario (o una
+ *   hora, si no tienen horario) y después siguen solos.
  * - Al asignar un toma, se pausan las programaciones de la app Smart Life de ese toma (se reactivan al
  *   desasignarlo o al desconectar). La luz y lo que la sigue quedan cargados en Smart Life: siguen
  *   aunque el servidor no corra. La revisión periódica (Cloud Scheduler, cada 5 min) rellena lo
@@ -27,14 +30,15 @@ import { createMockEwelink, MOCK_EWELINK_APP, MOCK_EWELINK_CODE, type MockEwelin
 import { ShellyCloud, cleanShellyServer, isShellyAuthKey, isShellyDeviceId } from './shellyClient';
 import { createMockShelly, MOCK_SHELLY, type MockShelly } from './shellyMock';
 import { clearSchedule, dailyPlan, syncLoops, syncSchedule, SCHEDULE_CATEGORY, type LightItem, type ScheduleState } from './lightSchedule';
-import { isValidTimeZone, zonedParts } from './tz';
+import { isValidTimeZone, zonedClock, zonedDateKey, zonedParts, zonedToMs } from './tz';
 import { LATE_MS, scheduledWaterings, wetDryStep, type WetDryState } from './autoIrrigation';
-import { HOUR_MS, lightState } from '../../utils/lightCycle';
+import { DAY_MS, HOUR_MS, lightState } from '../../utils/lightCycle';
 import {
   checkWaterOrder,
   defaultClimateRule,
   evaluateClimate,
   isClimateRole,
+  scheduleOnHours,
   validateClimateRule,
   validatePump,
   validateAutoIrrigation,
@@ -82,6 +86,8 @@ export interface DeviceBinding {
   auto?: AutoIrrigation | null;
   /** Por qué está prendido o apagado (lo último que decidió la revisión). */
   lastReason?: string | null;
+  /** Prendido o apagado a mano: queda así hasta "until" (el próximo cambio de su horario) y después sigue solo. */
+  manual?: { value: boolean; until: number } | null;
 }
 
 interface CacheEntry {
@@ -192,6 +198,10 @@ const GRACE_MS = 60_000;            // después de una orden, se espera antes de
 const SENSOR_STALE_MS = 30 * 60_000; // una lectura más vieja que esto cuenta como "sensor sin datos"
 const SWITCH_CODE = /^switch(_\d+|_usb\d*)?$/;
 const OAUTH_MS = 15 * 60_000; // el inicio de sesión en eWeLink vale 15 min
+const MANUAL_MS = 60 * 60_000; // a mano, sin horario que lo vuelva a poner: una hora
+const DEFAULT_TZ = 'America/Argentina/Buenos_Aires';
+/** Modos de un equipo de clima que tienen horario (quedan cargados en el equipo como la luz). */
+const TIMED_MODES = ['follow', 'follow_inverted', 'schedule'];
 const VENDORS: Vendor[] = ['tuya', 'ewelink', 'shelly'];
 const connectedAny = (integ: DeviceIntegration | null | undefined) => !!(integ && (integ.tuya || integ.ewelink || integ.shelly));
 /** "countdown_N" del toma "switch_N". */
@@ -219,9 +229,20 @@ export function validateSchedule(s: any): LightScheduleSnapshot | null {
   return { lightHours, darkHours, anchorMs, timeZone };
 }
 
-function cleanRule(role: ClimateRole, raw: any): ClimateRule {
-  if (!raw || typeof raw !== 'object') return defaultClimateRule(role);
+/**
+ * El horario propio de un equipo (prende y apaga a una hora, todos los días) como el de una luz de 24 h.
+ * El encendido de referencia es el de ayer: así un horario que pasa la medianoche (20:00 a 08:00) ya
+ * cuenta de madrugada.
+ */
+export function scheduleItem(times: { on: string; off: string }, timeZone: string, t: number) {
+  const lightHours = scheduleOnHours(times);
+  return { lightHours, darkHours: 24 - lightHours, anchorMs: zonedToMs(zonedDateKey(t, timeZone), times.on, timeZone) - DAY_MS, timeZone };
+}
+
+function cleanRule(role: ClimateRole, raw: any, o: { hasSensor?: boolean } = {}): ClimateRule {
+  if (!raw || typeof raw !== 'object') return defaultClimateRule(role, o);
   const num = (v: any) => Number(v);
+  const own = raw.mode === 'schedule';
   const rule: ClimateRule = {
     mode: raw.mode,
     metric: raw.metric,
@@ -229,6 +250,8 @@ function cleanRule(role: ClimateRole, raw: any): ClimateRule {
     off: num(raw.off),
     night: raw.night && typeof raw.night === 'object' ? { on: num(raw.night.on), off: num(raw.night.off) } : null,
     sensorLoss: raw.sensorLoss || 'off',
+    times: own && raw.times && typeof raw.times === 'object' ? { on: String(raw.times.on || ''), off: String(raw.times.off || '') } : null,
+    timeZone: own ? (isValidTimeZone(String(raw.timeZone || '')) ? String(raw.timeZone) : DEFAULT_TZ) : null,
   };
   if (rule.mode !== 'sensor') Object.assign(rule, { metric: rule.metric || 'temperature', on: Number.isFinite(rule.on) ? rule.on : 27, off: Number.isFinite(rule.off) ? rule.off : 24 });
   const errs = validateClimateRule(role, rule);
@@ -638,7 +661,9 @@ export class DeviceService {
     if (role === 'pump' && !channel!.countdownCode) throw new DeviceError('Este toma no tiene cuenta regresiva (no se apaga solo): sin ese seguro no se usa para regar.');
 
     const climateRole = role === 'climate' ? (input.climateRole as ClimateRole) : null;
-    const rule = climateRole ? cleanRule(climateRole, input.rule) : null;
+    // sin regla elegida: por sensor si ese lugar tiene sensor de ambiente; si no, sigue a la luz
+    const hasSensor = integ.bindings.some((x) => x.cultivationId === input.cultivationId && x.role === 'sensor_th');
+    const rule = climateRole ? cleanRule(climateRole, input.rule, { hasSensor }) : null;
     const pump = role === 'pump' ? cleanPump(input.pump) : null;
 
     // un toma o sensor en un solo lugar; una luz, una bomba y un sensor de cada tipo por cultivo
@@ -665,6 +690,7 @@ export class DeviceService {
       countdownUnit: role === 'pump' ? channel!.countdownUnit : null,
       auto: null,
       lastReason: null,
+      manual: null,
     };
     integ.bindings.push(binding);
 
@@ -712,6 +738,7 @@ export class DeviceService {
     const b = integ.bindings.find((x) => x.id === bindingId && x.role === 'climate');
     if (!b || !b.climateRole) throw new DeviceError('Ese equipo de clima ya no está asignado.', 404);
     b.rule = cleanRule(b.climateRole, raw);
+    b.manual = null; // con la regla nueva, deja de estar a mano
     const c = this.client(userId, integ);
     await this.syncDevice(c, integ, b.deviceId, true);
     await this.applyNow(c, integ, b);
@@ -759,7 +786,10 @@ export class DeviceService {
     const next = schedule == null ? null : validateSchedule(schedule);
     const changed = targets.filter((x) => JSON.stringify(next) !== JSON.stringify(x.schedule ?? null));
     if (!changed.length) return { changed: false };
-    for (const x of changed) x.schedule = next;
+    for (const x of changed) {
+      x.schedule = next;
+      x.manual = null; // con el horario nuevo, la luz deja de estar a mano
+    }
     const b = changed.find((x) => x.role === 'light');
     if (b) {
       const c = this.client(userId, integ);
@@ -771,18 +801,39 @@ export class DeviceService {
     return { changed: true };
   }
 
+  /**
+   * Prender o apagar un toma a mano. Un toma libre, sin más. La luz o un equipo de clima, como en un
+   * timer: queda así hasta el próximo cambio de su horario (o una hora, si no tiene horario) y después
+   * sigue solo; si se lo deja como dice su horario, vuelve al horario. La bomba no: solo prende para regar.
+   */
   async command(userId: string, deviceId: string, code: string, value: boolean) {
     if (!SWITCH_CODE.test(code)) throw new DeviceError('Toma inválido.');
     const integ = await this.load(userId);
     const b = integ.bindings.find((x) => x.deviceId === deviceId && x.code === code && MANAGED.includes(x.role));
-    if (b?.role === 'light' && b.schedule) throw new DeviceError(`Ese toma maneja la luz de ${b.cultivationName}: sigue su horario. Para prenderla o apagarla a mano, primero desasignala.`, 409);
     if (b?.role === 'pump') throw new DeviceError(`Ese toma es la bomba de riego de ${b.cultivationName}: se prende solo para regar (usá "Regar" en el cultivo).`, 409);
-    if (b?.role === 'climate') throw new DeviceError(`Ese toma lo maneja su regla (${b.cultivationName}). Para manejarlo a mano, primero desasignalo.`, 409);
     const c = this.client(userId, integ);
-    await c.sendCommands(deviceId, [{ code, value }]);
+    const t = this.now();
+    if (b) {
+      b.manual = null;
+      const planned = this.desiredFor(integ, b, t);
+      if (planned && planned.value === value) {
+        // lo deja como dice su horario: vuelve al horario
+        await c.sendCommands(deviceId, this.switchCommands(c, integ, b, value, t));
+        b.lastReason = planned.reason;
+      } else {
+        const next = this.nextChangeOf(integ, b, t);
+        b.manual = { value, until: next != null && next > t ? next : t + MANUAL_MS };
+        await c.sendCommands(deviceId, [{ code, value }]);
+        b.lastReason = this.manualReason(integ, b);
+      }
+      integ.lastCommand[b.id] = { at: t, value };
+    } else {
+      await c.sendCommands(deviceId, [{ code, value }]);
+    }
     const entry = integ.cache[deviceId];
     if (entry) entry.status[code] = value;
     await this.persist(integ);
+    return { manual: b?.manual ?? null };
   }
 
   // ---------- riego con bomba ----------
@@ -915,8 +966,25 @@ export class DeviceService {
   private lightOf(integ: DeviceIntegration, cultivationId: string) {
     return integ.bindings.find((x) => x.cultivationId === cultivationId && x.role === 'light' && x.schedule) || null;
   }
+  /** Los equipos de clima que dependen del horario de la luz de ese lugar (la siguen o van al revés). */
   private followers(integ: DeviceIntegration, cultivationId: string) {
-    return integ.bindings.filter((x) => x.cultivationId === cultivationId && x.role === 'climate' && x.rule && x.rule.mode !== 'sensor');
+    return integ.bindings.filter((x) => x.cultivationId === cultivationId && x.role === 'climate' && (x.rule?.mode === 'follow' || x.rule?.mode === 'follow_inverted'));
+  }
+  /** ¿Tiene horario cargado en el equipo? (la luz, lo que la sigue o un horario propio). */
+  private hasTimer(b: DeviceBinding) {
+    return b.role === 'light' || (b.role === 'climate' && !!b.rule && TIMED_MODES.includes(b.rule.mode));
+  }
+  /** Lo hecho a mano que sigue vigente (lo vencido se borra). */
+  private manualOf(b: DeviceBinding, t: number) {
+    if (b.manual && t < b.manual.until) return b.manual;
+    if (b.manual) b.manual = null;
+    return null;
+  }
+  private tzOf(integ: DeviceIntegration, b: DeviceBinding) {
+    return b.schedule?.timeZone || b.rule?.timeZone || this.lightOf(integ, b.cultivationId)?.schedule?.timeZone || DEFAULT_TZ;
+  }
+  private manualReason(integ: DeviceIntegration, b: DeviceBinding) {
+    return b.manual ? `${b.manual.value ? 'prendido' : 'apagado'} a mano hasta las ${zonedClock(b.manual.until, this.tzOf(integ, b))}` : null;
   }
   private lightOnAt(integ: DeviceIntegration, cultivationId: string, t: number): boolean | null {
     const l = this.lightOf(integ, cultivationId);
@@ -927,6 +995,13 @@ export class DeviceService {
 
   /** Lo que tiene que estar haciendo un toma ahora (null = Cultiveta no lo decide en este momento). */
   private desiredFor(integ: DeviceIntegration, b: DeviceBinding, t: number): { value: boolean; reason: string } | null {
+    const manual = this.manualOf(b, t);
+    if (manual) return { value: manual.value, reason: this.manualReason(integ, b)! };
+    return this.plannedFor(integ, b, t);
+  }
+
+  /** Lo que dice su horario o su regla (sin contar lo hecho a mano). */
+  private plannedFor(integ: DeviceIntegration, b: DeviceBinding, t: number): { value: boolean; reason: string } | null {
     if (b.role === 'light') {
       if (!b.schedule) return null;
       const s = lightState({ lightHours: b.schedule.lightHours, darkHours: b.schedule.darkHours }, b.schedule.anchorMs, t);
@@ -938,6 +1013,14 @@ export class DeviceService {
       return { value: false, reason: 'la bomba solo prende para regar' };
     }
     if (b.role === 'climate' && b.climateRole && b.rule) {
+      if (b.rule.mode === 'always') return { value: true, reason: 'siempre prendido' };
+      if (b.rule.mode === 'schedule') {
+        const it = this.itemOf(integ, b);
+        if (!it) return null;
+        const s = lightState({ lightHours: it.lightHours, darkHours: it.darkHours }, it.anchorMs, t);
+        const r = evaluateClimate(b.climateRole, b.rule, { readings: null, lightOn: null, currentOn: false, scheduleOn: s.started && s.on });
+        return { value: r.on, reason: r.reason };
+      }
       const lightOn = this.lightOnAt(integ, b.cultivationId, t);
       if (b.rule.mode !== 'sensor') {
         if (lightOn == null) return null;
@@ -958,10 +1041,11 @@ export class DeviceService {
     return null;
   }
 
-  /** El horario de un toma con horario (la luz, o lo que la sigue o va al revés): null si no tiene. */
+  /** El horario de un toma con horario (la luz, lo que la sigue o va al revés, o un horario propio): null si no tiene. */
   private itemOf(integ: DeviceIntegration, b: DeviceBinding): LightItem | null {
     if (b.role === 'light' && b.schedule) return { code: b.code, ...b.schedule };
-    if (b.role === 'climate' && b.rule && b.rule.mode !== 'sensor') {
+    if (b.role === 'climate' && b.rule?.mode === 'schedule' && b.rule.times) return { code: b.code, ...scheduleItem(b.rule.times, b.rule.timeZone || DEFAULT_TZ, this.now()) };
+    if (b.role === 'climate' && b.rule && (b.rule.mode === 'follow' || b.rule.mode === 'follow_inverted')) {
       // lo que sigue a la luz también queda cargado (al revés: luz y oscuridad invertidas)
       const l = this.lightOf(integ, b.cultivationId)?.schedule;
       if (!l) return null;
@@ -974,7 +1058,8 @@ export class DeviceService {
   /** Órdenes para dejar un toma en un estado. En Shelly, el toma con horario además queda "dándose vuelta solo" en el próximo cambio. */
   private switchCommands(c: DeviceRouter, integ: DeviceIntegration, b: DeviceBinding, value: boolean, t: number) {
     const cmds: Array<{ code: string; value: unknown }> = [{ code: b.code, value }];
-    const next = c.scheduleKind(b.deviceId) === 'toggle' ? this.nextChangeOf(integ, b, t) : null;
+    // a mano no se da vuelta solo: al terminar, la revisión lo deja como dice el horario
+    const next = c.scheduleKind(b.deviceId) === 'toggle' && !this.manualOf(b, t) ? this.nextChangeOf(integ, b, t) : null;
     if (next != null) cmds.push({ code: countdownOf(b.code), value: Math.max(1, Math.round((next - t) / 1000)) });
     return cmds;
   }
@@ -1060,8 +1145,10 @@ export class DeviceService {
       }
       const sched = integ.schedules[b.deviceId];
       const w = integ.watering[b.id];
+      const manual = this.manualOf(b, t);
       out.push({
         ...b,
+        manual,
         vendor: vendorOf(b.deviceId),
         online: entry?.online ?? null,
         on: MANAGED.includes(b.role) && entry ? entry.status[b.code] === true : null,
@@ -1113,7 +1200,7 @@ export class DeviceService {
     for (const deviceId of deviceIds) {
       try {
         const here = integ.bindings.filter((x) => x.deviceId === deviceId && MANAGED.includes(x.role));
-        if (here.some((b) => b.role === 'light' || (b.role === 'climate' && b.rule?.mode !== 'sensor'))) await this.syncDevice(c, integ, deviceId);
+        if (here.some((b) => this.hasTimer(b))) await this.syncDevice(c, integ, deviceId);
         const toggle = c.scheduleKind(deviceId) === 'toggle';
         // Shelly con horario: cada vuelta, para dejar programado el cambio siguiente apenas pasa uno
         const fast = toggle || here.some((b) => b.role === 'pump' || (b.role === 'climate' && b.rule?.mode === 'sensor'));
@@ -1124,8 +1211,8 @@ export class DeviceService {
           if (!d) continue;
           b.lastReason = d.reason;
           if (entry.status[b.code] === d.value) {
-            // Shelly: además tiene que estar por darse vuelta en el próximo cambio (±2 min)
-            const next = toggle ? this.nextChangeOf(integ, b, t) : null;
+            // Shelly: además tiene que estar por darse vuelta en el próximo cambio (±2 min); a mano, no
+            const next = toggle && !this.manualOf(b, t) ? this.nextChangeOf(integ, b, t) : null;
             if (next == null) continue;
             const left = Number(entry.status[countdownOf(b.code)] || 0) - (t - entry.at) / 1000;
             if (Math.abs(left - (next - t) / 1000) <= 120) continue;

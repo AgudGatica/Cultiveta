@@ -3,14 +3,25 @@
  * prender) y la app (muestra y edita las reglas).
  *
  * - Equipos de clima: por sensor (prende al pasar un valor y apaga al volver, con margen para que no
- *   prenda y apague sin parar; opcional otro valor de noche), o siguiendo a la luz (o al revés).
+ *   prenda y apague sin parar; opcional otro valor de noche), siguiendo a la luz (o al revés), siempre
+ *   prendidos o con su propio horario (prende y apaga a una hora, todos los días).
  * - Riego: la bomba solo prende para regar, con la cuenta regresiva del propio enchufe (se apaga sola
  *   aunque se corte internet). Sin ese seguro, o fuera de los topes, no riega.
  */
 
 export type ClimateRole = 'exhaust' | 'intake' | 'fan' | 'humidifier' | 'dehumidifier' | 'heater' | 'cooler';
 export type ClimateMetric = 'temperature' | 'humidity' | 'vpd';
-export type ClimateMode = 'sensor' | 'follow' | 'follow_inverted';
+export type ClimateMode = 'sensor' | 'follow' | 'follow_inverted' | 'always' | 'schedule';
+export const CLIMATE_MODES: ClimateMode[] = ['sensor', 'follow', 'follow_inverted', 'always', 'schedule'];
+
+/** Cómo se dice cada forma de manejar un equipo. */
+export const CLIMATE_MODE_LABEL: Record<ClimateMode, string> = {
+  follow: 'Sigue a la luz',
+  follow_inverted: 'Al revés de la luz',
+  always: 'Siempre prendido',
+  schedule: 'Horario propio',
+  sensor: 'Por sensor',
+};
 
 export interface ClimateRule {
   mode: ClimateMode;
@@ -21,6 +32,17 @@ export interface ClimateRule {
   night: { on: number; off: number } | null;
   /** Si el sensor deja de mandar datos: apagar, prender o dejarlo como está. */
   sensorLoss: 'off' | 'on' | 'keep';
+  /** Horario propio: a qué hora prende y a qué hora apaga, todos los días ("08:00", "20:00"). */
+  times?: { on: string; off: string } | null;
+  /** Horario propio: zona horaria de la persona (con la que se leen esas horas). */
+  timeZone?: string | null;
+}
+
+const CLOCK = /^([01]\d|2[0-3]):[0-5]\d$/;
+const clockMin = (v: string) => Number(v.slice(0, 2)) * 60 + Number(v.slice(3, 5));
+/** Horas que está prendido con un horario propio (de 0 a 24; pasa la medianoche si apaga "antes" de prender). */
+export function scheduleOnHours(times: { on: string; off: string }): number {
+  return (((clockMin(times.off) - clockMin(times.on)) % 1440) + 1440) % 1440 / 60;
 }
 
 interface RoleInfo {
@@ -61,17 +83,28 @@ export function ruleDirection(role: ClimateRole, metric: ClimateMetric): 'above'
   return r.dir || 'above';
 }
 
-export function defaultClimateRule(role: ClimateRole): ClimateRule {
+/**
+ * Cómo arranca un equipo de clima recién asignado. Sin un sensor de ambiente en ese lugar, por sensor
+ * quedaría apagado siempre: arranca siguiendo a la luz (después se cambia).
+ */
+export function defaultClimateRule(role: ClimateRole, o: { hasSensor?: boolean } = {}): ClimateRule {
   const r = CLIMATE_ROLES[role];
-  if (r.noSensor) return { mode: 'follow', metric: 'temperature', on: 27, off: 24, night: null, sensorLoss: 'off' };
-  return { mode: 'sensor', metric: r.metric || 'temperature', on: r.on ?? 27, off: r.off ?? 24, night: null, sensorLoss: 'off' };
+  const values = { metric: r.metric || 'temperature', on: r.on ?? 27, off: r.off ?? 24, night: null, sensorLoss: 'off' as const, times: null, timeZone: null };
+  if (r.noSensor || o.hasSensor === false) return { mode: 'follow', ...values };
+  return { mode: 'sensor', ...values };
 }
 
 /** Errores en castellano (vacío = la regla sirve). */
 export function validateClimateRule(role: ClimateRole, rule: ClimateRule): string[] {
   const errs: string[] = [];
   const r = CLIMATE_ROLES[role];
-  if (!['sensor', 'follow', 'follow_inverted'].includes(rule.mode)) return ['Elegí cómo se maneja el equipo.'];
+  if (!CLIMATE_MODES.includes(rule.mode)) return ['Elegí cómo se maneja el equipo.'];
+  if (rule.mode === 'schedule') {
+    const t = rule.times;
+    if (!t || !CLOCK.test(String(t.on)) || !CLOCK.test(String(t.off))) return ['Elegí a qué hora prende y a qué hora apaga.'];
+    if (t.on === t.off) return ['La hora de prender y la de apagar tienen que ser distintas (para que esté siempre prendido, elegí "Siempre prendido").'];
+    return errs;
+  }
   if (rule.mode !== 'sensor') return errs;
   if (r.noSensor) errs.push(`El ${r.label.toLowerCase()} no cambia la temperatura ni la humedad: por sensor quedaría prendido siempre. Usá "sigue a la luz".`);
   const m = CLIMATE_METRICS[rule.metric];
@@ -103,13 +136,19 @@ const fmt = (v: number, unit: string) => `${String(Math.round(v * (unit === 'kPa
 
 /**
  * ¿Va prendido el equipo? ctx.lightOn: luz del cultivo (null si no se sabe); ctx.currentOn: cómo está
- * ahora (entre el valor de encendido y el de apagado queda como está: así no prende y apaga sin parar).
+ * ahora (entre el valor de encendido y el de apagado queda como está: así no prende y apaga sin parar);
+ * ctx.scheduleOn: con horario propio, si a esta hora le toca estar prendido.
  */
 export function evaluateClimate(
   role: ClimateRole,
   rule: ClimateRule,
-  ctx: { readings: ClimateReadings | null; lightOn: boolean | null; currentOn: boolean }
+  ctx: { readings: ClimateReadings | null; lightOn: boolean | null; currentOn: boolean; scheduleOn?: boolean | null }
 ): { on: boolean; reason: string; sensorLost?: boolean } {
+  if (rule.mode === 'always') return { on: true, reason: 'siempre prendido' };
+  if (rule.mode === 'schedule') {
+    const t = rule.times;
+    return { on: ctx.scheduleOn === true, reason: t ? `horario propio (de ${t.on} a ${t.off})` : 'horario propio' };
+  }
   if (rule.mode === 'follow' || rule.mode === 'follow_inverted') {
     if (ctx.lightOn == null) return { on: false, reason: 'sin horario de luz' };
     const on = rule.mode === 'follow' ? ctx.lightOn : !ctx.lightOn;
@@ -141,6 +180,8 @@ export function evaluateClimate(
 export function describeClimateRule(role: ClimateRole, rule: ClimateRule): string {
   if (rule.mode === 'follow') return 'prende y apaga con la luz';
   if (rule.mode === 'follow_inverted') return 'prende cuando la luz se apaga';
+  if (rule.mode === 'always') return 'siempre prendido';
+  if (rule.mode === 'schedule') return rule.times ? `prende a las ${rule.times.on} y apaga a las ${rule.times.off}, todos los días` : 'horario propio';
   const unit = CLIMATE_METRICS[rule.metric].unit;
   const dir = ruleDirection(role, rule.metric);
   const base = `prende ${dir === 'above' ? '≥' : '≤'} ${fmt(rule.on, unit)}, apaga ${dir === 'above' ? '≤' : '≥'} ${fmt(rule.off, unit)}`;

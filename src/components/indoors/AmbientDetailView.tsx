@@ -1,15 +1,16 @@
 import React, { useMemo, useState } from 'react';
-import { ArrowLeft, Dna, Fan, Pencil, Plus, Sun, Trash2 } from 'lucide-react';
+import { ArrowLeft, Dna, Pencil, Plus, Sun, Trash2 } from 'lucide-react';
 import type { Cultivation, EnvironmentRecord, Genetics, Indoor } from '../../types';
 import { indoorService } from '../../services/indoorService';
 import { cultivationService } from '../../services/cultivationService';
 import { climateBindingsFor, devicesService, lightBindingFor, sensorBindingFor, useDevicesOverview } from '../../services/devicesService';
 import { useGeneticsCatalogPhotos } from '../../hooks/useGeneticsCatalogPhotos';
-import { CLIMATE_ROLES, describeClimateRule } from '../../utils/deviceRules';
+import { describePhotoperiod } from '../../utils/photoperiods';
 import { ambientHistory, envRecordAt, targetsForStages } from '../../utils/ambientEvaluation';
 import { INDOOR_KINDS, ambientCoverImage, cropsInIndoor, geneticEntries, indoorMetrics, indoorSizeText, isExteriorAmbient, type GeneticEntry } from '../../utils/indoors';
 import { LightCycleCard, type LightSchedule } from '../cultivations/LightCycleCard';
 import { AmbientClimateCard, type AmbientReading } from './AmbientClimateCard';
+import { AmbientDevicesCard } from './AmbientDevicesCard';
 import { GeneticCard } from './GeneticCard';
 
 interface AmbientDetailViewProps {
@@ -169,12 +170,26 @@ export const AmbientDetailView: React.FC<AmbientDetailViewProps> = ({
         <LightCycleCard
           cultivation={ambient}
           sharedNote={plants ? `Es la luz de ${plants === 1 ? 'su planta' : `sus ${plants} plantas`}.` : null}
-          onSaveSchedule={async (schedule: LightSchedule) => {
-            await indoorService.updateIndoor(ambient.id, { lighting: { ...(ambient.lighting ?? { type: '' }), ...schedule } }, userId);
-            showToast?.('Hora de encendido de la luz guardada.');
+          allowCycleChange
+          onSaveSchedule={async ({ lightHours, darkHours, ...schedule }: LightSchedule) => {
+            const before = ambient.lighting;
+            const cycleChanged = lightHours != null && (lightHours !== before?.photoperiodHoursLight || darkHours !== before?.photoperiodHoursDark);
+            await indoorService.updateIndoor(
+              ambient.id,
+              {
+                lighting: {
+                  ...(before ?? { type: '' }),
+                  ...schedule,
+                  ...(lightHours != null ? { photoperiodHoursLight: lightHours, photoperiodHoursDark: darkHours } : {}),
+                },
+              },
+              userId
+            );
+            showToast?.(cycleChanged ? `Luz en ${describePhotoperiod(lightHours!, darkHours).label}: guardada.` : 'Hora de encendido de la luz guardada.');
           }}
           onConnectPlug={onOpenDevices ? () => onOpenDevices('luz') : undefined}
           device={lightBindingFor(overview, ambient.id)}
+          onToast={showToast}
           now={now}
         />
       )}
@@ -191,23 +206,18 @@ export const AmbientDetailView: React.FC<AmbientDetailViewProps> = ({
           showToast?.('Clima anotado para todo el ambiente.');
         }}
         onConnectSensor={onOpenDevices ? () => onOpenDevices('ambiente') : undefined}
-      >
-        {climate.map((b) => (
-          <div key={b.id} className="ambient-climate-device rounded-2xl bg-surface border border-line p-3 space-y-1">
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-bold text-ink flex items-center gap-1.5">
-                <Fan className="w-4 h-4 text-brand" aria-hidden="true" />
-                {b.climateRole ? CLIMATE_ROLES[b.climateRole].label : 'Equipo'}
-              </span>
-              <span className={`px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider ${b.online === false ? 'bg-coral/15 text-coral' : b.on ? 'bg-accent text-ink' : 'bg-brand-deep text-white'}`}>
-                {b.online === false ? 'SIN CONEXIÓN' : b.on ? 'PRENDIDO' : 'APAGADO'}
-              </span>
-            </div>
-            {b.climateRole && b.rule && <p className="text-xs text-ink-muted">{describeClimateRule(b.climateRole, b.rule)}</p>}
-            {b.lastReason && <p className="text-[11px] text-ink-subtle">Ahora: {b.lastReason}</p>}
-          </div>
-        ))}
-      </AmbientClimateCard>
+      />
+
+      {!exterior || climate.length > 0 ? (
+        <AmbientDevicesCard
+          devices={climate}
+          hasLight={!!lightBindingFor(overview, ambient.id)}
+          hasSensor={!!sensorBindingFor(overview, ambient.id, 'sensor_th')}
+          onAssign={onOpenDevices ? () => onOpenDevices('ambiente') : undefined}
+          onToast={showToast}
+          now={now}
+        />
+      ) : null}
 
       <section id="ambient-genetics" className="space-y-3">
         <div className="flex items-center justify-between gap-2 px-1">

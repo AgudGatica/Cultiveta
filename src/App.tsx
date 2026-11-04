@@ -208,7 +208,7 @@ export default function App() {
   }, [currentUser, rawCultivations, waterings, photos, diaryEntries]);
 
   // Equipos: estado de lo asignado (luz y sensores). Se lee al entrar y cada minuto mientras se mira
-  // un cultivo o Equipos.
+  // un cultivo, un ambiente o Equipos.
   const devicesOverview = useDevicesOverview();
   useEffect(() => {
     if (!currentUser) {
@@ -217,7 +217,7 @@ export default function App() {
       return undefined;
     }
     devicesService.refreshOverview();
-    if (currentView !== 'cultivation_detail' && currentView !== 'devices') return undefined;
+    if (currentView !== 'cultivation_detail' && currentView !== 'devices' && currentView !== 'indoor_detail') return undefined;
     const id = window.setInterval(() => devicesService.refreshOverview(), 60_000);
     return () => window.clearInterval(id);
   }, [currentUser, currentView]);

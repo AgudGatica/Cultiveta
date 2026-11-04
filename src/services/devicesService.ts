@@ -57,6 +57,8 @@ export interface DeviceBindingState {
   irrigation?: { last: { at: number; seconds: number; liters: number; reason: string } | null; note: string | null } | null;
   /** Por qué está prendido o apagado (lo último que decidió el servidor). */
   lastReason?: string | null;
+  /** Prendido o apagado a mano: queda así hasta "until" (el próximo cambio de su horario) y después sigue solo. */
+  manual?: { value: boolean; until: number } | null;
   watering?: { at: number; seconds: number; liters: number; endsAt: number; active: boolean; auto?: boolean } | null;
   online: boolean | null;
   on: boolean | null;
@@ -223,6 +225,15 @@ export const devicesService = {
     await devicesService.refreshOverview();
   },
   command: (deviceId: string, code: string, value: boolean) => api('POST', `/api/devices/${encodeURIComponent(deviceId)}/command`, { code, value }),
+  /**
+   * Prender o apagar a mano un toma asignado (la luz o un equipo de clima): queda así hasta el próximo
+   * cambio de su horario y después sigue solo. Devuelve hasta cuándo (null = volvió a su horario).
+   */
+  async setPower(deviceId: string, code: string, value: boolean) {
+    const r = await api<{ manual?: { value: boolean; until: number } | null }>('POST', `/api/devices/${encodeURIComponent(deviceId)}/command`, { code, value });
+    await devicesService.refreshOverview();
+    return r.manual ?? null;
+  },
   pushSchedule: (cultivationId: string, schedule: LightScheduleSnapshot | null) => api<{ changed: boolean }>('POST', '/api/devices/schedule', { cultivationId, schedule }),
 };
 

@@ -16,6 +16,8 @@
  * 11. Formulario de cultivo: sumar plantas a un ambiente exterior lo deja exterior y en ese ambiente.
  * 12. Equipos: la luz va a un ambiente; la bomba no (va en un cultivo).
  * 17. Exterior: el clima de la zona se mide solo cada hora (sin sensor ni "a mano") y el gráfico se ve de entrada.
+ * 18. Ambiente con enchufe: el 13/13 se elige desde la tarjeta de la luz (y al editar el ambiente), la luz se
+ *     prende y apaga a mano, y en "Equipos del ambiente" cada equipo se cambia (sigue a la luz, horario propio…).
  */
 
 import './helpers/setupDom';
@@ -33,6 +35,9 @@ import { AmbientDetailView } from '../src/components/indoors/AmbientDetailView';
 import { GeneticDetailView } from '../src/components/indoors/GeneticDetailView';
 import { CultivationFormModal } from '../src/components/cultivations/CultivationFormModal';
 import { DeviceService, MemoryDeviceStore } from '../src/server/devices/deviceService';
+import { devicesService } from '../src/services/devicesService';
+import { defaultClimateRule } from '../src/utils/deviceRules';
+import { AmbientFormModal } from '../src/components/indoors/AmbientFormModal';
 
 let passed = 0;
 let failed = 0;
@@ -431,6 +436,99 @@ async function run() {
     const i = await mount(React.createElement(AmbientDetailView, { ...props, ambient: carpa, cultivations: crops, envRecords: env }));
     assert(i.container.querySelector('#ambient-manual-open') && /Conectar mi sensor/.test(i.container.textContent || ''), 'interior: a mano y sensor');
     await i.unmount();
+  });
+
+  await check('18. Ambiente con enchufe: 13/13 desde la luz, prender y apagar a mano, y cómo se maneja cada equipo', async () => {
+    (globalThis as any).ResizeObserver ??= class { observe() {} unobserve() {} disconnect() {} };
+    const realFetch = globalThis.fetch;
+    const origUpdate = indoorService.updateIndoor;
+    const calls: Array<{ path: string; method: string; body: any }> = [];
+    const base = { deviceId: 'mockstrip01', deviceName: 'Zapatilla', cultivationId: 'in1', cultivationName: 'Carpa 120', targetKind: 'indoor', vendor: 'tuya', online: true, sensors: null, readAt: null, loaded: null };
+    const overview = {
+      connected: true,
+      mock: true,
+      bindings: [
+        { ...base, id: 'l1', code: 'switch_1', label: 'Toma 1', role: 'light', on: true, schedule: null },
+        { ...base, id: 'x1', code: 'switch_3', label: 'Toma 3', role: 'climate', climateRole: 'exhaust', rule: defaultClimateRule('exhaust', { hasSensor: false }), on: true, lastReason: 'sigue a la luz' },
+      ],
+    };
+    (globalThis as any).fetch = async (url: string, init: any = {}) => {
+      const path = String(url).replace(/^https?:\/\/[^/]+/, '');
+      calls.push({ path, method: init.method || 'GET', body: init.body ? JSON.parse(init.body) : null });
+      const body = path.endsWith('/command') ? { success: true, manual: { value: false, until: now + 2 * 3600_000 } } : path.endsWith('/rule') ? { binding: {} } : overview;
+      return { ok: true, status: 200, json: async () => body };
+    };
+    let saved: any = null;
+    (indoorService as any).updateIndoor = async (id: string, data: any) => {
+      saved = { id, ...data };
+    };
+    const flush = async () => {
+      for (let i = 0; i < 3; i++) await act(async () => new Promise((r) => setTimeout(r, 0)));
+    };
+    const change = async (el: Element | null, value: string) => {
+      assert(el, 'campo');
+      const k = Object.keys(el).find((x) => x.startsWith('__reactProps'))!;
+      await act(async () => (el as any)[k].onChange({ target: { value } }));
+    };
+    try {
+      await devicesService.refreshOverview();
+      const toasts: string[] = [];
+      const m = await mount(
+        React.createElement(AmbientDetailView, { ambient: carpa, cultivations: crops, envRecords: env, userId: 'u1', onBack: () => {}, onOpenGenetic: () => {}, onEdit: () => {}, onDeleted: () => {}, onAddPlants: () => {}, onOpenDevices: () => {}, showToast: (t: string) => toasts.push(t), now })
+      );
+      const c = m.container;
+
+      // la luz se apaga a mano (hasta el próximo cambio del horario)
+      const power = c.querySelector('#light-power') as HTMLButtonElement;
+      assert(power && /Apagar/.test(power.textContent || '') && !power.disabled, 'botón para apagar la luz');
+      await act(async () => power.click());
+      await flush();
+      const cmd = calls.find((x) => x.path === '/api/devices/mockstrip01/command');
+      assert(cmd && cmd.body.code === 'switch_1' && cmd.body.value === false, JSON.stringify(cmd));
+      assert(toasts.some((t) => /Apagada a mano hasta/.test(t)), toasts.join(' | '));
+
+      // 13/13 desde la tarjeta de la luz: con enchufe los superciclos se pueden elegir y pide el día de un encendido
+      await act(async () => (c.querySelector('#edit-light-schedule') as HTMLButtonElement).click());
+      const s13 = c.querySelector('#light-cycle-13-13') as HTMLButtonElement;
+      assert(s13 && !s13.disabled, 'superciclo habilitado con enchufe');
+      assert(!c.querySelector('#light-on-date'), 'en 12/12 no pide el día');
+      await act(async () => s13.click());
+      assert(c.querySelector('#light-on-date'), 'en 13/13 pide el día de un encendido');
+      await act(async () => (c.querySelector('#save-light-schedule') as HTMLButtonElement).click());
+      await flush();
+      const l = saved?.lighting;
+      assert(saved?.id === 'in1' && l?.photoperiodHoursLight === 13 && l.photoperiodHoursDark === 13 && /^\d{4}-\d{2}-\d{2}$/.test(l.lightsOnDate) && l.lightsOnTime === '08:00' && l.usedWatts === 480, JSON.stringify(saved));
+      assert(toasts.some((t) => /13\/13/.test(t)), toasts.join(' | '));
+
+      // Equipos del ambiente: el extractor (sin sensor) sigue a la luz y se le pone su propio horario
+      const dev = c.querySelector('#ambient-devices .ambient-device');
+      assert(dev && /Extractor/.test(dev.textContent || '') && /Sigue a la luz/.test(dev.textContent || '') && dev.querySelector('.manual-power'), dev?.textContent || 'sin equipos');
+      await act(async () => (dev!.querySelector('.ambient-device-edit') as HTMLButtonElement).click());
+      const mode = c.querySelector('.climate-rule-mode') as HTMLSelectElement;
+      assert([...mode.options].map((o) => o.textContent).join(',') === 'Sigue a la luz,Al revés de la luz,Siempre prendido,Horario propio,Por sensor', [...mode.options].map((o) => o.textContent).join(','));
+      await change(mode, 'schedule');
+      await change(c.querySelector('.climate-rule-on-time'), '20:00');
+      await change(c.querySelector('.climate-rule-off-time'), '08:00');
+      await act(async () => (c.querySelector('.climate-rule-save') as HTMLButtonElement).click());
+      await flush();
+      const rule = calls.find((x) => x.path === '/api/devices/bindings/x1/rule')?.body?.rule;
+      assert(rule?.mode === 'schedule' && rule.times?.on === '20:00' && rule.times?.off === '08:00' && typeof rule.timeZone === 'string', JSON.stringify(rule));
+      assert(toasts.some((t) => /Extractor: horario propio/.test(t)), toasts.join(' | '));
+      await m.unmount();
+
+      // Editar el ambiente: con enchufe en la luz, el 13/13 se puede elegir; sin enchufe, no
+      const f = await mount(React.createElement(AmbientFormModal, { isOpen: true, onClose: () => {}, userId: 'u1', ambientToEdit: carpa, onSaved: () => {} }));
+      assert(!(f.container.querySelector('#ambient-photoperiod-13-13') as HTMLButtonElement).disabled, 'con enchufe, habilitado');
+      await f.unmount();
+      devicesService.reset();
+      const g = await mount(React.createElement(AmbientFormModal, { isOpen: true, onClose: () => {}, userId: 'u1', ambientToEdit: carpa, onSaved: () => {} }));
+      assert((g.container.querySelector('#ambient-photoperiod-13-13') as HTMLButtonElement).disabled, 'sin enchufe, bloqueado');
+      await g.unmount();
+    } finally {
+      (globalThis as any).fetch = realFetch;
+      (indoorService as any).updateIndoor = origUpdate;
+      devicesService.reset();
+    }
   });
 
   console.log('\n================================================================');

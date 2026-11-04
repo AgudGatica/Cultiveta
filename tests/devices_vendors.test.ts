@@ -16,6 +16,7 @@
  * 8. Bomba en un Shelly: toggle_after, se apaga sola.
  * 9. Shelly sin lista de la nube: con Device Ids anda; sin ellos, dice cómo agregarlos.
  * 10. Varias marcas: si una falla, las otras se ven; desconectar una deja las otras; borrar la cuenta, todo.
+ * 11. Shelly a mano: no se da vuelta sola; cuando llega el cambio, la revisión vuelve a programar el horario.
  */
 
 import { DeviceService, MemoryDeviceStore } from '../src/server/devices/deviceService';
@@ -229,6 +230,24 @@ async function run() {
     assert(ov.bindings.length === 1 && ov.bindings[0].id === tuyaLight.id, 'queda solo la luz de Smart Life');
     await svc.disconnectAll('u1');
     assert(!(await svc.status('u1')).tuya.connected && !(await svc.overview('u1')).connected, 'todo desconectado');
+  });
+
+  await check('11. Shelly a mano: no se da vuelta sola y, cuando llega el cambio, la revisión vuelve a programar el horario', async () => {
+    const { now, svc } = setup(ar('20261031', '10:00'));
+    await svc.connectShelly('u1', { mock: true });
+    const mock = svc.shellyMockOf('u1');
+    await svc.bind('u1', { deviceId: 'shelly-a8032ab1c2d3', code: 'switch_1', role: 'light', cultivationId: 'c1', schedule: light18 });
+    const r = await svc.command('u1', 'shelly-a8032ab1c2d3', 'switch_1', false);
+    let out = mock.out('a8032ab1c2d3');
+    assert(out.output === false && out.timer === null && r.manual?.until === ar('20261031', '12:00'), `apagada a mano hasta las 12, sin darse vuelta: ${JSON.stringify(out)}`);
+    now.t = ar('20261031', '10:30');
+    await svc.tick('u1');
+    out = mock.out('a8032ab1c2d3');
+    assert(out.output === false && out.timer === null, `la revisión la deja apagada: ${JSON.stringify(out)}`);
+    now.t = ar('20261031', '12:05');
+    await svc.tick('u1');
+    out = mock.out('a8032ab1c2d3');
+    assert(out.output === false && out.timer?.to === true && Math.abs(out.timer.duration - (ar('20261031', '18:00') - now.t) / 1000) < 2, `sigue el horario: prende sola a las 18: ${JSON.stringify(out)}`);
   });
 
   console.log('\n================================================================');

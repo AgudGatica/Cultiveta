@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Loader2, Power, RefreshCw, Unplug } from 'lucide-react';
+import { Loader2, Plus, Power, RefreshCw, Search, Unplug } from 'lucide-react';
 import type { Cultivation } from '../../types';
 import { devicesService, scheduleSnapshot, takeEwelinkReturn, type DeviceBindingState, type DeviceVendor, type DevicesStatus, type SmartDevice } from '../../services/devicesService';
-import { CLIMATE_ROLES, DEFAULT_PUMP, defaultClimateRule, describeAutoIrrigation, describeClimateRule, validatePump, type ClimateRole, type PumpConfig } from '../../utils/deviceRules';
+import { CLIMATE_MODE_LABEL, CLIMATE_ROLES, DEFAULT_PUMP, defaultClimateRule, describeAutoIrrigation, describeClimateRule, validatePump, type ClimateRole, type PumpConfig } from '../../utils/deviceRules';
 import { ClimateRuleEditor } from './ClimateRuleEditor';
 import { useIndoors } from '../../services/indoorService';
 import { AutoIrrigationEditor } from './AutoIrrigationEditor';
+import { ManualPowerButton, manualText } from './ManualPowerButton';
 
 interface SmartLifePanelProps {
   cultivations: Cultivation[];
@@ -16,8 +17,28 @@ interface SmartLifePanelProps {
 
 const FIELD = 'min-h-11 px-3 rounded-2xl bg-white border border-line text-sm text-ink focus:outline-hidden focus:border-brand w-full';
 const ITEM = 'bg-surface rounded-3xl p-4 border border-line';
+const CARD = 'bg-white rounded-[28px] p-5 sm:p-6 border border-line shadow-2xs';
 const VENDOR_LABEL: Record<DeviceVendor, string> = { tuya: 'Smart Life', ewelink: 'eWeLink', shelly: 'Shelly' };
+const VENDOR_TITLE: Record<DeviceVendor, string> = { tuya: 'Smart Life / Tuya', ewelink: 'Sonoff / eWeLink', shelly: 'Shelly' };
+const VENDORS: DeviceVendor[] = ['tuya', 'ewelink', 'shelly'];
 const SMALL = 'min-h-9 px-2 rounded-xl bg-white border border-line text-xs text-ink';
+
+/** Cómo sumar otro equipo de una marca que ya está conectada: se agrega en su app y aparece solo. */
+const ADD_STEPS: Record<DeviceVendor, { steps: string[]; extra?: string }> = {
+  tuya: {
+    steps: [
+      'En la app Smart Life (o Tuya), agregá el enchufe, la zapatilla o el sensor nuevo con la misma cuenta.',
+      'Tocá "Buscar equipos nuevos": aparece abajo, en Tus equipos, y ahí elegís para qué es cada toma.',
+    ],
+    extra: '¿Está en otra cuenta de Smart Life? En iot.tuya.com, dentro del mismo proyecto: Devices → Link App Account, escaneá el código con esa otra cuenta y buscá de nuevo.',
+  },
+  ewelink: {
+    steps: ['En la app eWeLink, agregá el equipo nuevo con la misma cuenta.', 'Tocá "Buscar equipos nuevos": aparece abajo, en Tus equipos.'],
+  },
+  shelly: {
+    steps: ['En la app Shelly, agregá el equipo nuevo con la misma cuenta.', 'Tocá "Buscar equipos nuevos": aparece abajo, en Tus equipos.'],
+  },
+};
 
 /** Ambiente o cultivo al que se asigna un toma o un sensor. */
 type Target = { key: string; kind: 'cultivation' | 'indoor'; id: string; name: string; lighting?: Cultivation['lighting'] };
@@ -95,21 +116,25 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
   const [use, setUse] = useState<Record<string, Use>>({});
   const [editing, setEditing] = useState<string | null>(null);
   const [open, setOpen] = useState<DeviceVendor | null>(null);
+  const [adding, setAdding] = useState<DeviceVendor | null>(null);
   const [shellyForm, setShellyForm] = useState({ server: '', authKey: '', ids: '' });
   const [listErrors, setListErrors] = useState<Partial<Record<DeviceVendor, string>>>({});
 
   const toast = (m: string) => showToast?.(m);
   const indoors = useIndoors();
 
-  const loadDevices = useCallback(async () => {
+  /** Lee los equipos; devuelve la lista (null si no se pudo). */
+  const loadDevices = useCallback(async (): Promise<SmartDevice[] | null> => {
     try {
       const { devices: list, errors } = await devicesService.listDevicesWithErrors();
       setDevices(list);
       setListErrors(errors);
       onDevicesChange?.(list.length);
       setError(null);
+      return list;
     } catch (e: any) {
       setError(e?.message || 'No se pudieron leer los equipos.');
+      return null;
     }
   }, [onDevicesChange]);
 
@@ -204,6 +229,24 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
     }, `${app} desconectado`);
   };
 
+  /** Una marca ya conectada: los equipos nuevos de su app aparecen solos al volver a leer. */
+  const searchNew = (v: DeviceVendor) =>
+    run(`search-${v}`, async () => {
+      const before = new Set((devices || []).map((d) => d.id));
+      const list = await loadDevices();
+      if (!list) return;
+      const fresh = list.filter((d) => !before.has(d.id));
+      if (fresh.length) setAdding(null);
+      toast(
+        fresh.length
+          ? `Listo: ${fresh.length === 1 ? `apareció ${fresh[0].name}` : `aparecieron ${fresh.length} equipos`}. Lo ves abajo, en Tus equipos.`
+          : `No apareció ningún equipo nuevo de ${VENDOR_LABEL[v]}: fijate que esté agregado en su app, con la misma cuenta.`
+      );
+    });
+
+  const sensorIn = (id: string) => (devices || []).some((x) => x.sensorBindings.some((sb) => sb.role === 'sensor_th' && sb.cultivationId === id));
+  const lightIn = (id: string) => (devices || []).some((x) => x.channels.some((c) => c.binding?.role === 'light' && c.binding.cultivationId === id));
+
   /**
    * A qué se puede asignar: la luz, el clima y el sensor de ambiente van a un ambiente (o a un cultivo que
    * no está en ninguno); la bomba y la sonda de sustrato, a un cultivo (cada maceta se riega aparte).
@@ -222,6 +265,8 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
     const crop = pickTarget(key, targetsFor(u));
     if (!crop) return setError(u === 'light' ? 'Primero creá un ambiente interior.' : 'Primero creá un ambiente con plantas.');
     const role = u === 'light' || u === 'pump' || u === 'sensor_th' || u === 'sensor_soil' ? u : 'climate';
+    // un equipo de clima sin sensor en ese lugar arranca siguiendo a la luz (por sensor quedaría apagado)
+    const rule = role === 'climate' ? defaultClimateRule(u as ClimateRole, { hasSensor: sensorIn(crop.id) }) : null;
     run(key, async () => {
       await devicesService.bind({
         deviceId: d.id,
@@ -231,36 +276,63 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
         cultivationName: crop.name,
         targetKind: crop.kind,
         schedule: role === 'light' || role === 'pump' ? scheduleSnapshot(crop) : null,
-        ...(role === 'climate' ? { climateRole: u as ClimateRole, rule: defaultClimateRule(u as ClimateRole) } : {}),
+        ...(role === 'climate' && rule ? { climateRole: u as ClimateRole, rule } : {}),
         ...(role === 'pump' ? { pump: { ...DEFAULT_PUMP } } : {}),
       });
       await loadDevices();
-    }, role === 'light' ? `Listo: este toma maneja la luz de ${crop.name}` : role === 'pump' ? `Listo: bomba de riego de ${crop.name}` : role === 'climate' ? `Listo: ${USE_LABEL[u]} de ${crop.name}` : `Listo: el sensor mide en ${crop.name}`);
+    }, role === 'light' ? `Listo: este toma maneja la luz de ${crop.name}` : role === 'pump' ? `Listo: bomba de riego de ${crop.name}` : role === 'climate' && rule ? `Listo: ${USE_LABEL[u]} de ${crop.name} · ${CLIMATE_MODE_LABEL[rule.mode].toLowerCase()}` : `Listo: el sensor mide en ${crop.name}`);
   };
 
   const st = status;
   const anyConnected = !!st && (st.tuya.connected || st.ewelink?.connected || st.shelly?.connected);
-  const brand = (v: DeviceVendor, title: string, desc: string, connectedText: string | null, body: React.ReactNode) => (
-    <div id={`device-brand-${v}`} className={`${ITEM} space-y-3`}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-sm font-bold text-ink">{title}</p>
-          <p className={`text-[11px] ${connectedText ? 'text-ok-ink font-bold' : 'text-ink-muted'}`}>{connectedText || desc}</p>
-        </div>
-        {connectedText ? (
-          <button type="button" id={`${v}-disconnect`} onClick={() => disconnect(v)} disabled={busy === `disconnect-${v}`} className="cultiveta-btn-secondary text-xs text-error disabled:opacity-50">
-            <Unplug className="w-3.5 h-3.5" aria-hidden="true" />
-            <span>Desconectar</span>
-          </button>
-        ) : (
-          <button type="button" id={`${v}-open`} aria-expanded={open === v} disabled={!st} onClick={() => setOpen(open === v ? null : v)} className="cultiveta-btn-secondary text-xs disabled:opacity-50">
-            {open === v ? 'Cerrar' : 'Conectar'}
-          </button>
-        )}
-      </div>
-      {!connectedText && open === v && body}
+  const connectedText = (v: DeviceVendor): string | null => {
+    if (!st) return null;
+    if (v === 'tuya') return st.tuya.connected ? `Conectado${st.tuya.mock ? ' · zapatilla de prueba' : st.tuya.accessId ? ` · ${st.tuya.accessId}` : ''}` : null;
+    if (v === 'ewelink') return st.ewelink?.connected ? `Conectado${st.ewelink.mock ? ' · Sonoff de prueba' : ''}` : null;
+    return st.shelly?.connected ? `Conectado${st.shelly.mock ? ' · Shelly de prueba' : st.shelly.server ? ` · ${st.shelly.server}` : ''}` : null;
+  };
+
+  /** Pasos para sumar otro equipo de una marca que ya está conectada. */
+  const addPanel = (v: DeviceVendor) => (
+    <div id={`${v}-add-steps`} className="space-y-2">
+      <ol className="list-decimal pl-5 space-y-1 text-xs text-ink-muted">
+        {ADD_STEPS[v].steps.map((s) => (
+          <li key={s}>{s}</li>
+        ))}
+      </ol>
+      {ADD_STEPS[v].extra && <p className="text-[11px] text-ink-subtle">{ADD_STEPS[v].extra}</p>}
+      <button type="button" id={`${v}-search`} disabled={busy === `search-${v}`} onClick={() => searchNew(v)} className="cultiveta-btn-primary text-xs w-full justify-center disabled:opacity-50">
+        <Search className="w-3.5 h-3.5" aria-hidden="true" />
+        <span>{busy === `search-${v}` ? 'Buscando…' : 'Buscar equipos nuevos'}</span>
+      </button>
     </div>
   );
+
+  // Arriba: cada marca con "Conectar" o, si ya está conectada, "Agregar otro" (desconectar va abajo, en Tus equipos)
+  const brand = (v: DeviceVendor, desc: string, body: React.ReactNode) => {
+    const connected = connectedText(v);
+    return (
+      <div id={`device-brand-${v}`} data-connected={connected ? 'true' : 'false'} className={`${ITEM} space-y-3`}>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-sm font-bold text-ink">{VENDOR_TITLE[v]}</p>
+            <p className={`text-[11px] ${connected ? 'text-ok-ink font-bold' : 'text-ink-muted'}`}>{connected || desc}</p>
+          </div>
+          {connected ? (
+            <button type="button" id={`${v}-add`} aria-expanded={adding === v} onClick={() => setAdding(adding === v ? null : v)} className="cultiveta-btn-secondary text-xs">
+              <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+              <span>{adding === v ? 'Cerrar' : 'Agregar otro'}</span>
+            </button>
+          ) : (
+            <button type="button" id={`${v}-open`} aria-expanded={open === v} disabled={!st} onClick={() => setOpen(open === v ? null : v)} className="cultiveta-btn-secondary text-xs disabled:opacity-50">
+              {open === v ? 'Cerrar' : 'Conectar'}
+            </button>
+          )}
+        </div>
+        {connected ? adding === v && addPanel(v) : open === v && body}
+      </div>
+    );
+  };
 
   const tuyaForm = st && (
     <div id="smartlife-connect" className="space-y-3">
@@ -377,32 +449,55 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
   );
 
   return (
-    <div id="smartlife-devices" className="space-y-3">
-      {brand('tuya', 'Smart Life / Tuya', 'Enchufes, zapatillas y sensores de la app Smart Life o Tuya.', st?.tuya.connected ? `Conectado${st.tuya.mock ? ' · zapatilla de prueba' : st.tuya.accessId ? ` · ${st.tuya.accessId}` : ''}` : null, tuyaForm)}
-      {brand('ewelink', 'Sonoff / eWeLink', 'Relés, enchufes y sensores Sonoff de la app eWeLink.', st?.ewelink?.connected ? `Conectado${st.ewelink.mock ? ' · Sonoff de prueba' : ''}` : null, ewelinkForm)}
-      {brand('shelly', 'Shelly', 'Enchufes, relés y sensores Shelly, por la nube de Shelly.', st?.shelly?.connected ? `Conectado${st.shelly.mock ? ' · Shelly de prueba' : st.shelly.server ? ` · ${st.shelly.server}` : ''}` : null, shellyFormEl)}
-      {!st && <p className="text-xs text-ink-muted">{error || 'Cargando tus marcas…'}</p>}
-      {st && !anyConnected && error && <p className="text-xs font-bold text-error">{error}</p>}
+    <div id="smartlife-devices" className="space-y-5">
+      <section id="devices-connect" className={`${CARD} space-y-3`}>
+        <div>
+          <h2 className="text-sm font-bold text-ink">Conectar un equipo nuevo</h2>
+          <p className="text-xs text-ink-muted mt-1">
+            Cada equipo se agrega primero en la app de su marca (Smart Life, eWeLink o Shelly). Después se conecta la marca acá y cada toma o sensor se asigna a un ambiente o cultivo. Si la marca ya está conectada, tocá <b>Agregar otro</b>.
+          </p>
+        </div>
+        {brand('tuya', 'Enchufes, zapatillas y sensores de la app Smart Life o Tuya.', tuyaForm)}
+        {brand('ewelink', 'Relés, enchufes y sensores Sonoff de la app eWeLink.', ewelinkForm)}
+        {brand('shelly', 'Enchufes, relés y sensores Shelly, por la nube de Shelly.', shellyFormEl)}
+        {!st && <p className="text-xs text-ink-muted">{error || 'Cargando tus marcas…'}</p>}
+        {st && !anyConnected && error && <p className="text-xs font-bold text-error">{error}</p>}
+      </section>
+
       {anyConnected && (
-        <div className="flex items-center justify-between gap-2 pt-1">
-          <p className="text-sm font-bold text-ink">Tus equipos</p>
+      <section id="devices-list" className={`${CARD} space-y-3`}>
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-sm font-bold text-ink">Tus equipos</h2>
           <button type="button" onClick={() => run('refresh', loadDevices)} className="cultiveta-btn-secondary text-xs" aria-label="Actualizar equipos">
             <RefreshCw className={`w-3.5 h-3.5 ${busy === 'refresh' ? 'animate-spin' : ''}`} aria-hidden="true" />
             <span>Actualizar</span>
           </button>
         </div>
-      )}
-      {anyConnected && Object.values(listErrors).map((m) => (
+        <div id="devices-brands" className="space-y-2">
+          {VENDORS.filter((v) => connectedText(v)).map((v) => (
+            <div key={v} id={`device-connected-${v}`} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-surface border border-line px-3 py-2">
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-ink">{VENDOR_TITLE[v]}</p>
+                <p className="text-[11px] font-bold text-ok-ink truncate">{connectedText(v)}</p>
+              </div>
+              <button type="button" id={`${v}-disconnect`} onClick={() => disconnect(v)} disabled={busy === `disconnect-${v}`} className="cultiveta-btn-secondary text-xs text-error disabled:opacity-50">
+                <Unplug className="w-3.5 h-3.5" aria-hidden="true" />
+                <span>Desconectar</span>
+              </button>
+            </div>
+          ))}
+        </div>
+      {Object.values(listErrors).map((m) => (
         <p key={m} className="text-xs font-bold text-coral">
           {m}
         </p>
       ))}
-      {anyConnected && error && <p className="text-xs font-bold text-error">{error}</p>}
-      {anyConnected && !devices && <p className="text-xs text-ink-muted flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Leyendo tus equipos…</p>}
-      {anyConnected && devices && !devices.length && (
+      {error && <p className="text-xs font-bold text-error">{error}</p>}
+      {!devices && <p className="text-xs text-ink-muted flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> Leyendo tus equipos…</p>}
+      {devices && !devices.length && (
         <p className="text-xs text-ink-muted">No aparece ningún equipo: agregalos primero en la app de su marca (en Smart Life, además, vinculá tu cuenta al proyecto: Devices → Link App Account) y tocá Actualizar.</p>
       )}
-      {anyConnected && devices?.map((d) => (
+      {devices?.map((d) => (
         <div key={d.id} className={`smart-device ${ITEM} space-y-2`}>
           <div className="flex items-start justify-between gap-2">
             <div>
@@ -445,6 +540,8 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
                       <ClimateRuleEditor
                         role={ch.binding.climateRole}
                         rule={ch.binding.rule}
+                        hasLight={lightIn(ch.binding.cultivationId)}
+                        hasSensor={sensorIn(ch.binding.cultivationId)}
                         onCancel={() => setEditing(null)}
                         onSave={async (rule) => {
                           await devicesService.setRule(ch.binding!.id, rule);
@@ -481,6 +578,21 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
                         }}
                       />
                     )}
+                    {(ch.binding.role === 'light' || ch.binding.role === 'climate') && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        <ManualPowerButton
+                          binding={{ ...(ch.binding as DeviceBindingState), on: ch.on, online: d.online }}
+                          female={ch.binding.role === 'light'}
+                          onToast={toast}
+                          onDone={async () => {
+                            await loadDevices();
+                          }}
+                        />
+                        {manualText(ch.binding, Date.now(), ch.binding.role === 'light') && (
+                          <span className="device-manual-note text-[11px] font-bold text-brand">{manualText(ch.binding, Date.now(), ch.binding.role === 'light')}</span>
+                        )}
+                      </div>
+                    )}
                     <div className="flex flex-wrap gap-3">
                       {ch.binding.role === 'pump' && editing !== `${ch.binding.id}|auto` && (
                         <button type="button" onClick={() => setEditing(`${ch.binding!.id}|auto`)} className="pump-auto-btn text-[11px] font-bold text-brand hover:underline">
@@ -489,7 +601,7 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
                       )}
                       {(ch.binding.role === 'climate' || ch.binding.role === 'pump') && editing !== ch.binding.id && (
                         <button type="button" onClick={() => setEditing(ch.binding!.id)} className="text-[11px] font-bold text-brand hover:underline">
-                          {ch.binding.role === 'pump' ? 'Caudal y topes' : 'Cambiar regla'}
+                          {ch.binding.role === 'pump' ? 'Caudal y topes' : 'Cómo se maneja'}
                         </button>
                       )}
                       <button type="button" onClick={() => run(key, async () => { await devicesService.unbind(ch.binding!.id); await loadDevices(); }, 'Asignación quitada')} className="text-[11px] font-bold text-ink-muted hover:underline">
@@ -568,6 +680,8 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
           )}
         </div>
       ))}
+      </section>
+      )}
     </div>
   );
 };
