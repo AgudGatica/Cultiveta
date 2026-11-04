@@ -10,7 +10,6 @@ import { photoService } from './services/photoService';
 import { geneticsService } from './services/geneticsService';
 import { harvestService } from './services/harvestService';
 import { diaryService } from './services/diaryService';
-import { demoDataService } from './services/demoDataService';
 import { photoOfflineQueue } from './services/photoOfflineQueue';
 import { localStore } from './services/localStore';
 import { scrollToTop, useScrollTopOnNavigate } from './hooks/useScrollTopOnNavigate';
@@ -32,26 +31,15 @@ import {
 import { Header } from './components/common/Header';
 import { Sidebar } from './components/common/Sidebar';
 import { MobileNav } from './components/common/MobileNav';
-import { QuickActionModal } from './components/common/QuickActionModal';
-import { AuthScreen } from './components/auth/AuthScreen';
+import { LazyBoundary, LazyModal, ViewLoadError, lazyNamed, preloadWhenIdle, useOpenedOnce } from './components/common/LazyLoad';
 
 import { DashboardOverview } from './components/dashboard/DashboardOverview';
-import { CultivationFormModal } from './components/cultivations/CultivationFormModal';
-import { AmbientFormModal } from './components/indoors/AmbientFormModal';
 import { getDetailBackTarget, getNavHighlight, isCropFinished } from './utils/cropCardInfo';
-import { WateringModal } from './components/logs/WateringModal';
-import { EnvironmentModal } from './components/logs/EnvironmentModal';
-import { PhotoUploadModal } from './components/logs/PhotoUploadModal';
-import { DiaryNoteModal } from './components/logs/DiaryNoteModal';
 import { getOverdueCultivations } from './utils/wateringAlertUtils';
 import { calculateIrrigationForecast } from './services/irrigationForecastService';
 import { browserNotificationService } from './services/browserNotificationService';
-import { NotificationCenterModal } from './components/notifications/NotificationCenterModal';
-import { UserPreferencesModal } from './components/user/UserPreferencesModal';
-import { AccountModal } from './components/user/AccountModal';
 import { UserProfile } from './types';
 import { useGrowerProgress } from './hooks/useGrowerProgress';
-import { CelebrationLayer } from './components/profile/CelebrationLayer';
 import { Sprout } from 'lucide-react';
 
 // Pantallas y modales pesados con carga diferida: se descargan recién cuando se abren.
@@ -92,9 +80,49 @@ const GoogleCalendarModal = React.lazy(() =>
   import('./components/calendar/GoogleCalendarModal').then((m) => ({ default: m.GoogleCalendarModal }))
 );
 
+// Modales, festejos y la pantalla de ingreso: no hacen falta para abrir el Jardín, se bajan la primera vez que
+// se usan. Los de uso diario también se bajan solos un rato después de entrar (ver DAILY_MODALS).
+const QuickActionModal = lazyNamed(() => import('./components/common/QuickActionModal'), 'QuickActionModal');
+const WateringModal = lazyNamed(() => import('./components/logs/WateringModal'), 'WateringModal');
+const EnvironmentModal = lazyNamed(() => import('./components/logs/EnvironmentModal'), 'EnvironmentModal');
+const PhotoUploadModal = lazyNamed(() => import('./components/logs/PhotoUploadModal'), 'PhotoUploadModal');
+const DiaryNoteModal = lazyNamed(() => import('./components/logs/DiaryNoteModal'), 'DiaryNoteModal');
+const CultivationFormModal = lazyNamed(() => import('./components/cultivations/CultivationFormModal'), 'CultivationFormModal');
+const AmbientFormModal = lazyNamed(() => import('./components/indoors/AmbientFormModal'), 'AmbientFormModal');
+const CelebrationLayer = lazyNamed(() => import('./components/profile/CelebrationLayer'), 'CelebrationLayer');
+const NotificationCenterModal = lazyNamed(() => import('./components/notifications/NotificationCenterModal'), 'NotificationCenterModal');
+const UserPreferencesModal = lazyNamed(() => import('./components/user/UserPreferencesModal'), 'UserPreferencesModal');
+const AccountModal = lazyNamed(() => import('./components/user/AccountModal'), 'AccountModal');
+const AuthScreen = lazyNamed(() => import('./components/auth/AuthScreen'), 'AuthScreen');
+const loadDemoData = () => import('./services/demoDataService').then((m) => m.demoDataService);
+
+// Se bajan en segundo plano después de entrar: abren al instante y también sin conexión.
+const DAILY_MODALS = [
+  QuickActionModal,
+  WateringModal,
+  EnvironmentModal,
+  PhotoUploadModal,
+  DiaryNoteModal,
+  CultivationFormModal,
+  AmbientFormModal,
+  CelebrationLayer,
+];
+
 const ViewLoading: React.FC = () => (
   <div role="status" className="cultiveta-card p-8 text-center text-sm font-semibold text-ink-muted">
     Cargando...
+  </div>
+);
+
+const AppSplash: React.FC = () => (
+  <div className="min-h-screen cultiveta-page-background flex items-center justify-center p-4">
+    <div className="flex flex-col items-center gap-3">
+      <div className="w-16 h-16 rounded-3xl bg-white border border-chip-line shadow-md flex items-center justify-center text-3xl transition-transform animate-bounce">
+        🌱
+      </div>
+      <span className="text-xl font-black text-ink tracking-tight">Cultiveta</span>
+      <p className="text-xs font-bold text-ink-muted">Preparando tu cultivo...</p>
+    </div>
   </div>
 );
 
@@ -285,6 +313,9 @@ export default function App() {
   const [isPreferencesModalOpen, setIsPreferencesModalOpen] = useState(false);
   const [isAccountModalOpen, setIsAccountModalOpen] = useState(false);
   const [envAlertsCount, setEnvAlertsCount] = useState(0);
+  // Estos dos quedaban siempre montados: ahora se bajan al abrirlos por primera vez y después siguen montados
+  const quickActionOpened = useOpenedOnce(isQuickActionOpen);
+  const accountModalOpened = useOpenedOnce(isAccountModalOpen);
 
   // Notification / Toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -300,6 +331,13 @@ export default function App() {
     [cultivations, waterings, envRecords, photos, diaryEntries, harvests]
   );
   const growerProgress = useGrowerProgress(currentUser?.uid, progressData, Boolean(currentUser) && !isInitialLoading);
+  // Los festejos se bajan con el primero y después quedan montados (así se animan también al irse)
+  const celebrationsOpened = useOpenedOnce(growerProgress.celebrations.length > 0 || growerProgress.xpToasts.length > 0);
+
+  useEffect(() => {
+    if (!currentUser?.uid) return undefined;
+    return preloadWhenIdle(DAILY_MODALS.map((modal) => modal.preload));
+  }, [currentUser?.uid]);
 
   // ─────────────────────────────────────────────────────────────
   // CULTIVETA DESIGN SYSTEM: ATMÓSFERA VISUAL SEGÚN VIEW ACTIVA
@@ -586,6 +624,7 @@ export default function App() {
     if (!currentUser) return;
     try {
       showToast('Cargando datos de demostración realistas...');
+      const demoDataService = await loadDemoData();
       await demoDataService.seedDemoData(currentUser.uid);
       showToast('¡Datos de demostración cargados exitosamente!');
     } catch (err: any) {
@@ -599,6 +638,7 @@ export default function App() {
     if (!currentUser) return;
     if (window.confirm('¿Deseas eliminar todos los registros marcados como Demo?')) {
       try {
+        const demoDataService = await loadDemoData();
         await demoDataService.clearDemoData(currentUser.uid);
         showToast('Datos de demostración eliminados.');
       } catch (err) {
@@ -634,41 +674,65 @@ export default function App() {
 
   // Authentication Loading Screen
   if (authLoading) {
-    return (
-      <div className="min-h-screen cultiveta-page-background flex items-center justify-center p-4">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-16 h-16 rounded-3xl bg-white border border-chip-line shadow-md flex items-center justify-center text-3xl transition-transform animate-bounce">
-            🌱
-          </div>
-          <span className="text-xl font-black text-ink tracking-tight">Cultiveta</span>
-          <p className="text-xs font-bold text-ink-muted">Preparando tu cultivo...</p>
-        </div>
-      </div>
-    );
+    return <AppSplash />;
   }
 
   // Not logged in -> Show Login/Register
   if (!currentUser) {
     return (
-      <AuthScreen
-        onSuccess={() => {}}
-        onExploreDemo={async () => {
-          try {
-            showToast('Ingresando en Modo Demo...');
-            const guest = await authService.loginAsDemoGuest();
-            const hasData = await demoDataService.hasDemoData(guest.uid);
-            if (!hasData) {
-              await demoDataService.seedDemoData(guest.uid);
-            }
-            showToast('¡Bienvenido al Modo Demo de Cultiveta!');
-          } catch (err: any) {
-            console.error('Error in demo exploration:', err);
-            showToast('Error al iniciar Modo Demo.');
-          }
-        }}
-      />
+      <LazyBoundary
+        fallback={
+          <div className="min-h-screen cultiveta-page-background flex items-center justify-center p-4">
+            <ViewLoadError />
+          </div>
+        }
+      >
+        <React.Suspense fallback={<AppSplash />}>
+          <AuthScreen
+            onSuccess={() => {}}
+            onExploreDemo={async () => {
+              try {
+                showToast('Ingresando en Modo Demo...');
+                const demoDataService = await loadDemoData();
+                const guest = await authService.loginAsDemoGuest();
+                const hasData = await demoDataService.hasDemoData(guest.uid);
+                if (!hasData) {
+                  await demoDataService.seedDemoData(guest.uid);
+                }
+                showToast('¡Bienvenido al Modo Demo de Cultiveta!');
+              } catch (err: any) {
+                console.error('Error in demo exploration:', err);
+                showToast('Error al iniciar Modo Demo.');
+              }
+            }}
+          />
+        </React.Suspense>
+      </LazyBoundary>
     );
   }
+
+  const closeAmbientForm = () => {
+    setIsIndoorFormOpen(false);
+    setIndoorToEdit(null);
+  };
+  const closeCultivationForm = () => {
+    setIsCultivationFormOpen(false);
+    setCultivationToEdit(null);
+    setInitialGeneticsForNewCrop(null);
+    setNewCropIndoorId(null);
+  };
+  const closeWateringModal = () => {
+    setIsWateringModalOpen(false);
+    setWateringModalInitialRecipe(null);
+  };
+  const closeCalendarModal = () => {
+    setIsCalendarModalOpen(false);
+    setCalendarModalCultivation(null);
+  };
+  const closeNotificationCenter = () => {
+    setIsNotificationCenterOpen(false);
+    setEnvAlertsCount(0);
+  };
 
   return (
     <div className="cultiveta-app-shell text-ink flex flex-col selection:bg-brand selection:text-white">
@@ -722,6 +786,7 @@ export default function App() {
 
         {/* Content Area */}
         <main className="flex-1 min-w-0 pb-24 md:pb-8">
+          <LazyBoundary resetKey={location.pathname} fallback={<ViewLoadError />}>
           <React.Suspense fallback={<ViewLoading />}>
           {/* VIEW: DASHBOARD OVERVIEW */}
           {currentView === 'dashboard' && (
@@ -1075,17 +1140,24 @@ export default function App() {
             />
           )}
           </React.Suspense>
+          </LazyBoundary>
         </main>
       </div>
 
-      {/* Festejos de nivel y logros, y avisos de XP */}
-      <CelebrationLayer
-        celebrations={growerProgress.celebrations}
-        onDismissCelebration={growerProgress.dismissCelebration}
-        xpToasts={growerProgress.xpToasts}
-        onDismissXpToast={growerProgress.dismissXpToast}
-        onOpenAchievements={() => setCurrentView('achievements')}
-      />
+      {/* Festejos de nivel y logros, y avisos de XP (si no se pudieran bajar, simplemente no se ven) */}
+      {celebrationsOpened && (
+        <LazyBoundary fallback={null}>
+          <React.Suspense fallback={null}>
+            <CelebrationLayer
+              celebrations={growerProgress.celebrations}
+              onDismissCelebration={growerProgress.dismissCelebration}
+              xpToasts={growerProgress.xpToasts}
+              onDismissXpToast={growerProgress.dismissXpToast}
+              onOpenAchievements={() => setCurrentView('achievements')}
+            />
+          </React.Suspense>
+        </LazyBoundary>
+      )}
 
       {/* Mobile Bottom Navigation */}
       <MobileNav
@@ -1100,268 +1172,277 @@ export default function App() {
       />
 
       {/* Quick Action Bottom Sheet */}
-      <QuickActionModal
-        isOpen={isQuickActionOpen}
-        onClose={() => setIsQuickActionOpen(false)}
-        cultivations={cultivations}
-        onSelectAction={(action) => {
-          setIsQuickActionOpen(false);
-          switch (action) {
-            case 'watering':
-            case 'measurement':
-              setIsWateringModalOpen(true);
-              break;
-            case 'environment':
-              setIsEnvModalOpen(true);
-              break;
-            case 'photo':
-              setIsPhotoModalOpen(true);
-              break;
-            case 'note':
-              setIsDiaryModalOpen(true);
-              break;
-            case 'new-crop':
+      {quickActionOpened && (
+        <LazyModal open={isQuickActionOpen} onClose={() => setIsQuickActionOpen(false)}>
+          <QuickActionModal
+            isOpen={isQuickActionOpen}
+            onClose={() => setIsQuickActionOpen(false)}
+            cultivations={cultivations}
+            onSelectAction={(action) => {
+              setIsQuickActionOpen(false);
+              switch (action) {
+                case 'watering':
+                case 'measurement':
+                  setIsWateringModalOpen(true);
+                  break;
+                case 'environment':
+                  setIsEnvModalOpen(true);
+                  break;
+                case 'photo':
+                  setIsPhotoModalOpen(true);
+                  break;
+                case 'note':
+                  setIsDiaryModalOpen(true);
+                  break;
+                case 'new-crop':
+                  setCultivationToEdit(null);
+                  setIsCultivationFormOpen(true);
+                  break;
+                case 'ai-analyze':
+                  setCurrentView('ai_assistant');
+                  break;
+              }
+            }}
+            onOpenWatering={() => setIsWateringModalOpen(true)}
+            onOpenEnvironment={() => setIsEnvModalOpen(true)}
+            onOpenPhoto={() => setIsPhotoModalOpen(true)}
+            onOpenDiary={() => setIsDiaryModalOpen(true)}
+            onOpenNewCultivation={() => {
               setCultivationToEdit(null);
               setIsCultivationFormOpen(true);
-              break;
-            case 'ai-analyze':
-              setCurrentView('ai_assistant');
-              break;
-          }
-        }}
-        onOpenWatering={() => setIsWateringModalOpen(true)}
-        onOpenEnvironment={() => setIsEnvModalOpen(true)}
-        onOpenPhoto={() => setIsPhotoModalOpen(true)}
-        onOpenDiary={() => setIsDiaryModalOpen(true)}
-        onOpenNewCultivation={() => {
-          setCultivationToEdit(null);
-          setIsCultivationFormOpen(true);
-        }}
-        onOpenAIAssistant={() => setCurrentView('ai_assistant')}
-      />
+            }}
+            onOpenAIAssistant={() => setCurrentView('ai_assistant')}
+          />
+        </LazyModal>
+      )}
 
       {/* Ambiente (carpa, sala o lugar de exterior): crear o editar */}
       {isIndoorFormOpen && currentUser && (
-        <AmbientFormModal
-          isOpen={isIndoorFormOpen}
-          onClose={() => {
-            setIsIndoorFormOpen(false);
-            setIndoorToEdit(null);
-          }}
-          userId={currentUser.uid}
-          ambientToEdit={indoorToEdit}
-          onSaved={(saved) => {
-            setIndoors((prev) => (prev.some((i) => i.id === saved.id) ? prev.map((i) => (i.id === saved.id ? saved : i)) : [...prev, saved]));
-            showToast(indoorToEdit ? `Ambiente "${saved.name}" guardado.` : `Ambiente "${saved.name}" creado. Sumale plantas.`);
-            if (!indoorToEdit) openIndoor(saved.id);
-          }}
-        />
+        <LazyModal onClose={closeAmbientForm}>
+          <AmbientFormModal
+            isOpen={isIndoorFormOpen}
+            onClose={closeAmbientForm}
+            userId={currentUser.uid}
+            ambientToEdit={indoorToEdit}
+            onSaved={(saved) => {
+              setIndoors((prev) => (prev.some((i) => i.id === saved.id) ? prev.map((i) => (i.id === saved.id ? saved : i)) : [...prev, saved]));
+              showToast(indoorToEdit ? `Ambiente "${saved.name}" guardado.` : `Ambiente "${saved.name}" creado. Sumale plantas.`);
+              if (!indoorToEdit) openIndoor(saved.id);
+            }}
+          />
+        </LazyModal>
       )}
 
       {/* Cultivation Form Modal */}
       {isCultivationFormOpen && (
-        <CultivationFormModal
-          isOpen={isCultivationFormOpen}
-          onClose={() => {
-            setIsCultivationFormOpen(false);
-            setCultivationToEdit(null);
-            setInitialGeneticsForNewCrop(null);
-            setNewCropIndoorId(null);
-          }}
-          userId={currentUser.uid}
-          indoors={indoors}
-          initialIndoorId={newCropIndoorId}
-          cultivationToEdit={cultivationToEdit}
-          initialGenetics={initialGeneticsForNewCrop}
-          geneticsList={geneticsList}
-          onSaved={(savedCrop) => {
-            setCultivations((prev) => {
-              const exists = prev.some((c) => c.id === savedCrop.id);
-              if (exists) {
-                return prev.map((c) => (c.id === savedCrop.id ? savedCrop : c));
-              }
-              return [savedCrop, ...prev];
-            });
-            showToast(`Cultivo "${savedCrop.name}" guardado exitosamente.`);
-            setSelectedCultivationId(savedCrop.id);
-            setCurrentView('cultivation_detail');
-            setInitialGeneticsForNewCrop(null);
-          }}
-        />
+        <LazyModal onClose={closeCultivationForm}>
+          <CultivationFormModal
+            isOpen={isCultivationFormOpen}
+            onClose={closeCultivationForm}
+            userId={currentUser.uid}
+            indoors={indoors}
+            initialIndoorId={newCropIndoorId}
+            cultivationToEdit={cultivationToEdit}
+            initialGenetics={initialGeneticsForNewCrop}
+            geneticsList={geneticsList}
+            onSaved={(savedCrop) => {
+              setCultivations((prev) => {
+                const exists = prev.some((c) => c.id === savedCrop.id);
+                if (exists) {
+                  return prev.map((c) => (c.id === savedCrop.id ? savedCrop : c));
+                }
+                return [savedCrop, ...prev];
+              });
+              showToast(`Cultivo "${savedCrop.name}" guardado exitosamente.`);
+              setSelectedCultivationId(savedCrop.id);
+              setCurrentView('cultivation_detail');
+              setInitialGeneticsForNewCrop(null);
+            }}
+          />
+        </LazyModal>
       )}
 
       {/* Watering Modal */}
       {isWateringModalOpen && (
-        <WateringModal
-          isOpen={isWateringModalOpen}
-          onConnectDevice={() => openDevices('riego')}
-          onClose={() => {
-            setIsWateringModalOpen(false);
-            setWateringModalInitialRecipe(null);
-          }}
-          userId={currentUser.uid}
-          cultivations={cultivations.filter((c) => !c.isFinished)}
-          waterings={waterings}
-          defaultCultivationId={selectedCultivationId || undefined}
-          initialProducts={wateringModalInitialRecipe?.products}
-          initialPh={wateringModalInitialRecipe?.ph}
-          initialEc={wateringModalInitialRecipe?.ec}
-          onWateringAdded={(w) => {
-            setWaterings((prev) => [w, ...prev.filter((x) => x.id !== w.id)]);
-            notifiedOverdueRef.current.delete(w.cultivationId);
-            showToast('💧 Riego registrado con éxito. ¡Alerta de riego atrasado resuelta!');
-            setWateringModalInitialRecipe(null);
-          }}
-        />
+        <LazyModal onClose={closeWateringModal}>
+          <WateringModal
+            isOpen={isWateringModalOpen}
+            onConnectDevice={() => openDevices('riego')}
+            onClose={closeWateringModal}
+            userId={currentUser.uid}
+            cultivations={cultivations.filter((c) => !c.isFinished)}
+            waterings={waterings}
+            defaultCultivationId={selectedCultivationId || undefined}
+            initialProducts={wateringModalInitialRecipe?.products}
+            initialPh={wateringModalInitialRecipe?.ph}
+            initialEc={wateringModalInitialRecipe?.ec}
+            onWateringAdded={(w) => {
+              setWaterings((prev) => [w, ...prev.filter((x) => x.id !== w.id)]);
+              notifiedOverdueRef.current.delete(w.cultivationId);
+              showToast('💧 Riego registrado con éxito. ¡Alerta de riego atrasado resuelta!');
+              setWateringModalInitialRecipe(null);
+            }}
+          />
+        </LazyModal>
       )}
 
       {/* Environment Modal */}
       {isEnvModalOpen && (
-        <EnvironmentModal
-          isOpen={isEnvModalOpen}
-          onClose={() => setIsEnvModalOpen(false)}
-          onConnectDevice={() => openDevices('ambiente')}
-          userId={currentUser.uid}
-          cultivations={cultivations.filter((c) => !c.isFinished)}
-          defaultCultivationId={selectedCultivationId || undefined}
-          onRecordAdded={(r) => {
-            showToast('Medición ambiental registrada.');
-          }}
-        />
+        <LazyModal onClose={() => setIsEnvModalOpen(false)}>
+          <EnvironmentModal
+            isOpen={isEnvModalOpen}
+            onClose={() => setIsEnvModalOpen(false)}
+            onConnectDevice={() => openDevices('ambiente')}
+            userId={currentUser.uid}
+            cultivations={cultivations.filter((c) => !c.isFinished)}
+            defaultCultivationId={selectedCultivationId || undefined}
+            onRecordAdded={(r) => {
+              showToast('Medición ambiental registrada.');
+            }}
+          />
+        </LazyModal>
       )}
 
       {/* Photo Upload Modal */}
       {isPhotoModalOpen && (
-        <PhotoUploadModal
-          isOpen={isPhotoModalOpen}
-          onClose={() => setIsPhotoModalOpen(false)}
-          userId={currentUser.uid}
-          cultivations={cultivations.filter((c) => !c.isFinished)}
-          defaultCultivationId={selectedCultivationId || undefined}
-          onPhotoUploaded={(photo, triggerAI) => {
-            if (photo.syncStatus === 'queued' || photo.isPendingSync) {
-              showToast('📸 Fotografía guardada localmente (se sincronizará al conectar).');
-            } else {
-              showToast('📸 Fotografía guardada y sincronizada en la nube.');
-            }
-            if (triggerAI) {
-              const targetCrop = cultivations.find((c) => c.id === photo.cultivationId);
-              if (targetCrop) {
-                setPhotoForInstantDiagnosis({ photo, cultivation: targetCrop });
+        <LazyModal onClose={() => setIsPhotoModalOpen(false)}>
+          <PhotoUploadModal
+            isOpen={isPhotoModalOpen}
+            onClose={() => setIsPhotoModalOpen(false)}
+            userId={currentUser.uid}
+            cultivations={cultivations.filter((c) => !c.isFinished)}
+            defaultCultivationId={selectedCultivationId || undefined}
+            onPhotoUploaded={(photo, triggerAI) => {
+              if (photo.syncStatus === 'queued' || photo.isPendingSync) {
+                showToast('📸 Fotografía guardada localmente (se sincronizará al conectar).');
+              } else {
+                showToast('📸 Fotografía guardada y sincronizada en la nube.');
               }
-            }
-          }}
-        />
+              if (triggerAI) {
+                const targetCrop = cultivations.find((c) => c.id === photo.cultivationId);
+                if (targetCrop) {
+                  setPhotoForInstantDiagnosis({ photo, cultivation: targetCrop });
+                }
+              }
+            }}
+          />
+        </LazyModal>
       )}
 
       {/* Diary Note Modal */}
       {isDiaryModalOpen && (
-        <DiaryNoteModal
-          isOpen={isDiaryModalOpen}
-          onClose={() => setIsDiaryModalOpen(false)}
-          userId={currentUser.uid}
-          cultivations={cultivations.filter((c) => !c.isFinished)}
-          defaultCultivationId={selectedCultivationId || undefined}
-          onNoteAdded={(n) => {
-            showToast('Nota añadida al diario.');
-          }}
-        />
+        <LazyModal onClose={() => setIsDiaryModalOpen(false)}>
+          <DiaryNoteModal
+            isOpen={isDiaryModalOpen}
+            onClose={() => setIsDiaryModalOpen(false)}
+            userId={currentUser.uid}
+            cultivations={cultivations.filter((c) => !c.isFinished)}
+            defaultCultivationId={selectedCultivationId || undefined}
+            onNoteAdded={(n) => {
+              showToast('Nota añadida al diario.');
+            }}
+          />
+        </LazyModal>
       )}
 
-      <React.Suspense fallback={null}>
       {/* Instant AI Diagnosis Modal from Photo Upload */}
       {photoForInstantDiagnosis && (
-        <PhotoDiagnosisModal
-          isOpen={!!photoForInstantDiagnosis}
-          onClose={() => setPhotoForInstantDiagnosis(null)}
-          userId={currentUser.uid}
-          cultivation={photoForInstantDiagnosis.cultivation}
-          photo={photoForInstantDiagnosis.photo}
-        />
+        <LazyModal onClose={() => setPhotoForInstantDiagnosis(null)}>
+          <PhotoDiagnosisModal
+            isOpen={!!photoForInstantDiagnosis}
+            onClose={() => setPhotoForInstantDiagnosis(null)}
+            userId={currentUser.uid}
+            cultivation={photoForInstantDiagnosis.cultivation}
+            photo={photoForInstantDiagnosis.photo}
+          />
+        </LazyModal>
       )}
 
       {/* Google Calendar Sync Modal */}
       {isCalendarModalOpen && calendarModalCultivation && (
-        <GoogleCalendarModal
-          isOpen={isCalendarModalOpen}
-          onClose={() => {
-            setIsCalendarModalOpen(false);
-            setCalendarModalCultivation(null);
-          }}
-          cultivation={calendarModalCultivation}
-          latestWatering={
-            waterings
-              .filter((w) => w.cultivationId === calendarModalCultivation.id)
-              .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] || null
-          }
-          geneticsList={geneticsList}
-          onEventSynced={() => {
-            showToast('Evento sincronizado con Google Calendar');
-          }}
-        />
+        <LazyModal onClose={closeCalendarModal}>
+          <GoogleCalendarModal
+            isOpen={isCalendarModalOpen}
+            onClose={closeCalendarModal}
+            cultivation={calendarModalCultivation}
+            latestWatering={
+              waterings
+                .filter((w) => w.cultivationId === calendarModalCultivation.id)
+                .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0] || null
+            }
+            geneticsList={geneticsList}
+            onEventSynced={() => {
+              showToast('Evento sincronizado con Google Calendar');
+            }}
+          />
+        </LazyModal>
       )}
-      </React.Suspense>
 
       {/* Notification Center Modal for env_alert cron alerts */}
       {isNotificationCenterOpen && (
-        <NotificationCenterModal
-          isOpen={isNotificationCenterOpen}
-          onClose={() => {
-            setIsNotificationCenterOpen(false);
-            setEnvAlertsCount(0);
-          }}
-          userId={currentUser.uid}
-          onSelectCultivation={(cropId) => {
-            setSelectedCultivationId(cropId);
-            setCurrentView('cultivation_detail');
-          }}
-          onOpenPreferences={() => {
-            setIsNotificationCenterOpen(false);
-            setIsPreferencesModalOpen(true);
-          }}
-        />
+        <LazyModal onClose={closeNotificationCenter}>
+          <NotificationCenterModal
+            isOpen={isNotificationCenterOpen}
+            onClose={closeNotificationCenter}
+            userId={currentUser.uid}
+            onSelectCultivation={(cropId) => {
+              setSelectedCultivationId(cropId);
+              setCurrentView('cultivation_detail');
+            }}
+            onOpenPreferences={() => {
+              setIsNotificationCenterOpen(false);
+              setIsPreferencesModalOpen(true);
+            }}
+          />
+        </LazyModal>
       )}
 
       {/* Tus datos y tu cuenta: exportación y borrado completo */}
-      <AccountModal
-        isOpen={isAccountModalOpen}
-        onClose={() => setIsAccountModalOpen(false)}
-        onAccountDeleted={() => {
-          setIsAccountModalOpen(false);
-          setCultivations([]);
-          setWaterings([]);
-          setEnvRecords([]);
-          setPhotos([]);
-          setGeneticsList([]);
-          setHarvests([]);
-          setDiaryEntries([]);
-          setCurrentView('dashboard');
-          setSelectedCultivationId(null);
-          showToast('Tu cuenta y todos tus datos fueron eliminados.');
-        }}
-      />
+      {accountModalOpened && (
+        <LazyModal open={isAccountModalOpen} onClose={() => setIsAccountModalOpen(false)}>
+          <AccountModal
+            isOpen={isAccountModalOpen}
+            onClose={() => setIsAccountModalOpen(false)}
+            onAccountDeleted={() => {
+              setIsAccountModalOpen(false);
+              setCultivations([]);
+              setWaterings([]);
+              setEnvRecords([]);
+              setPhotos([]);
+              setGeneticsList([]);
+              setHarvests([]);
+              setDiaryEntries([]);
+              setCurrentView('dashboard');
+              setSelectedCultivationId(null);
+              showToast('Tu cuenta y todos tus datos fueron eliminados.');
+            }}
+          />
+        </LazyModal>
+      )}
 
       {/* User Preferences & Alert Types Configuration Modal */}
       {isPreferencesModalOpen && (
-        <UserPreferencesModal
-          isOpen={isPreferencesModalOpen}
-          onClose={() => setIsPreferencesModalOpen(false)}
-          userProfile={userProfile}
-          onPreferencesUpdated={(newPrefs) => {
-            setUserProfile((prev) =>
-              prev
-                ? { ...prev, preferences: newPrefs }
-                : {
-                    uid: currentUser?.uid || '',
-                    email: currentUser?.email || '',
-                    displayName: currentUser?.displayName || 'Cultivador',
-                    createdAt: new Date().toISOString(),
-                    preferences: newPrefs,
-                  }
-            );
-          }}
-          onShowToast={showToast}
-        />
+        <LazyModal onClose={() => setIsPreferencesModalOpen(false)}>
+          <UserPreferencesModal
+            isOpen={isPreferencesModalOpen}
+            onClose={() => setIsPreferencesModalOpen(false)}
+            userProfile={userProfile}
+            onPreferencesUpdated={(newPrefs) => {
+              setUserProfile((prev) =>
+                prev
+                  ? { ...prev, preferences: newPrefs }
+                  : {
+                      uid: currentUser?.uid || '',
+                      email: currentUser?.email || '',
+                      displayName: currentUser?.displayName || 'Cultivador',
+                      createdAt: new Date().toISOString(),
+                      preferences: newPrefs,
+                    }
+              );
+            }}
+            onShowToast={showToast}
+          />
+        </LazyModal>
       )}
     </div>
   );
