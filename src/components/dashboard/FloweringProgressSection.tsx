@@ -17,6 +17,9 @@ import {
   daysBetween,
   getLocalTodayDateOnly,
   isFloweringStage,
+  floraPhaseOf,
+  MATURATION_DAYS,
+  PREFLORA_DAYS,
 } from '../../utils/growthStageUtils';
 
 export interface FloweringProgressSectionProps {
@@ -76,104 +79,69 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
     const geneticsName = matchedGenetics?.name || cultivation.geneticsName || 'Genética híbrida';
     const seedBank = matchedGenetics?.seedBank || cultivation.seedBank || '';
 
-    // Sub-fases fenológicas con condiciones estrictas y explícitas
+    // Sub-fases dentro de la floración, por días desde el 12/12: preflora (semanas 1–3), engorde,
+    // compactación y, los últimos días, maduración y lavado de raíces (todo dentro de los días de la genética).
+    const floraDay = Math.max(1, daysBetween(startDateStr, todayStr) + 1);
+    const phase = floraPhaseOf(floraDay, typicalFloweringDays);
+    const prefloraEnd = Math.min(PREFLORA_DAYS, Math.round(typicalFloweringDays * 0.4));
+    const maturationStart = typicalFloweringDays - MATURATION_DAYS;
+    const midEngorde = Math.round((prefloraEnd + maturationStart) / 2);
     let subPhase = {
-      title: 'Fase 1: Transición & Estiramiento (Stretch)',
-      stageName: 'Floración Inicial (Sem. 1-2)',
-      description: 'Aparición de primeros pistilos blancos y estiramiento vertical acelerado de ramas.',
-      advice: 'Mantener balance nutricional, regular altura de luces para evitar espigado excesivo.',
+      title: 'Fase 1: Preflora (estiramiento y primeros pelos)',
+      stageName: `Preflora (días 1-${prefloraEnd})`,
+      description: 'Empieza el día del 12/12: estiramiento vertical de las ramas y aparición de los primeros pistilos blancos.',
+      advice: 'Mantener el balance nutricional y regular la altura de las luces para que no se estire de más.',
       badgeColor: 'bg-ok/15 text-ok-ink border-ok/30',
     };
-
-    if (progressPercentage < 25) {
+    if (phase === 'engorde' && floraDay <= midEngorde) {
       subPhase = {
-        title: 'Fase 1: Transición & Estiramiento (Stretch)',
-        stageName: 'Floración Inicial (Sem. 1-2)',
-        description: 'Aparición de primeros pistilos blancos y estiramiento vertical acelerado de ramas.',
-        advice: 'Mantener balance nutricional, regular altura de luces para evitar espigado excesivo.',
-        badgeColor: 'bg-ok/15 text-ok-ink border-ok/30',
-      };
-    } else if (progressPercentage >= 25 && progressPercentage < 55) {
-      subPhase = {
-        title: 'Fase 2: Formación y Engorde de Cálices',
-        stageName: 'Floración Media (Sem. 3-5)',
-        description: 'Detención del crecimiento vertical. Desarrollo masivo de flores y primeros tricomas.',
-        advice: 'Pico de nutrición PK (Fósforo y Potasio), controlar humedad relativa (<55% HR) y realizar defoliación si corresponde.',
+        title: 'Fase 2: Formación y engorde de cálices',
+        stageName: `Engorde (días ${prefloraEnd + 1}-${midEngorde})`,
+        description: 'Termina el estiramiento. Desarrollo masivo de flores y primeros tricomas.',
+        advice: 'Pico de nutrición PK (fósforo y potasio), humedad por debajo de 55 % y defoliación si corresponde.',
         badgeColor: 'bg-warn-line/25 text-[#735308] border-warn-line/40',
       };
-    } else if (progressPercentage >= 55 && progressPercentage < 80) {
+    } else if (phase === 'engorde') {
       subPhase = {
-        title: 'Fase 3: Compactación y Densidad de Resina',
-        stageName: 'Floración Avanzada (Sem. 6-7)',
-        description: 'Engorde final, proliferación de terpenos y tricomas volviéndose lechosos.',
-        advice: 'Reducir nitrógeno, evitar mojar cogollos y asegurar ventilación continua para prevenir botrytis.',
+        title: 'Fase 3: Compactación y resina',
+        stageName: `Engorde final (días ${midEngorde + 1}-${maturationStart})`,
+        description: 'Engorde final, terpenos y tricomas que se van volviendo lechosos.',
+        advice: 'Reducir el nitrógeno, no mojar los cogollos y asegurar ventilación continua para prevenir botrytis.',
         badgeColor: 'bg-brand/15 text-brand border-brand/30',
       };
-    } else if (progressPercentage >= 80 && (daysUntilHarvest === undefined || daysUntilHarvest > 2)) {
+    } else if (phase === 'maduracion' && (daysUntilHarvest === undefined || daysUntilHarvest > 2)) {
       subPhase = {
-        title: 'Fase 4: Maduración Final & Lavado de Raíces',
-        stageName: 'Maduración (Sem. 8+)',
-        description: 'Pistilos oxidados en su mayoría. Consumo de reservas foliares.',
-        advice: 'Regar con agua sola reposada/desclorada para limpiar sales acumuladas del sustrato.',
+        title: 'Fase 4: Maduración y lavado de raíces',
+        stageName: `Maduración (últimos ${MATURATION_DAYS} días)`,
+        description: 'Pistilos oxidados en su mayoría. La planta consume sus reservas.',
+        advice: 'Regar con agua sola reposada o desclorada para limpiar las sales del sustrato.',
         badgeColor: 'bg-coral/15 text-coral border-coral/30',
       };
-    } else if (daysUntilHarvest === 0) {
-      // SOLO en día 0 de cosecha
+    } else if (phase === 'maduracion' && daysUntilHarvest === 0) {
       subPhase = {
         title: 'Ventana estimada de cosecha',
-        stageName: 'Ventana de Cosecha',
-        description: 'Confirmá madurez observando tricomas.',
-        advice: 'Buscar 70-80% tricomas lechosos y 15-20% ámbar antes de cortar.',
+        stageName: 'Ventana de cosecha',
+        description: 'Confirmá la madurez mirando los tricomas.',
+        advice: 'Buscar 70-80 % de tricomas lechosos y 15-20 % ámbar antes de cortar.',
         badgeColor: 'bg-ok-ink text-white border-ok',
       };
-    } else {
-      // Días 1 o 2 restantes
+    } else if (phase === 'maduracion') {
       subPhase = {
         title: 'Cosecha estimada muy cerca',
-        stageName: `Cosecha Próxima (~${daysUntilHarvest}d)`,
-        description: 'Revisá tricomas antes de cortar.',
-        advice: 'Confirmá madurez de resina con lupa o microscopio en cálices medios.',
+        stageName: `Cosecha próxima (~${daysUntilHarvest}d)`,
+        description: 'Revisá los tricomas antes de cortar.',
+        advice: 'Confirmá la madurez de la resina con lupa o microscopio en los cálices del medio.',
         badgeColor: 'bg-ok-ink text-white border-ok',
       };
     }
 
-    // Milestones
+    // Hitos, contados desde el día del 12/12
     const milestones = [
-      {
-        week: 1,
-        title: 'Inicio 12/12',
-        subtitle: 'Primeros pistilos',
-        isPassed: floweringDaysElapsed >= 1,
-        isCurrent: progressPercentage < 25,
-      },
-      {
-        week: 2,
-        title: 'Fin Stretch',
-        subtitle: 'Canopia formada',
-        isPassed: progressPercentage >= 25,
-        isCurrent: progressPercentage >= 25 && progressPercentage < 50,
-      },
-      {
-        week: 4,
-        title: 'Pico Engorde',
-        subtitle: 'Nutrición PK máx',
-        isPassed: progressPercentage >= 50,
-        isCurrent: progressPercentage >= 50 && progressPercentage < 75,
-      },
-      {
-        week: 7,
-        title: 'Tricomas Lechosos',
-        subtitle: 'Lavado de raíces',
-        isPassed: progressPercentage >= 75,
-        isCurrent: progressPercentage >= 75 && progressPercentage < 100,
-      },
-      {
-        week: Math.ceil(typicalFloweringWeeks),
-        title: 'Corte Estimado',
-        subtitle: `~${typicalFloweringDays} días`,
-        isPassed: daysRemaining === 0 && progressPercentage >= 100,
-        isCurrent: daysRemaining <= 2,
-      },
+      { week: 1, title: 'Inicio 12/12', subtitle: 'Arranca la preflora', isPassed: floraDay >= 1, isCurrent: phase === 'preflora' },
+      { week: Math.ceil(prefloraEnd / 7), title: 'Fin del estiramiento', subtitle: 'Primeros pelos y canopia formada', isPassed: floraDay > prefloraEnd, isCurrent: floraDay > prefloraEnd && floraDay <= midEngorde },
+      { week: Math.ceil(midEngorde / 7), title: 'Pico de engorde', subtitle: 'Nutrición PK máxima', isPassed: floraDay > midEngorde, isCurrent: floraDay > midEngorde && floraDay <= maturationStart },
+      { week: Math.ceil((maturationStart + 1) / 7), title: 'Lavado de raíces', subtitle: 'Tricomas lechosos', isPassed: floraDay > maturationStart, isCurrent: phase === 'maduracion' && daysRemaining > 2 },
+      { week: Math.ceil(typicalFloweringWeeks), title: 'Corte estimado', subtitle: `~${typicalFloweringDays} días desde el 12/12`, isPassed: daysRemaining === 0 && floraDay >= typicalFloweringDays, isCurrent: daysRemaining <= 2 },
     ];
 
     return {

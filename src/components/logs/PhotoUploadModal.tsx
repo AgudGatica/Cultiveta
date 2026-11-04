@@ -28,9 +28,8 @@ const STAGES: CultivationStageName[] = [
   'Germinación',
   'Plántula',
   'Vegetativo',
-  'Prefloración',
   'Floración',
-  'Maduración',
+  'Cosecha',
   'Secado',
   'Curado',
 ];

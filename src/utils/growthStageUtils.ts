@@ -61,34 +61,14 @@ export const STAGE_PRESETS: StagePreset[] = [
         notes: 'Fase de crecimiento foliar, podas (apical, FIM) y entrenamiento LST.',
       },
       {
-        name: 'Prefloración',
-        expectedDurationDays: 7,
-        photoperiodHoursLight: 12,
-        targetTempMinC: 21,
-        targetTempMaxC: 26,
-        targetHumidityMinPct: 50,
-        targetHumidityMaxPct: 60,
-        notes: 'Cambio de fotoperiodo a 12/12. Estiramiento vertical (stretch).',
-      },
-      {
         name: 'Floración',
-        expectedDurationDays: 56, // 8 semanas
+        expectedDurationDays: 56, // 8 semanas desde el 12/12, preflora y maduración incluidas
         photoperiodHoursLight: 12,
         targetTempMinC: 20,
         targetTempMaxC: 26,
         targetHumidityMinPct: 40,
-        targetHumidityMaxPct: 50,
-        notes: 'Engorde de cogollos, desarrollo de resina y tricomas.',
-      },
-      {
-        name: 'Maduración',
-        expectedDurationDays: 10,
-        photoperiodHoursLight: 12,
-        targetTempMinC: 19,
-        targetTempMaxC: 24,
-        targetHumidityMinPct: 35,
-        targetHumidityMaxPct: 45,
-        notes: 'Lavado de raíces con agua sola, monitoreo del punto de tricomas.',
+        targetHumidityMaxPct: 55,
+        notes: 'Empieza el día del cambio a 12/12. Semanas 1–3: preflora (estiramiento y primeros pelos); después, engorde de cogollos; los últimos ~10 días, maduración y lavado de raíces.',
       },
       {
         name: 'Cosecha',
@@ -159,23 +139,21 @@ export const STAGE_PRESETS: StagePreset[] = [
       },
       {
         name: 'Floración',
-        expectedDurationDays: 42,
+        expectedDurationDays: 49, // con la maduración incluida
         photoperiodHoursLight: 20,
         targetTempMinC: 20,
         targetTempMaxC: 26,
         targetHumidityMinPct: 40,
         targetHumidityMaxPct: 50,
-        notes: 'Engorde bajo luz potente continua.',
+        notes: 'Engorde bajo luz potente continua; la última semana, lavado de sustrato y maduración de tricomas.',
       },
       {
-        name: 'Maduración',
-        expectedDurationDays: 7,
-        photoperiodHoursLight: 20,
-        targetTempMinC: 19,
-        targetTempMaxC: 24,
-        targetHumidityMinPct: 35,
-        targetHumidityMaxPct: 45,
-        notes: 'Lavado de sustrato y maduración de tricomas.',
+        name: 'Cosecha',
+        expectedDurationDays: 2,
+        photoperiodHoursLight: 0,
+        targetTempMinC: 18,
+        targetTempMaxC: 22,
+        notes: 'Corte de plantas, manicurado en fresco o en seco.',
       },
       {
         name: 'Secado',
@@ -229,28 +207,18 @@ export const STAGE_PRESETS: StagePreset[] = [
         notes: 'Vegetativo breve para controlar altura.',
       },
       {
-        name: 'Prefloración',
-        expectedDurationDays: 10,
-        photoperiodHoursLight: 12,
-        targetTempMinC: 21,
-        targetTempMaxC: 26,
-        notes: 'Estiramiento pronunciado x3 o x4.',
-      },
-      {
         name: 'Floración',
-        expectedDurationDays: 84, // 12 semanas
+        expectedDurationDays: 84, // 12 semanas desde el 12/12, preflora y maduración incluidas
         photoperiodHoursLight: 12,
         targetTempMinC: 20,
         targetTempMaxC: 26,
-        notes: 'Floración extensa con pistilos continuos.',
+        notes: 'Empieza el día del cambio a 12/12: estiramiento pronunciado (x3 o x4) las primeras semanas, floración extensa y lavado progresivo al final.',
       },
       {
-        name: 'Maduración',
-        expectedDurationDays: 14,
-        photoperiodHoursLight: 12,
-        targetTempMinC: 19,
-        targetTempMaxC: 24,
-        notes: 'Lavado progresivo.',
+        name: 'Cosecha',
+        expectedDurationDays: 2,
+        photoperiodHoursLight: 0,
+        notes: 'Corte por ramas o planta completa.',
       },
       {
         name: 'Secado',
@@ -287,19 +255,9 @@ export const STAGE_PRESETS: StagePreset[] = [
         notes: 'Crecimiento vigoroso a pleno sol de primavera-verano.',
       },
       {
-        name: 'Prefloración',
-        expectedDurationDays: 14,
-        notes: 'Acortamiento de días a fines de verano.',
-      },
-      {
         name: 'Floración',
-        expectedDurationDays: 60,
-        notes: 'Floración de otoño. Proteger de lluvias intensas.',
-      },
-      {
-        name: 'Maduración',
-        expectedDurationDays: 10,
-        notes: 'Revisar botritis y orugas en cogollos maduros.',
+        expectedDurationDays: 70, // con la preflora de fin de verano y la maduración incluidas
+        notes: 'Empieza con los primeros pelos al acortarse los días. Floración de otoño: proteger de lluvias intensas y, al final, revisar botritis y orugas.',
       },
       {
         name: 'Cosecha',
@@ -384,6 +342,122 @@ export function isFlowerRelatedStage(name?: string): boolean {
   return isFloweringStage(clean) || isPreFloweringStage(clean) || clean.includes('madur') || clean.includes('lavad');
 }
 
+// ==========================================
+// FLORACIÓN = DESDE EL 12/12 HASTA EL CORTE
+// ==========================================
+// Los días de flora que da cada banco se cuentan desde el cambio a 12/12 hasta el corte: la preflora
+// (estiramiento y primeros pelos) y la maduración (lavado de raíces) son partes de la floración, no
+// etapas aparte. Las etapas son Germinación, Plántula, Vegetativo, Floración, Cosecha, Secado y Curado.
+
+/** Etapas que ya no existen: se juntan con la floración. */
+export const isMergedIntoFlowering = (name?: string): boolean => isPreFloweringStage(name) || /madur|lavad/i.test(name || '');
+
+/** Días de la floración que son preflora (estiramiento y primeros pelos). */
+export const PREFLORA_DAYS = 21;
+/** Últimos días de la floración: maduración y lavado de raíces. */
+export const MATURATION_DAYS = 10;
+
+export type FloraPhase = 'preflora' | 'engorde' | 'maduracion';
+export const FLORA_PHASE_LABEL: Record<FloraPhase, string> = {
+  preflora: 'Preflora (estiramiento)',
+  engorde: 'Engorde de cogollos',
+  maduracion: 'Maduración y lavado',
+};
+/** Para chips y títulos cortos: "Floración · día 5 · preflora". */
+export const FLORA_PHASE_SHORT: Record<FloraPhase, string> = { preflora: 'preflora', engorde: 'engorde', maduracion: 'maduración' };
+
+/** En qué parte de la floración está, según el día (1 = el día del 12/12) y los días totales de la genética. */
+export function floraPhaseOf(day: number, totalDays: number): FloraPhase {
+  if (day <= Math.min(PREFLORA_DAYS, Math.round(totalDays * 0.4))) return 'preflora';
+  if (day > totalDays - MATURATION_DAYS) return 'maduracion';
+  return 'engorde';
+}
+
+/**
+ * Un historial de etapas viejo (con Prefloración o Maduración) en el formato nuevo: la floración empieza
+ * cuando empezaba la preflora (el día del 12/12) y termina cuando terminaba la maduración (el corte).
+ * Si no tiene Cosecha, se agrega después de la floración. No cambia lo guardado: se usa al leer.
+ */
+export function normalizeStagesTimeline(stages: CultivationGrowthStage[]): CultivationGrowthStage[] {
+  if (!stages || !stages.length) return stages;
+  const hasHarvest = stages.some((s) => /cosech|corte/i.test(s.name));
+  if (!stages.some((s) => isMergedIntoFlowering(s.name)) && hasHarvest) return stages;
+  const pre = stages.find((s) => isPreFloweringStage(s.name));
+  const mad = stages.find((s) => /madur|lavad/i.test(s.name));
+  const out: CultivationGrowthStage[] = [];
+  for (const s of stages) {
+    if (isMergedIntoFlowering(s.name)) {
+      // sin una Floración propia, la primera de estas pasa a serlo
+      if (!stages.some((x) => isFloweringStage(x.name)) && !out.some((x) => isFloweringStage(x.name))) {
+        out.push({ ...s, id: s.id || 'stage_floracion', name: 'Floración' });
+      }
+      continue;
+    }
+    out.push({ ...s });
+  }
+  const florIdx = out.findIndex((s) => isFloweringStage(s.name));
+  if (florIdx !== -1) {
+    const flor = out[florIdx];
+    if (pre?.actualStartDate) {
+      flor.actualStartDate = pre.actualStartDate;
+      flor.startDate = pre.actualStartDate;
+    } else if (pre?.startDate && !flor.actualStartDate && pre.startDate < (flor.startDate || '9999')) {
+      flor.startDate = pre.startDate;
+    }
+    if (mad) {
+      // la maduración era el final de la floración: si arrancó, la floración sigue hasta que termine
+      if (mad.actualStartDate || mad.actualEndDate) {
+        flor.actualEndDate = mad.actualEndDate;
+        flor.endDate = mad.actualEndDate || mad.endDate || flor.endDate;
+        flor.isCompleted = Boolean(mad.isCompleted);
+      } else if (mad.endDate) {
+        flor.endDate = mad.endDate;
+      }
+    }
+    if (flor.actualStartDate && flor.actualEndDate) flor.actualDurationDays = Math.max(1, daysBetween(flor.actualStartDate, flor.actualEndDate));
+    else flor.actualDurationDays = undefined;
+    if (!hasHarvest) {
+      out.splice(florIdx + 1, 0, {
+        id: 'stage_cosecha',
+        name: 'Cosecha',
+        startDate: flor.endDate || flor.startDate,
+        endDate: flor.endDate ? addDays(flor.endDate, 2) : undefined,
+        expectedDurationDays: 2,
+        photoperiodHoursLight: 0,
+        notes: 'Corte de plantas, manicurado en fresco o en seco.',
+        isCompleted: false,
+      });
+    }
+  }
+  return out;
+}
+
+/**
+ * Un cultivo guardado con las etapas viejas, en el formato nuevo: "Prefloración" o "Maduración" pasan a
+ * "Floración", y la floración empieza el día del 12/12 (el inicio de la preflora, si se anotó). Se usa al
+ * leer los cultivos; lo guardado se actualiza la próxima vez que se edita el cultivo.
+ */
+export function normalizeCultivationStages<T extends Cultivation>(c: T): T {
+  if (!c) return c;
+  const stage = c.currentStage || '';
+  const legacyStage = isMergedIntoFlowering(stage);
+  const legacyTimeline = Boolean(c.stagesTimeline?.some((s) => isMergedIntoFlowering(s.name)));
+  if (!legacyStage && !legacyTimeline) return c;
+  const pre = c.stagesTimeline?.find((s) => isPreFloweringStage(s.name));
+  // el día del 12/12: cuando empezó la preflora (si se anotó) o, si no, cuando empezó la floración
+  const flip =
+    (isPreFloweringStage(stage) ? c.stageStartDate : undefined) ||
+    pre?.actualStartDate ||
+    c.floweringStartDate ||
+    (legacyStage ? c.stageStartDate : undefined);
+  const out: T = { ...c, stagesTimeline: c.stagesTimeline ? normalizeStagesTimeline(c.stagesTimeline) : c.stagesTimeline };
+  if (legacyStage) out.currentStage = 'Floración';
+  const nowFloweringOrLater = legacyStage || isFloweringStage(stage) || Boolean(c.floweringStartDate);
+  if (flip && nowFloweringOrLater) out.floweringStartDate = flip;
+  if (out.currentStage === 'Floración' && flip) out.stageStartDate = flip;
+  return out;
+}
+
 export interface StageTransitionResult {
   updatedStages: CultivationGrowthStage[];
   updates: Partial<Cultivation>;
@@ -397,7 +471,7 @@ export interface StageTransitionResult {
  * - Sets floweringStartDate ONLY when entering Floración (never Prefloración)
  */
 export function computeStageTransition(
-  cultivation: Cultivation,
+  rawCultivation: Cultivation,
   stages: CultivationGrowthStage[],
   selectedStageName: string,
   effectiveDate: string,
@@ -406,6 +480,7 @@ export function computeStageTransition(
     customLightHours?: number;
   }
 ): StageTransitionResult {
+  const cultivation = normalizeCultivationStages(rawCultivation);
   const currIdx = stages.findIndex(
     (s) => s.name.toLowerCase().trim() === (cultivation.currentStage || '').toLowerCase().trim()
   );
@@ -586,9 +661,11 @@ export interface CultivationScheduleSummary {
  * forward real dates. NEVER projects backwards or invents past stage dates.
  */
 export function buildCultivationStageSchedule(
-  cultivation: Cultivation,
+  rawCultivation: Cultivation,
   geneticsList: Genetics[] = []
 ): CultivationScheduleSummary {
+  // un cultivo guardado con Prefloración o Maduración se lee con las etapas nuevas
+  const cultivation = normalizeCultivationStages(rawCultivation);
   const todayStr = getLocalTodayDateOnly();
   const cropStartDate = cultivation.startDate || todayStr;
 
@@ -1019,7 +1096,7 @@ export function getStagesForCultivation(cultivation: Cultivation): CultivationGr
   let stages: CultivationGrowthStage[] = [];
 
   if (cultivation.stagesTimeline && cultivation.stagesTimeline.length > 0) {
-    stages = cultivation.stagesTimeline;
+    stages = normalizeStagesTimeline(cultivation.stagesTimeline);
   } else {
     // Choose preset based on photoperiod
     let preset: StagePreset;
@@ -1065,7 +1142,7 @@ export function getStagesForCultivation(cultivation: Cultivation): CultivationGr
   }
 
   // Ensure isCompleted dynamically reflects current stage position
-  const normalizedCurrent = (cultivation.currentStage || '').toLowerCase().trim();
+  const normalizedCurrent = (isMergedIntoFlowering(cultivation.currentStage) ? 'Floración' : cultivation.currentStage || '').toLowerCase().trim();
   const currentStageIdx = stages.findIndex(
     (s) => s.name.toLowerCase().trim() === normalizedCurrent
   );
@@ -1085,7 +1162,7 @@ export function getNextStage(
   stages: CultivationGrowthStage[]
 ): CultivationGrowthStage | null {
   if (!stages || stages.length === 0) return null;
-  const normalizedCurrent = (cultivation.currentStage || '').toLowerCase().trim();
+  const normalizedCurrent = (isMergedIntoFlowering(cultivation.currentStage) ? 'Floración' : cultivation.currentStage || '').toLowerCase().trim();
   const currentIdx = stages.findIndex(
     (s) => s.name.toLowerCase().trim() === normalizedCurrent
   );
@@ -1196,7 +1273,7 @@ export function buildUpdatedStagesTimeline(params: {
   // 1. Determinar lista base de etapas
   let baseStages: CultivationGrowthStage[] = [];
   if (params.existingTimeline && params.existingTimeline.length > 0) {
-    baseStages = params.existingTimeline.map((s) => ({ ...s }));
+    baseStages = normalizeStagesTimeline(params.existingTimeline).map((s) => ({ ...s }));
   } else {
     const dummyCrop: any = {
       photoperiodType: params.photoperiodType || 'Fotoperiódica',
@@ -1208,18 +1285,8 @@ export function buildUpdatedStagesTimeline(params: {
     baseStages = getStagesForCultivation(dummyCrop);
   }
 
-  // Si Prefloración no es la etapa activa ni fue registrada en existingTimeline o priorDates,
-  // se omite para respetar la secuencia estándar Vegetativo -> Floración
-  const hasPreflorExplicit =
-    params.currentStage.toLowerCase().includes('preflor') ||
-    Boolean((params.priorDates as any)?.prefloracion) ||
-    Boolean(params.existingTimeline?.some((s) => s.name.toLowerCase().includes('preflor') && s.actualStartDate));
-
-  if (!hasPreflorExplicit) {
-    baseStages = baseStages.filter((s) => !s.name.toLowerCase().includes('preflor'));
-  }
-
-  const normCurrent = (params.currentStage || '').toLowerCase().trim();
+  // la preflora y la maduración ya no son etapas: son parte de la floración
+  const normCurrent = (isMergedIntoFlowering(params.currentStage) ? 'Floración' : params.currentStage || '').toLowerCase().trim();
   const activeIdx = baseStages.findIndex(
     (s) => s.name.toLowerCase().trim() === normCurrent
   );

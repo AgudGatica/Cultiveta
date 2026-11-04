@@ -156,7 +156,10 @@ async function run() {
     const stages = m.events.filter((e) => e.kind === 'stage').map((e) => e.title);
     assert(stages.includes('Empieza Floración') && stages.includes('Empieza Vegetativo'), stages.join(','));
     assert(!stages.some((t) => t.includes('Germinación')), 'el arranque no es un evento');
-    assert(m.crown === 'flower', `copa: ${m.crown}`);
+    // la floración empezó hace 6 días (el 12/12): está en la preflora
+    assert(m.crown === 'preflower', `copa: ${m.crown}`);
+    const later = buildPlantTimeline({ ...c, stageStartDate: ago(30), floweringStartDate: ago(30) }, { waterings: [], diaryEntries: [], photos: [] }, [], today);
+    assert(later.crown === 'flower', `a los 30 días de flora: ${later.crown}`);
   });
 
   await check('6. Día, semana y días hasta el anterior', () => {

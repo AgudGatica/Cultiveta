@@ -71,6 +71,7 @@ const AdminReportsView = React.lazy(() => import('./components/community/AdminRe
 import { devicesService, scheduleSnapshot, sameSchedule, useDevicesOverview } from './services/devicesService';
 import { indoorService } from './services/indoorService';
 import { autoAmbientId, cropsWithoutAmbient, withIndoorLighting } from './utils/indoors';
+import { normalizeCultivationStages } from './utils/growthStageUtils';
 const PhotoDiagnosisModal = React.lazy(() =>
   import('./components/ai/PhotoDiagnosisModal').then((m) => ({ default: m.PhotoDiagnosisModal }))
 );
@@ -198,7 +199,8 @@ export default function App() {
   const [rawCultivations, setCultivations] = useState<Cultivation[]>([]);
   // Indoors (carpas): los cultivos de adentro usan la luz del indoor.
   const [indoors, setIndoors] = useState<Indoor[]>([]);
-  const cultivations = React.useMemo(() => withIndoorLighting(rawCultivations, indoors), [rawCultivations, indoors]);
+  // Prefloración y Maduración ya no son etapas: los cultivos guardados así se leen con la floración desde el 12/12
+  const cultivations = React.useMemo(() => withIndoorLighting(rawCultivations.map(normalizeCultivationStages), indoors), [rawCultivations, indoors]);
   const [isIndoorFormOpen, setIsIndoorFormOpen] = useState(false);
   const [indoorToEdit, setIndoorToEdit] = useState<Indoor | null>(null);
   // Nuevo cultivo pedido desde un indoor: arranca adentro

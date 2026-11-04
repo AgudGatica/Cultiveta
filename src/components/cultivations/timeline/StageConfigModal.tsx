@@ -40,9 +40,8 @@ const COMMON_STAGE_NAMES: CultivationStageName[] = [
   'Germinación',
   'Plántula',
   'Vegetativo',
-  'Prefloración',
+  // la preflora y la maduración son parte de la floración (desde el 12/12 hasta el corte)
   'Floración',
-  'Maduración',
   'Cosecha',
   'Secado',
   'Curado',
@@ -192,7 +191,7 @@ export const StageConfigModal: React.FC<StageConfigModalProps> = ({
         isCompleted: activeIdx !== -1 && idx < activeIdx,
       }));
 
-      // Determine flowering start date if entering or in flowering (NOT Prefloración!)
+      // La floración empieza el día del cambio a 12/12
       let floweringStartDate = cultivation.floweringStartDate;
       if (isFloweringStage(finalActiveStageName) && !floweringStartDate) {
         floweringStartDate = activeStageStartDate || getLocalTodayDateOnly();

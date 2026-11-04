@@ -4,7 +4,7 @@ import type { Cultivation, DiaryEntry, EnvironmentRecord, Genetics, Indoor, Phot
 import { indoorService } from '../../services/indoorService';
 import { useGeneticsCatalogPhotos } from '../../hooks/useGeneticsCatalogPhotos';
 import { resolveCropGenetics } from '../../utils/cropGenetics';
-import { buildCultivationStageSchedule, getNextStage, getStagesForCultivation } from '../../utils/growthStageUtils';
+import { FLORA_PHASE_SHORT, buildCultivationStageSchedule, floraPhaseOf, getNextStage, getStagesForCultivation, isFloweringStage } from '../../utils/growthStageUtils';
 import { ambientsForCrop, cropForGenetic, harvestText, isExteriorAmbient } from '../../utils/indoors';
 import { IrrigationForecastCard } from '../cultivations/IrrigationForecastCard';
 import { PlantTimeline } from '../cultivations/PlantTimeline';
@@ -167,6 +167,8 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
               <Sprout className="w-3.5 h-3.5" aria-hidden="true" />
               {stageName}
               {schedule.activeStageElapsedDays > 0 ? ` · día ${schedule.activeStageElapsedDays}` : ''}
+              {/* la floración se cuenta desde el 12/12: preflora, engorde y maduración son partes de ella */}
+              {isFloweringStage(stageName) ? ` · ${FLORA_PHASE_SHORT[floraPhaseOf(Math.max(1, schedule.activeStageElapsedDays), schedule.floweringDaysGenetics)]}` : ''}
             </span>
             {day && (
               <span className="inline-flex items-center gap-1 rounded-full bg-black/40 backdrop-blur-sm px-2.5 py-1 text-xs font-bold">

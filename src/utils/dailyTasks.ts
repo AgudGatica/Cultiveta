@@ -6,7 +6,7 @@
 import { Cultivation, Watering, EnvironmentRecord, CultivationTask, TaskUrgency, TaskPriority, Genetics } from '../types';
 import { analyzeWateringUrgency } from './wateringAlertUtils';
 import { calculateIrrigationForecast } from '../services/irrigationForecastService';
-import { buildCultivationStageSchedule, getLocalTodayDateOnly, parseLocalDate } from './growthStageUtils';
+import { buildCultivationStageSchedule, getLocalTodayDateOnly, normalizeCultivationStages, parseLocalDate } from './growthStageUtils';
 import { TEMP_HIGH_ALERT_C, FLOWER_HUMIDITY_HIGH_PCT, PH_TARGET_TEXT, isFlowerOrRipeningStage } from './agronomicThresholds';
 import { CHECK_DUE_HOURS, tankStatus } from './hydroTank';
 import { num } from './feedTargets';
@@ -26,7 +26,8 @@ export function buildDailyTasks(
   today.setHours(0, 0, 0, 0);
   const todayStr = getLocalTodayDateOnly(today);
 
-  const activeCrops = cultivations.filter((c) => !c.isFinished);
+  // con las etapas nuevas (Prefloración y Maduración son parte de la floración)
+  const activeCrops = cultivations.filter((c) => !c.isFinished).map(normalizeCultivationStages);
   const tasks: CultivationTask[] = [];
 
   for (const crop of activeCrops) {
@@ -189,15 +190,15 @@ export function buildDailyTasks(
     // 2. Critical Stage Milestones based on days
     const startDate = parseLocalDate(crop.startDate) || new Date(today);
     const totalDays = Math.floor((today.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
-    const floweringWeeks = crop.declaredFloweringWeeks || 9;
 
     // Milestone A: Flush (Lavado de raíces)
-    if (crop.currentStage === 'Floración' || crop.currentStage === 'Maduración') {
+    if (crop.currentStage === 'Floración') {
       // día local (new Date("YYYY-MM-DD") lo toma en UTC y en Argentina suma un día de flora)
       const flowStart = (crop.floweringStartDate && parseLocalDate(crop.floweringStartDate)) || new Date(startDate);
       flowStart.setHours(0, 0, 0, 0);
       const flowDays = Math.floor((today.getTime() - flowStart.getTime()) / (1000 * 60 * 60 * 24));
-      const totalFlowDaysExpected = floweringWeeks * 7;
+      // los días de flora de la genética se cuentan desde el 12/12 (floweringStartDate) hasta el corte
+      const totalFlowDaysExpected = schedule.floweringDaysGenetics;
       const flushStartDay = totalFlowDaysExpected - 12;
 
       if (!living && flowDays >= flushStartDay && flowDays <= totalFlowDaysExpected + 5) {
@@ -265,7 +266,7 @@ export function buildDailyTasks(
           stage: crop.currentStage,
           type: 'harvest',
           title: `Inspección de Tricomas (Cosecha Próxima)`,
-          description: `Día ${flowDays} de flora (${floweringWeeks} semanas cumplidas). Cosecha estimada: ${estimatedHarvest} (${schedule.daysUntilHarvest === 0 ? 'hoy' : `en ${schedule.daysUntilHarvest} día(s)`}). Observar glándulas de resina con lupa 60x: buscar 70-80% lechosos y 10-20% ámbar.`,
+          description: `Día ${flowDays} de flora (de ${schedule.floweringDaysGenetics} desde el 12/12). Cosecha estimada: ${estimatedHarvest} (${schedule.daysUntilHarvest === 0 ? 'hoy' : `en ${schedule.daysUntilHarvest} día(s)`}). Observar glándulas de resina con lupa 60x: buscar 70-80% lechosos y 10-20% ámbar.`,
           dueDate: estimatedHarvest,
           urgency: 'today',
           priority: 'critical',

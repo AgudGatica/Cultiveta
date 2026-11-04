@@ -4,14 +4,7 @@
  * separan (para el largo del tallo) y la forma de la copa según la etapa. Módulo puro.
  */
 import type { Cultivation, DiaryEntry, Genetics, PhotoRecord, Watering } from '../types';
-import {
-  buildCultivationStageSchedule,
-  daysBetween,
-  getLocalTodayDateOnly,
-  isFloweringStage,
-  isPreFloweringStage,
-  parseDateOnly,
-} from './growthStageUtils';
+import { buildCultivationStageSchedule, daysBetween, getLocalTodayDateOnly, isFloweringStage, isPreFloweringStage, parseDateOnly, floraPhaseOf, normalizeCultivationStages } from './growthStageUtils';
 import { isCropFinished } from './cropCardInfo';
 
 export type PlantEventKind = 'stage' | 'photo' | 'note' | 'watering' | 'watering_group';
@@ -122,6 +115,8 @@ export function buildPlantTimeline(
 ): PlantTimelineModel {
   const schedule = buildCultivationStageSchedule(crop, geneticsList);
   const finished = isCropFinished(crop);
+  // Prefloración y Maduración guardadas como etapa se leen como Floración
+  const stageNow = normalizeCultivationStages(crop).currentStage;
   const isStartKnown = Boolean(schedule.isCycleStartKnown);
 
   const waterings = data.waterings.filter((w) => w.cultivationId === crop.id);
@@ -215,8 +210,9 @@ export function buildPlantTimeline(
     isStartKnown,
     totalDays,
     growth: finished ? 1 : Math.min(1, totalDays / expected),
-    crown: crownForStage(crop.currentStage, finished),
-    stageName: crop.currentStage || schedule.activeStage?.name || 'Vegetativo',
+    // las primeras semanas de la floración (desde el 12/12) son la preflora: la planta se dibuja así
+    crown: !finished && isFloweringStage(stageNow) && floraPhaseOf(schedule.activeStageElapsedDays, schedule.floweringDaysGenetics) === 'preflora' ? 'preflower' : crownForStage(stageNow, finished),
+    stageName: stageNow || schedule.activeStage?.name || 'Vegetativo',
     gapDaysToToday: Math.max(0, daysBetween(latest, endDate)),
   };
 }

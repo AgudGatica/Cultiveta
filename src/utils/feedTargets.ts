@@ -93,8 +93,8 @@ function ecFor(phase: FeedPhase, medium: FeedMedium, auto: boolean): FeedRange {
 
 /**
  * Desde cuándo arranca (aprox.) cada etapa que todavía no empezó, según el calendario del cultivo:
- * vegetativo a las 2 semanas del inicio del vegetativo; floración con la prefloración o la floración;
- * el final, 10 días antes de la cosecha estimada (o con la maduración, si viene antes).
+ * vegetativo a las 2 semanas del inicio del vegetativo; floración el día del 12/12 (la preflora es parte
+ * de la floración); el final, 10 días antes de la cosecha estimada (la maduración también está adentro).
  */
 export function feedPhaseStarts(crop: Cultivation): Partial<Record<FeedPhase, string>> {
   const schedule = buildCultivationStageSchedule(crop, []);

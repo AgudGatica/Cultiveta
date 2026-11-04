@@ -276,8 +276,9 @@ export async function runTimelineCalendarHardeningTests(): Promise<{ passed: num
   // =========================================================================
   await assert('8. Una fecha de preset sin confirmación no se etiqueta REAL', () => {
     const schedule = buildCultivationStageSchedule(baseCultivation);
-    const maduracion = schedule.stages.find((s) => s.name === 'Maduración');
-    if (!maduracion) throw new Error('Etapa Maduración no encontrada');
+    // una etapa futura del preset (la maduración ya no es una etapa: es el final de la floración)
+    const maduracion = schedule.stages.find((s) => s.name === 'Cosecha');
+    if (!maduracion) throw new Error('Etapa Cosecha no encontrada');
 
     if (maduracion.isActual === true) {
       throw new Error('Etapa futura de preset no debe tener isActual: true');
