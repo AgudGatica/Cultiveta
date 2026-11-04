@@ -4,6 +4,36 @@ import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import { getLocalTodayDateOnly } from '../utils/growthStageUtils';
 
 const NOTIFIED_TASKS_KEY = 'cultiveta_notified_env_alerts';
+const CLIMATE_THROTTLE_KEY = 'cultiveta_env_alert_last_by_crop';
+/** Como mucho un aviso de clima por cultivo por hora. */
+export const CLIMATE_EVERY_MS = 60 * 60_000;
+/** Una alerta más vieja que esto ya no se avisa (al abrir la app no se repiten las de antes). */
+export const ALERT_MAX_AGE_MS = 2 * 60 * 60_000;
+
+const isTestAlert = (task: Pick<CultivationTask, 'id'>) => String(task.id || '').startsWith('test');
+
+export function isRecentAlert(task: Pick<CultivationTask, 'createdAt'>, now: number): boolean {
+  const at = Date.parse(String(task.createdAt || ''));
+  return Number.isFinite(at) && now - at < ALERT_MAX_AGE_MS && at - now < 5 * 60_000;
+}
+
+function readClimateThrottle(): Record<string, number> {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(CLIMATE_THROTTLE_KEY) || '{}');
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeClimateThrottle(map: Record<string, number>) {
+  try {
+    const now = Date.now();
+    localStorage.setItem(CLIMATE_THROTTLE_KEY, JSON.stringify(Object.fromEntries(Object.entries(map).filter(([, at]) => now - at < 86_400_000))));
+  } catch {
+    // sin almacenamiento: queda el filtro por antigüedad
+  }
+}
 
 class BrowserNotificationService {
   private swRegistration: ServiceWorkerRegistration | null = null;
@@ -179,9 +209,17 @@ class BrowserNotificationService {
     if (this.notifiedTaskIds.has(task.id)) {
       return false; // Ya notificado
     }
-
     this.notifiedTaskIds.add(task.id);
     this.saveNotifiedTasks();
+
+    // Solo alertas recientes (nunca las de días anteriores) y como mucho una por cultivo por hora.
+    if (!isTestAlert(task)) {
+      if (!isRecentAlert(task, Date.now())) return false;
+      const last = readClimateThrottle();
+      const key = task.cultivationId || task.id;
+      if (Date.now() - (last[key] || 0) < CLIMATE_EVERY_MS) return false;
+      writeClimateThrottle({ ...last, [key]: Date.now() });
+    }
 
     const title = `🚨 Alerta Climática: ${task.title}`;
     const body = `"${task.cultivationName}" (${task.stage || 'Cultivo'}): ${task.description}`;
@@ -190,8 +228,8 @@ class BrowserNotificationService {
       body,
       icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🌱</text></svg>',
       badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🚨</text></svg>',
-      tag: `env-alert-${task.id}`,
-      requireInteraction: true,
+      // mismo tag que el aviso del servidor: si llegan los dos, queda uno solo
+      tag: isTestAlert(task) ? `env-alert-${task.id}` : `clima-${task.cultivationId}`,
       data: {
         taskId: task.id,
         cultivationId: task.cultivationId,

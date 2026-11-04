@@ -55,6 +55,8 @@ export interface PushDoc {
     likes?: Record<string, number>;
     /** Último error de equipos avisado. */
     problem?: { text: string; at: number };
+    /** Último aviso de clima por cultivo (ms): como mucho uno por hora. */
+    climate?: Record<string, number>;
   };
   updatedAt: string;
 }
@@ -96,6 +98,7 @@ export class PushError extends Error {
 
 const MAX_SUBSCRIPTIONS = 5;
 const LIKE_EVERY_MS = 60 * 60_000;
+const CLIMATE_EVERY_MS = 60 * 60_000;
 const PROBLEM_EVERY_MS = 6 * 60 * 60_000;
 /** Si a la hora justa no corrió el control (o falló), el resumen sale en las 2 horas siguientes. */
 const SUMMARY_WINDOW_HOURS = 3;
@@ -359,9 +362,16 @@ export class PushService {
 
   // ------------------------------------------------------------ ganchos
 
-  /** Alerta de clima del control de cada hora. */
-  climateAlert(uid: string, task: Pick<CultivationTask, 'title' | 'description' | 'cultivationId'>) {
-    return this.sendCategory(uid, 'clima', { title: task.title, body: task.description, url: `/cultivos/${encodeURIComponent(task.cultivationId)}`, tag: `clima-${task.cultivationId}` }, { urgency: 'high' });
+  /** Alerta de clima del control de cada hora (como mucho una por cultivo por hora). */
+  async climateAlert(uid: string, task: Pick<CultivationTask, 'title' | 'description' | 'cultivationId'>) {
+    const d = await this.load(uid);
+    if (!d.subscriptions.length || !d.settings.clima) return 0;
+    const climate = d.sent.climate || {};
+    if (this.now() - (climate[task.cultivationId] || 0) < CLIMATE_EVERY_MS) return 0;
+    // se guardan solo los del último día
+    d.sent.climate = Object.fromEntries(Object.entries({ ...climate, [task.cultivationId]: this.now() }).filter(([, at]) => this.now() - at < 86_400_000));
+    await this.save(uid, d);
+    return this.deliver(uid, d, { title: task.title, body: task.description, url: `/cultivos/${encodeURIComponent(task.cultivationId)}`, tag: `clima-${task.cultivationId}` }, 'high');
   }
 
   /** Un equipo falló (el mismo error se avisa como mucho cada 6 h). */

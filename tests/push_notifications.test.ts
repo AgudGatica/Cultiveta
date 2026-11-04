@@ -16,6 +16,7 @@
  *  8. Service worker: muestra el aviso del servidor y al tocarlo abre su lugar.
  *  9. Ajustes → "Avisos al celular": iPhone sin instalar, activar, preferencias, hora, prueba y desactivar.
  * 10. Inicio: la tarjeta "¿Te avisamos cuándo regar?" aparece una sola vez.
+ * 11. App abierta: las alertas de clima de antes no vuelven a sonar al abrirla; una por cultivo por hora.
  */
 
 import './helpers/setupDom';
@@ -38,6 +39,7 @@ import { DeviceService, MemoryDeviceStore } from '../src/server/devices/deviceSe
 import { pushNotifications } from '../src/services/pushNotifications';
 import { PushSettingsSection } from '../src/components/user/PushSettingsSection';
 import { PushPromptCard } from '../src/components/dashboard/PushPromptCard';
+import { browserNotificationService, isRecentAlert } from '../src/services/browserNotificationService';
 
 let passed = 0;
 let failed = 0;
@@ -257,6 +259,11 @@ async function run() {
     await svc.subscribe('u1', SUB(1));
     await svc.climateAlert('u1', { title: 'Alerta Crítica: Temperatura Alta (34°C)', description: 'Ventilá.', cultivationId: 'c1' });
     assert(sender.sent[0].msg.url === '/cultivos/c1' && sender.sent[0].urgency === 'high', 'clima');
+    for (let i = 0; i < 5; i++) await svc.climateAlert('u1', { title: 'Humedad alta', description: 'Ventilá.', cultivationId: 'c1' });
+    assert(sender.sent.length === 1, 'el mismo cultivo, como mucho una alerta de clima por hora');
+    await svc.climateAlert('u1', { title: 'Humedad alta', description: 'Ventilá.', cultivationId: 'c2' });
+    assert(sender.sent.length === 2 && sender.sent[1].msg.tag === 'clima-c2', 'otro cultivo, sí');
+    sender.sent.splice(1);
     const like = { kind: 'like' as const, fromHandle: 'luna', growlogId: 'g1', growlogTitle: 'Gelato 33', text: null };
     await svc.communityNotice('u1', like);
     await svc.communityNotice('u1', like);
@@ -478,6 +485,44 @@ async function run() {
     } finally {
       Object.assign(pushNotifications, real);
       setBrowser({ push: false });
+    }
+  });
+
+  await check('11. App abierta: las alertas de clima viejas no se repiten y como mucho una por cultivo por hora', async () => {
+    const w = window as any;
+    const prev = { N: w.Notification, G: (globalThis as any).Notification };
+    const shown: string[] = [];
+    class FakeNotification {
+      static permission = 'granted';
+      onclick: any = null;
+      constructor(title: string) {
+        shown.push(title);
+      }
+      close() {}
+    }
+    w.Notification = FakeNotification;
+    (globalThis as any).Notification = FakeNotification;
+    try {
+      localStorage.clear();
+      const now = Date.now();
+      const alert = (id: string, cultivationId: string, minutesAgo: number) =>
+        task({ id, cultivationId, type: 'env_alert', title: 'Humedad alta', createdAt: new Date(now - minutesAgo * 60_000).toISOString() });
+      assert(isRecentAlert(alert('a', 'c1', 10), now) && !isRecentAlert(alert('a', 'c1', 60 * 26), now) && !isRecentAlert(task({ createdAt: undefined as any }), now), 'qué es reciente');
+
+      // Al abrir la app llegan todas las alertas guardadas (de días anteriores): ninguna suena
+      for (let d = 1; d <= 150; d++) await browserNotificationService.showEnvAlertNotification(alert(`old-${d}`, 'c1', d * 24 * 60));
+      assert(shown.length === 0, `las viejas no suenan (${shown.length})`);
+
+      // Una nueva suena; otras del mismo cultivo en la misma hora, no; otro cultivo, sí
+      await browserNotificationService.showEnvAlertNotification(alert('new-1', 'c1', 1));
+      await browserNotificationService.showEnvAlertNotification(alert('new-1', 'c1', 1));
+      await browserNotificationService.showEnvAlertNotification(alert('new-2', 'c1', 0));
+      await browserNotificationService.showEnvAlertNotification(alert('new-3', 'c2', 0));
+      assert(shown.length === 2, `una por cultivo por hora (${shown.length})`);
+    } finally {
+      w.Notification = prev.N;
+      (globalThis as any).Notification = prev.G;
+      localStorage.clear();
     }
   });
 
