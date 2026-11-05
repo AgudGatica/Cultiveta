@@ -5,16 +5,38 @@ import { getLocalTodayDateOnly } from '../utils/growthStageUtils';
 
 const NOTIFIED_TASKS_KEY = 'cultiveta_notified_env_alerts';
 const CLIMATE_THROTTLE_KEY = 'cultiveta_env_alert_last_by_crop';
-/** Como mucho un aviso de clima por cultivo por hora. */
+/** Como mucho un aviso de clima por hora (sumando todos los cultivos). */
 export const CLIMATE_EVERY_MS = 60 * 60_000;
-/** Una alerta más vieja que esto ya no se avisa (al abrir la app no se repiten las de antes). */
-export const ALERT_MAX_AGE_MS = 2 * 60 * 60_000;
+/** Margen para una alerta que se creó justo mientras se abría la app. */
+export const OPEN_GRACE_MS = 60_000;
+/** Las alertas que llegan juntas (una por planta, del mismo control de cada hora) van en un solo aviso. */
+export const BATCH_MS = 2_500;
 
 const isTestAlert = (task: Pick<CultivationTask, 'id'>) => String(task.id || '').startsWith('test');
 
-export function isRecentAlert(task: Pick<CultivationTask, 'createdAt'>, now: number): boolean {
+/**
+ * Al abrir la app (o volver a ella) no suena nada de lo que pasó antes: eso ya llegó como aviso al celular y
+ * se ve en Hoy. Solo cuenta una alerta creada con la app abierta.
+ */
+export function isNewSinceOpen(task: Pick<CultivationTask, 'createdAt'>, openedAt: number, now: number): boolean {
   const at = Date.parse(String(task.createdAt || ''));
-  return Number.isFinite(at) && now - at < ALERT_MAX_AGE_MS && at - now < 5 * 60_000;
+  return Number.isFinite(at) && at >= openedAt - OPEN_GRACE_MS && at - now < 5 * 60_000;
+}
+
+/** Título y texto de un solo aviso para todas las alertas que llegaron juntas. */
+export function climateNoticeText(tasks: CultivationTask[]): { title: string; body: string } {
+  const byCrop = new Map<string, CultivationTask>();
+  for (const t of tasks) if (!byCrop.has(t.cultivationId)) byCrop.set(t.cultivationId, t);
+  const crops = [...byCrop.values()];
+  const first = crops[0];
+  if (crops.length <= 1) return { title: `🚨 ${first.title}`, body: `${first.cultivationName}: ${first.description}` };
+  const names = crops.map((t) => t.cultivationName);
+  const shown = names.slice(0, 3);
+  const rest = names.length - shown.length;
+  return {
+    title: `🚨 Alerta de clima en ${crops.length} cultivos`,
+    body: `${first.title}. ${shown.join(', ')}${rest > 0 ? ` y ${rest} más` : ''}.`,
+  };
 }
 
 function readClimateThrottle(): Record<string, number> {
@@ -43,6 +65,10 @@ class BrowserNotificationService {
   private isInitialized = false;
   private firestoreUnsub: (() => void) | null = null;
   public currentUserId: string | null = null;
+  /** Desde cuándo está abierta (o a la vista) la app: lo de antes no suena. */
+  public openedAt = Date.now();
+  private pendingAlerts: CultivationTask[] = [];
+  private batchTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     this.loadNotifiedTasks();
@@ -192,48 +218,81 @@ class BrowserNotificationService {
   }
 
   /**
-   * Dispara una notificación de navegador del sistema para una tarea de tipo 'env_alert'
+   * Una alerta de clima que llega con la app abierta (por Firestore o por el canal del servidor).
+   * - Lo que pasó antes de abrir la app no suena (ya llegó como aviso al celular y se ve en Hoy).
+   * - Las que llegan juntas (una por planta del mismo control) se juntan en un solo aviso.
+   * Devuelve true si la alerta quedó para avisar.
    */
   public async showEnvAlertNotification(task: CultivationTask): Promise<boolean> {
-    if (!this.isSupported() || Notification.permission !== 'granted') {
-      return false;
+    if (isTestAlert(task)) {
+      this.dispatchAppEvent(task);
+      this.dispatchBatchEvent([task]);
+      return this.showClimateSystemNotification([task]);
     }
 
     // Comprobar si el usuario decidió recibir alertas climáticas
-    const prefs = this.getAlertPreferences();
-    if (prefs.climateAlerts === false) {
-      console.log('[NotificationService] Alerta climática suprimida según las preferencias del usuario');
-      return false;
-    }
+    if (this.getAlertPreferences().climateAlerts === false) return false;
 
-    if (this.notifiedTaskIds.has(task.id)) {
-      return false; // Ya notificado
-    }
+    if (this.notifiedTaskIds.has(task.id)) return false; // ya avisada
     this.notifiedTaskIds.add(task.id);
     this.saveNotifiedTasks();
 
-    // Solo alertas recientes (nunca las de días anteriores) y como mucho una por cultivo por hora.
-    if (!isTestAlert(task)) {
-      if (!isRecentAlert(task, Date.now())) return false;
-      const last = readClimateThrottle();
-      const key = task.cultivationId || task.id;
-      if (Date.now() - (last[key] || 0) < CLIMATE_EVERY_MS) return false;
-      writeClimateThrottle({ ...last, [key]: Date.now() });
+    if (!isNewSinceOpen(task, this.openedAt, Date.now())) return false;
+
+    this.pendingAlerts.push(task);
+    if (!this.batchTimer) this.batchTimer = setTimeout(() => void this.flushPendingAlerts(), BATCH_MS);
+    return true;
+  }
+
+  /**
+   * Avisa todas las alertas juntadas: un solo mensaje en la app y, si la app no está a la vista y este
+   * celular no recibe los avisos del servidor, una sola notificación (como mucho una por hora).
+   * Devuelve cuántas notificaciones del sistema mostró (0 o 1).
+   */
+  public async flushPendingAlerts(): Promise<number> {
+    if (this.batchTimer) {
+      clearTimeout(this.batchTimer);
+      this.batchTimer = null;
     }
+    const tasks = this.pendingAlerts.splice(0);
+    if (!tasks.length) return 0;
+    tasks.forEach((t) => this.dispatchAppEvent(t));
+    this.dispatchBatchEvent(tasks);
 
-    const title = `🚨 Alerta Climática: ${task.title}`;
-    const body = `"${task.cultivationName}" (${task.stage || 'Cultivo'}): ${task.description}`;
+    // Con la app a la vista alcanza con el mensaje de la app
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible') return 0;
+    // El aviso al celular ya lo manda el servidor (uno solo para todos los cultivos)
+    if (await this.hasPushSubscription()) return 0;
 
+    const last = readClimateThrottle();
+    if (Date.now() - (last.all || 0) < CLIMATE_EVERY_MS) return 0;
+    writeClimateThrottle({ all: Date.now() });
+    return (await this.showClimateSystemNotification(tasks)) ? 1 : 0;
+  }
+
+  private async hasPushSubscription(): Promise<boolean> {
+    try {
+      return !!(await this.swRegistration?.pushManager?.getSubscription());
+    } catch {
+      return false;
+    }
+  }
+
+  /** Una notificación del sistema para una o varias alertas de clima. */
+  private async showClimateSystemNotification(tasks: CultivationTask[]): Promise<boolean> {
+    if (!this.isSupported() || Notification.permission !== 'granted' || !tasks.length) return false;
+    const { title, body } = climateNoticeText(tasks);
+    const single = new Set(tasks.map((t) => t.cultivationId)).size === 1;
     const options: NotificationOptions = {
       body,
-      icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🌱</text></svg>',
-      badge: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🚨</text></svg>',
-      // mismo tag que el aviso del servidor: si llegan los dos, queda uno solo
-      tag: isTestAlert(task) ? `env-alert-${task.id}` : `clima-${task.cultivationId}`,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      // mismo tag que el aviso del servidor: en la bandeja queda uno solo
+      tag: isTestAlert(tasks[0]) ? `env-alert-${tasks[0].id}` : 'clima',
       data: {
-        taskId: task.id,
-        cultivationId: task.cultivationId,
-        url: `/?cultivationId=${task.cultivationId}`,
+        taskId: tasks[0].id,
+        cultivationId: single ? tasks[0].cultivationId : undefined,
+        url: single ? `/cultivos/${encodeURIComponent(tasks[0].cultivationId)}` : '/',
       },
     };
 
@@ -242,7 +301,6 @@ class BrowserNotificationService {
       try {
         await this.swRegistration.showNotification(title, options);
         this.playAlertSound();
-        this.dispatchAppEvent(task);
         return true;
       } catch (swErr) {
         console.warn('[NotificationService] Fallback a Notification clásica:', swErr);
@@ -255,10 +313,8 @@ class BrowserNotificationService {
       this.playAlertSound();
       notif.onclick = () => {
         window.focus();
-        this.dispatchAppEvent(task);
         notif.close();
       };
-      this.dispatchAppEvent(task);
       return true;
     } catch (e) {
       console.warn('[NotificationService] Error lanzando notificación:', e);
@@ -267,13 +323,20 @@ class BrowserNotificationService {
   }
 
   /**
-   * Emite un evento en la ventana para que los componentes de React se actualicen
+   * Emite un evento en la ventana para que los componentes de React se actualicen (la lista de alertas)
    */
   private dispatchAppEvent(task: CultivationTask) {
     if (typeof window !== 'undefined') {
       window.dispatchEvent(
         new CustomEvent('cultiveta_env_alert_received', { detail: { task } })
       );
+    }
+  }
+
+  /** Un solo evento por tanda de alertas: la app muestra un solo mensaje. */
+  private dispatchBatchEvent(tasks: CultivationTask[]) {
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('cultiveta_env_alert_batch', { detail: { tasks } }));
     }
   }
 
@@ -420,6 +483,8 @@ class BrowserNotificationService {
    */
   public async init(userId?: string) {
     this.currentUserId = userId || null;
+    // lo que pasó antes de abrir la app no suena al abrirla
+    this.openedAt = Date.now();
     this.initFirestoreListener(userId);
     this.initSSEStream(userId);
 
@@ -430,6 +495,13 @@ class BrowserNotificationService {
       await this.registerServiceWorker();
     }
 
+    // Al volver a la app (estaba en segundo plano), lo que pasó mientras tanto tampoco suena de golpe
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') this.openedAt = Date.now();
+      });
+    }
+
     // Escuchar mensajes provenientes del Service Worker (por ejemplo, clicks en notificaciones)
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       navigator.serviceWorker.addEventListener('message', (event) => {
@@ -438,6 +510,10 @@ class BrowserNotificationService {
           window.dispatchEvent(
             new CustomEvent('cultiveta_notification_clicked', { detail: event.data.data })
           );
+        }
+        // Un aviso del servidor que llegó con la app a la vista: se muestra adentro, sin notificación
+        if (event.data?.type === 'PUSH_IN_APP' && event.data.msg) {
+          window.dispatchEvent(new CustomEvent('cultiveta_push_in_app', { detail: event.data.msg }));
         }
       });
     }
@@ -548,6 +624,11 @@ class BrowserNotificationService {
    */
   public destroy() {
     this.stopSSEStream();
+    if (this.batchTimer) {
+      clearTimeout(this.batchTimer);
+      this.batchTimer = null;
+    }
+    this.pendingAlerts = [];
     if (this.firestoreUnsub) {
       this.firestoreUnsub();
       this.firestoreUnsub = null;

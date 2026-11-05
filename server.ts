@@ -25,7 +25,7 @@ import { TuyaError } from './src/server/devices/tuyaClient';
 import { EwelinkError } from './src/server/devices/ewelinkClient';
 import { ShellyError } from './src/server/devices/shellyClient';
 import webpush from 'web-push';
-import { FirestorePushStore, MemoryPushStore, PushError, PushService, vapidKeysFromSecret, type DayData, type PushSender } from './src/server/push/pushService';
+import { FirestorePushStore, MemoryPushStore, PushError, PushService, vapidKeysFromSecret, type ClimateAlertInput, type DayData, type PushSender } from './src/server/push/pushService';
 
 dotenv.config();
 
@@ -974,12 +974,12 @@ interface SSEClient {
 }
 const sseClients = new Map<string, SSEClient>();
 
-/** Envía una notificación SSE solo a las conexiones del usuario indicado (nunca a todos). */
+/**
+ * Envía una notificación SSE solo a las conexiones del usuario indicado (nunca a todos), para la app abierta.
+ * El aviso al celular de las alertas de clima sale aparte, uno solo por control (sendClimatePushes).
+ */
 export function broadcastNotification(payload: any, targetUserId: string) {
   if (!targetUserId) return;
-  if (payload?.type === 'env_alert' && payload.task) {
-    pushService.climateAlert(targetUserId, payload.task).catch((e) => console.warn('[Avisos] Alerta de clima no enviada:', e?.message || e));
-  }
   const data = JSON.stringify(payload);
   sseClients.forEach((client) => {
     if (client.userId === targetUserId) {
@@ -1074,6 +1074,8 @@ export async function syncHourlyOutdoorWeather(targetUserId?: string) {
 
   let syncedCount = 0;
   let alertsGenerated = 0;
+  // Alertas nuevas de este control, por persona: van al celular todas juntas en un solo aviso
+  const climatePushes = new Map<string, ClimateAlertInput[]>();
 
   for (const crop of outdoorCrops) {
     try {
@@ -1406,6 +1408,9 @@ Devuelve ESTRICTAMENTE un objeto JSON válido con este formato:
               },
               crop.data.userId
             );
+            const pending = climatePushes.get(crop.data.userId) || [];
+            pending.push({ title: alertTitle, description: alertDescription, cultivationId: crop.id, cultivationName, conditions: conditionKey.split('_') });
+            climatePushes.set(crop.data.userId, pending);
 
             console.log(
               `[Cron Job Alertas] ✅ Alerta procesada y tarea generada: "${alertTitle}" -> "${alertDescription}". Notificación emitida a clientes SSE.`
@@ -1422,6 +1427,10 @@ Devuelve ESTRICTAMENTE un objeto JSON válido con este formato:
     } catch (cropErr: any) {
       console.warn(`[Cron Job] Error procesando clima de cultivo ${crop.id}:`, cropErr?.message || cropErr);
     }
+  }
+
+  for (const [uid, alerts] of climatePushes) {
+    await pushService.climateAlerts(uid, alerts).catch((e) => console.warn('[Avisos] Alerta de clima no enviada:', e?.message || e));
   }
 
   return { syncedCount, alertsGenerated, totalDetected: outdoorCrops.length, mode: isFirestoreAvailable ? 'firestore' : 'local' };
@@ -1651,6 +1660,9 @@ app.post('/api/notifications/test', verifyFirebaseAuth, (req, res) => {
       },
       userId
     );
+    pushService
+      .climateAlert(userId, { ...testTask, conditions: [`prueba-${Date.now()}`] })
+      .catch((e) => console.warn('[Avisos] Alerta de clima de prueba no enviada:', e?.message || e));
 
     res.json({
       success: true,
@@ -2241,7 +2253,7 @@ if (VAPID_KEYS) {
     webpush.setVapidDetails(VAPID_SUBJECT, VAPID_KEYS.publicKey, VAPID_KEYS.privateKey);
     pushSender = {
       send: async (sub, payload, opts) => {
-        await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, payload, { TTL: opts.ttlSeconds, urgency: opts.urgency });
+        await webpush.sendNotification({ endpoint: sub.endpoint, keys: sub.keys }, payload, { TTL: opts.ttlSeconds, urgency: opts.urgency, ...(opts.topic ? { topic: opts.topic } : {}) });
       },
     };
   } catch (e: any) {

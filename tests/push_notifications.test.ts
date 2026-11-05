@@ -16,7 +16,10 @@
  *  8. Service worker: muestra el aviso del servidor y al tocarlo abre su lugar.
  *  9. Ajustes → "Avisos al celular": iPhone sin instalar, activar, preferencias, hora, prueba y desactivar.
  * 10. Inicio: la tarjeta "¿Te avisamos cuándo regar?" aparece una sola vez.
- * 11. App abierta: las alertas de clima de antes no vuelven a sonar al abrirla; una por cultivo por hora.
+ * 5b. Clima: un aviso para todas las plantas, uno por hora, sin repetir una condición en el día; si el celular
+ *     estuvo sin señal llega solo el último (tema "clima") y, pasadas 2 horas, ninguno.
+ *  8. (también) Con la app a la vista no aparece notificación; varios de golpe: suena el primero.
+ * 11. App: al abrirla no suena lo de antes; las alertas que llegan juntas van en un solo aviso, uno por hora.
  */
 
 import './helpers/setupDom';
@@ -39,7 +42,7 @@ import { DeviceService, MemoryDeviceStore } from '../src/server/devices/deviceSe
 import { pushNotifications } from '../src/services/pushNotifications';
 import { PushSettingsSection } from '../src/components/user/PushSettingsSection';
 import { PushPromptCard } from '../src/components/dashboard/PushPromptCard';
-import { browserNotificationService, isRecentAlert } from '../src/services/browserNotificationService';
+import { browserNotificationService, isNewSinceOpen } from '../src/services/browserNotificationService';
 
 let passed = 0;
 let failed = 0;
@@ -99,11 +102,11 @@ const task = (extra: Partial<CultivationTask>): CultivationTask =>
 const SUB = (n: number): any => ({ endpoint: `https://fcm.googleapis.com/fcm/send/abc${n}`, keys: { p256dh: `BPk${n}aaaa_bbb-ccc`, auth: `au${n}th_x-y` } });
 
 class FakeSender implements PushSender {
-  sent: Array<{ endpoint: string; msg: any; urgency: string }> = [];
+  sent: Array<{ endpoint: string; msg: any; urgency: string; ttl: number; topic?: string }> = [];
   gone = new Set<string>();
-  async send(sub: StoredSubscription, payload: string, opts: { urgency: string }) {
+  async send(sub: StoredSubscription, payload: string, opts: { urgency: string; ttlSeconds: number; topic?: string }) {
     if (this.gone.has(sub.endpoint)) throw Object.assign(new Error('Gone'), { statusCode: 410 });
-    this.sent.push({ endpoint: sub.endpoint, msg: JSON.parse(payload), urgency: opts.urgency });
+    this.sent.push({ endpoint: sub.endpoint, msg: JSON.parse(payload), urgency: opts.urgency, ttl: opts.ttlSeconds, topic: opts.topic });
   }
 }
 
@@ -257,13 +260,10 @@ async function run() {
   await check('5. Clima, equipos y Comunidad', async () => {
     const { svc, sender, clock } = setup({ now: at('14:00') });
     await svc.subscribe('u1', SUB(1));
-    await svc.climateAlert('u1', { title: 'Alerta Crítica: Temperatura Alta (34°C)', description: 'Ventilá.', cultivationId: 'c1' });
-    assert(sender.sent[0].msg.url === '/cultivos/c1' && sender.sent[0].urgency === 'high', 'clima');
-    for (let i = 0; i < 5; i++) await svc.climateAlert('u1', { title: 'Humedad alta', description: 'Ventilá.', cultivationId: 'c1' });
-    assert(sender.sent.length === 1, 'el mismo cultivo, como mucho una alerta de clima por hora');
-    await svc.climateAlert('u1', { title: 'Humedad alta', description: 'Ventilá.', cultivationId: 'c2' });
-    assert(sender.sent.length === 2 && sender.sent[1].msg.tag === 'clima-c2', 'otro cultivo, sí');
-    sender.sent.splice(1);
+    await svc.climateAlert('u1', { title: 'Alerta Crítica: Temperatura Alta (34°C)', description: 'Ventilá.', cultivationId: 'c1', conditions: ['temp-alta'] });
+    assert(sender.sent[0].msg.url === '/cultivos/c1' && sender.sent[0].urgency === 'high' && sender.sent[0].msg.tag === 'clima', 'clima');
+    for (let i = 0; i < 5; i++) await svc.climateAlert('u1', { title: 'Humedad alta', description: 'Ventilá.', cultivationId: `c${i + 2}`, conditions: ['hum-alta'] });
+    assert(sender.sent.length === 1, 'como mucho un aviso de clima por hora para toda la cuenta');
     const like = { kind: 'like' as const, fromHandle: 'luna', growlogId: 'g1', growlogTitle: 'Gelato 33', text: null };
     await svc.communityNotice('u1', like);
     await svc.communityNotice('u1', like);
@@ -298,6 +298,43 @@ async function run() {
     await svc.communityNotice('u1', { kind: 'comment', fromHandle: 'luna', growlogId: 'g1', growlogTitle: 'Gelato', text: 'Hola' });
     await svc.deviceProblem('u1', 'Otro error');
     assert(sender.sent.length === m, 'apagados, nada');
+  });
+
+  await check('5b. Clima: un aviso para todas las plantas, uno por hora y sin repetir la misma condición en el día', async () => {
+    const { svc, sender, clock } = setup({ now: at('14:00') });
+    await svc.subscribe('u1', SUB(1));
+    const plants = Array.from({ length: 8 }, (_, i) => ({ title: 'Alerta: Humedad Excesiva (>75%)', description: 'Ventilá.', cultivationId: `p${i}`, cultivationName: `Planta ${i + 1}`, conditions: ['hum-alta'] }));
+    await svc.climateAlerts('u1', plants);
+    assert(sender.sent.length === 1, `8 plantas, 1 aviso (${sender.sent.length})`);
+    const m = sender.sent[0];
+    assert(m.msg.title === 'Alerta de clima en 8 cultivos' && /Humedad Excesiva/.test(m.msg.body) && /Planta 1, Planta 2, Planta 3 y 5 más/.test(m.msg.body) && m.msg.url === '/' && m.msg.tag === 'clima', JSON.stringify(m.msg));
+    assert(m.topic === 'clima' && m.ttl === 7200 && m.urgency === 'high', `tema y vencimiento: ${m.topic} ${m.ttl}`);
+    // a la hora siguiente sigue la humedad alta: no se repite en el día
+    clock.t += 61 * 60_000;
+    await svc.climateAlerts('u1', plants);
+    assert(sender.sent.length === 1, 'la misma condición no vuelve a sonar en el día');
+    // aparece otra condición (frío): sí, una vez
+    await svc.climateAlerts('u1', [{ ...plants[0], title: 'Alerta: Frío Crítico (<11°C)', conditions: ['temp-baja', 'hum-alta'] }]);
+    assert(sender.sent.length === 2 && sender.sent[1].msg.title === 'Alerta: Frío Crítico (<11°C)' && sender.sent[1].msg.body.startsWith('Planta 1:') && sender.sent[1].msg.url === '/cultivos/p0', JSON.stringify(sender.sent[1]?.msg));
+    // otra condición nueva dentro de la misma hora: espera
+    clock.t += 10 * 60_000;
+    await svc.climateAlerts('u1', [{ ...plants[0], title: 'Calor', conditions: ['temp-alta'] }]);
+    assert(sender.sent.length === 2, 'como mucho uno por hora');
+    // al otro día, la humedad alta se vuelve a avisar
+    clock.t += 86_400_000;
+    await svc.climateAlerts('u1', plants);
+    assert(sender.sent.length === 3, 'otro día, sí');
+
+    // el tema llega al servicio de push (si el celular estuvo sin señal, recibe solo el último)
+    const ecdh = crypto.createECDH('prime256v1');
+    ecdh.generateKeys();
+    const keys = webpush.generateVAPIDKeys();
+    const req = webpush.generateRequestDetails(
+      { endpoint: 'https://fcm.googleapis.com/fcm/send/x', keys: { p256dh: ecdh.getPublicKey().toString('base64url'), auth: crypto.randomBytes(16).toString('base64url') } },
+      'hola',
+      { TTL: 7200, urgency: 'high', topic: 'clima', vapidDetails: { subject: 'https://cultiveta.ai.studio', publicKey: keys.publicKey, privateKey: keys.privateKey } }
+    );
+    assert(req.headers.Topic === 'clima' && Number(req.headers.TTL) === 7200, JSON.stringify(req.headers));
   });
 
   await check('6. Ganchos: Comunidad y Equipos', async () => {
@@ -362,6 +399,24 @@ async function run() {
     handlers.notificationclick(notification('/comunidad/growlog/g1'));
     await Promise.all(wait);
     assert(posted[0].type === 'NOTIFICATION_CLICKED' && posted[0].data.url === '/comunidad/growlog/g1' && opened.length === 1, 'abierta: va a ese lugar');
+
+    // Con la app a la vista: no aparece notificación, la app lo muestra adentro
+    const before = shown.length;
+    clientList = [{ visibilityState: 'visible', focus: async () => {}, postMessage: (m: any) => posted.push(m) }];
+    handlers.push({ data: { json: () => ({ title: 'A @luna le gustó tu growlog', body: 'Gelato', url: '/comunidad', tag: 'like-g1' }) }, waitUntil: (p: Promise<any>) => wait.push(p) });
+    await Promise.all(wait);
+    assert(shown.length === before && posted.at(-1).type === 'PUSH_IN_APP' && posted.at(-1).msg.title === 'A @luna le gustó tu growlog', 'app a la vista: sin notificación');
+
+    // Varios de golpe (el celular estuvo sin señal): suena el primero, los demás entran callados;
+    // el de clima reemplaza a los de clima viejos (uno por planta)
+    clientList = [{ visibilityState: 'hidden', focus: async () => {}, postMessage: () => {} }];
+    const closed: string[] = [];
+    self.registration.getNotifications = async () => ['clima-c1', 'clima-c2', 'resumen'].map((tag) => ({ tag, close: () => void closed.push(tag) }));
+    handlers.push({ data: { json: () => ({ title: 'Alerta de clima en 8 cultivos', body: 'Humedad alta.', url: '/', tag: 'clima' }) }, waitUntil: (p: Promise<any>) => wait.push(p) });
+    await Promise.all(wait);
+    assert(closed.join() === 'clima-c1,clima-c2', `los de clima viejos se cierran: ${closed}`);
+    const burst = shown.slice(before);
+    assert(burst.length === 1 && burst[0].options.tag === 'clima' && burst[0].options.silent === true && burst[0].options.renotify === false, `llegó al rato de otro: callado ${JSON.stringify(burst[0]?.options)}`);
   });
 
   // Navegador con push: service worker, PushManager y permiso
@@ -488,7 +543,7 @@ async function run() {
     }
   });
 
-  await check('11. App abierta: las alertas de clima viejas no se repiten y como mucho una por cultivo por hora', async () => {
+  await check('11. App: al abrirla no suena lo de antes; las que llegan juntas van en un solo aviso, uno por hora', async () => {
     const w = window as any;
     const prev = { N: w.Notification, G: (globalThis as any).Notification };
     const shown: string[] = [];
@@ -502,26 +557,56 @@ async function run() {
     }
     w.Notification = FakeNotification;
     (globalThis as any).Notification = FakeNotification;
+    const batches: CultivationTask[][] = [];
+    const onBatch = (e: Event) => void batches.push((e as CustomEvent).detail.tasks);
+    window.addEventListener('cultiveta_env_alert_batch', onBatch);
+    const setVisibility = (v: 'visible' | 'hidden') => Object.defineProperty(document, 'visibilityState', { value: v, configurable: true });
+    const svc = browserNotificationService as any;
     try {
       localStorage.clear();
       const now = Date.now();
-      const alert = (id: string, cultivationId: string, minutesAgo: number) =>
-        task({ id, cultivationId, type: 'env_alert', title: 'Humedad alta', createdAt: new Date(now - minutesAgo * 60_000).toISOString() });
-      assert(isRecentAlert(alert('a', 'c1', 10), now) && !isRecentAlert(alert('a', 'c1', 60 * 26), now) && !isRecentAlert(task({ createdAt: undefined as any }), now), 'qué es reciente');
+      svc.openedAt = now;
+      const alert = (id: string, cultivationId: string, minutesAgo: number, name = cultivationId) =>
+        task({ id, cultivationId, cultivationName: name, type: 'env_alert', title: 'Alerta: Humedad Excesiva (>75%)', createdAt: new Date(now - minutesAgo * 60_000).toISOString() });
+      assert(isNewSinceOpen(alert('a', 'c1', 0), now, now) && !isNewSinceOpen(alert('a', 'c1', 10), now, now) && !isNewSinceOpen(task({ createdAt: undefined as any }), now, now), 'qué es nuevo');
 
-      // Al abrir la app llegan todas las alertas guardadas (de días anteriores): ninguna suena
-      for (let d = 1; d <= 150; d++) await browserNotificationService.showEnvAlertNotification(alert(`old-${d}`, 'c1', d * 24 * 60));
-      assert(shown.length === 0, `las viejas no suenan (${shown.length})`);
+      // Al abrir la app llegan todas las alertas guardadas, también las de hace un rato: ninguna suena
+      setVisibility('hidden');
+      for (let d = 1; d <= 150; d++) await svc.showEnvAlertNotification(alert(`old-${d}`, `c${d % 8}`, d * 20));
+      await svc.flushPendingAlerts();
+      assert(shown.length === 0 && batches.length === 0, `lo de antes no suena (${shown.length})`);
 
-      // Una nueva suena; otras del mismo cultivo en la misma hora, no; otro cultivo, sí
-      await browserNotificationService.showEnvAlertNotification(alert('new-1', 'c1', 1));
-      await browserNotificationService.showEnvAlertNotification(alert('new-1', 'c1', 1));
-      await browserNotificationService.showEnvAlertNotification(alert('new-2', 'c1', 0));
-      await browserNotificationService.showEnvAlertNotification(alert('new-3', 'c2', 0));
-      assert(shown.length === 2, `una por cultivo por hora (${shown.length})`);
+      // Con la app abierta en segundo plano llega el control de cada hora: 8 plantas, 1 aviso
+      for (let i = 0; i < 8; i++) await svc.showEnvAlertNotification(alert(`new-${i}`, `p${i}`, 0, `Planta ${i + 1}`));
+      await svc.showEnvAlertNotification(alert('new-0', 'p0', 0)); // la misma por los dos canales
+      assert(await svc.flushPendingAlerts() === 1, 'una notificación');
+      assert(shown.length === 1 && shown[0] === '🚨 Alerta de clima en 8 cultivos' && batches.length === 1 && batches[0].length === 8, `${shown} / ${batches.map((b) => b.length)}`);
+
+      // Otra tanda dentro de la hora: solo el mensaje de la app
+      for (let i = 0; i < 3; i++) await svc.showEnvAlertNotification(alert(`next-${i}`, `p${i}`, 0));
+      await svc.flushPendingAlerts();
+      assert(shown.length === 1 && batches.length === 2, `como mucho una por hora (${shown.length})`);
+
+      // Si este celular recibe los avisos del servidor, la app no repite la notificación
+      localStorage.clear();
+      svc.swRegistration = { pushManager: { getSubscription: async () => ({ endpoint: 'x' }) } };
+      await svc.showEnvAlertNotification(alert('push-1', 'p1', 0));
+      await svc.flushPendingAlerts();
+      assert(shown.length === 1 && batches.length === 3, 'con avisos del servidor, uno solo');
+      svc.swRegistration = null;
+
+      // Con la app a la vista: solo el mensaje de la app
+      localStorage.clear();
+      setVisibility('visible');
+      await svc.showEnvAlertNotification(alert('vis-1', 'p1', 0));
+      await svc.flushPendingAlerts();
+      assert(shown.length === 1 && batches.length === 4, 'a la vista, sin notificación');
     } finally {
       w.Notification = prev.N;
       (globalThis as any).Notification = prev.G;
+      window.removeEventListener('cultiveta_env_alert_batch', onBatch);
+      delete (document as any).visibilityState;
+      svc.swRegistration = null;
       localStorage.clear();
     }
   });

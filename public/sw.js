@@ -116,6 +116,49 @@ self.addEventListener('message', (event) => {
 });
 
 // Avisos al celular: el servidor manda { title, body, url, tag } (src/server/push/pushService.ts)
+// - Con la app abierta y a la vista no aparece notificación: la app lo muestra adentro.
+// - Si llegan varios de golpe (el celular estuvo sin señal), suena solo el primero; los demás entran callados.
+// - El de clima es uno solo en la bandeja: reemplaza a los de clima anteriores (también a los viejos, uno por planta).
+const BURST_MS = 60 * 1000;
+let lastSoundAt = 0;
+
+async function showPush(data) {
+  const title = data.title || 'Cultiveta';
+  const body =
+    data.body ||
+    data.description ||
+    (data.task ? `${data.task.cultivationName}: ${data.task.description}` : 'Revisá el estado de tu cultivo.');
+  const url = typeof data.url === 'string' && data.url.startsWith('/') ? data.url : data.task && data.task.cultivationId ? `/cultivos/${encodeURIComponent(data.task.cultivationId)}` : '/';
+  const tag = data.tag || data.id || (data.task && data.task.id) || `cultiveta-${Date.now()}`;
+
+  const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+  const visible = windows.find((c) => c.visibilityState === 'visible');
+  if (visible) {
+    visible.postMessage({ type: 'PUSH_IN_APP', msg: { title, body, url, tag } });
+    return;
+  }
+
+  if (String(tag).startsWith('clima') && self.registration.getNotifications) {
+    const old = await self.registration.getNotifications();
+    old.filter((n) => n.tag !== tag && /^(clima-|env-alert-)/.test(n.tag || '')).forEach((n) => n.close());
+  }
+
+  const now = Date.now();
+  const quiet = now - lastSoundAt < BURST_MS;
+  if (!quiet) lastSoundAt = now;
+
+  await self.registration.showNotification(title, {
+    body,
+    icon: NOTIFICATION_ICON,
+    badge: NOTIFICATION_ICON,
+    vibrate: [200, 100, 200],
+    tag,
+    renotify: !quiet,
+    silent: quiet,
+    data: { url },
+  });
+}
+
 self.addEventListener('push', (event) => {
   let data = {};
   if (event.data) {
@@ -126,24 +169,7 @@ self.addEventListener('push', (event) => {
     }
   }
 
-  const title = data.title || 'Cultiveta';
-  const body =
-    data.body ||
-    data.description ||
-    (data.task ? `${data.task.cultivationName}: ${data.task.description}` : 'Revisá el estado de tu cultivo.');
-  const url = typeof data.url === 'string' && data.url.startsWith('/') ? data.url : data.task && data.task.cultivationId ? `/cultivos/${encodeURIComponent(data.task.cultivationId)}` : '/';
-
-  const options = {
-    body,
-    icon: NOTIFICATION_ICON,
-    badge: NOTIFICATION_ICON,
-    vibrate: [200, 100, 200],
-    tag: data.tag || data.id || (data.task && data.task.id) || `cultiveta-${Date.now()}`,
-    renotify: true,
-    data: { url },
-  };
-
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(showPush(data));
 });
 
 // Al tocar el aviso: la app abierta va a ese lugar; si estaba cerrada, se abre ahí

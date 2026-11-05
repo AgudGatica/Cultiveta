@@ -452,16 +452,24 @@ export default function App() {
   useEffect(() => {
     browserNotificationService.init(currentUser?.uid);
 
+    // Las alertas de clima que llegan juntas (una por planta) se muestran en un solo mensaje
     const handleEnvAlert = (e: Event) => {
       // Respetar preferencia del usuario sobre si desea recibir alertas climáticas
       const alertPrefs = userProfile?.preferences?.alertTypes;
       if (alertPrefs && alertPrefs.climateAlerts === false) return;
 
-      const ce = e as CustomEvent<{ task: CultivationTask }>;
-      if (ce.detail?.task) {
-        setEnvAlertsCount((prev) => prev + 1);
-        showToast(`🚨 Alerta Climática recibida: ${ce.detail.task.title}`);
-      }
+      const tasks = (e as CustomEvent<{ tasks: CultivationTask[] }>).detail?.tasks || [];
+      if (!tasks.length) return;
+      setEnvAlertsCount((prev) => prev + tasks.length);
+      const crops = new Set(tasks.map((t) => t.cultivationId)).size;
+      showToast(crops > 1 ? `🚨 Alerta de clima en ${crops} cultivos: ${tasks[0].title}` : `🚨 Alerta de clima: ${tasks[0].title}`);
+    };
+
+    // Un aviso del servidor que llegó con la app a la vista (el de clima ya lo muestra la alerta de arriba)
+    const handlePushInApp = (e: Event) => {
+      const msg = (e as CustomEvent<{ title?: string; tag?: string }>).detail;
+      if (!msg?.title || String(msg.tag || '').startsWith('clima')) return;
+      showToast(msg.title);
     };
 
     const handleNotifClicked = (e: Event) => {
@@ -477,11 +485,13 @@ export default function App() {
       }
     };
 
-    window.addEventListener('cultiveta_env_alert_received', handleEnvAlert);
+    window.addEventListener('cultiveta_env_alert_batch', handleEnvAlert);
+    window.addEventListener('cultiveta_push_in_app', handlePushInApp);
     window.addEventListener('cultiveta_notification_clicked', handleNotifClicked);
 
     return () => {
-      window.removeEventListener('cultiveta_env_alert_received', handleEnvAlert);
+      window.removeEventListener('cultiveta_env_alert_batch', handleEnvAlert);
+      window.removeEventListener('cultiveta_push_in_app', handlePushInApp);
       window.removeEventListener('cultiveta_notification_clicked', handleNotifClicked);
     };
   }, [currentUser?.uid]);

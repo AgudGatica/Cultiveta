@@ -6,7 +6,8 @@
  *
  * Avisos:
  * - resumen del día (riego, tanque y calendario): uno por día a la hora elegida, solo si hay algo para hacer;
- * - clima: al momento, con cada alerta del control de cada hora;
+ * - clima: con las alertas del control de cada hora, todas las plantas en un solo aviso, como mucho uno por hora
+ *   y sin repetir en el día una condición ya avisada;
  * - equipos: al momento si algo falla (el mismo error, como mucho cada 6 h) y cuando el riego automático riega;
  * - comunidad: me gusta (uno por publicación por hora), comentarios y seguidores.
  * Comunidad y riego automático no suenan de 23 a 8 (los de la Comunidad quedan igual en la campana).
@@ -55,7 +56,13 @@ export interface PushDoc {
     likes?: Record<string, number>;
     /** Último error de equipos avisado. */
     problem?: { text: string; at: number };
-    /** Último aviso de clima por cultivo (ms): como mucho uno por hora. */
+    /** Último aviso de clima (ms): como mucho uno por hora para toda la cuenta, sumando todos los cultivos. */
+    climateAt?: number;
+    /** Día (YYYYMMDD) de climateConds. */
+    climateDay?: string;
+    /** Condiciones ya avisadas hoy ("hum-alta", "temp-baja"…): la misma no vuelve a sonar en el día. */
+    climateConds?: string[];
+    /** (Versiones anteriores: último aviso por cultivo. Ya no se usa.) */
     climate?: Record<string, number>;
   };
   updatedAt: string;
@@ -76,9 +83,22 @@ export interface PushStore {
   listUserIds(): Promise<string[]>;
 }
 
-/** Envía un push a un celular. Si el celular lo dio de baja, tira un error con statusCode 404 o 410. */
+/**
+ * Envía un push a un celular. Si el celular lo dio de baja, tira un error con statusCode 404 o 410.
+ * topic: si el celular está sin conexión, el servicio de push guarda solo el último aviso con ese tema
+ * (al volver la conexión llega uno, no todos los que se juntaron).
+ */
 export interface PushSender {
-  send(sub: StoredSubscription, payload: string, opts: { ttlSeconds: number; urgency: 'normal' | 'high' }): Promise<void>;
+  send(sub: StoredSubscription, payload: string, opts: { ttlSeconds: number; urgency: 'normal' | 'high'; topic?: string }): Promise<void>;
+}
+
+/** Una alerta de clima de un cultivo, para el aviso al celular. conditions: "hum-alta", "temp-baja"… */
+export interface ClimateAlertInput {
+  title: string;
+  description: string;
+  cultivationId: string;
+  cultivationName?: string;
+  conditions?: string[];
 }
 
 /** Lo que hace falta para el resumen del día de una persona. */
@@ -99,6 +119,9 @@ export class PushError extends Error {
 const MAX_SUBSCRIPTIONS = 5;
 const LIKE_EVERY_MS = 60 * 60_000;
 const CLIMATE_EVERY_MS = 60 * 60_000;
+/** Una alerta de clima que no llegó en 2 horas (celular apagado o sin señal) ya no se manda. */
+const CLIMATE_TTL_SECONDS = 2 * 3600;
+const DEFAULT_TTL_SECONDS = 6 * 3600;
 const PROBLEM_EVERY_MS = 6 * 60 * 60_000;
 /** Si a la hora justa no corrió el control (o falló), el resumen sale en las 2 horas siguientes. */
 const SUMMARY_WINDOW_HOURS = 3;
@@ -186,6 +209,34 @@ export function summaryMessage(tasks: CultivationTask[]): PushMessage | null {
     body: body.charAt(0).toUpperCase() + body.slice(1),
     url: crops.size === 1 ? `/cultivos/${encodeURIComponent(due[0].cultivationId)}` : '/',
     tag: 'resumen',
+  };
+}
+
+/**
+ * Un solo aviso de clima para todos los cultivos que tuvieron alerta en el mismo control (si hay varias plantas
+ * en el mismo lugar, el clima es el mismo para todas).
+ */
+export function climateMessage(alerts: ClimateAlertInput[]): PushMessage {
+  const byCrop = new Map<string, ClimateAlertInput>();
+  for (const a of alerts) if (!byCrop.has(a.cultivationId)) byCrop.set(a.cultivationId, a);
+  const crops = [...byCrop.values()];
+  const first = crops[0];
+  if (crops.length === 1) {
+    return {
+      title: first.title,
+      body: first.cultivationName ? `${first.cultivationName}: ${first.description}` : first.description,
+      url: `/cultivos/${encodeURIComponent(first.cultivationId)}`,
+      tag: 'clima',
+    };
+  }
+  const names = crops.map((a) => a.cultivationName || 'un cultivo');
+  const shown = names.slice(0, SUMMARY_ITEMS);
+  const rest = names.length - shown.length;
+  return {
+    title: `Alerta de clima en ${crops.length} cultivos`,
+    body: `${first.title}. ${shown.join(', ')}${rest > 0 ? ` y ${rest} más` : ''}.`,
+    url: '/',
+    tag: 'clima',
   };
 }
 
@@ -292,7 +343,7 @@ export class PushService {
   }
 
   /** Manda a todos los celulares de esa persona (y saca los que se dieron de baja). Devuelve cuántos salieron. */
-  private async deliver(uid: string, d: PushDoc, msg: PushMessage, urgency: 'normal' | 'high' = 'normal'): Promise<number> {
+  private async deliver(uid: string, d: PushDoc, msg: PushMessage, urgency: 'normal' | 'high' = 'normal', extra: { ttlSeconds?: number; topic?: string } = {}): Promise<number> {
     if (!this.sender || !d.subscriptions.length) return 0;
     const payload = JSON.stringify(msg);
     let ok = 0;
@@ -303,7 +354,7 @@ export class PushService {
         continue;
       }
       try {
-        await this.sender.send(sub, payload, { ttlSeconds: 6 * 3600, urgency });
+        await this.sender.send(sub, payload, { ttlSeconds: extra.ttlSeconds || DEFAULT_TTL_SECONDS, urgency, ...(extra.topic ? { topic: extra.topic } : {}) });
         ok++;
       } catch (e: any) {
         if (e?.statusCode === 404 || e?.statusCode === 410) gone.push(sub.endpoint);
@@ -362,16 +413,34 @@ export class PushService {
 
   // ------------------------------------------------------------ ganchos
 
-  /** Alerta de clima del control de cada hora (como mucho una por cultivo por hora). */
-  async climateAlert(uid: string, task: Pick<CultivationTask, 'title' | 'description' | 'cultivationId'>) {
+  /**
+   * Alertas de clima de un control de cada hora, todas juntas en un solo aviso:
+   * - como mucho un aviso de clima por hora para toda la cuenta (no uno por planta);
+   * - una condición ya avisada hoy (por ejemplo, humedad alta) no vuelve a sonar en el día;
+   * - si el celular está sin conexión, llega solo el último y, pasadas 2 horas, ninguno.
+   */
+  async climateAlerts(uid: string, alerts: ClimateAlertInput[]) {
+    if (!alerts.length) return 0;
     const d = await this.load(uid);
     if (!d.subscriptions.length || !d.settings.clima) return 0;
-    const climate = d.sent.climate || {};
-    if (this.now() - (climate[task.cultivationId] || 0) < CLIMATE_EVERY_MS) return 0;
-    // se guardan solo los del último día
-    d.sent.climate = Object.fromEntries(Object.entries({ ...climate, [task.cultivationId]: this.now() }).filter(([, at]) => this.now() - at < 86_400_000));
+    const today = zonedDateKey(this.now(), this.timeZone);
+    const already = new Set(d.sent.climateDay === today ? d.sent.climateConds || [] : []);
+    const condsOf = (a: ClimateAlertInput) => (a.conditions && a.conditions.length ? a.conditions : [a.title]);
+    const fresh = alerts.filter((a) => condsOf(a).some((c) => !already.has(c)));
+    if (!fresh.length) return 0;
+    if (this.now() - (d.sent.climateAt || 0) < CLIMATE_EVERY_MS) return 0;
+    for (const a of fresh) for (const c of condsOf(a)) already.add(c);
+    d.sent.climateAt = this.now();
+    d.sent.climateDay = today;
+    d.sent.climateConds = [...already].slice(-20);
+    delete d.sent.climate;
     await this.save(uid, d);
-    return this.deliver(uid, d, { title: task.title, body: task.description, url: `/cultivos/${encodeURIComponent(task.cultivationId)}`, tag: `clima-${task.cultivationId}` }, 'high');
+    return this.deliver(uid, d, climateMessage(fresh), 'high', { ttlSeconds: CLIMATE_TTL_SECONDS, topic: 'clima' });
+  }
+
+  /** Una sola alerta de clima (la prueba de Avisos, por ejemplo). */
+  climateAlert(uid: string, task: ClimateAlertInput) {
+    return this.climateAlerts(uid, [task]);
   }
 
   /** Un equipo falló (el mismo error se avisa como mucho cada 6 h). */
