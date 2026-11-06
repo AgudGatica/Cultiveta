@@ -488,7 +488,7 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
           ))}
         </div>
       {Object.values(listErrors).map((m) => (
-        <p key={m} className="text-xs font-bold text-coral">
+        <p key={m} className="text-xs font-bold text-error">
           {m}
         </p>
       ))}
@@ -507,7 +507,7 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
                 {d.power ? ` · ${String(d.power.watts).replace('.', ',')} W ahora` : ''}
               </p>
             </div>
-            <span className={`text-[9px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded-md border ${d.online ? 'bg-ok-bg border-ok-line text-ok-ink' : 'bg-coral/10 border-coral/30 text-coral'}`}>
+            <span className={`text-[9px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded-md border ${d.online ? 'bg-ok-bg border-ok-line text-ok-ink' : 'bg-coral/10 border-coral/30 text-error'}`}>
               {d.online ? 'En línea' : 'Sin conexión'}
             </span>
           </div>

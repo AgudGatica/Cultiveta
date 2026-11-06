@@ -115,7 +115,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
         stageName: `Maduración (últimos ${MATURATION_DAYS} días)`,
         description: 'Pistilos oxidados en su mayoría. La planta consume sus reservas.',
         advice: 'Regar con agua sola reposada o desclorada para limpiar las sales del sustrato.',
-        badgeColor: 'bg-coral/15 text-coral border-coral/30',
+        badgeColor: 'bg-coral/15 text-error border-coral/30',
       };
     } else if (phase === 'maduracion' && daysUntilHarvest === 0) {
       subPhase = {
@@ -171,7 +171,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
       {/* Primera Capa: Resumen Inmediato y Progreso Visual */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-2xl bg-coral/15 text-coral border border-coral/30 flex items-center justify-center shrink-0">
+          <div className="w-12 h-12 rounded-2xl bg-coral/15 text-error border border-coral/30 flex items-center justify-center shrink-0">
             <Flower2 className="w-6 h-6 stroke-[2.2]" />
           </div>
           <div>
@@ -179,7 +179,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
               <h3 className="text-lg sm:text-xl font-black text-ink">
                 Floración 🌸
               </h3>
-              <span className="px-2.5 py-0.5 rounded-full bg-coral/15 text-coral border border-coral/30 text-xs font-bold">
+              <span className="px-2.5 py-0.5 rounded-full bg-coral/15 text-error border border-coral/30 text-xs font-bold">
                 Semana {analysis.currentWeekNumber} de ~{analysis.typicalFloweringWeeks}
               </span>
             </div>
@@ -208,7 +208,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
           </div>
           <div className="text-right pl-2 sm:border-l sm:border-line">
             <span className="text-[10px] text-ink-subtle block uppercase tracking-wider">Faltan aprox.</span>
-            <span className="font-extrabold text-coral block">
+            <span className="font-extrabold text-error block">
               {analysis.daysRemaining === 0
                 ? 'Ventana de cosecha'
                 : analysis.daysRemaining <= 2
@@ -225,7 +225,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
           <span className="text-ink-muted">
             Día {analysis.floweringDaysElapsed} de ~{analysis.typicalFloweringDays} días florales
           </span>
-          <span className="text-sm font-black text-coral">
+          <span className="text-sm font-black text-error">
             {analysis.progressPercentage}%
           </span>
         </div>
@@ -300,7 +300,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
                     <span className="text-[10px] uppercase font-bold text-ink-subtle">
                       Sem. {m.week}
                     </span>
-                    {m.isPassed && <CheckCircle2 className="w-3.5 h-3.5 text-ok" />}
+                    {m.isPassed && <CheckCircle2 className="w-3.5 h-3.5 text-ok-ink" />}
                   </div>
                   <span className="block font-bold text-xs truncate">{m.title}</span>
                   <span className="text-[10px] text-ink-muted block mt-0.5">{m.subtitle}</span>
@@ -317,7 +317,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
                 onClick={onOpenWateringModal}
                 className="px-3.5 py-2 rounded-xl bg-white hover:bg-track border border-line text-xs font-bold text-ink transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
-                <Droplets className="w-3.5 h-3.5 text-ok" />
+                <Droplets className="w-3.5 h-3.5 text-ok-ink" />
                 <span>Riego de Flora</span>
               </button>
             )}

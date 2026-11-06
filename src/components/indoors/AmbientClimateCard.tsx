@@ -41,7 +41,7 @@ const ago = (ms: number, now: number) => {
 const LEVEL_TEXT: Record<Level, string> = { baja: 'BAJA', bien: 'BIEN', alta: 'ALTA' };
 /** El clima de exterior llega cada hora: más viejo que esto, algo se atrasó. */
 export const AUTO_READING_TTL_MS = 3 * 60 * 60 * 1000;
-const levelClass = (l: Level) => (l === 'bien' ? 'text-ok-ink' : 'text-coral');
+const levelClass = (l: Level) => (l === 'bien' ? 'text-ok-ink' : 'text-error');
 const num = (v: number, d = 1) => (Math.round(v * 10 ** d) / 10 ** d).toString().replace('.', ',');
 
 /**
@@ -107,7 +107,7 @@ export const AmbientClimateCard: React.FC<AmbientClimateCardProps> = ({ reading,
             ÚLTIMA LECTURA
           </span>
         ) : evalr ? (
-          <span id="ambient-band" className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider ${evalr.band === 'optimo' ? 'bg-ok-bg text-ok-ink border border-ok-line' : 'bg-coral/15 text-coral'}`}>
+          <span id="ambient-band" className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider ${evalr.band === 'optimo' ? 'bg-ok-bg text-ok-ink border border-ok-line' : 'bg-coral/15 text-error'}`}>
             {evalr.band === 'optimo' ? 'EN BANDA' : evalr.band === 'seco' ? 'AIRE SECO' : 'AIRE HÚMEDO'}
           </span>
         ) : outdoor ? null : (
@@ -159,7 +159,7 @@ export const AmbientClimateCard: React.FC<AmbientClimateCardProps> = ({ reading,
           )}
         </>
       ) : reading?.offline ? (
-        <p className="text-xs text-coral font-bold">El sensor {reading.deviceName} no responde.</p>
+        <p className="text-xs text-error font-bold">El sensor {reading.deviceName} no responde.</p>
       ) : outdoor ? (
         <div id="ambient-auto-empty" className="space-y-2">
           <p className="text-xs text-ink-muted flex gap-1.5">

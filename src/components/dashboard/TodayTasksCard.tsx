@@ -11,10 +11,11 @@ import {
   Sparkles,
   type LucideIcon,
 } from 'lucide-react';
-import type { Cultivation, CultivationTask, EnvironmentRecord, Watering } from '../../types';
+import type { Cultivation, CultivationTask, EnvironmentRecord, Indoor, Watering } from '../../types';
 import { taskService } from '../../services/taskService';
 import { selectTodayTasks } from '../../utils/cropCardInfo';
 import { formatFriendlyDate } from '../../utils/growthStageUtils';
+import { groupTodayTasks, type TodayTaskGroup } from '../../utils/todayGroups';
 
 interface TodayTasksCardProps {
   cultivations: Cultivation[];
@@ -24,6 +25,9 @@ interface TodayTasksCardProps {
   onSelectCultivation?: (cultivation: Cultivation) => void;
   onOpenWateringModal?: (cultivation?: Cultivation) => void;
   onTaskCompletedFeedback?: (message: string) => void;
+  /** Para decir "Carpa 120 · 2 genéticas" y abrir el ambiente desde una tarea agrupada. */
+  indoors?: Indoor[];
+  onOpenIndoor?: (indoor: Indoor) => void;
 }
 
 const VISIBLE_TASKS = 4;
@@ -41,6 +45,7 @@ const TASK_ICONS: Record<CultivationTask['type'], { icon: LucideIcon; tone: stri
 /**
  * "Para hoy": tareas pendientes de hoy y atrasadas (mismas reglas que taskService.getTasksForDashboard),
  * con botón para marcarlas hechas. Al marcar un riego se abre el formulario para anotar sus datos.
+ * La misma tarea en varias plantas del mismo ambiente va en una sola fila, y se marca de una vez.
  */
 export const TodayTasksCard: React.FC<TodayTasksCardProps> = ({
   cultivations,
@@ -50,6 +55,8 @@ export const TodayTasksCard: React.FC<TodayTasksCardProps> = ({
   onSelectCultivation,
   onOpenWateringModal,
   onTaskCompletedFeedback,
+  indoors = [],
+  onOpenIndoor,
 }) => {
   const [tasksVersion, setTasksVersion] = useState(0);
   const [serverTasks, setServerTasks] = useState<CultivationTask[]>([]);
@@ -80,13 +87,15 @@ export const TodayTasksCard: React.FC<TodayTasksCardProps> = ({
     [cultivations, waterings, envRecords, userId, serverTasks, tasksVersion]
   );
 
-  const visible = showAll ? todayTasks : todayTasks.slice(0, VISIBLE_TASKS);
-  const hiddenCount = todayTasks.length - VISIBLE_TASKS;
+  const groups = useMemo(() => groupTodayTasks(todayTasks, cultivations), [todayTasks, cultivations]);
+  const visible = showAll ? groups : groups.slice(0, VISIBLE_TASKS);
+  const hiddenCount = groups.length - VISIBLE_TASKS;
 
-  const handleComplete = async (task: CultivationTask) => {
-    setProcessingId(task.id);
+  const handleComplete = async (group: TodayTaskGroup) => {
+    const task = group.tasks[0];
+    setProcessingId(group.id);
     try {
-      await taskService.completeTask(task, userId);
+      await Promise.all(group.tasks.map((t) => taskService.completeTask(t, userId)));
       setTasksVersion((v) => v + 1);
       const crop = cultivations.find((c) => c.id === task.cultivationId);
       // El riego se guarda solo con los datos que carga la persona: se abre el formulario vacío.
@@ -123,22 +132,27 @@ export const TodayTasksCard: React.FC<TodayTasksCardProps> = ({
           Para hoy
         </h2>
         <span className="text-[11px] font-bold text-ink-muted">
-          {todayTasks.length === 1 ? '1 tarea' : `${todayTasks.length} tareas`}
+          {groups.length === 1 ? '1 tarea' : `${groups.length} tareas`}
         </span>
       </div>
 
       <ul className="space-y-2">
-        {visible.map((task) => {
+        {visible.map((group) => {
+          const task = group.tasks[0];
           const { icon: Icon, tone } = TASK_ICONS[task.type] || TASK_ICONS.custom;
-          const isLate = task.urgency === 'overdue';
+          const isLate = group.isLate;
+          const many = group.tasks.length > 1;
           const crop = cultivations.find((c) => c.id === task.cultivationId);
+          const ambient = indoors.find((i) => i.id === group.indoorId);
           const when = isLate
             ? `atrasada${task.dueDate ? ` desde el ${formatFriendlyDate(task.dueDate, { includeYear: false })}` : ''}`
             : 'hoy';
+          const where = many ? `${ambient?.name || 'Tu ambiente'} · ${group.tasks.length} genéticas` : task.cultivationName;
           return (
             <li
-              key={task.id}
-              data-task-id={task.id}
+              key={group.id}
+              data-task-id={group.id}
+              data-task-count={group.tasks.length}
               className={`flex items-center gap-3 p-2.5 rounded-2xl border ${
                 isLate ? 'bg-warn-bg border-warn-line' : 'bg-surface border-line'
               }`}
@@ -148,19 +162,22 @@ export const TodayTasksCard: React.FC<TodayTasksCardProps> = ({
               </span>
               <button
                 type="button"
-                onClick={() => crop && onSelectCultivation?.(crop)}
+                onClick={() => {
+                  if (many && ambient && onOpenIndoor) onOpenIndoor(ambient);
+                  else if (crop) onSelectCultivation?.(crop);
+                }}
                 className="min-w-0 flex-1 text-left cursor-pointer min-h-11 py-0.5"
               >
                 <span className="block text-sm font-bold text-ink leading-snug line-clamp-2">{task.title}</span>
                 <span className={`block text-xs leading-snug ${isLate ? 'text-warn-ink font-semibold' : 'text-ink-muted'}`}>
-                  {task.cultivationName} · {when}
+                  {where} · {when}
                 </span>
               </button>
               <button
                 type="button"
-                onClick={() => handleComplete(task)}
-                disabled={processingId === task.id}
-                aria-label={`Marcar hecha: ${task.title} (${task.cultivationName})`}
+                onClick={() => handleComplete(group)}
+                disabled={processingId === group.id}
+                aria-label={`Marcar hecha: ${task.title} (${where})`}
                 className="w-11 h-11 rounded-full border-2 border-ok text-ok-ink hover:bg-ok hover:text-white flex items-center justify-center shrink-0 cursor-pointer transition-colors disabled:opacity-50"
               >
                 <Check className="w-5 h-5 stroke-[2.5]" aria-hidden="true" />

@@ -140,8 +140,8 @@ export const FinishedCropsView: React.FC<FinishedCropsViewProps> = ({
     <div id="finished-crops-view" className="space-y-4 sm:space-y-5">
       <div className="flex items-center justify-between gap-3 pt-1">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Cultivos</h1>
-          <p className="text-xs sm:text-sm text-white/85 font-medium">Tus cultivos terminados y sus cosechas</p>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white cultiveta-on-gradient tracking-tight">Cultivos</h1>
+          <p className="text-xs sm:text-sm text-white cultiveta-on-gradient font-semibold">Tus cultivos terminados y sus cosechas</p>
         </div>
         {onNavigateToCompare && items.length > 1 && (
           <button

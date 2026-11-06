@@ -124,7 +124,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
             onClick={() => handleActionClick('watering')}
             className="flex flex-col items-start p-4 rounded-2xl bg-white hover:bg-track border border-chip-line transition-all hover:scale-[1.02] active:scale-[0.98] text-left cursor-pointer shadow-xs group"
           >
-            <div className="w-10 h-10 rounded-xl bg-ok/15 text-ok flex items-center justify-center mb-2.5 group-hover:bg-ok-ink group-hover:text-white transition-colors">
+            <div className="w-10 h-10 rounded-xl bg-ok/15 text-ok-ink flex items-center justify-center mb-2.5 group-hover:bg-ok-ink group-hover:text-white transition-colors">
               <Droplets className="w-5 h-5 stroke-[2.2]" />
             </div>
             <span className="text-sm font-bold text-ink">💧 Regué</span>
@@ -207,7 +207,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
                 onClick={() => handleActionClick('environment')}
                 className="flex items-center gap-2.5 p-3 rounded-2xl bg-white hover:bg-track border border-chip-line text-left transition-all cursor-pointer shadow-2xs"
               >
-                <div className="p-2 rounded-xl bg-coral/15 text-coral">
+                <div className="p-2 rounded-xl bg-coral/15 text-error">
                   <Thermometer className="w-4 h-4" />
                 </div>
                 <div className="min-w-0 flex-1">
@@ -223,7 +223,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
                 onClick={() => handleActionClick('measurement')}
                 className="flex items-center gap-2.5 p-3 rounded-2xl bg-white hover:bg-track border border-chip-line text-left transition-all cursor-pointer shadow-2xs"
               >
-                <div className="p-2 rounded-xl bg-ok/15 text-ok">
+                <div className="p-2 rounded-xl bg-ok/15 text-ok-ink">
                   <FlaskConical className="w-4 h-4" />
                 </div>
                 <div className="min-w-0 flex-1">

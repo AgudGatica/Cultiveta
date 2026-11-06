@@ -272,7 +272,7 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
   const getPlanIcon = (type: CultivationCalendarPlan['type']) => {
     switch (type) {
       case 'watering':
-        return <Droplets className="w-4 h-4 text-ok" />;
+        return <Droplets className="w-4 h-4 text-ok-ink" />;
       case 'stage_change':
         return <Flower2 className="w-4 h-4 text-brand" />;
       case 'defoliation':
@@ -280,11 +280,11 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
       case 'flush':
         return <Droplets className="w-4 h-4 text-brand" />;
       case 'harvest':
-        return <CalendarCheck className="w-4 h-4 text-coral" />;
+        return <CalendarCheck className="w-4 h-4 text-error" />;
       case 'post_harvest':
         return <Scissors className="w-4 h-4 text-ink-muted" />;
       default:
-        return <Clock className="w-4 h-4 text-ok" />;
+        return <Clock className="w-4 h-4 text-ok-ink" />;
     }
   };
 
@@ -324,13 +324,13 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
         <div className="p-5 sm:p-6 space-y-5 overflow-y-auto flex-1">
           {/* Notifications */}
           {errorMsg && (
-            <div className="p-4 rounded-2xl bg-coral/10 border border-coral/30 text-coral text-xs flex items-center gap-3">
-              <AlertCircle className="w-4 h-4 shrink-0 text-coral" />
+            <div className="p-4 rounded-2xl bg-coral/10 border border-coral/30 text-error text-xs flex items-center gap-3">
+              <AlertCircle className="w-4 h-4 shrink-0 text-error" />
               <p className="flex-1 font-medium">{errorMsg}</p>
               <button
                 type="button"
                 onClick={() => setErrorMsg(null)}
-                className="text-coral hover:underline font-bold text-xs cursor-pointer"
+                className="text-error hover:underline font-bold text-xs cursor-pointer"
               >
                 Cerrar
               </button>
@@ -708,7 +708,7 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
                           <button
                             type="button"
                             onClick={() => setEventToDelete(evt)}
-                            className="p-2 rounded-xl bg-white hover:bg-coral/10 border border-chip-line text-ink-muted hover:text-coral transition-colors cursor-pointer shadow-2xs"
+                            className="p-2 rounded-xl bg-white hover:bg-coral/10 border border-chip-line text-ink-muted hover:text-error transition-colors cursor-pointer shadow-2xs"
                             title="Eliminar de Google Calendar"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -739,7 +739,7 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
       {eventToDelete && (
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-stone-950/60 backdrop-blur-xs animate-in fade-in">
           <div className="bg-white border border-chip-line rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-ink">
-            <div className="w-12 h-12 rounded-2xl bg-coral/15 border border-coral/30 text-coral flex items-center justify-center mx-auto">
+            <div className="w-12 h-12 rounded-2xl bg-coral/15 border border-coral/30 text-error flex items-center justify-center mx-auto">
               <Trash2 className="w-6 h-6 stroke-[2.2]" />
             </div>
 
@@ -766,7 +766,7 @@ export const GoogleCalendarModal: React.FC<GoogleCalendarModalProps> = ({
                 type="button"
                 onClick={confirmDeleteEvent}
                 disabled={isDeleting}
-                className="flex-1 px-4 py-2.5 rounded-2xl bg-coral hover:bg-[#D4604D] text-white text-xs font-bold transition-all shadow-md shadow-coral/20 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2.5 rounded-2xl bg-error hover:brightness-95 text-white text-xs font-bold transition-all shadow-md shadow-coral/20 cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {isDeleting ? (
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />

@@ -161,7 +161,7 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
               <div className="text-xs space-y-1">
                 <div className="flex justify-between text-ink-muted font-medium">
                   <span className="font-bold text-ink">{photoB.date}</span>
-                  <span className="font-bold text-ok bg-ok/10 px-2 py-0.5 rounded-md border border-ok/20">{photoB.stage}</span>
+                  <span className="font-bold text-ok-ink bg-ok/10 px-2 py-0.5 rounded-md border border-ok/20">{photoB.stage}</span>
                 </div>
                 {photoB.caption && <p className="text-ink-muted italic">"{photoB.caption}"</p>}
               </div>
@@ -191,7 +191,7 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
             </button>
           </div>
 
-          {error && <p className="text-xs text-coral font-semibold">{error}</p>}
+          {error && <p className="text-xs text-error font-semibold">{error}</p>}
 
           {comparisonResult && (
             <div className="mt-4 pt-4 border-t border-brand/20 space-y-3 text-xs text-ink bg-white p-4 sm:p-5 rounded-2xl border border-line">
@@ -200,11 +200,11 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
                 <p className="leading-relaxed text-ink-muted">{comparisonResult.visualChanges}</p>
               </div>
               <div>
-                <span className="font-bold text-ok block mb-1">📈 Desarrollo estructural y vegetativo:</span>
+                <span className="font-bold text-ok-ink block mb-1">📈 Desarrollo estructural y vegetativo:</span>
                 <p className="leading-relaxed text-ink-muted">{comparisonResult.structuralGrowth}</p>
               </div>
               <div>
-                <span className="font-bold text-coral block mb-1">🩺 Observaciones de salud foliar:</span>
+                <span className="font-bold text-error block mb-1">🩺 Observaciones de salud foliar:</span>
                 <p className="leading-relaxed text-ink-muted">{comparisonResult.healthNotes}</p>
               </div>
             </div>

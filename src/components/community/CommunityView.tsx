@@ -137,12 +137,12 @@ export const CommunityView: React.FC<Props> = ({ userId, cultivations, geneticsL
   return (
     <div id="community-view" className="max-w-5xl mx-auto space-y-4">
       <div className="flex items-center justify-between gap-3 pt-1">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Comunidad</h1>
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-white cultiveta-on-gradient tracking-tight">Comunidad</h1>
         <div className="flex items-center gap-2">
           <button type="button" id="community-bell" onClick={() => setNotices(true)} aria-label={me?.unread ? `Avisos: ${me.unread} sin leer` : 'Avisos'} className="relative min-h-10 min-w-10 rounded-full bg-white/15 text-white inline-flex items-center justify-center hover:bg-white/25">
             <Bell className="w-5 h-5" aria-hidden="true" />
             {!!me?.unread && (
-              <span id="community-unread" className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 rounded-full bg-coral text-white text-[10px] font-black inline-flex items-center justify-center">
+              <span id="community-unread" className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 rounded-full bg-error text-white text-[10px] font-black inline-flex items-center justify-center">
                 {me.unread > 9 ? '9+' : me.unread}
               </span>
             )}
@@ -180,7 +180,7 @@ export const CommunityView: React.FC<Props> = ({ userId, cultivations, geneticsL
         />
       </label>
 
-      <div role="tablist" aria-label="Comunidad" className="grid grid-cols-3 p-1 rounded-2xl bg-white/15 gap-1">
+      <div role="tablist" aria-label="Comunidad" className="grid grid-cols-3 p-1 rounded-2xl bg-brand-deep/55 gap-1">
         {TABS.map(([key, label, Icon]) => (
           <button
             key={key}
@@ -197,7 +197,7 @@ export const CommunityView: React.FC<Props> = ({ userId, cultivations, geneticsL
         ))}
       </div>
 
-      {error && !explore && !feed && <p className="text-sm text-white/90">{error}</p>}
+      {error && !explore && !feed && <p className="text-sm text-white cultiveta-on-gradient">{error}</p>}
 
       {tab === 'explorar' && (
         <div id="community-explore" className="space-y-4">
@@ -279,7 +279,7 @@ export const CommunityView: React.FC<Props> = ({ userId, cultivations, geneticsL
                 </button>
                 {g.lastNote && <p className="px-4 pt-3 text-sm text-ink line-clamp-3">{g.lastNote}</p>}
                 <div className="flex items-center gap-3 px-4 py-3 text-xs text-ink-muted">
-                  <button type="button" data-like={g.id} aria-pressed={liked.has(g.id)} onClick={() => toggleLike(g)} className={`inline-flex items-center gap-1 min-h-9 px-3 rounded-full border ${liked.has(g.id) ? 'border-coral text-coral' : 'border-line'}`}>
+                  <button type="button" data-like={g.id} aria-pressed={liked.has(g.id)} onClick={() => toggleLike(g)} className={`inline-flex items-center gap-1 min-h-9 px-3 rounded-full border ${liked.has(g.id) ? 'border-coral text-error' : 'border-line'}`}>
                     <Heart className={`w-3.5 h-3.5 ${liked.has(g.id) ? 'fill-coral' : ''}`} aria-hidden="true" />
                     {kfmt(g.likes)}
                   </button>
@@ -349,7 +349,7 @@ export const CommunityView: React.FC<Props> = ({ userId, cultivations, geneticsL
         </div>
       )}
 
-      <p className="text-[11px] text-white/70 text-center px-4 pb-2">Comunidad para mayores de 18 años. Nada de venta. Las fotos se publican sin ubicación.</p>
+      <p className="text-xs text-white cultiveta-on-gradient text-center px-4 pb-2">Comunidad para mayores de 18 años. Nada de venta. Las fotos se publican sin ubicación.</p>
 
       {notices && <NotificationsPanel onClose={() => setNotices(false)} onOpenGrowlog={onOpenGrowlog} onOpenGrower={onOpenGrower} />}
 
@@ -376,8 +376,8 @@ export const CommunityView: React.FC<Props> = ({ userId, cultivations, geneticsL
 const Row: React.FC<{ id: string; title: string; count: number; children: React.ReactNode }> = ({ id, title, count, children }) => (
   <section id={id} className="space-y-2">
     <div className="flex items-center justify-between px-1">
-      <h2 className="text-base font-extrabold text-white">{title}</h2>
-      <span className="text-xs text-white/70">{count}</span>
+      <h2 className="text-base font-extrabold text-white cultiveta-on-gradient">{title}</h2>
+      <span className="text-xs font-bold text-white cultiveta-on-gradient">{count}</span>
     </div>
     <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1 [scrollbar-width:none]">{children}</div>
   </section>

@@ -131,7 +131,7 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-chip-line">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-ok/15 text-ok">
+            <div className="p-3 rounded-2xl bg-ok/15 text-ok-ink">
               <Droplets className="w-6 h-6" />
             </div>
             <div>
@@ -151,7 +151,7 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
         </div>
 
         {error && (
-          <div className="p-3.5 rounded-2xl bg-coral/10 border border-coral/30 text-coral text-xs flex items-center gap-2">
+          <div className="p-3.5 rounded-2xl bg-coral/10 border border-coral/30 text-error text-xs flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -226,7 +226,7 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
                             </span>
                           )}
                         </div>
-                        <div className="text-[11px] text-ok font-semibold">
+                        <div className="text-[11px] text-ok-ink font-semibold">
                           Total a preparar: <strong className="text-ink">{totalMl} ml</strong>
                         </div>
                       </div>
@@ -247,7 +247,7 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
                         <button
                           type="button"
                           onClick={() => handleRemoveProduct(idx)}
-                          className="p-1.5 rounded-lg text-ink/40 hover:text-coral hover:bg-coral/10 transition-colors cursor-pointer"
+                          className="p-1.5 rounded-lg text-ink/40 hover:text-error hover:bg-coral/10 transition-colors cursor-pointer"
                           title="Quitar producto"
                         >
                           <Trash2 className="w-3.5 h-3.5" />

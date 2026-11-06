@@ -128,7 +128,7 @@ export const Header: React.FC<HeaderProps> = ({
 
           {activeCultivations.length > 0 && onSelectCultivation && (
             <div className="hidden sm:flex items-center gap-2 bg-white px-3.5 py-1.5 rounded-2xl border border-black/10 shadow-xs ml-2">
-              <Sprout className="w-4 h-4 text-ok" />
+              <Sprout className="w-4 h-4 text-ok-ink" />
               <select
                 id="header-cultivation-selector"
                 value={activeCultivationId || ''}
@@ -157,7 +157,7 @@ export const Header: React.FC<HeaderProps> = ({
               className="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white hover:bg-track text-ink border border-black/10 text-xs font-semibold transition-all cursor-pointer shadow-xs"
               title="Cargar datos de prueba"
             >
-              <Database className="w-3.5 h-3.5 text-ok" />
+              <Database className="w-3.5 h-3.5 text-ok-ink" />
               <span>Demo</span>
             </button>
           )}
@@ -209,7 +209,7 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Bell className="w-4 h-4 text-ink" />
               {notificationCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-coral text-white text-[9px] font-bold flex items-center justify-center animate-pulse">
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-error text-white text-[10px] font-bold flex items-center justify-center">
                   {notificationCount > 9 ? '9+' : notificationCount}
                 </span>
               )}
@@ -252,7 +252,7 @@ export const Header: React.FC<HeaderProps> = ({
                   referrerPolicy="no-referrer"
                 />
               ) : (
-                <div className="w-6 h-6 rounded-full bg-ok/20 text-ok border border-ok/30 flex items-center justify-center font-bold text-xs">
+                <div className="w-6 h-6 rounded-full bg-ok/20 text-ok-ink border border-ok/30 flex items-center justify-center font-bold text-xs">
                   {displayName[0]?.toUpperCase() || <UserIcon className="w-3.5 h-3.5" />}
                 </div>
               )}
@@ -281,7 +281,7 @@ export const Header: React.FC<HeaderProps> = ({
                       className="w-10 h-10 rounded-2xl object-cover border border-line"
                     />
                   ) : (
-                    <div className="w-10 h-10 rounded-2xl bg-ok/20 text-ok border border-ok/30 flex items-center justify-center font-bold text-sm">
+                    <div className="w-10 h-10 rounded-2xl bg-ok/20 text-ok-ink border border-ok/30 flex items-center justify-center font-bold text-sm">
                       {displayName[0]?.toUpperCase() || <UserIcon className="w-4 h-4" />}
                     </div>
                   )}
@@ -292,7 +292,7 @@ export const Header: React.FC<HeaderProps> = ({
                     <span className="text-[11px] text-ink-muted block truncate">
                       {currentUser?.email || 'Cultivador registrado'}
                     </span>
-                    <span className="inline-flex items-center gap-1 text-[10px] text-ok font-bold mt-0.5">
+                    <span className="inline-flex items-center gap-1 text-[10px] text-ok-ink font-bold mt-0.5">
                       <ShieldCheck className="w-3 h-3" />
                       Cuenta activa
                     </span>
@@ -361,7 +361,7 @@ export const Header: React.FC<HeaderProps> = ({
                       <div className="flex items-center justify-between">
                         <span className="font-bold">Avisos y Alertas</span>
                         {notificationCount > 0 && (
-                          <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-coral text-white font-bold">
+                          <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-error text-white font-bold">
                             {notificationCount}
                           </span>
                         )}
@@ -430,9 +430,9 @@ export const Header: React.FC<HeaderProps> = ({
                       setIsUserMenuOpen(false);
                       onLogout();
                     }}
-                    className="w-full p-2.5 rounded-2xl hover:bg-coral/10 text-left transition-colors flex items-center gap-3 text-xs text-coral font-bold cursor-pointer group"
+                    className="w-full p-2.5 rounded-2xl hover:bg-coral/10 text-left transition-colors flex items-center gap-3 text-xs text-error font-bold cursor-pointer group"
                   >
-                    <div className="p-2 rounded-xl bg-coral/10 text-coral group-hover:bg-coral/20 transition-colors">
+                    <div className="p-2 rounded-xl bg-coral/10 text-error group-hover:bg-coral/20 transition-colors">
                       <LogOut className="w-4 h-4" />
                     </div>
                     <span>Cerrar sesión</span>

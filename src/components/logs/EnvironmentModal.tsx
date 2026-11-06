@@ -182,7 +182,7 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
       >
         <div className="flex items-center justify-between pb-4 border-b border-line mb-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-warn-line/20 text-coral">
+            <div className="p-3 rounded-2xl bg-warn-line/20 text-error">
               <Thermometer className="w-6 h-6" />
             </div>
             <div>
@@ -200,7 +200,7 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
         </div>
 
         {error && (
-          <div className="mb-4 p-3.5 rounded-2xl bg-coral/10 border border-coral/30 text-coral text-xs font-semibold">
+          <div className="mb-4 p-3.5 rounded-2xl bg-coral/10 border border-coral/30 text-error text-xs font-semibold">
             {error}
           </div>
         )}
@@ -272,9 +272,9 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
               {weatherError && (
                 <div
                   id="env-weather-error-box"
-                  className="p-3 rounded-2xl bg-coral/10 border border-coral/30 text-coral text-xs font-medium flex items-start gap-2 animate-in fade-in"
+                  className="p-3 rounded-2xl bg-coral/10 border border-coral/30 text-error text-xs font-medium flex items-start gap-2 animate-in fade-in"
                 >
-                  <AlertCircle className="w-4 h-4 shrink-0 text-coral mt-0.5" />
+                  <AlertCircle className="w-4 h-4 shrink-0 text-error mt-0.5" />
                   <span>{weatherError}</span>
                 </div>
               )}
@@ -297,7 +297,7 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
                     onChange={(e) => setTemperatureC(e.target.value === '' ? '' : parseFloat(e.target.value))}
                     className="w-full px-3.5 py-2.5 rounded-2xl bg-white border border-line font-black text-base text-ink focus:outline-hidden focus:border-coral focus:ring-1 focus:ring-coral/30 pr-8"
                   />
-                  <span className="absolute right-3 top-2.5 text-xs font-bold text-coral">°C</span>
+                  <span className="absolute right-3 top-2.5 text-xs font-bold text-error">°C</span>
                 </div>
               </div>
 

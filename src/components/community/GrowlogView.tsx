@@ -264,7 +264,7 @@ export const GrowlogView: React.FC<Props> = ({ growlogId, userId, onBack, onOpen
           <small className="block text-[10px] text-ink-muted">vistas</small>
         </div>
         <button type="button" id="growlog-like" aria-pressed={viewer.liked} onClick={toggleLike} className={`cultiveta-card p-2.5 ${viewer.liked ? 'ring-2 ring-coral' : ''}`}>
-          <Heart className={`w-4 h-4 mx-auto ${viewer.liked ? 'text-coral fill-coral' : 'text-brand'}`} aria-hidden="true" />
+          <Heart className={`w-4 h-4 mx-auto ${viewer.liked ? 'text-error fill-coral' : 'text-brand'}`} aria-hidden="true" />
           <b className="block text-base font-black text-ink leading-tight">{kfmt(g.likes)}</b>
           <small className="block text-[10px] text-ink-muted">me gusta</small>
         </button>
@@ -280,7 +280,7 @@ export const GrowlogView: React.FC<Props> = ({ growlogId, userId, onBack, onOpen
         </button>
       </div>
 
-      <div role="tablist" aria-label="Secciones" className="flex overflow-x-auto p-1 rounded-2xl bg-white/15 gap-1 [scrollbar-width:none]">
+      <div role="tablist" aria-label="Secciones" className="flex overflow-x-auto p-1 rounded-2xl bg-brand-deep/55 gap-1 [scrollbar-width:none]">
         {(Object.keys(tabs) as Tab[]).map((t) => (
           <button
             key={t}

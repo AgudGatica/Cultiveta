@@ -138,7 +138,7 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
     isHealthy: true,
     hint: 'Todo en orden por acá',
     badgeBg: 'bg-ok/15',
-    textColor: 'text-ok',
+    textColor: 'text-ok-ink',
   };
 
   if (isFinished) {
@@ -164,7 +164,7 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
       isHealthy: false,
       hint: `${tempVal}°C · ${humVal}% HR`,
       badgeBg: 'bg-coral/15',
-      textColor: 'text-coral',
+      textColor: 'text-error',
     };
   }
 
@@ -235,7 +235,7 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
               e.stopPropagation();
               setIsDeleteModalOpen(true);
             }}
-            className="p-2 rounded-xl text-ink-subtle hover:text-coral hover:bg-coral/10 transition-colors cursor-pointer shrink-0"
+            className="p-2 rounded-xl text-ink-subtle hover:text-error hover:bg-coral/10 transition-colors cursor-pointer shrink-0"
             title="Eliminar cultivo"
           >
             <Trash2 className="w-4 h-4" />
@@ -303,7 +303,7 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
             if (onQuickWater) onQuickWater(cultivation);
           }}
           disabled={isFinished}
-          className={`flex-1 py-2 px-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${isFinished ? 'opacity-40 cursor-not-allowed bg-stone-100 text-stone-400 border-stone-200' : 'bg-ok/10 hover:bg-ok/20 text-ok border-ok/20 active:scale-95'}`}
+          className={`flex-1 py-2 px-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${isFinished ? 'opacity-40 cursor-not-allowed bg-stone-100 text-stone-400 border-stone-200' : 'bg-ok/10 hover:bg-ok/20 text-ok-ink border-ok/20 active:scale-95'}`}
           title="Registrar riego rápido"
         >
           <Droplets className="w-3.5 h-3.5 shrink-0" />

@@ -182,7 +182,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
         <div>
           <div className="flex items-center gap-2">
             <h3 className="font-extrabold text-base sm:text-lg text-ink">Galería Cronológica de Fotos 📸</h3>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-ok/15 text-ok border border-ok/30">
+            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-ok/15 text-ok-ink border border-ok/30">
               {photos.length}
             </span>
           </div>
@@ -227,7 +227,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
               {uploadingPhotos.length > 0 || savingMetaPhotos.length > 0 ? (
                 <Loader2 className="w-5 h-5 animate-spin text-brand" />
               ) : failedPhotos.length > 0 ? (
-                <AlertTriangle className="w-5 h-5 text-coral" />
+                <AlertTriangle className="w-5 h-5 text-error" />
               ) : (
                 <HardDrive className="w-5 h-5 text-ink" />
               )}
@@ -238,7 +238,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                   {queuedPhotos.length} fotografía{queuedPhotos.length === 1 ? '' : 's'} guardada{queuedPhotos.length === 1 ? '' : 's'} en este dispositivo
                 </p>
                 {failedPhotos.length > 0 && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-coral/20 text-coral border border-coral/30">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-coral/20 text-error border border-coral/30">
                     {failedPhotos.length} requiere atención
                   </span>
                 )}
@@ -249,7 +249,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                   </span>
                 )}
                 {savingMetaPhotos.length > 0 && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-ok/20 text-ok border border-ok/30 flex items-center gap-1">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-ok/20 text-ok-ink border border-ok/30 flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" />
                     Confirmando en servidor
                   </span>
@@ -394,9 +394,9 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                   {isSynced && (
                     <div
                       title="Fotografía confirmada en Storage y Firestore"
-                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-ok/20 backdrop-blur-xs text-ok border border-ok/40 text-[10px] font-bold flex items-center gap-1 shadow-2xs"
+                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-ok/20 backdrop-blur-xs text-ok-ink border border-ok/40 text-[10px] font-bold flex items-center gap-1 shadow-2xs"
                     >
-                      <Cloud className="w-3 h-3 text-ok" />
+                      <Cloud className="w-3 h-3 text-ok-ink" />
                       <span>Sincronizada</span>
                     </div>
                   )}
@@ -414,9 +414,9 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                   {isSavingMeta && (
                     <div
                       title="Subida a Storage finalizada. Confirmando en servidor..."
-                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-ok/20 backdrop-blur-xs text-ok border border-ok/30 text-[10px] font-bold flex items-center gap-1 shadow-2xs"
+                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-ok/20 backdrop-blur-xs text-ok-ink border border-ok/30 text-[10px] font-bold flex items-center gap-1 shadow-2xs"
                     >
-                      <Loader2 className="w-3 h-3 text-ok animate-spin" />
+                      <Loader2 className="w-3 h-3 text-ok-ink animate-spin" />
                       <span>Pendiente de confirmación</span>
                     </div>
                   )}
@@ -434,9 +434,9 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                   {isFailed && (
                     <div
                       title={`Fallo de sincronización: ${queueItem?.lastError || photo.syncError || 'Desconocido'}`}
-                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-coral/20 backdrop-blur-xs text-coral border border-coral/40 text-[10px] font-bold flex items-center gap-1 shadow-2xs"
+                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-coral/20 backdrop-blur-xs text-error border border-coral/40 text-[10px] font-bold flex items-center gap-1 shadow-2xs"
                     >
-                      <AlertTriangle className="w-3 h-3 text-coral" />
+                      <AlertTriangle className="w-3 h-3 text-error" />
                       <span>Requiere atención</span>
                     </div>
                   )}
@@ -502,7 +502,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
 
                   {/* Si falló o está pendiente, mostrar opciones de reintento, diagnóstico y exportación */}
                   {isFailed && (
-                    <div className="p-2 rounded-2xl bg-coral/10 border border-coral/20 text-coral text-[11px] space-y-1.5">
+                    <div className="p-2 rounded-2xl bg-coral/10 border border-coral/20 text-error text-[11px] space-y-1.5">
                       <p className="line-clamp-1 font-mono text-[10px]">
                         {queueItem?.lastError || photo.syncError || 'Error de sincronización'}
                       </p>
@@ -510,7 +510,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                         <button
                           type="button"
                           onClick={() => handleRetryPhoto(photo.id)}
-                          className="px-2 py-1 rounded-lg bg-coral hover:bg-[#d66450] text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                          className="px-2 py-1 rounded-lg bg-error hover:brightness-95 text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer"
                         >
                           <RotateCcw className="w-3 h-3" />
                           <span>Reintentar</span>
@@ -578,7 +578,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                             }
                             onDeletePhoto(photo.id);
                           }}
-                          className="text-ink-subtle hover:text-coral transition-colors p-1 cursor-pointer"
+                          className="text-ink-subtle hover:text-error transition-colors p-1 cursor-pointer"
                           title="Eliminar foto"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -622,10 +622,10 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
               <div><span className="text-ink-subtle">Tiempo activo:</span> {diagnosticInfo.elapsedSeconds ? `${diagnosticInfo.elapsedSeconds}s` : '0s'}</div>
               <div><span className="text-ink-subtle">Intentos:</span> {diagnosticInfo.retryCount}</div>
               {diagnosticInfo.lastErrorCode && (
-                <div><span className="text-ink-subtle">Código SDK:</span> <span className="text-coral">{diagnosticInfo.lastErrorCode}</span></div>
+                <div><span className="text-ink-subtle">Código SDK:</span> <span className="text-error">{diagnosticInfo.lastErrorCode}</span></div>
               )}
               {diagnosticInfo.lastError && (
-                <div><span className="text-ink-subtle">Mensaje:</span> <span className="text-coral">{diagnosticInfo.lastError}</span></div>
+                <div><span className="text-ink-subtle">Mensaje:</span> <span className="text-error">{diagnosticInfo.lastError}</span></div>
               )}
               <div className="pt-2 border-t border-line mt-2 text-[11px] text-ink-muted space-y-0.5">
                 <div><span className="text-ink-subtle">Proyecto:</span> {diagnosticInfo.effectiveProjectId}</div>
@@ -641,7 +641,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                 onClick={handleCopyDiagnostic}
                 className="px-3 py-1.5 rounded-xl bg-white hover:bg-track text-ink text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border border-line"
               >
-                {copyFeedback ? <Check className="w-3.5 h-3.5 text-ok" /> : <Copy className="w-3.5 h-3.5 text-brand" />}
+                {copyFeedback ? <Check className="w-3.5 h-3.5 text-ok-ink" /> : <Copy className="w-3.5 h-3.5 text-brand" />}
                 <span>{copyFeedback ? 'Copiado al portapapeles' : 'Copiar Diagnóstico'}</span>
               </button>
 

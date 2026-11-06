@@ -105,13 +105,13 @@ export const HarvestProjectionSection: React.FC<HarvestProjectionSectionProps> =
             </span>
             <div className="flex items-center gap-2 mt-1">
               {schedule.hasStageAdjustments ? (
-                <span className="text-base font-extrabold text-coral flex items-center gap-1.5">
-                  <AlertCircle className="w-4 h-4 text-coral" />
+                <span className="text-base font-extrabold text-error flex items-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 text-error" />
                   <span>{schedule.adjustmentDeltaDays > 0 ? `+${schedule.adjustmentDeltaDays}d de ajuste` : `${schedule.adjustmentDeltaDays}d de ajuste`}</span>
                 </span>
               ) : (
-                <span className="text-base font-extrabold text-ok flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-ok" />
+                <span className="text-base font-extrabold text-ok-ink flex items-center gap-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-ok-ink" />
                   <span>Cronograma alineado</span>
                 </span>
               )}

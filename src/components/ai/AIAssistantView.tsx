@@ -356,13 +356,13 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
 
               {condensedSummary.alerts.length > 0 && (
                 <div className="mt-2 pt-1 flex flex-wrap items-center gap-1.5">
-                  <span className="text-[10px] font-bold text-coral uppercase">Alertas clave:</span>
+                  <span className="text-[10px] font-bold text-error uppercase">Alertas clave:</span>
                   {condensedSummary.alerts.map((alt, idx) => (
                     <span
                       key={idx}
-                      className="inline-flex items-center gap-1 text-[11px] bg-coral/15 text-coral border border-coral/30 px-2.5 py-0.5 rounded-full font-bold"
+                      className="inline-flex items-center gap-1 text-[11px] bg-coral/15 text-error border border-coral/30 px-2.5 py-0.5 rounded-full font-bold"
                     >
-                      <AlertTriangle className="w-3 h-3 text-coral shrink-0" />
+                      <AlertTriangle className="w-3 h-3 text-error shrink-0" />
                       {alt}
                     </span>
                   ))}

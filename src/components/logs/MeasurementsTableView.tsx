@@ -191,14 +191,14 @@ export const MeasurementsTableView: React.FC<MeasurementsTableViewProps> = ({
                   <td className="py-2.5 px-3 text-ink-muted font-semibold">Día {r.day}</td>
                   <td className="py-2.5 px-3">
                     {r.type === 'watering' ? (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-ok/15 text-ok border border-ok/30">
-                        <Droplets className="w-3 h-3 text-ok" />
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-ok/15 text-ok-ink border border-ok/30">
+                        <Droplets className="w-3 h-3 text-ok-ink" />
                         Riego
                       </span>
                     ) : (
                       <div className="flex flex-col gap-1 items-start">
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-warn-line/20 text-ink border border-warn-line/40">
-                          <Thermometer className="w-3 h-3 text-coral" />
+                          <Thermometer className="w-3 h-3 text-error" />
                           Ambiente
                         </span>
                         {r.isAutoLogged ? (
@@ -215,7 +215,7 @@ export const MeasurementsTableView: React.FC<MeasurementsTableViewProps> = ({
                   </td>
                   <td className="py-2.5 px-3 font-bold text-ink">{r.phIn ?? '—'}</td>
                   <td className="py-2.5 px-3 font-bold text-ink">{r.ecIn ?? '—'}</td>
-                  <td className="py-2.5 px-3 font-extrabold text-ok">
+                  <td className="py-2.5 px-3 font-extrabold text-ok-ink">
                     {r.volumeLiters ? `${r.volumeLiters} L` : '—'}
                   </td>
                   <td className="py-2.5 px-3 font-bold text-ink">
@@ -253,7 +253,7 @@ export const MeasurementsTableView: React.FC<MeasurementsTableViewProps> = ({
                   <span className="text-ink-subtle font-semibold">· Día {r.day}</span>
                 </div>
                 {r.type === 'watering' ? (
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-ok/15 text-ok border border-ok/30">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-ok/15 text-ok-ink border border-ok/30">
                     💧 Riego
                   </span>
                 ) : (
@@ -278,7 +278,7 @@ export const MeasurementsTableView: React.FC<MeasurementsTableViewProps> = ({
                 <div className="grid grid-cols-3 gap-2 bg-white p-2.5 rounded-xl border border-line text-center font-bold">
                   <div>
                     <span className="text-[10px] text-ink-subtle block font-normal">Volumen</span>
-                    <span className="text-ok font-extrabold">{r.volumeLiters} L</span>
+                    <span className="text-ok-ink font-extrabold">{r.volumeLiters} L</span>
                   </div>
                   <div>
                     <span className="text-[10px] text-ink-subtle block font-normal">pH In</span>

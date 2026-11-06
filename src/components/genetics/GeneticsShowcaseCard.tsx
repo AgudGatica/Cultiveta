@@ -49,7 +49,7 @@ export const GeneticsShowcaseCard: React.FC<GeneticsShowcaseCardProps> = ({
       )}
 
       <div className="absolute left-4 top-4 z-10 flex flex-col items-start gap-1 max-w-[85%] pointer-events-none">
-        <h2 className="text-[18px] sm:text-[20px] font-black uppercase leading-none text-white drop-shadow-[0_2px_3px_rgba(0,0,0,0.35)] truncate max-w-full">
+        <h2 className={`text-[18px] sm:text-[20px] font-black uppercase leading-none truncate max-w-full ${photoUrl ? 'text-white drop-shadow-[0_2px_3px_rgba(0,0,0,0.35)]' : 'text-ink'}`}>
           {name}
         </h2>
         {seedBank && (

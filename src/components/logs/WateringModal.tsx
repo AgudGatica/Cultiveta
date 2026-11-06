@@ -3,7 +3,7 @@ import { X, Droplets, Plus, Trash2, Save, FlaskConical, ChevronDown, Plug } from
 import { Cultivation, Watering, WateringProductItem, FertilizationSchedule, PotLiftFeeling, DrainageLevel } from '../../types';
 import { wateringService } from '../../services/wateringService';
 import { fertilizationService } from '../../services/fertilizationService';
-import { getLocalTodayDateOnly } from '../../utils/growthStageUtils';
+import { addDays, getLocalTodayDateOnly, parseLocalDate } from '../../utils/growthStageUtils';
 import { checkReading, feedTargetFor, num, type FeedRange } from '../../utils/feedTargets';
 import { growMethodOf } from '../../utils/growMethod';
 import { FeedTableDetails } from '../cultivations/FeedTable';
@@ -30,7 +30,7 @@ const ReadingHint: React.FC<{ id: string; value: number | ''; range: FeedRange }
   if (value === '' || !Number.isFinite(value)) return null;
   const c = checkReading(Number(value), range);
   return (
-    <p id={id} data-check={c} className={`mt-1 text-[11px] font-bold ${c === 'bien' ? 'text-ok-ink' : 'text-coral'}`}>
+    <p id={id} data-check={c} className={`mt-1 text-[11px] font-bold ${c === 'bien' ? 'text-ok-ink' : 'text-error'}`}>
       {c === 'bien' ? 'Bien, está en el rango.' : `${c === 'alto' ? 'Alto' : 'Bajo'}: apuntá a ${num(range.target)}.`}
     </p>
   );
@@ -61,6 +61,19 @@ const chipClass = (selected: boolean) =>
 
 const parseNumber = (value: string): number | '' => (value === '' ? '' : parseFloat(value));
 
+/** "Hoy, 19:41", "Ayer, 10:00" o "3 nov, 10:00". */
+export function whenText(date: string, time: string, today: string = getLocalTodayDateOnly()): string {
+  const day =
+    date === today
+      ? 'Hoy'
+      : date === addDays(today, -1)
+      ? 'Ayer'
+      : date
+      ? parseLocalDate(date)?.toLocaleDateString('es-AR', { day: 'numeric', month: 'short' }).replace('.', '') || date
+      : 'Sin fecha';
+  return time ? `${day}, ${time}` : day;
+}
+
 export const WateringModal: React.FC<WateringModalProps> = ({
   isOpen,
   onClose,
@@ -77,6 +90,8 @@ export const WateringModal: React.FC<WateringModalProps> = ({
 }) => {
   const [cultivationId, setCultivationId] = useState(defaultCultivationId || (cultivations[0]?.id || ''));
   const [date, setDate] = useState(getLocalTodayDateOnly());
+  // Casi siempre se anota en el momento: fecha y hora quedan en una línea, y se abren si hace falta
+  const [editingWhen, setEditingWhen] = useState(false);
   const [time, setTime] = useState(
     new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
   );
@@ -275,53 +290,24 @@ export const WateringModal: React.FC<WateringModalProps> = ({
         )}
 
         <form onSubmit={handleSubmit} className="space-y-5 max-h-[70vh] overflow-y-auto pr-1" noValidate>
-          {/* Cultivo, fecha y hora */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="sm:col-span-2">
-              <label htmlFor="watering-crop-select" className="block text-sm font-bold text-ink mb-1">
-                Cultivo
-              </label>
-              <select
-                id="watering-crop-select"
-                value={cultivationId}
-                onChange={(e) => setCultivationId(e.target.value)}
-                required
-                className={`${fieldClass} cursor-pointer font-medium`}
-              >
-                {cultivations.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} ({c.currentStage})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="watering-date-input" className="block text-sm font-bold text-ink mb-1">
-                Fecha
-              </label>
-              <input
-                id="watering-date-input"
-                type="date"
-                required
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className={fieldClass}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="watering-time-input" className="block text-sm font-bold text-ink mb-1">
-                Hora
-              </label>
-              <input
-                id="watering-time-input"
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className={fieldClass}
-              />
-            </div>
+          {/* Cultivo */}
+          <div>
+            <label htmlFor="watering-crop-select" className="block text-sm font-bold text-ink mb-1">
+              Cultivo
+            </label>
+            <select
+              id="watering-crop-select"
+              value={cultivationId}
+              onChange={(e) => setCultivationId(e.target.value)}
+              required
+              className={`${fieldClass} cursor-pointer font-medium`}
+            >
+              {cultivations.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} ({c.currentStage})
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Cantidad */}
@@ -346,6 +332,52 @@ export const WateringModal: React.FC<WateringModalProps> = ({
               onChange={(e) => setVolumeLiters(parseNumber(e.target.value))}
               className={`${fieldClass} font-black`}
             />
+          </div>
+
+          {/* Cuándo: en una línea, salvo que se quiera cambiar */}
+          <div className="space-y-2">
+            <div id="watering-when" className="flex items-center justify-between gap-2 min-h-11 pl-3.5 pr-1 rounded-2xl bg-surface border border-line">
+              <span className="text-sm text-ink min-w-0 truncate">
+                <span className="font-bold">Cuándo:</span> {whenText(date, time)}
+              </span>
+              <button
+                type="button"
+                id="watering-when-toggle"
+                aria-expanded={editingWhen}
+                aria-controls="watering-when-fields"
+                onClick={() => setEditingWhen((v) => !v)}
+                className="min-h-11 px-3 text-sm font-bold text-brand shrink-0 cursor-pointer"
+              >
+                {editingWhen ? 'Listo' : 'Cambiar'}
+              </button>
+            </div>
+            <div id="watering-when-fields" hidden={!editingWhen} className={editingWhen ? 'grid grid-cols-2 gap-3' : undefined}>
+              <div>
+                <label htmlFor="watering-date-input" className="block text-sm font-bold text-ink mb-1">
+                  Fecha
+                </label>
+                <input
+                  id="watering-date-input"
+                  type="date"
+                  required
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className={fieldClass}
+                />
+              </div>
+              <div>
+                <label htmlFor="watering-time-input" className="block text-sm font-bold text-ink mb-1">
+                  Hora
+                </label>
+                <input
+                  id="watering-time-input"
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className={fieldClass}
+                />
+              </div>
+            </div>
           </div>
 
           {/* Con qué */}
@@ -669,16 +701,6 @@ export const WateringModal: React.FC<WateringModalProps> = ({
           </div>
           )}
 
-          {/* Acciones */}
-          <div className="pt-3 border-t border-line flex items-center justify-end gap-3">
-            <button type="button" onClick={onClose} className="cultiveta-btn-secondary text-sm">
-              Cancelar
-            </button>
-            <button type="submit" id="save-watering-btn" disabled={loading} className="cultiveta-btn-primary text-sm disabled:opacity-50">
-              <Save className="w-4 h-4" aria-hidden="true" />
-              <span>Guardar riego</span>
-            </button>
-          </div>
           {onConnectDevice && (
             <button
               type="button"
@@ -693,6 +715,17 @@ export const WateringModal: React.FC<WateringModalProps> = ({
               <span className="font-medium text-ink-subtle">· riega y mide solo</span>
             </button>
           )}
+
+          {/* Acciones: siempre a la vista, aunque la lista de campos sea larga */}
+          <div id="watering-actions" className="sticky bottom-0 z-10 -mx-1 px-1 pt-3 pb-1 bg-card border-t border-line flex items-center justify-end gap-3">
+            <button type="button" onClick={onClose} className="cultiveta-btn-secondary text-sm">
+              Cancelar
+            </button>
+            <button type="submit" id="save-watering-btn" disabled={loading} className="cultiveta-btn-primary text-sm flex-1 sm:flex-none disabled:opacity-50">
+              <Save className="w-4 h-4" aria-hidden="true" />
+              <span>{tank ? 'Guardar control' : 'Guardar riego'}</span>
+            </button>
+          </div>
         </form>
       </div>
     </div>

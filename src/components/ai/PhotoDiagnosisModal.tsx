@@ -152,12 +152,12 @@ export const PhotoDiagnosisModal: React.FC<PhotoDiagnosisModalProps> = ({
         ) : error ? (
           /* Estado "No se pudo analizar" claro, con la foto conservada intacta */
           <div className="p-6 rounded-3xl bg-coral/10 border border-coral/30 text-center space-y-3.5 my-4">
-            <div className="w-12 h-12 rounded-2xl bg-coral/20 text-coral flex items-center justify-center mx-auto border border-coral/30">
+            <div className="w-12 h-12 rounded-2xl bg-coral/20 text-error flex items-center justify-center mx-auto border border-coral/30">
               <AlertTriangle className="w-6 h-6" />
             </div>
             <div>
               <h4 className="font-bold text-ink text-sm">No se pudo analizar</h4>
-              <p className="text-xs text-coral max-w-md mx-auto mt-1 font-semibold">{error}</p>
+              <p className="text-xs text-error max-w-md mx-auto mt-1 font-semibold">{error}</p>
               <p className="text-[11px] text-ink-muted mt-2">
                 Tu fotografía original está respaldada y se conserva en el historial. Podés reintentar el análisis en cualquier momento.
               </p>
@@ -173,7 +173,7 @@ export const PhotoDiagnosisModal: React.FC<PhotoDiagnosisModalProps> = ({
               <button
                 type="button"
                 onClick={runDiagnosis}
-                className="px-4 py-2.5 rounded-2xl bg-coral hover:bg-[#d66450] text-white text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+                className="px-4 py-2.5 rounded-2xl bg-error hover:brightness-95 text-white text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
               >
                 <RotateCcw className="w-3.5 h-3.5" />
                 <span>Reintentar análisis</span>
@@ -201,10 +201,10 @@ export const PhotoDiagnosisModal: React.FC<PhotoDiagnosisModalProps> = ({
                     <span
                       className={`px-3 py-0.5 rounded-full text-xs font-extrabold ${
                         analysisResult.severity === 'Alta'
-                          ? 'bg-coral/20 text-coral border border-coral/30'
+                          ? 'bg-coral/20 text-error border border-coral/30'
                           : analysisResult.severity === 'Media'
                           ? 'bg-warn-line/30 text-ink border border-warn-line/50'
-                          : 'bg-ok/20 text-ok border border-ok/30'
+                          : 'bg-ok/20 text-ok-ink border border-ok/30'
                       }`}
                     >
                       Severidad: {analysisResult.severity}
@@ -261,13 +261,13 @@ export const PhotoDiagnosisModal: React.FC<PhotoDiagnosisModalProps> = ({
                 disabled={savingNote || noteSaved}
                 className={`px-5 py-2.5 rounded-2xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-xs ${
                   noteSaved
-                    ? 'bg-ok/20 text-ok border border-ok/30'
+                    ? 'bg-ok/20 text-ok-ink border border-ok/30'
                     : 'bg-brand hover:bg-brand-deep text-white'
                 }`}
               >
                 {noteSaved ? (
                   <>
-                    <CheckCircle2 className="w-4 h-4 text-ok" />
+                    <CheckCircle2 className="w-4 h-4 text-ok-ink" />
                     <span>Guardado en el Diario de Cultivo</span>
                   </>
                 ) : (

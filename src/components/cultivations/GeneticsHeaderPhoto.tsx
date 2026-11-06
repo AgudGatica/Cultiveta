@@ -81,7 +81,7 @@ export const GeneticsHeaderPhoto: React.FC<GeneticsHeaderPhotoProps> = ({
             data-testid="multiple-genetics-badge"
             className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-lg bg-black/70 backdrop-blur-xs text-white text-[9px] font-bold flex items-center gap-1 shadow-xs"
           >
-            <Layers className="w-3 h-3 text-ok" />
+            <Layers className="w-3 h-3 text-ok-ink" />
             <span>
               {individualGeneticsPhotos.length > 0
                 ? `${individualGeneticsPhotos[0].name}${individualGeneticsPhotos.length > 1 ? ` +${resolution.totalGeneticsCount - 1}` : ''}`

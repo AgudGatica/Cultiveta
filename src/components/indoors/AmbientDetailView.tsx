@@ -119,7 +119,7 @@ export const AmbientDetailView: React.FC<AmbientDetailViewProps> = ({
 
   return (
     <div id="ambient-detail" className="space-y-4 max-w-3xl mx-auto">
-      <button type="button" onClick={onBack} className="inline-flex items-center gap-1.5 text-sm font-bold text-white hover:underline">
+      <button type="button" onClick={onBack} className="cultiveta-back-pill">
         <ArrowLeft className="w-4 h-4" aria-hidden="true" />
         Jardín
       </button>
@@ -130,7 +130,7 @@ export const AmbientDetailView: React.FC<AmbientDetailViewProps> = ({
           <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
           <div className="absolute left-4 right-4 bottom-3 flex items-end justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[11px] font-bold text-white/85">
+              <p className="text-[11px] font-bold text-white cultiveta-on-gradient">
                 {exterior ? 'Exterior' : 'Interior'} · {INDOOR_KINDS[ambient.kind] || 'Ambiente'}
                 {size ? ` · ${size}` : ''}
               </p>
@@ -221,7 +221,7 @@ export const AmbientDetailView: React.FC<AmbientDetailViewProps> = ({
 
       <section id="ambient-genetics" className="space-y-3">
         <div className="flex items-center justify-between gap-2 px-1">
-          <h2 className="text-lg font-extrabold text-white flex items-center gap-2">
+          <h2 className="text-lg font-extrabold text-white cultiveta-on-gradient flex items-center gap-2">
             <Dna className="w-5 h-5" aria-hidden="true" />
             Genéticas{entries.length ? ` (${entries.length})` : ''}
           </h2>

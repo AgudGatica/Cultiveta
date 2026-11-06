@@ -17,7 +17,7 @@ export const HydroTankCard: React.FC<{ status: TankStatus; onCheck?: () => void;
     return (
       <div className="rounded-2xl bg-surface border border-line p-2.5 text-center">
         <small className="block text-[10px] font-semibold text-ink-muted">{label}</small>
-        <b id={id} data-out={out} className={`block text-xl font-black leading-tight ${out ? 'text-coral' : 'text-ink'}`}>
+        <b id={id} data-out={out} className={`block text-xl font-black leading-tight ${out ? 'text-error' : 'text-ink'}`}>
           {value === null ? '—' : num(value)}
           {value !== null && unit && <small className="text-xs">{unit}</small>}
         </b>

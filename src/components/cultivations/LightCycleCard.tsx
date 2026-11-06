@@ -249,7 +249,7 @@ export const LightCycleCard: React.FC<LightCycleCardProps> = ({ cultivation, sha
         Luz · {title}
       </span>
       {device && device.online === false ? (
-        <span id="light-state-pill" className="px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider bg-coral/15 text-coral">
+        <span id="light-state-pill" className="px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider bg-coral/15 text-error">
           SIN CONEXIÓN
         </span>
       ) : (deviceOn != null || (state && state.started)) ? (

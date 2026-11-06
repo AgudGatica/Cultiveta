@@ -191,29 +191,30 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
         </div>
       </section>
 
-      <div className="flex gap-2">
-        <button type="button" id="genetic-water" onClick={() => onWater(crop)} className="cultiveta-btn-primary text-sm flex-1 justify-center">
+      {/* Los botones se reparten el ancho: en un celular angosto nada se corta ni ensancha la pantalla */}
+      <div id="genetic-actions" className="flex gap-2">
+        <button type="button" id="genetic-water" onClick={() => onWater(crop)} className="cultiveta-btn-primary cultiveta-btn-row text-sm">
           <Droplets className="w-4 h-4" aria-hidden="true" />
           {tank ? 'Control del tanque' : 'Anotar riego'}
         </button>
         {nextStage && (
-          <button type="button" id="genetic-change-stage" onClick={() => setStageModal(true)} className="cultiveta-btn-secondary text-sm">
+          <button type="button" id="genetic-change-stage" onClick={() => setStageModal(true)} className="cultiveta-btn-secondary cultiveta-btn-row text-sm">
             <Flag className="w-4 h-4" aria-hidden="true" />
             Cambiar etapa
           </button>
         )}
-        <button type="button" id="genetic-share" onClick={() => setSharing(true)} aria-label="Compartir en la comunidad" className="cultiveta-btn-secondary text-sm">
+        <button type="button" id="genetic-share" onClick={() => setSharing(true)} aria-label="Compartir en la comunidad" className="cultiveta-btn-secondary cultiveta-btn-row text-sm">
           <Share2 className="w-4 h-4" aria-hidden="true" />
           {shared ? (shared.privacy === 'public' ? 'Público' : 'No listado') : 'Compartir'}
         </button>
       </div>
       {shared && onOpenGrowlog && (
-        <button type="button" id="genetic-open-growlog" onClick={() => onOpenGrowlog(shared.id)} className="w-full text-xs font-bold text-white/90 underline underline-offset-2">
+        <button type="button" id="genetic-open-growlog" onClick={() => onOpenGrowlog(shared.id)} className="w-full min-h-11 text-xs font-bold text-white cultiveta-on-gradient underline underline-offset-2">
           Ver cómo lo ve la comunidad
         </button>
       )}
 
-      <div role="tablist" aria-label="Secciones" className="grid grid-cols-3 p-1 rounded-2xl bg-white/15 gap-1">
+      <div role="tablist" aria-label="Secciones" className="grid grid-cols-3 p-1 rounded-2xl bg-brand-deep/55 gap-1">
         {(Object.keys(TABS) as Tab[]).map((t) => (
           <button
             key={t}

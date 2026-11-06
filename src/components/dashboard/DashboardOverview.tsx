@@ -108,7 +108,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   return (
     <div id="dashboard-overview" className="space-y-4 sm:space-y-5 dashboard-overview">
       {/* 1. Saludo */}
-      <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight pt-1">
+      <h1 className="text-2xl sm:text-3xl font-extrabold text-white cultiveta-on-gradient tracking-tight pt-1">
         {getGreeting()}, {firstName}
       </h1>
 
@@ -123,7 +123,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               type="button"
               onClick={onRefreshData}
               disabled={isSyncing}
-              className="min-h-11 px-3 rounded-xl bg-coral hover:brightness-95 text-white font-bold cursor-pointer text-xs shrink-0 disabled:opacity-50"
+              className="min-h-11 px-3 rounded-xl bg-error hover:brightness-95 text-white font-bold cursor-pointer text-xs shrink-0 disabled:opacity-50"
             >
               Reintentar
             </button>
@@ -152,6 +152,8 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             onSelectCultivation={onSelectCultivation}
             onOpenWateringModal={onOpenWateringModal}
             onTaskCompletedFeedback={onTaskCompletedFeedback}
+            indoors={indoors}
+            onOpenIndoor={onOpenIndoor}
           />
 
           {/* Avisos al celular: se ofrece una sola vez */}
@@ -181,7 +183,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             />
           ) : (
             <section aria-label="Tu jardín" className="space-y-3">
-              <div role="tablist" aria-label="Ver" className="grid grid-cols-2 p-1 rounded-2xl bg-white/15 gap-1">
+              <div role="tablist" aria-label="Ver" className="grid grid-cols-2 p-1 rounded-2xl bg-brand-deep/55 gap-1">
                 {(
                   [
                     ['ambientes', `Ambientes (${indoors.length})`, Home],
@@ -251,7 +253,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           {/* 5. Cultivos que todavía no están en un ambiente (se les arma uno solo) */}
           {loose.length > 0 && (
             <section id="home-loose-crops" aria-labelledby="home-loose-title" className="space-y-3">
-              <h2 id="home-loose-title" className="text-sm font-extrabold text-white/90 px-1">
+              <h2 id="home-loose-title" className="text-sm font-extrabold text-white cultiveta-on-gradient px-1">
                 Sin ambiente ({loose.length})
               </h2>
               <div id="home-crop-grid" className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

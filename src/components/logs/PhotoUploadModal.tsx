@@ -279,8 +279,8 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
         </div>
 
         {error && (
-          <div className="mb-4 p-3.5 rounded-2xl bg-coral/10 border border-coral/30 text-coral text-xs font-semibold flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0 text-coral" />
+          <div className="mb-4 p-3.5 rounded-2xl bg-coral/10 border border-coral/30 text-error text-xs font-semibold flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-error" />
             <span>{error}</span>
           </div>
         )}
@@ -307,7 +307,7 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
 
             <div>
               <label className="block text-xs font-bold text-ink mb-1">
-                Fecha de la foto * <span className="text-[11px] text-ok font-bold">(Día {computedDay})</span>
+                Fecha de la foto * <span className="text-[11px] text-ok-ink font-bold">(Día {computedDay})</span>
               </label>
               <div className="relative">
                 <input
@@ -383,7 +383,7 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
               ) : previewUrl ? (
                 <div className="flex flex-col items-center gap-2">
                   <img id="photo-preview" src={previewUrl} alt="Foto elegida" className="max-h-52 rounded-2xl object-contain border border-line shadow-xs" />
-                  <div className="flex items-center gap-2 text-xs font-bold text-ok">
+                  <div className="flex items-center gap-2 text-xs font-bold text-ok-ink">
                     <CheckCircle2 className="w-3.5 h-3.5" aria-hidden="true" />
                     <span>Lista para guardar ({(selectedFile ? selectedFile.size / 1024 : 0).toFixed(0)} KB)</span>
                   </div>

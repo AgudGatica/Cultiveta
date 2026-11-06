@@ -39,7 +39,7 @@ export const LevelCard: React.FC<LevelCardProps> = ({ progress, onClick }) => {
             {level.nextXp !== null ? `${level.xp} / ${level.nextXp} XP` : `${level.xp} XP · nivel máximo`}
           </span>
           <span className="inline-flex items-center gap-1 font-semibold">
-            <Flame className={`w-3.5 h-3.5 ${stats.streak > 0 ? 'text-coral' : 'text-ink-subtle'}`} />
+            <Flame className={`w-3.5 h-3.5 ${stats.streak > 0 ? 'text-error' : 'text-ink-subtle'}`} />
             {stats.streak === 1 ? '1 día de racha' : `${stats.streak} días de racha`}
           </span>
         </div>

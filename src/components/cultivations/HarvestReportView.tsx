@@ -26,7 +26,7 @@ export const HarvestReportView: React.FC<HarvestReportViewProps> = ({
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-2 text-xs font-bold text-stone-600 hover:text-emerald-800 transition-colors cursor-pointer"
+          className="cultiveta-back-pill"
         >
           <ArrowLeft className="w-4 h-4" />
           Volver a mis cultivos

@@ -67,7 +67,7 @@ export const WateringChart: React.FC<WateringChartProps> = ({
                   fontSize: '12px',
                 }}
               />
-              <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+              <Legend wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} formatter={(value) => <span style={{ color: 'var(--color-ink)' }}>{value}</span>} />
               <Line
                 yAxisId="ph"
                 type="monotone"

@@ -62,7 +62,7 @@ export const AmbientDevicesCard: React.FC<AmbientDevicesCardProps> = ({ devices,
                 </div>
                 <span
                   className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider ${
-                    b.online === false ? 'bg-coral/15 text-coral' : b.on ? 'bg-accent text-ink' : 'bg-brand-deep text-white'
+                    b.online === false ? 'bg-coral/15 text-error' : b.on ? 'bg-accent text-ink' : 'bg-brand-deep text-white'
                   }`}
                 >
                   {b.online === false ? 'SIN CONEXIÓN' : b.on ? 'PRENDIDO' : 'APAGADO'}

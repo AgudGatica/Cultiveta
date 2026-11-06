@@ -105,7 +105,7 @@ export const DiaryNoteModal: React.FC<DiaryNoteModalProps> = ({
         </div>
 
         {error && (
-          <div className="mb-4 p-3.5 rounded-2xl bg-coral/10 border border-coral/30 text-coral text-xs font-semibold">
+          <div className="mb-4 p-3.5 rounded-2xl bg-coral/10 border border-coral/30 text-error text-xs font-semibold">
             {error}
           </div>
         )}
@@ -174,14 +174,14 @@ export const DiaryNoteModal: React.FC<DiaryNoteModalProps> = ({
               {tags.map((t) => (
                 <span
                   key={t}
-                  className="px-2.5 py-1 rounded-full text-xs font-bold bg-ok/15 text-ok border border-ok/30 flex items-center gap-1.5"
+                  className="px-2.5 py-1 rounded-full text-xs font-bold bg-ok/15 text-ok-ink border border-ok/30 flex items-center gap-1.5"
                 >
-                  <Tag className="w-3 h-3 text-ok" />
+                  <Tag className="w-3 h-3 text-ok-ink" />
                   {t}
                   <button
                     type="button"
                     onClick={() => handleRemoveTag(t)}
-                    className="hover:text-coral cursor-pointer ml-0.5 text-sm leading-none"
+                    className="hover:text-error cursor-pointer ml-0.5 text-sm leading-none"
                   >
                     ×
                   </button>

@@ -140,7 +140,7 @@ export const GrowerView: React.FC<Props> = ({ handle, userId, onBack, onOpenGrow
           </div>
         )}
       </section>
-      <h2 className="text-lg font-black text-white">Growlogs</h2>
+      <h2 className="text-lg font-black text-white cultiveta-on-gradient">Growlogs</h2>
       {data.blocked ? (
         <p id="grower-blocked" className="bg-white rounded-[24px] border border-line p-5 text-sm text-ink-muted">
           Bloqueaste a @{p.handle}: no ves sus growlogs ni sus comentarios.

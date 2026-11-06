@@ -54,7 +54,7 @@ export const PushPromptCard: React.FC = () => {
   if (done) {
     return (
       <section id="home-push-prompt" data-state="done" className="cultiveta-card p-4 flex items-center gap-3">
-        <CheckCircle2 className="w-5 h-5 text-ok shrink-0" aria-hidden="true" />
+        <CheckCircle2 className="w-5 h-5 text-ok-ink shrink-0" aria-hidden="true" />
         <p className="text-sm font-semibold text-ink flex-1">Listo: te vamos a avisar. Lo cambiás cuando quieras en Ajustes.</p>
         <button type="button" onClick={() => setShow(false)} className="text-xs font-bold text-ink-muted min-h-9 px-2">
           Cerrar
@@ -82,7 +82,7 @@ export const PushPromptCard: React.FC = () => {
         </div>
       </div>
       {error && (
-        <p role="alert" className="text-xs font-semibold text-coral">
+        <p role="alert" className="text-xs font-semibold text-error">
           {error}
         </p>
       )}

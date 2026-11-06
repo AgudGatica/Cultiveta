@@ -198,7 +198,7 @@ export const CultivationsFilterBar: React.FC<CultivationsFilterBarProps> = ({
                     : 'bg-surface hover:bg-track border-chip-line text-ink-muted hover:text-ink'
                 }`}
               >
-                <span className={isSelected ? 'text-ok' : 'text-ink-subtle'}>{tab.icon}</span>
+                <span className={isSelected ? 'text-ok-ink' : 'text-ink-subtle'}>{tab.icon}</span>
                 <span>{tab.label}</span>
                 <span
                   className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
@@ -219,7 +219,7 @@ export const CultivationsFilterBar: React.FC<CultivationsFilterBarProps> = ({
           <span>
             Mostrando <strong className="text-ink">{totalFilteredCount}</strong> cultivo{totalFilteredCount !== 1 ? 's' : ''}
             {hasStageFilter && (
-              <> en etapa de <strong className="text-ok capitalize">{activeFilter}</strong></>
+              <> en etapa de <strong className="text-ok-ink capitalize">{activeFilter}</strong></>
             )}
             {hasSearch && (
               <> con búsqueda &quot;<strong className="text-ink">{searchQuery}</strong>&quot;</>

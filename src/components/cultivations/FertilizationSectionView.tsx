@@ -178,7 +178,7 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 rounded-full bg-ok/15 text-ok border border-ok/30 text-xs font-bold flex items-center gap-1.5">
+              <span className="px-3 py-1 rounded-full bg-ok/15 text-ok-ink border border-ok/30 text-xs font-bold flex items-center gap-1.5">
                 <FlaskConical className="w-3.5 h-3.5" />
                 Programa Nutricional Activo
               </span>
@@ -478,7 +478,7 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
                           </span>
                         </div>
                         <div className="text-right">
-                          <span className="text-xs font-extrabold text-ok block">
+                          <span className="text-xs font-extrabold text-ok-ink block">
                             {prod.dosageMlPerL} ml/L
                           </span>
                           <span className="text-[10px] text-ink/50">
@@ -528,11 +528,11 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
               onClick={() => setFilterMode('fertilized')}
               className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
                 filterMode === 'fertilized'
-                  ? 'bg-white text-ok shadow-2xs font-black'
+                  ? 'bg-white text-ok-ink shadow-2xs font-black'
                   : 'text-ink/60 hover:text-ink'
               }`}
             >
-              <FlaskConical className="w-3 h-3 text-ok" />
+              <FlaskConical className="w-3 h-3 text-ok-ink" />
               <span>Con Nutrición ({totalFertilizations})</span>
             </button>
             <button
@@ -574,7 +574,7 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
                       <div
                         className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
                           hasProducts
-                            ? 'bg-ok/15 text-ok'
+                            ? 'bg-ok/15 text-ok-ink'
                             : 'bg-brand/15 text-brand'
                         }`}
                       >
@@ -615,7 +615,7 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
                           {watering.ecRunoff && (
                             <>
                               <span>·</span>
-                              <span className="text-coral">
+                              <span className="text-error">
                                 EC Drenaje: <strong>{watering.ecRunoff} mS</strong>
                               </span>
                             </>
@@ -629,7 +629,7 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
                       onClick={() => setWateringToAssociate(watering)}
                       className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-ok/15 hover:text-ok-ink text-ink font-bold text-xs border border-chip-line hover:border-ok/50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs self-end sm:self-center"
                     >
-                      <Plus className="w-3.5 h-3.5 text-ok" />
+                      <Plus className="w-3.5 h-3.5 text-ok-ink" />
                       <span>{hasProducts ? 'Editar Nutrición' : 'Asociar Productos'}</span>
                     </button>
                   </div>
@@ -651,7 +651,7 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
                         >
                           <span className="font-bold">{prod.name}</span>
                           {prod.dosageMlPerL && (
-                            <span className="text-ok text-[10px] font-black bg-ok/10 px-1.5 py-0.5 rounded">
+                            <span className="text-ok-ink text-[10px] font-black bg-ok/10 px-1.5 py-0.5 rounded">
                               {prod.dosageMlPerL} ml/L
                             </span>
                           )}

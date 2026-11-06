@@ -101,7 +101,7 @@ export const AutoIrrigationEditor: React.FC<AutoIrrigationEditorProps> = ({ auto
             </label>
           )}
           {when === 'light' && !hasLightSchedule && (
-            <p className="text-[11px] font-bold text-coral">Este cultivo no tiene la hora de encendido de la luz: cargala en la tarjeta Luz para que riegue.</p>
+            <p className="text-[11px] font-bold text-error">Este cultivo no tiene la hora de encendido de la luz: cargala en la tarjeta Luz para que riegue.</p>
           )}
           <div className="grid grid-cols-3 gap-2">
             <label className="text-[11px] font-semibold text-ink-muted space-y-1">
@@ -147,7 +147,7 @@ export const AutoIrrigationEditor: React.FC<AutoIrrigationEditorProps> = ({ auto
               <input className={FIELD} inputMode="numeric" value={maxShots} onChange={(e) => setMaxShots(e.target.value)} aria-label="Riegos por día" />
             </label>
           </div>
-          {!hasSoilSensor && <p className="text-[11px] font-bold text-coral">Falta una sonda de sustrato asignada a este cultivo.</p>}
+          {!hasSoilSensor && <p className="text-[11px] font-bold text-error">Falta una sonda de sustrato asignada a este cultivo.</p>}
           <p className="text-[11px] text-ink-subtle">Con la luz apagada no riega: secarse de noche es parte del ciclo. Después de cada riego espera la pausa para que el agua baje.</p>
         </>
       )}

@@ -109,7 +109,7 @@ export const CropDevicesCard: React.FC<CropDevicesCardProps> = ({ cultivation, u
             </span>
           </div>
           {pump.online === false ? (
-            <p className="text-xs font-bold text-coral">El enchufe de la bomba no responde: no se puede regar.</p>
+            <p className="text-xs font-bold text-error">El enchufe de la bomba no responde: no se puede regar.</p>
           ) : watering ? (
             <div className="flex items-center justify-between gap-2">
               <p id="pump-watering" className="text-sm font-bold text-ink flex items-center gap-2">
@@ -173,7 +173,7 @@ export const CropDevicesCard: React.FC<CropDevicesCardProps> = ({ cultivation, u
             </span>
             <span
               className={`px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider ${
-                b.online === false ? 'bg-coral/15 text-coral' : b.on ? 'bg-accent text-ink' : 'bg-brand-deep text-white'
+                b.online === false ? 'bg-coral/15 text-error' : b.on ? 'bg-accent text-ink' : 'bg-brand-deep text-white'
               }`}
             >
               {b.online === false ? 'SIN CONEXIÓN' : b.on ? 'PRENDIDO' : 'APAGADO'}

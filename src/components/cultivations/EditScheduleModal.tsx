@@ -161,7 +161,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
         </div>
 
         {error && (
-          <div className="p-3.5 rounded-2xl bg-coral/10 border border-coral/30 text-coral text-xs flex items-center gap-2">
+          <div className="p-3.5 rounded-2xl bg-coral/10 border border-coral/30 text-error text-xs flex items-center gap-2">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{error}</span>
           </div>
@@ -274,7 +274,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                           e.stopPropagation();
                           handleRemoveWeek(wIdx);
                         }}
-                        className="p-1.5 text-ink/40 hover:text-coral rounded-lg transition-colors cursor-pointer"
+                        className="p-1.5 text-ink/40 hover:text-error rounded-lg transition-colors cursor-pointer"
                         title="Eliminar semana"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -395,7 +395,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveProductFromWeek(wIdx, pIdx)}
-                                  className="p-1 text-ink/40 hover:text-coral transition-colors cursor-pointer"
+                                  className="p-1 text-ink/40 hover:text-error transition-colors cursor-pointer"
                                   title="Quitar"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
