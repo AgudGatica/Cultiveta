@@ -34,7 +34,7 @@ export function scheduledWaterings(auto: AutoIrrigation, light: IrrigationLight 
   if (s.when === 'light') {
     if (!light) return [];
     const total = (light.lightHours + light.darkHours) * HOUR_MS;
-    if (!(total > 0)) return [];
+    if (!(total >= HOUR_MS)) return []; // un ciclo menor a una hora es un dato roto: no se calcula
     const onMs = light.lightHours * HOUR_MS;
     const off = Math.min(s.offsetMin * MIN_MS, onMs); // siempre dentro de las horas de luz
     // se engancha a cada encendido del horario: si cambia el fotoperiodo, sigue andando

@@ -87,7 +87,7 @@ export class TuyaCloud {
     this.secret = o.accessSecret;
     this.region = o.region || 'us';
     this.baseUrl = o.baseUrl || (TUYA_REGIONS[this.region] || TUYA_REGIONS.us).host;
-    this.fetchImpl = o.fetchImpl || ((url, init) => fetch(url, init) as any);
+    this.fetchImpl = o.fetchImpl || ((url, init) => fetch(url, { ...init, signal: AbortSignal.timeout(10_000) }) as any);
     this.now = o.now || Date.now;
   }
 

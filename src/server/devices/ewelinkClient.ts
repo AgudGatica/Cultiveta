@@ -73,7 +73,7 @@ export class EwelinkCloud implements DeviceCloud {
 
   constructor(o: { cfg: EwelinkConfig; fetchImpl?: FetchLike; now?: () => number; onChange?: (cfg: EwelinkConfig) => void }) {
     this.cfg = { ...o.cfg, mine: { ...(o.cfg.mine || {}) } };
-    this.fetchImpl = o.fetchImpl || ((url, init) => fetch(url, init) as any);
+    this.fetchImpl = o.fetchImpl || ((url, init) => fetch(url, { ...init, signal: AbortSignal.timeout(10_000) }) as any);
     this.now = o.now || Date.now;
     this.onChange = o.onChange || (() => {});
   }

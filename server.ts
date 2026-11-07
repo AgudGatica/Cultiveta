@@ -26,6 +26,7 @@ import { EwelinkError } from './src/server/devices/ewelinkClient';
 import { ShellyError } from './src/server/devices/shellyClient';
 import webpush from 'web-push';
 import { FirestorePushStore, MemoryPushStore, PushError, PushService, vapidKeysFromSecret, type ClimateAlertInput, type DayData, type PushSender } from './src/server/push/pushService';
+import { isCropFinished } from './src/utils/cropCardInfo';
 
 dotenv.config();
 
@@ -2345,6 +2346,13 @@ const deviceService = new DeviceService({
     const snap = await getFirebaseAdmin().firestore().collection(kind === 'indoor' ? 'indoors' : 'cultivations').doc(cultivationId).get();
     if (!snap.exists || snap.data()?.userId !== uid) throw new DeviceError(kind === 'indoor' ? 'El ambiente no pertenece a tu cuenta.' : 'El cultivo no pertenece a tu cuenta.', 403);
     return { name: String(snap.data()?.name || 'Cultivo') };
+  },
+  // Un cultivo borrado o terminado no se riega solo (si no se puede saber, tampoco).
+  cropState: async (uid, cultivationId) => {
+    if (!hasAdminCredentials()) return 'active';
+    const snap = await getFirebaseAdmin().firestore().collection('cultivations').doc(cultivationId).get();
+    if (!snap.exists || snap.data()?.userId !== uid) return 'missing';
+    return isCropFinished(snap.data() as any) ? 'finished' : 'active';
   },
   // Cada riego automático queda anotado en los riegos del cultivo (como uno hecho desde la app).
   recordWatering: async (uid, w) => {

@@ -144,11 +144,24 @@ export interface DeviceStore {
   save(userId: string, data: DeviceIntegration): Promise<void>;
   remove(userId: string): Promise<void>;
   listUserIds(): Promise<string[]>;
+  /** Pide el turno exclusivo de esa cuenta: false si lo tiene otro y todavía no venció. */
+  acquire(userId: string, token: string, now: number, ttlMs: number): Promise<boolean>;
+  release(userId: string, token: string): Promise<void>;
 }
 
 /** Desarrollo local y tests: en memoria. */
 export class MemoryDeviceStore implements DeviceStore {
   private data = new Map<string, DeviceIntegration>();
+  private locks = new Map<string, { token: string; until: number }>();
+  async acquire(userId: string, token: string, now: number, ttlMs: number) {
+    const held = this.locks.get(userId);
+    if (held && held.until > now) return false;
+    this.locks.set(userId, { token, until: now + ttlMs });
+    return true;
+  }
+  async release(userId: string, token: string) {
+    if (this.locks.get(userId)?.token === token) this.locks.delete(userId);
+  }
   async get(userId: string) {
     const d = this.data.get(userId);
     return d ? JSON.parse(JSON.stringify(d)) : null;
@@ -167,6 +180,26 @@ export class MemoryDeviceStore implements DeviceStore {
 /** Producción: Firestore con Firebase Admin (las reglas no dejan que el navegador lea esta colección). */
 export class FirestoreDeviceStore implements DeviceStore {
   constructor(private db: any, private collection = 'deviceIntegrations') {}
+  /** Abajo de deviceIntegrations: el navegador tampoco lo puede tocar. */
+  private lockRef(userId: string) {
+    return this.db.collection(this.collection).doc(userId).collection('lock').doc('turno');
+  }
+  async acquire(userId: string, token: string, now: number, ttlMs: number): Promise<boolean> {
+    const ref = this.lockRef(userId);
+    return this.db.runTransaction(async (tx: any) => {
+      const snap = await tx.get(ref);
+      if (snap.exists && snap.data().until > now) return false;
+      tx.set(ref, { token, until: now + ttlMs });
+      return true;
+    });
+  }
+  async release(userId: string, token: string) {
+    const ref = this.lockRef(userId);
+    await this.db.runTransaction(async (tx: any) => {
+      const snap = await tx.get(ref);
+      if (snap.exists && snap.data().token === token) tx.delete(ref);
+    });
+  }
   async get(userId: string) {
     const snap = await this.db.collection(this.collection).doc(userId).get();
     return snap.exists ? (snap.data() as DeviceIntegration) : null;
@@ -199,7 +232,16 @@ const SENSOR_STALE_MS = 30 * 60_000; // una lectura más vieja que esto cuenta c
 const SWITCH_CODE = /^switch(_\d+|_usb\d*)?$/;
 const OAUTH_MS = 15 * 60_000; // el inicio de sesión en eWeLink vale 15 min
 const MANUAL_MS = 60 * 60_000; // a mano, sin horario que lo vuelva a poner: una hora
+const LOCK_MS = 3 * 60_000;        // si un proceso muere con el turno, se libera solo
+const LOCK_WAIT_MS = 20_000;       // cuánto espera una acción de la persona
+const TICK_BUDGET_MS = 2 * 60_000; // una cuenta lenta no se queda con toda la revisión
+const TICK_WORKERS = 4;            // cuentas revisadas a la vez
 const DEFAULT_TZ = 'America/Argentina/Buenos_Aires';
+/** Quedan apagados al dejar de manejarlos: sin nadie que los controle, un descuido daña las plantas o el lugar. */
+const OFF_WHEN_RELEASED: ClimateRole[] = ['heater', 'humidifier'];
+const offWhenReleased = (b: DeviceBinding) => b.role === 'pump' || (b.role === 'climate' && !!b.climateRole && OFF_WHEN_RELEASED.includes(b.climateRole));
+/** Lo que cambia los equipos o sus datos: de a una por cuenta. */
+const LOCKED = ['connectTuya', 'disconnectTuya', 'disconnectEwelink', 'disconnectShelly', 'disconnectAll', 'ewelinkLogin', 'connectEwelink', 'connectShelly', 'devicesWithErrors', 'bind', 'unbind', 'setRule', 'setPump', 'setAuto', 'setSchedule', 'command', 'water'] as const;
 /** Modos de un equipo de clima que tienen horario (quedan cargados en el equipo como la luz). */
 const TIMED_MODES = ['follow', 'follow_inverted', 'schedule'];
 const VENDORS: Vendor[] = ['tuya', 'ewelink', 'shelly'];
@@ -223,7 +265,7 @@ export function validateSchedule(s: any): LightScheduleSnapshot | null {
   const darkHours = Number(s.darkHours);
   const anchorMs = Number(s.anchorMs);
   const timeZone = String(s.timeZone || '');
-  if (!(lightHours > 0 && lightHours <= 48) || !(darkHours >= 0 && darkHours <= 48) || !Number.isFinite(anchorMs) || !isValidTimeZone(timeZone)) {
+  if (!(lightHours > 0 && lightHours <= 48) || !(darkHours >= 0 && darkHours <= 48) || !(lightHours + darkHours >= 1) || !Number.isFinite(anchorMs) || !isValidTimeZone(timeZone)) {
     throw new DeviceError('Horario de luz inválido.');
   }
   return { lightHours, darkHours, anchorMs, timeZone };
@@ -306,6 +348,7 @@ export class DeviceService {
   private verifyCultivation: (userId: string, cultivationId: string, kind: 'cultivation' | 'indoor') => Promise<{ name: string } | null>;
   private recordWatering: (userId: string, w: AutoWateringRecord) => Promise<void>;
   private onProblem: (userId: string, text: string) => void;
+  private cropState: (userId: string, cultivationId: string) => Promise<'active' | 'finished' | 'missing'>;
 
   constructor(o: {
     store: DeviceStore;
@@ -315,6 +358,8 @@ export class DeviceService {
     verifyCultivation?: (userId: string, cultivationId: string, kind: 'cultivation' | 'indoor') => Promise<{ name: string } | null>;
     /** Con Firestore Admin: anota en el cultivo cada riego automático. */
     recordWatering?: (userId: string, w: AutoWateringRecord) => Promise<void>;
+    /** Con Firestore Admin: si el cultivo sigue activo (uno borrado o terminado no se riega solo). */
+    cropState?: (userId: string, cultivationId: string) => Promise<'active' | 'finished' | 'missing'>;
     /** Avisos al celular: en la revisión programada apareció un error nuevo con los equipos. */
     onProblem?: (userId: string, text: string) => void;
     /** La app de Cultiveta en dev.ewelink.cc (sin ella, eWeLink solo se puede probar con el de prueba). */
@@ -326,7 +371,30 @@ export class DeviceService {
     this.verifyCultivation = o.verifyCultivation || (async () => null);
     this.recordWatering = o.recordWatering || (async () => {});
     this.onProblem = o.onProblem || (() => {});
+    this.cropState = o.cropState || (async () => 'active');
+    for (const name of LOCKED) {
+      const fn = (this as any)[name].bind(this);
+      (this as any)[name] = (userId: string, ...args: unknown[]) => this.withLock(userId, () => fn(userId, ...args));
+    }
     this.ewelinkApp = o.ewelinkApp && o.ewelinkApp.appId && o.ewelinkApp.appSecret && o.ewelinkApp.redirectUrl ? o.ewelinkApp : null;
+  }
+
+  /**
+   * Toda escritura va de a una por cuenta: dos procesos que leen y guardan el documento entero se pisarían
+   * (claves borradas que vuelven, riegos repetidos). Si hay alguien, espera un rato y después avisa.
+   */
+  private async withLock<T>(userId: string, fn: () => Promise<T>): Promise<T> {
+    const token = crypto.randomUUID();
+    const deadline = Date.now() + LOCK_WAIT_MS;
+    while (!(await this.store.acquire(userId, token, this.now(), LOCK_MS))) {
+      if (Date.now() >= deadline) throw new DeviceError('Los equipos están ocupados con otra tarea: probá de nuevo en un momento.', 409);
+      await new Promise((r) => setTimeout(r, 250));
+    }
+    try {
+      return await fn();
+    } finally {
+      await this.store.release(userId, token).catch(() => {});
+    }
   }
 
   /** La zapatilla de prueba de esa persona (para tests y para "probar sin cuenta"). */
@@ -399,7 +467,7 @@ export class DeviceService {
 
   private tuyaClient(userId: string, integ: DeviceIntegration): TuyaCloud {
     const t = integ.tuya!;
-    const key = `${userId}|${t.mock ? 'mock' : t.accessId}|${t.region}`;
+    const key = `${userId}|${t.mock ? 'mock' : t.accessId}|${t.accessSecret.slice(-6)}|${t.region}`;
     let c = this.clients.get(key);
     if (!c) {
       c = t.mock
@@ -449,16 +517,15 @@ export class DeviceService {
 
   async connectTuya(userId: string, input: { accessId?: string; accessSecret?: string; region?: string; mock?: boolean }) {
     const integ = await this.load(userId);
-    if (integ.tuya) await this.releaseVendor(integ, 'tuya');
     const cfg = input.mock
       ? { accessId: MOCK_TUYA_ID, accessSecret: MOCK_TUYA_SECRET, region: 'us', mock: true, connectedAt: this.now() }
       : { accessId: String(input.accessId || '').trim(), accessSecret: String(input.accessSecret || '').trim(), region: TUYA_REGIONS[input.region || ''] ? String(input.region) : 'us', connectedAt: this.now() };
     if (!cfg.mock && (!/^[a-z0-9]{10,40}$/i.test(cfg.accessId) || !/^[a-z0-9]{16,64}$/i.test(cfg.accessSecret))) {
       throw new DeviceError('El Access ID y el Access Secret son letras y números: copialos de la pestaña Overview de tu proyecto en iot.tuya.com.');
     }
-    const trial = { ...integ, tuya: cfg };
-    const c = this.client(userId, trial);
-    const devices = await c.listDevices();
+    // primero se prueban las claves: con un error de tipeo, lo cargado en los equipos no se toca
+    const devices = await this.client(userId, { ...integ, tuya: cfg, ewelink: null, shelly: null }).listDevices();
+    if (integ.tuya) await this.releaseVendor(integ, 'tuya');
     integ.tuya = cfg;
     integ.lastError = null;
     await this.persist(integ);
@@ -511,8 +578,8 @@ export class DeviceService {
           /* sigue con los demás */
         }
       }
-      // una bomba no queda prendida al desconectar
-      for (const b of integ.bindings.filter((x) => x.role === 'pump' && mine(x.deviceId))) {
+      // una bomba, un calefactor o un humidificador no quedan prendidos al desconectar
+      for (const b of integ.bindings.filter((x) => offWhenReleased(x) && mine(x.deviceId))) {
         await c.sendCommands(b.deviceId, [{ code: b.code, value: false }]).catch(() => {});
       }
       await this.reactivate(c, integ, integ.paused.filter((p) => mine(p.deviceId)));
@@ -717,7 +784,7 @@ export class DeviceService {
     integ.bindings = integ.bindings.filter((x) => x.id !== b.id);
     if (integ.irrigation) delete integ.irrigation[b.id];
     if (!MANAGED.includes(b.role)) return;
-    if (b.role === 'pump') await c.sendCommands(b.deviceId, [{ code: b.code, value: false }]).catch(() => {});
+    if (offWhenReleased(b)) await c.sendCommands(b.deviceId, [{ code: b.code, value: false }]).catch(() => {});
     // si era una luz, lo que la seguía en otros equipos se vuelve a cargar sin ella
     const devices = new Set([b.deviceId, ...(b.role === 'light' ? this.followers(integ, b.cultivationId).map((f) => f.deviceId) : [])]);
     for (const id of devices) await this.syncDevice(c, integ, id, true);
@@ -843,6 +910,8 @@ export class DeviceService {
     const integ = await this.load(userId);
     const b = integ.bindings.find((x) => x.id === bindingId && x.role === 'pump');
     if (!b) throw new DeviceError('Ese cultivo no tiene una bomba asignada.', 404);
+    const running = integ.watering![b.id];
+    if (running && this.now() < running.endsAt) throw new DeviceError('La bomba ya está regando: esperá a que termine o cortala.', 409);
     const r = await this.waterInto(this.client(userId, integ), integ, b, seconds, false);
     await this.persist(integ);
     return { ...r, cultivationId: b.cultivationId };
@@ -860,12 +929,17 @@ export class DeviceService {
     if (check.ok === false) throw new DeviceError(check.text, 409);
     const value = b.countdownUnit === 'min' ? Math.max(1, Math.ceil(check.seconds / 60)) : check.seconds;
     const realSeconds = b.countdownUnit === 'min' ? value * 60 : check.seconds;
+    const cfg = b.pump || DEFAULT_PUMP;
+    // los enchufes que cuentan por minuto redondean para arriba: los topes valen para lo que riega de verdad
+    if (realSeconds > cfg.maxSeconds || (realSeconds * cfg.flowLph) / 3600 > cfg.maxLiters) {
+      throw new DeviceError(`Este enchufe cuenta por minutos: serían ${realSeconds} s y superan el tope de la bomba.`, 409);
+    }
     await c.sendCommands(b.deviceId, [
       { code: b.code, value: true },
       { code: b.countdownCode!, value },
     ]);
     const t = this.now();
-    const liters = (realSeconds * (b.pump || DEFAULT_PUMP).flowLph) / 3600;
+    const liters = (realSeconds * cfg.flowLph) / 3600;
     integ.watering![b.id] = { at: t, seconds: realSeconds, liters, endsAt: t + realSeconds * 1000, ...(auto ? { auto: true } : {}) };
     integ.lastCommand[b.id] = { at: t, value: true };
     if (integ.cache[b.deviceId]) integ.cache[b.deviceId].status[b.code] = true;
@@ -923,6 +997,8 @@ export class DeviceService {
   }
 
   private async autoWater(c: DeviceRouter, integ: DeviceIntegration, b: DeviceBinding, st: IrrigationState, due: { seconds: number; reason: string }) {
+    // queda guardado antes de prender: si después se corta el proceso, ese riego no se repite
+    await this.persist(integ);
     try {
       const r = await this.waterInto(c, integ, b, due.seconds, true);
       const at = this.now();
@@ -948,17 +1024,21 @@ export class DeviceService {
     }
   }
 
+  /** Cortar el riego es lo único que no espera turno: primero se apaga la bomba y después se anota. */
   async stopWater(userId: string, bindingId: string) {
-    const integ = await this.load(userId);
-    const b = integ.bindings.find((x) => x.id === bindingId && x.role === 'pump');
-    if (!b) throw new DeviceError('Ese cultivo no tiene una bomba asignada.', 404);
-    const c = this.client(userId, integ);
-    await c.sendCommands(b.deviceId, [{ code: b.code, value: false }, ...(b.countdownCode ? [{ code: b.countdownCode, value: 0 }] : [])]);
-    const w = integ.watering![b.id];
-    if (w) w.endsAt = this.now();
-    integ.lastCommand[b.id] = { at: this.now(), value: false };
-    if (integ.cache[b.deviceId]) integ.cache[b.deviceId].status[b.code] = false;
-    await this.persist(integ);
+    const now = await this.load(userId);
+    const pump = now.bindings.find((x) => x.id === bindingId && x.role === 'pump');
+    if (!pump) throw new DeviceError('Ese cultivo no tiene una bomba asignada.', 404);
+    await this.client(userId, now).sendCommands(pump.deviceId, [{ code: pump.code, value: false }, ...(pump.countdownCode ? [{ code: pump.countdownCode, value: 0 }] : [])]);
+    await this.withLock(userId, async () => {
+      const integ = await this.load(userId);
+      if (now.ewelink && integ.ewelink) Object.assign(integ.ewelink, { at: now.ewelink.at, rt: now.ewelink.rt, atExp: now.ewelink.atExp, rtExp: now.ewelink.rtExp });
+      const w = integ.watering![bindingId];
+      if (w) w.endsAt = this.now();
+      integ.lastCommand[bindingId] = { at: this.now(), value: false };
+      if (integ.cache[pump.deviceId]) integ.cache[pump.deviceId].status[pump.code] = false;
+      await this.persist(integ);
+    });
   }
 
   // ---------- qué tiene que hacer cada toma ----------
@@ -1130,8 +1210,22 @@ export class DeviceService {
 
   /** Estado de los equipos asignados (lo que muestran la luz, el ambiente, el riego y los equipos del cultivo). */
   async overview(userId: string) {
-    const integ = await this.store.get(userId);
-    if (!integ || !connectedAny(integ)) return { connected: false, mock: false, bindings: [] as any[] };
+    const first = await this.store.get(userId);
+    if (!first || !connectedAny(first)) return { connected: false, mock: false, bindings: [] as any[] };
+    const token = crypto.randomUUID();
+    const mine = await this.store.acquire(userId, token, this.now(), LOCK_MS);
+    if (!mine) return this.overviewOf(userId, first, false);
+    try {
+      const integ = await this.store.get(userId);
+      if (!integ || !connectedAny(integ)) return { connected: false, mock: false, bindings: [] as any[] };
+      return await this.overviewOf(userId, integ, true);
+    } finally {
+      await this.store.release(userId, token).catch(() => {});
+    }
+  }
+
+  /** live: tiene el turno, así que lee los equipos y guarda. Si no, lo último guardado, sin escribir. */
+  private async overviewOf(userId: string, integ: DeviceIntegration, live: boolean) {
     integ.watering = integ.watering || {};
     const c = this.client(userId, integ);
     const t = this.now();
@@ -1139,7 +1233,7 @@ export class DeviceService {
     for (const b of integ.bindings) {
       let entry: CacheEntry | null = null;
       try {
-        entry = await this.poll(c, integ, b.deviceId);
+        entry = live ? await this.poll(c, integ, b.deviceId) : integ.cache[b.deviceId] || null;
       } catch {
         entry = integ.cache[b.deviceId] || null;
       }
@@ -1159,7 +1253,7 @@ export class DeviceService {
         irrigation: b.role === 'pump' && integ.irrigation?.[b.id] ? { last: integ.irrigation[b.id].last, note: integ.irrigation[b.id].note } : null,
       });
     }
-    await this.persist(integ);
+    if (live) await this.persist(integ);
     return { connected: true, mock: !!(integ.tuya?.mock || integ.ewelink?.mock || integ.shelly?.mock), bindings: out, lastError: integ.lastError };
   }
 
@@ -1167,6 +1261,17 @@ export class DeviceService {
 
   /** Rellena lo cargado, aplica las reglas por sensor, corrige lo que quedó al revés y lee los sensores. */
   async tick(userId: string) {
+    const token = crypto.randomUUID();
+    // si la cuenta está ocupada, esta vuelta la saltea: nunca dos revisiones juntas ni dos riegos del mismo turno
+    if (!(await this.store.acquire(userId, token, this.now(), LOCK_MS))) return { devices: 0, fixes: 0, waterings: 0, skipped: true };
+    try {
+      return await this.tickNow(userId);
+    } finally {
+      await this.store.release(userId, token).catch(() => {});
+    }
+  }
+
+  private async tickNow(userId: string) {
     const integ = await this.store.get(userId);
     if (!integ || !connectedAny(integ)) return { devices: 0, fixes: 0, waterings: 0 };
     integ.watering = integ.watering || {};
@@ -1174,6 +1279,9 @@ export class DeviceService {
     const c = this.client(userId, integ);
     const t = this.now();
     const errorBefore = integ.lastError;
+    const started = Date.now();
+    const errors: string[] = [];
+    const message = (e: any) => e?.message || String(e);
     let fixes = 0;
     let waterings = 0;
     // los sensores de cultivos con reglas por sensor o riego por humedad se leen en cada vuelta (antes que los equipos)
@@ -1184,20 +1292,31 @@ export class DeviceService {
       try {
         await this.poll(c, integ, s.deviceId, sensorRules.has(s.cultivationId) ? SENSOR_POLL_MS : SLOW_POLL_MS);
       } catch (e: any) {
-        integ.lastError = e?.message || String(e);
+        errors.push(message(e));
       }
     }
     for (const b of integ.bindings.filter((x) => x.role === 'pump' && x.auto && x.auto.mode !== 'off')) {
       const before = integ.irrigation[b.id]?.last?.at;
       try {
+        const crop = await this.cropState(userId, b.cultivationId);
+        if (crop !== 'active') {
+          const st = (integ.irrigation[b.id] ||= { lastCheck: t, wetdry: null, last: null, note: null });
+          st.lastCheck = t + 1;
+          st.note = crop === 'finished' ? 'el cultivo ya terminó: no se riega' : 'el cultivo ya no existe: no se riega';
+          continue;
+        }
         await this.stepAuto(c, integ, b, t);
       } catch (e: any) {
-        integ.lastError = e?.message || String(e);
+        errors.push(message(e));
       }
       if (integ.irrigation[b.id]?.last?.at !== before) waterings++;
     }
     const deviceIds = [...new Set(integ.bindings.filter((b) => MANAGED.includes(b.role)).map((b) => b.deviceId))];
     for (const deviceId of deviceIds) {
+      if (Date.now() - started > TICK_BUDGET_MS) {
+        errors.push('La revisión de equipos tardó demasiado: sigue en la próxima vuelta.');
+        break;
+      }
       try {
         const here = integ.bindings.filter((x) => x.deviceId === deviceId && MANAGED.includes(x.role));
         if (here.some((b) => this.hasTimer(b))) await this.syncDevice(c, integ, deviceId);
@@ -1228,11 +1347,11 @@ export class DeviceService {
           entry.status[b.code] = d.value;
           fixes++;
         }
-        integ.lastError = null;
       } catch (e: any) {
-        integ.lastError = e instanceof TuyaError || e instanceof Error ? e.message : String(e);
+        errors.push(e instanceof TuyaError || e instanceof Error ? e.message : String(e));
       }
     }
+    integ.lastError = errors[0] ?? null;
     await this.persist(integ);
     if (integ.lastError && integ.lastError !== errorBefore) this.onProblem(userId, integ.lastError);
     return { devices: deviceIds.length, fixes, waterings };
@@ -1242,15 +1361,23 @@ export class DeviceService {
     const ids = await this.store.listUserIds();
     let fixes = 0;
     let waterings = 0;
-    for (const id of ids) {
-      try {
-        const r = await this.tick(id);
-        fixes += r.fixes;
-        waterings += r.waterings || 0;
-      } catch {
-        /* sigue con las demás cuentas */
+    let failed = 0;
+    let next = 0;
+    // varias a la vez: una marca caída o lenta no deja sin revisión a las demás cuentas
+    const worker = async () => {
+      while (next < ids.length) {
+        const id = ids[next++];
+        try {
+          const r = await this.tick(id);
+          fixes += r.fixes;
+          waterings += r.waterings || 0;
+        } catch (e: any) {
+          failed++;
+          console.warn('[Equipos] Falló la revisión de una cuenta:', e?.message || e);
+        }
       }
-    }
-    return { accounts: ids.length, fixes, waterings };
+    };
+    await Promise.all(Array.from({ length: Math.min(TICK_WORKERS, ids.length) }, worker));
+    return { accounts: ids.length, fixes, waterings, failed };
   }
 }

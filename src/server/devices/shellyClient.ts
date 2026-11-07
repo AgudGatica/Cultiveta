@@ -116,7 +116,7 @@ export class ShellyCloud implements DeviceCloud {
     this.server = o.server;
     this.authKey = o.authKey;
     this.ids = o.ids || [];
-    this.fetchImpl = o.fetchImpl || ((url, init) => fetch(url, init) as any);
+    this.fetchImpl = o.fetchImpl || ((url, init) => fetch(url, { ...init, signal: AbortSignal.timeout(10_000) }) as any);
     this.now = o.now || Date.now;
     this.gapMs = o.gapMs ?? 1100;
   }

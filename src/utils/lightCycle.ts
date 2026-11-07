@@ -128,7 +128,7 @@ export function phaseProgress(c: LightCycle, anchor: number, now: number): numbe
 /** Tramos con la luz prendida entre from y to (ms), recortados a ese rango. */
 export function onIntervals(c: LightCycle, anchor: number, from: number, to: number): Array<[number, number]> {
   const { onMs, totalMs } = cycleMs(c);
-  if (!(totalMs > 0) || !onMs || to <= from) return [];
+  if (!(totalMs >= HOUR_MS) || !onMs || to <= from) return []; // un ciclo menor a una hora es un dato roto
   const out: Array<[number, number]> = [];
   let k = Math.max(0, Math.floor((from - anchor) / totalMs));
   for (let start = anchor + k * totalMs; start < to; k += 1, start = anchor + k * totalMs) {
