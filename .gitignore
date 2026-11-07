@@ -6,3 +6,6 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Excel y fotos de trabajo del catálogo
+catalogo-geneticas/

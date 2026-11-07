@@ -136,7 +136,7 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
   const [isAdminPhotoModalOpen, setIsAdminPhotoModalOpen] = useState(false);
   const [catalogPhotos, setCatalogPhotos] = useState<Record<string, GeneticsCatalogPhoto>>({});
 
-  const [activeTab, setActiveTab] = useState<'catalog' | 'saved' | 'favorites'>('catalog');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'favorites'>('catalog');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSeedBank, setSelectedSeedBank] = useState<string>('ALL');
   const [filterPhotoperiod, setFilterPhotoperiod] = useState('all');
@@ -257,9 +257,15 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
     });
   }, [geneticsList, selectedSeedBank, filterPhotoperiod, searchTerm]);
 
+  // Favoritas marcadas en el catálogo que no están ya entre las genéticas propias: una sola lista, sin repetidas
+  const favoritesOnly = useMemo(() => {
+    const own = new Set(geneticsList.map((g) => getGeneticsKey(g.name, g.seedBank)));
+    return favorites.filter((fav) => !own.has(fav.geneticsKey || getGeneticsKey(fav.name, fav.seedBank)));
+  }, [favorites, geneticsList]);
+
   // Filtrado de las genéticas favoritas
   const filteredFavorites = useMemo(() => {
-    return favorites.filter((fav) => {
+    return favoritesOnly.filter((fav) => {
       if (selectedSeedBank !== 'ALL' && (fav.seedBank || '') !== selectedSeedBank) return false;
       if (filterPhotoperiod !== 'all' && fav.photoperiodType !== filterPhotoperiod) return false;
       if (searchTerm.trim()) {
@@ -272,7 +278,7 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
       }
       return true;
     });
-  }, [favorites, selectedSeedBank, filterPhotoperiod, searchTerm]);
+  }, [favoritesOnly, selectedSeedBank, filterPhotoperiod, searchTerm]);
 
 
 
@@ -457,13 +463,12 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
         </div>
       </div>
 
-      {/* Catálogo, las guardadas y las favoritas */}
-      <div role="tablist" aria-label="Genéticas" className="grid grid-cols-3 p-1 rounded-2xl bg-brand-deep/55 gap-1">
+      {/* Catálogo y favoritas (las que marcaste y las tuyas) */}
+      <div role="tablist" aria-label="Genéticas" className="grid grid-cols-2 p-1 rounded-2xl bg-brand-deep/55 gap-1">
         {(
           [
             ['catalog', 'tab-catalog-btn', `Catálogo (${GENETICS_DATABASE.length})`],
-            ['saved', 'tab-saved-btn', `Guardadas (${geneticsList.length})`],
-            ['favorites', 'tab-favorites-btn', `Favoritas (${favorites.length})`],
+            ['favorites', 'tab-favorites-btn', `Favoritas (${geneticsList.length + favoritesOnly.length})`],
           ] as const
         ).map(([key, id, label]) => (
           <button
@@ -606,9 +611,7 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
             <strong className="text-ink">
               {activeTab === 'catalog'
                 ? filteredPredefined.length
-                : activeTab === 'saved'
-                ? filteredSavedGenetics.length
-                : filteredFavorites.length}
+                : filteredSavedGenetics.length + filteredFavorites.length}
             </strong>{' '}
             genéticas
             {selectedSeedBank !== 'ALL' && (
@@ -657,13 +660,7 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
       {/* Favoritas */}
       {activeTab === 'favorites' && (
         <>
-          {filteredFavorites.length === 0 ? (
-            <div id="genetics-favorites-empty" className="bg-white rounded-3xl p-10 border border-line text-center space-y-2 max-w-[570px] mx-auto">
-              <Heart className="w-8 h-8 text-ink-subtle mx-auto" aria-hidden="true" />
-              <h4 className="font-bold text-ink text-base">{favorites.length === 0 ? 'Todavía no marcaste favoritas' : 'Ninguna favorita con estos filtros'}</h4>
-              <p className="text-xs text-ink-muted">{favorites.length === 0 ? 'Abrí una genética del catálogo y tocá Favoritos.' : 'Probá limpiando la búsqueda o el filtro de banco de semillas.'}</p>
-            </div>
-          ) : (
+          {filteredFavorites.length > 0 && (
             <div id="genetics-favorites-list" className="flex flex-col gap-2 w-full max-w-[570px] mx-auto">
               {filteredFavorites.map((fav) => renderCatalogItem(predefinedFromFavorite(fav)))}
             </div>
@@ -671,23 +668,23 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
         </>
       )}
 
-      {/* Grid Content: Mis Genéticas Guardadas Tab */}
-      {activeTab === 'saved' && (
+      {/* Las genéticas propias, dentro de Favoritas */}
+      {activeTab === 'favorites' && (
         <>
-          {filteredSavedGenetics.length === 0 ? (
-            <div className="bg-white rounded-3xl p-12 border border-line text-center space-y-3">
+          {filteredSavedGenetics.length === 0 && filteredFavorites.length > 0 ? null : filteredSavedGenetics.length === 0 ? (
+            <div id="genetics-favorites-empty" className="bg-white rounded-3xl p-12 border border-line text-center space-y-3">
               <div className="w-16 h-16 rounded-full bg-ok-bg text-ok-ink flex items-center justify-center mx-auto">
                 <Layers className="w-8 h-8" />
               </div>
               <h4 className="font-bold text-ink text-base">
                 {hasActiveFilters
-                  ? 'No se encontraron genéticas guardadas con estos filtros'
-                  : 'Todavía no guardaste genéticas tuyas'}
+                  ? 'Ninguna favorita con estos filtros'
+                  : 'Todavía no tenés favoritas'}
               </h4>
               <p className="text-xs text-ink-muted max-w-sm mx-auto">
                 {hasActiveFilters
                   ? 'Probá limpiando la búsqueda o el filtro de banco de semillas.'
-                  : 'Mirá el catálogo o creá una con el botón de arriba.'}
+                  : 'Abrí una genética del catálogo y tocá Favoritos, o creá una con el botón de arriba.'}
               </p>
               {hasActiveFilters ? (
                 <button

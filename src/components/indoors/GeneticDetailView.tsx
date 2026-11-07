@@ -1,14 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, CalendarDays, Clock, Dna, Droplets, Flag, Leaf, Scale, Scissors, Share2, Sparkles, Sprout } from 'lucide-react';
+import { ArrowLeft, ArrowRightLeft, CalendarDays, Clock, Dna, Droplets, Flag, Leaf, Scale, Scissors, Share2, Sparkles, Sprout } from 'lucide-react';
 import type { Cultivation, DiaryEntry, EnvironmentRecord, Genetics, Indoor, PhotoRecord, Watering } from '../../types';
 import { indoorService } from '../../services/indoorService';
 import { useGeneticsCatalogPhotos } from '../../hooks/useGeneticsCatalogPhotos';
 import { resolveCropGenetics } from '../../utils/cropGenetics';
 import { FLORA_PHASE_SHORT, buildCultivationStageSchedule, floraPhaseOf, getNextStage, getStagesForCultivation, isFloweringStage } from '../../utils/growthStageUtils';
-import { ambientsForCrop, cropForGenetic, harvestText } from '../../utils/indoors';
+import { cropForGenetic, harvestText } from '../../utils/indoors';
 import { IrrigationForecastCard } from '../cultivations/IrrigationForecastCard';
 import { PlantTimeline } from '../cultivations/PlantTimeline';
 import { StageTransitionModal } from '../cultivations/timeline/StageTransitionModal';
+import { TransferCropModal } from './TransferCropModal';
 import { PhotoImageView } from '../common/PhotoImageView';
 import { StageList, dateText } from './StageList';
 import { FeedTargetCard, LivingSoilCard } from '../cultivations/FeedTargetCard';
@@ -98,10 +99,8 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
   const cropPhotos = useMemo(() => photos.filter((p) => p.cultivationId === crop.id), [photos, crop.id]);
   const cropDiary = useMemo(() => diaryEntries.filter((d) => d.cultivationId === crop.id), [diaryEntries, crop.id]);
   const latestPhoto = useMemo(() => [...cropPhotos].sort((a, b) => b.date.localeCompare(a.date))[0], [cropPhotos]);
-  const moveTargets = ambientsForCrop(crop, ambients).filter((a) => a.id !== crop.indoorId);
   const [tab, setTab] = useState<Tab>('resumen');
-  const [moveTo, setMoveTo] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
   const [stageModal, setStageModal] = useState(false);
   const [heroFailed, setHeroFailed] = useState(false);
   const stages = useMemo(() => getStagesForCultivation(crop), [crop]);
@@ -116,21 +115,6 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
   const living = useMemo(() => livingSoilGuide(one), [one]);
   // Hidroponía: el tanque en lugar de "próximo riego" y del pronóstico de riego
   const tank = useMemo(() => tankStatus(one, cropWaterings), [one, cropWaterings]);
-
-  const move = async () => {
-    const to = moveTargets.find((a) => a.id === (moveTo || moveTargets[0]?.id));
-    if (!to) return;
-    const what = others.length ? `${crop.name} (con ${others.join(', ')})` : card?.name || crop.name;
-    if (!window.confirm(`¿Pasar ${what} a ${to.name}?`)) return;
-    setBusy(true);
-    try {
-      await indoorService.moveCrop(crop, to, userId);
-      showToast?.(`Ahora está en ${to.name}`);
-      onMoved?.(to);
-    } finally {
-      setBusy(false);
-    }
-  };
 
   if (!card) return null;
   const heroPhoto = card.photoUrl && !heroFailed ? card.photoUrl : null;
@@ -206,6 +190,10 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
           {shared ? (shared.privacy === 'public' ? 'Público' : 'No listado') : 'Compartir'}
         </button>
       </div>
+      <button type="button" id="genetic-transfer" onClick={() => setTransferOpen(true)} className="cultiveta-btn-secondary text-sm w-full justify-center">
+        <ArrowRightLeft className="w-4 h-4 text-brand" aria-hidden="true" />
+        Transferir a otro ambiente
+      </button>
       {shared && onOpenGrowlog && (
         <button type="button" id="genetic-open-growlog" onClick={() => onOpenGrowlog(shared.id)} className="w-full min-h-11 text-xs font-bold text-white cultiveta-on-gradient underline underline-offset-2">
           Ver cómo lo ve la comunidad
@@ -336,21 +324,6 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
             <button type="button" id="genetic-open-crop" onClick={() => onOpenCrop(crop)} className="cultiveta-btn-secondary text-sm w-full justify-center">
               Ver todo el cultivo: fotos, nutrición, tabla y diario
             </button>
-            {moveTargets.length > 0 && (
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-semibold text-ink-muted w-full">Pasar a otro ambiente</span>
-                <select id="genetic-move-select" aria-label="Ambiente" value={moveTo || moveTargets[0].id} onChange={(e) => setMoveTo(e.target.value)} className="min-h-11 px-3 rounded-xl bg-white border border-line text-sm text-ink flex-1 min-w-0">
-                  {moveTargets.map((a) => (
-                    <option key={a.id} value={a.id}>
-                      {a.name}
-                    </option>
-                  ))}
-                </select>
-                <button type="button" id="genetic-move" disabled={busy} onClick={move} className="cultiveta-btn-secondary text-xs disabled:opacity-50">
-                  Pasar
-                </button>
-              </div>
-            )}
           </section>
         </div>
       )}
@@ -385,6 +358,23 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
             onShareNeedsProfile?.();
           }}
           showToast={showToast}
+        />
+      )}
+
+      {transferOpen && (
+        <TransferCropModal
+          crop={crop}
+          ambients={ambients}
+          userId={userId}
+          plantName={card.name}
+          others={others}
+          onClose={() => setTransferOpen(false)}
+          onDone={(_updated, to, changeStage) => {
+            setTransferOpen(false);
+            showToast?.(`Ahora está en ${to.name}`);
+            if (changeStage) setStageModal(true);
+            onMoved?.(to);
+          }}
         />
       )}
 

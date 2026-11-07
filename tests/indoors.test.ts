@@ -170,6 +170,11 @@ async function run() {
       assert(calls[1].to === 'crop' && calls[1].updates.indoorId === amb.id, 'y lo mete adentro');
       calls.length = 0;
       await indoorService.moveCrop(crop('a', { lighting: { type: 'LED', photoperiodHoursLight: 20 } }), { ...carpa, lighting: undefined }, 'u1');
+      calls.length = 0;
+      const moved = await indoorService.moveCrop(crop('a', { type: 'Indoor' }), { ...carpa, id: 'patio', environment: 'exterior', kind: 'patio' } as any, 'u1');
+      assert(moved.type === 'Outdoor' && calls[calls.length - 1].updates.type === 'Outdoor', 'de interior a exterior cambia el tipo');
+      calls.length = 0;
+      await indoorService.moveCrop(crop('a', { lighting: { type: 'LED', photoperiodHoursLight: 20 } }), { ...carpa, lighting: undefined }, 'u1');
       assert(calls[0].to === 'indoor' && calls[0].updates.lighting.photoperiodHoursLight === 20 && calls[1].updates.indoorId === 'in1', 'el ambiente sin luz toma la del cultivo');
     } finally {
       unspy();
@@ -280,8 +285,10 @@ async function run() {
     assert(/(Faltan \d+ días|Falta 1 día) para cortar|Lista para cortar/.test(c.querySelector('#genetic-harvest')?.textContent || ''), c.querySelector('#genetic-harvest')?.textContent || '');
     const rows = [...c.querySelectorAll('.genetic-watering')].map((x) => x.textContent || '');
     assert(rows.length === 1 && /1,5 L · pH 6.2/.test(rows[0]), `solo los riegos de su cultivo: ${rows}`);
-    const opts = [...c.querySelectorAll('#genetic-move-select option')].map((o) => o.textContent);
-    assert(opts.join() === 'Armario', `solo otros ambientes interiores: ${opts}`);
+    await act(async () => (c.querySelector('#genetic-transfer') as HTMLButtonElement).click());
+    const targets = [...c.querySelectorAll('[data-transfer-target]')].map((o) => o.textContent || '');
+    assert(targets.length >= 1 && targets.every((t) => !/Carpa 120/.test(t)) && targets.some((t) => /Armario/.test(t)), `transfiere a otros ambientes: ${targets}`);
+    await act(async () => (c.querySelector('#transfer-crop-modal [aria-label="Cerrar"]') as HTMLButtonElement).click());
     // arriba: foto, nombre, etapa y ambiente; abajo, pestañas Resumen / Etapas / Timeline
     const hero = c.querySelector('#genetic-hero')?.textContent || '';
     assert(/Gelato 33/.test(hero) && /Floración/.test(c.querySelector('#genetic-stage-chip')?.textContent || '') && /Carpa 120/.test(hero), hero);

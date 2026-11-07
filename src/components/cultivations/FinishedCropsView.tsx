@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Award, CalendarDays, FileText, Pencil, Scale, Sprout, Star, Timer } from 'lucide-react';
+import { Award, CalendarDays, FileText, Pencil, Scale, Sprout, Star, Timer, ChevronRight } from 'lucide-react';
 import type { Cultivation, Harvest, PhotoRecord } from '../../types';
 import {
   getCropCoverImage,
@@ -143,18 +143,25 @@ export const FinishedCropsView: React.FC<FinishedCropsViewProps> = ({
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white cultiveta-on-gradient tracking-tight">Cosechas</h1>
           <p className="text-xs sm:text-sm text-white cultiveta-on-gradient font-semibold">Tus cultivos terminados y sus cosechas</p>
         </div>
-        {onNavigateToCompare && items.length > 1 && (
-          <button
-            type="button"
-            id="finished-compare-btn"
-            onClick={() => onNavigateToCompare()}
-            className="cultiveta-btn-secondary text-xs shrink-0"
-          >
-            <Scale className="w-4 h-4 text-brand" aria-hidden="true" />
-            Comparar
-          </button>
-        )}
       </div>
+
+      {onNavigateToCompare && cultivations.length > 1 && (
+        <button
+          type="button"
+          id="finished-compare-btn"
+          onClick={() => onNavigateToCompare()}
+          className="cultiveta-card w-full flex items-center gap-3 p-4 text-left cursor-pointer hover:bg-surface transition-colors"
+        >
+          <span className="w-12 h-12 rounded-2xl bg-brand-deep text-white flex items-center justify-center shrink-0">
+            <Scale className="w-6 h-6" aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-base font-extrabold text-ink">Comparar cosechas</span>
+            <span className="block text-xs text-ink-muted">Rendimiento, clima y duración, lado a lado.</span>
+          </span>
+          <ChevronRight className="w-5 h-5 text-ink-muted shrink-0" aria-hidden="true" />
+        </button>
+      )}
 
       {items.length === 0 ? (
         <EmptyState

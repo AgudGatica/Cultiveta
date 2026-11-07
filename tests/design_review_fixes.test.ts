@@ -420,7 +420,8 @@ async function run() {
       await a.unmount();
 
       const d = await mount(React.createElement(DashboardOverview as any, { cultivations: [c], waterings: [], envRecords: [], photos: [], indoors: [carpa], userId: 'u1', onSelectCultivation: () => {}, onCreateCultivationClick: () => {}, onOpenWateringModal: () => {} }));
-      assert(follows(d.container.querySelector('#home-tab-ambientes'), d.container.querySelector('#home-stat-ambients')), 'los números, después de las plantas');
+      assert(follows(d.container.querySelector('#home-today-card'), d.container.querySelector('#home-stat-ambients')), 'los números, después de Para hoy');
+      assert(follows(d.container.querySelector('#home-stat-ambients'), d.container.querySelector('#home-tab-ambientes')), 'y antes de ambientes y plantas');
       await d.unmount();
     } finally {
       (indoorService as any).getIndoors = realGet;

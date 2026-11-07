@@ -49,6 +49,7 @@ export function getDetailBackTarget(crop: Cultivation | null | undefined): 'dash
 export function getNavHighlight(view: string, selectedCrop: Cultivation | null | undefined): string {
   if (view === 'cultivation_detail') return getDetailBackTarget(selectedCrop);
   if (view === 'indoor_detail' || view === 'genetic_detail') return 'dashboard';
+  if (view === 'compare_crops') return 'cultivations';
   if (view === 'growlog' || view === 'grower' || view === 'community_admin') return 'community';
   return view;
 }

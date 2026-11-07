@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ArrowRightLeft } from 'lucide-react';
 import {
   ArrowLeft,
   Droplets,
@@ -79,6 +80,7 @@ import { CropDevicesCard } from './CropDevicesCard';
 import { useDevicesOverview, lightBindingFor, sensorBindingFor, pumpBindingFor } from '../../services/devicesService';
 import { environmentService } from '../../services/environmentService';
 import { dec } from '../../utils/formatNumber';
+import { TransferCropModal } from '../indoors/TransferCropModal';
 
 interface CultivationDetailViewProps {
   cultivation: Cultivation;
@@ -142,7 +144,9 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
 }) => {
   const [activeTab, setActiveTab] = useState<'overview' | 'timeline' | 'fertilization' | 'photos' | 'table' | 'diary' | 'calendar'>('overview');
   // Ambiente donde está: si es interior, su luz es la del cultivo; la luz, el clima y el sensor se asignan al ambiente
-  const indoor = useIndoors().find((i) => i.id === cultivation.indoorId) || null;
+  const ambients = useIndoors();
+  const indoor = ambients.find((i) => i.id === cultivation.indoorId) || null;
+  const [isTransferOpen, setIsTransferOpen] = useState(false);
   // Equipos asignados a este cultivo (enchufe de la luz, sensor de ambiente y sonda de sustrato)
   const devicesOverview = useDevicesOverview();
   const lightDevice = lightBindingFor(devicesOverview, cultivation.id) || (indoor ? lightBindingFor(devicesOverview, indoor.id) : null);
@@ -1078,11 +1082,36 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
       )}
 
       {/* Lo que se usa poco: calendario, terminar el cultivo, editarlo o borrarlo */}
+      {isTransferOpen && (
+        <TransferCropModal
+          crop={cultivation}
+          ambients={ambients}
+          userId={userId}
+          plantName={cultivation.name}
+          others={(cultivation.geneticsList || []).map((g) => g.name).filter((n) => n && n !== cultivation.name)}
+          onClose={() => setIsTransferOpen(false)}
+          onDone={(updated, _to, changeStage) => {
+            setIsTransferOpen(false);
+            onCultivationUpdated?.(updated);
+            if (changeStage) {
+              setStageForTransition(null);
+              setIsTransitionModalOpen(true);
+            }
+          }}
+        />
+      )}
+
       <section id="crop-more-actions" aria-labelledby="crop-more-actions-title" className="bg-white rounded-[28px] p-5 border border-line shadow-2xs space-y-3">
         <h2 id="crop-more-actions-title" className="text-sm font-bold text-ink">
           Más acciones
         </h2>
         <div className="flex flex-wrap items-center gap-2">
+        {!isCosechado && (
+          <button type="button" id="crop-transfer-btn" onClick={() => setIsTransferOpen(true)} className="cultiveta-btn-secondary text-xs">
+            <ArrowRightLeft className="w-4 h-4 text-brand" aria-hidden="true" />
+            <span>Transferir a otro ambiente</span>
+          </button>
+        )}
         <button
           type="button"
           id="open-calendar-sync-btn"

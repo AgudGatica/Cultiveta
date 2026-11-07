@@ -6,7 +6,6 @@ import {
   Sparkles,
   MoreHorizontal,
   Dna,
-  Scale,
   Calculator,
   X,
   Trophy,
@@ -47,7 +46,6 @@ export const MobileNav: React.FC<MobileNavProps> = ({
     { id: 'ai_assistant', label: 'Cultiveta IA', icon: Sparkles, desc: 'Preguntas, diagnósticos por foto y consejos' },
     { id: 'profile', label: 'Mi perfil', icon: Trophy, desc: 'Tu nivel, tu racha y tus logros' },
     { id: 'genetics', label: 'Genéticas', icon: Dna, desc: 'Banco de semillas y cepas' },
-    { id: 'compare_crops', label: 'Comparador', icon: Scale, desc: 'Curvas de cosechas anteriores' },
     { id: 'calculators', label: 'Calculadoras', icon: Calculator, desc: 'VPD, luz PPFD y mezclas' },
     { id: 'devices', label: 'Equipos', icon: Plug, desc: 'Enchufes, sensores y riego conectados' },
   ];

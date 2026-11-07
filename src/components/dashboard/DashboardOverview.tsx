@@ -156,10 +156,21 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             onOpenIndoor={onOpenIndoor}
           />
 
+          {/* 3. Cuatro números: justo debajo de Para hoy */}
+          <section aria-label="Resumen" className="grid grid-cols-4 gap-2 sm:gap-3">
+            {numbers.map(({ id, label, value, icon: Icon }) => (
+              <div key={id} id={id} className="cultiveta-card p-3 sm:p-4 flex flex-col items-center text-center gap-1">
+                <Icon className="w-4 h-4 text-brand" aria-hidden="true" />
+                <b className="text-xl sm:text-2xl font-black text-ink leading-none">{value}</b>
+                <small className="text-[11px] sm:text-xs font-semibold text-ink-muted leading-tight">{label}</small>
+              </div>
+            ))}
+          </section>
+
           {/* Avisos al celular: se ofrece una sola vez */}
           {cultivations.some((c) => !c.isFinished) && <PushPromptCard />}
 
-          {/* 3. Ambientes y Plantas (como en Canopia): las plantas están adentro de cada ambiente */}
+          {/* 4. Ambientes y Plantas (como en Canopia): las plantas están adentro de cada ambiente */}
           {indoors.length === 0 && activeCrops.length === 0 ? (
             <EmptyState
               id="home-empty-crops"
@@ -253,16 +264,6 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             </section>
           )}
 
-          {/* 5. Cuatro números: al final, para que las plantas queden más cerca */}
-          <section aria-label="Resumen" className="grid grid-cols-4 gap-2 sm:gap-3">
-            {numbers.map(({ id, label, value, icon: Icon }) => (
-              <div key={id} id={id} className="cultiveta-card p-3 sm:p-4 flex flex-col items-center text-center gap-1">
-                <Icon className="w-4 h-4 text-brand" aria-hidden="true" />
-                <b className="text-xl sm:text-2xl font-black text-ink leading-none">{value}</b>
-                <small className="text-[11px] sm:text-xs font-semibold text-ink-muted leading-tight">{label}</small>
-              </div>
-            ))}
-          </section>
         </>
       )}
     </div>

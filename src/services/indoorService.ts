@@ -7,7 +7,7 @@ import { localStore } from './localStore';
 import { subscribeCollection } from './dataSyncHelper';
 import { cultivationService } from './cultivationService';
 import { environmentService } from './environmentService';
-import { ambientForCrop, autoAmbientId, isExteriorAmbient } from '../utils/indoors';
+import { ambientEnvironment, ambientForCrop, autoAmbientId, cropTypeForAmbient, environmentForCropType, isExteriorAmbient } from '../utils/indoors';
 import { getLocalTodayDateOnly } from '../utils/growthStageUtils';
 
 /**
@@ -104,8 +104,10 @@ export const indoorService = {
     if (!isExteriorAmbient(to) && !to.lighting?.photoperiodHoursLight && crop.lighting) {
       await indoorService.updateIndoor(to.id, { lighting: crop.lighting }, userId);
     }
-    await cultivationService.updateCultivation(crop.id, { indoorId: to.id }, userId);
-    return { ...crop, indoorId: to.id };
+    const updates: Partial<Cultivation> = { indoorId: to.id };
+    if (ambientEnvironment(to) !== environmentForCropType(crop.type)) updates.type = cropTypeForAmbient(to);
+    await cultivationService.updateCultivation(crop.id, updates, userId);
+    return { ...crop, ...updates };
   },
 
   /**
