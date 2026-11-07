@@ -65,7 +65,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 
   const handleRemoveWeek = (weekIdx: number) => {
     if (weeks.length <= 1) {
-      setError('Debes mantener al menos una semana en la tabla.');
+      setError('Tiene que quedar al menos una semana en la tabla.');
       return;
     }
     const updated = weeks
@@ -89,7 +89,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
     const updated = [...weeks];
     const newProd: FertilizationProductDosage = {
       id: `p_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
-      name: 'Nuevo Nutriente',
+      name: 'Nuevo nutriente',
       brand: brand || undefined,
       dosageMlPerL: 2.0,
       category: 'floracion',
@@ -146,12 +146,12 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
         {/* Modal Header */}
         <div className="flex items-center justify-between pb-4 border-b border-chip-line">
           <div>
-            <h2 className="text-xl font-black text-ink">Editar Tabla de Fertilización</h2>
+            <h2 className="text-xl font-black text-ink">Editar tabla de fertilización</h2>
             <p className="text-xs text-ink/70">
-              Personaliza las semanas del ciclo, objetivos de pH/EC y dosificación (ml/L)
+              Personalizá las semanas del ciclo, objetivos de pH/EC y dosificación (ml/L)
             </p>
           </div>
-          <button
+          <button aria-label="Cerrar"
             type="button"
             onClick={onClose}
             className="p-2 text-ink/40 hover:text-ink rounded-full hover:bg-surface transition-colors cursor-pointer"
@@ -172,7 +172,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
           <div className="flex items-center justify-between text-xs font-bold text-ink">
             <span className="flex items-center gap-1.5 text-brand">
               <Sparkles className="w-4 h-4 text-brand" />
-              Cargar Plantilla Comercial Prediseñada:
+              Cargar plantilla comercial prediseñada:
             </span>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -181,21 +181,21 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
               onClick={() => handleApplyPreset('biobizz_organic')}
               className="px-3 py-1.5 rounded-xl bg-white border border-chip-line text-xs font-semibold text-ink hover:bg-ok/15 hover:border-ok/50 transition-all cursor-pointer shadow-2xs"
             >
-              🌱 Biobizz 100% Orgánico
+              Biobizz 100% Orgánico
             </button>
             <button
               type="button"
               onClick={() => handleApplyPreset('top_crop_line')}
               className="px-3 py-1.5 rounded-xl bg-white border border-chip-line text-xs font-semibold text-ink hover:bg-ok/15 hover:border-ok/50 transition-all cursor-pointer shadow-2xs"
             >
-              ⚡ Top Crop Nutrición
+              Top Crop Nutrición
             </button>
             <button
               type="button"
               onClick={() => handleApplyPreset('advanced_nutrients_ph_perfect')}
               className="px-3 py-1.5 rounded-xl bg-white border border-chip-line text-xs font-semibold text-ink hover:bg-ok/15 hover:border-ok/50 transition-all cursor-pointer shadow-2xs"
             >
-              🧪 Advanced Nutrients pH Perfect
+              Advanced Nutrients pH Perfect
             </button>
           </div>
         </div>
@@ -204,7 +204,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
           {/* General Metadata */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="sm:col-span-2">
-              <label className="block text-xs font-bold text-ink/80 mb-1">Nombre de la Tabla *</label>
+              <label className="block text-xs font-bold text-ink/80 mb-1">Nombre de la tabla *</label>
               <input
                 type="text"
                 required
@@ -239,7 +239,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                 className="px-3 py-1.5 rounded-xl bg-ok/15 border border-ok/30 text-ok-ink text-xs font-bold hover:bg-ok/25 transition-colors flex items-center gap-1 cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>Añadir Semana</span>
+                <span>Sumar semana</span>
               </button>
             </div>
 
@@ -261,7 +261,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                       </span>
                       <div>
                         <span className="text-xs font-bold text-ink block">{week.title}</span>
-                        <span className="text-[10px] text-ink/60">
+                        <span className="text-[11px] text-ink/60">
                           {week.stage} · {week.products.length} productos · EC {week.targetEc || '—'} · pH {week.targetPh || '—'}
                         </span>
                       </div>
@@ -288,7 +288,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                     <div className="p-4 space-y-3 bg-surface border-t border-chip-line">
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                         <div>
-                          <label className="block text-[11px] font-semibold text-ink/70 mb-1">Título de la semana</label>
+                          <label className="block text-xs font-semibold text-ink/70 mb-1">Título de la semana</label>
                           <input
                             type="text"
                             value={week.title}
@@ -298,7 +298,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                         </div>
 
                         <div>
-                          <label className="block text-[11px] font-semibold text-ink/70 mb-1">Etapa</label>
+                          <label className="block text-xs font-semibold text-ink/70 mb-1">Etapa</label>
                           <select
                             value={week.stage}
                             onChange={(e) => handleWeekFieldChange(wIdx, 'stage', e.target.value)}
@@ -315,7 +315,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 
                         <div className="flex gap-2">
                           <div className="flex-1">
-                            <label className="block text-[11px] font-semibold text-ink/70 mb-1">Target pH</label>
+                            <label className="block text-xs font-semibold text-ink/70 mb-1">Target pH</label>
                             <input
                               type="number"
                               step="0.05"
@@ -325,7 +325,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                             />
                           </div>
                           <div className="flex-1">
-                            <label className="block text-[11px] font-semibold text-ink/70 mb-1">Target EC</label>
+                            <label className="block text-xs font-semibold text-ink/70 mb-1">Target EC</label>
                             <input
                               type="number"
                               step="0.05"
@@ -340,21 +340,21 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                       {/* Products in this week */}
                       <div className="space-y-2 pt-2 border-t border-chip-line">
                         <div className="flex items-center justify-between">
-                          <span className="text-[11px] font-bold text-ink/80 uppercase tracking-wider">
+                          <span className="text-xs font-bold text-ink/80 uppercase tracking-wider">
                             Productos en esta semana
                           </span>
                           <button
                             type="button"
                             onClick={() => handleAddProductToWeek(wIdx)}
-                            className="text-[11px] font-bold text-brand hover:text-brand-deep flex items-center gap-1 cursor-pointer"
+                            className="text-xs font-bold text-brand hover:text-brand-deep flex items-center gap-1 cursor-pointer"
                           >
                             <Plus className="w-3.5 h-3.5" />
-                            <span>Añadir Producto</span>
+                            <span>Sumar producto</span>
                           </button>
                         </div>
 
                         {week.products.length === 0 ? (
-                          <p className="text-[11px] text-ink/50 italic">
+                          <p className="text-xs text-ink/50 italic">
                             Sin productos (Semana de solo agua o flush).
                           </p>
                         ) : (
@@ -389,7 +389,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                                     onChange={(e) => handleProductChange(wIdx, pIdx, 'dosageMlPerL', parseFloat(e.target.value) || 0)}
                                     className="w-16 px-2 py-1 rounded-lg bg-surface border border-chip-line text-xs font-bold text-center text-ink"
                                   />
-                                  <span className="text-[10px] text-ink/60">ml/L</span>
+                                  <span className="text-[11px] text-ink/60">ml/L</span>
                                 </div>
 
                                 <button
@@ -426,7 +426,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
               className="cultiveta-btn-primary py-2.5 text-xs font-black flex items-center gap-2"
             >
               <Save className="w-4 h-4" />
-              <span>Guardar Tabla</span>
+              <span>Guardar tabla</span>
             </button>
           </div>
         </form>

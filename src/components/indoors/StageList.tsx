@@ -38,7 +38,7 @@ export const StageList: React.FC<{ stages: StageScheduleItem[]; activeDay: numbe
               <small className="text-xs text-ink-muted">{when}</small>
             </div>
             {pill && (
-              <span className={`self-start shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-black ${s.status === 'active' ? 'bg-brand-deep text-white' : 'bg-track text-ink-muted'}`}>
+              <span className={`self-start shrink-0 rounded-full px-2.5 py-0.5 text-xs font-black ${s.status === 'active' ? 'bg-brand-deep text-white' : 'bg-track text-ink-muted'}`}>
                 {pill}
               </span>
             )}

@@ -416,7 +416,7 @@ export async function runTimelineUnknownHistoryAndPotLiftTests(): Promise<{
     if (!harvestTask) {
       throw new Error('taskService DEBE crear harvest task cuando faltan 2 días restantes');
     }
-    if (!harvestTask.title.includes('Inspección de Tricomas')) {
+    if (!harvestTask.title.includes('Mirar los tricomas')) {
       throw new Error(`Título inesperado: ${harvestTask.title}`);
     }
   });

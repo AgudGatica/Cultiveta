@@ -72,10 +72,10 @@ export const HarvestProjectionSection: React.FC<HarvestProjectionSectionProps> =
           <button
             type="button"
             onClick={onOpenCalendarModal}
-            className="px-4 py-2 rounded-2xl bg-white hover:bg-track border border-line text-xs font-bold text-brand transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs self-stretch sm:self-auto justify-center"
+            className="min-h-11 px-4 py-2 rounded-2xl bg-white hover:bg-track border border-line text-xs font-bold text-brand transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs self-stretch sm:self-auto justify-center"
           >
             <Calendar className="w-4 h-4 text-brand" />
-            <span>Ver en Calendario</span>
+            <span>Ver en calendario</span>
           </button>
         )}
       </div>
@@ -85,13 +85,13 @@ export const HarvestProjectionSection: React.FC<HarvestProjectionSectionProps> =
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Fecha Estimada de Corte */}
           <div className="p-4 rounded-xl bg-white border border-line">
-            <span className="text-[10px] text-ink-subtle uppercase font-bold tracking-wider block">
+            <span className="text-[11px] text-ink-subtle uppercase font-bold tracking-wider block">
               Fecha estimada de corte
             </span>
             <span className="text-xl sm:text-2xl font-black text-brand block mt-1">
               {formatFriendlyDate(schedule.estimatedHarvestDate, { isProjected: true })}
             </span>
-            <span className="text-[11px] text-ink-muted block mt-0.5">
+            <span className="text-xs text-ink-muted block mt-0.5">
               {schedule.daysUntilHarvest === 0
                 ? 'Ventana de cosecha lista'
                 : `Faltan aproximadamente ${schedule.daysUntilHarvest} días (~${schedule.weeksUntilHarvest} sem)`}
@@ -100,7 +100,7 @@ export const HarvestProjectionSection: React.FC<HarvestProjectionSectionProps> =
 
           {/* Estado de Ajustes */}
           <div className="p-4 rounded-xl bg-white border border-line">
-            <span className="text-[10px] text-ink-subtle uppercase font-bold tracking-wider block">
+            <span className="text-[11px] text-ink-subtle uppercase font-bold tracking-wider block">
               Ajustes del cronograma
             </span>
             <div className="flex items-center gap-2 mt-1">
@@ -116,22 +116,22 @@ export const HarvestProjectionSection: React.FC<HarvestProjectionSectionProps> =
                 </span>
               )}
             </div>
-            <span className="text-[11px] text-ink-muted block mt-0.5 leading-tight">
+            <span className="text-xs text-ink-muted block mt-0.5 leading-tight">
               {schedule.adjustmentReason}
             </span>
           </div>
 
           {/* Duración Total Proyectada */}
           <div className="p-4 rounded-xl bg-white border border-line">
-            <span className="text-[10px] text-ink-subtle uppercase font-bold tracking-wider block">
-              Ciclo Total Estimado
+            <span className="text-[11px] text-ink-subtle uppercase font-bold tracking-wider block">
+              Ciclo total estimado
             </span>
             <span className="text-xl sm:text-2xl font-black text-ink block mt-1">
               {schedule.totalCycleDays !== null ? `~${schedule.totalCycleDays} días` : 'Por estimar'}
             </span>
-            <span className="text-[11px] text-ink-muted block mt-0.5">
+            <span className="text-xs text-ink-muted block mt-0.5">
               {schedule.overallProgressPct !== null ? (
-                `Llevas ${schedule.totalElapsedDays} días transcurridos (${schedule.overallProgressPct}%)`
+                `Llevás ${schedule.totalElapsedDays} días transcurridos (${schedule.overallProgressPct}%)`
               ) : (
                 `Día ${schedule.activeStageElapsedDays} en etapa actual (${schedule.activeStage.name})`
               )}
@@ -170,7 +170,7 @@ export const HarvestProjectionSection: React.FC<HarvestProjectionSectionProps> =
         {showStageBreakdown && (
           <div className="pt-3 border-t border-line space-y-2 animate-in fade-in duration-200">
             <span className="text-xs font-extrabold uppercase tracking-wider text-ink block">
-              Desglose de Etapas del Cronograma
+              Desglose de etapas del cronograma
             </span>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 text-xs">
               {schedule.stages.map((st) => (
@@ -187,12 +187,12 @@ export const HarvestProjectionSection: React.FC<HarvestProjectionSectionProps> =
                   <div className="flex items-center justify-between mb-1">
                     <span className="font-extrabold text-ink">{st.name}</span>
                     <span
-                      className={`text-[9px] uppercase font-bold px-1.5 py-0.2 rounded-full ${
+                      className={`text-[11px] uppercase font-bold px-1.5 py-0.2 rounded-full ${
                         st.status === 'active'
                           ? 'bg-ok-ink text-white'
                           : st.status === 'completed' && st.isActual
                           ? 'bg-track text-ink'
-                          : 'bg-stone-100 text-ink-subtle'
+                          : 'bg-track text-ink-subtle'
                       }`}
                     >
                       {st.status === 'active'
@@ -202,12 +202,12 @@ export const HarvestProjectionSection: React.FC<HarvestProjectionSectionProps> =
                         : 'Proyectada'}
                     </span>
                   </div>
-                  <div className="text-[11px] text-ink-muted space-y-0.5">
+                  <div className="text-xs text-ink-muted space-y-0.5">
                     <div>
                       {formatFriendlyDate(st.startDate, { isProjected: !st.startIsReal })} →{' '}
                       {formatFriendlyDate(st.endDate, { isProjected: !st.endIsReal })}
                     </div>
-                    <div className="text-[10px] text-ink-subtle">
+                    <div className="text-[11px] text-ink-subtle">
                       {st.expectedDurationDays} días {st.status === 'completed' ? 'duración' : 'estimados'}
                     </div>
                   </div>

@@ -26,11 +26,11 @@ export const GrowlogTile: React.FC<{ g: GrowlogCard; onOpen: (id: string) => voi
       </span>
       <span className="block p-2.5 space-y-1">
         <b className="block text-sm font-extrabold text-ink truncate">{g.title}</b>
-        <span className="flex items-center gap-1.5 text-[11px] text-ink-muted min-w-0">
+        <span className="flex items-center gap-1.5 text-xs text-ink-muted min-w-0">
           <Avatar url={g.ownerAvatarUrl} name={g.ownerName} color={g.ownerAvatarColor} size={18} />
           <span className="truncate">@{g.ownerHandle}</span>
         </span>
-        <span className="flex items-center gap-2 text-[11px] text-ink-muted">
+        <span className="flex items-center gap-2 text-xs text-ink-muted">
           <span className="inline-flex items-center gap-0.5">
             <Eye className="w-3 h-3" aria-hidden="true" />
             {kfmt(g.views)}

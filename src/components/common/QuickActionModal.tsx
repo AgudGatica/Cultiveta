@@ -99,16 +99,16 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
         <div className="flex items-center justify-between pb-3 border-b border-chip-line">
           <div>
             <h2 className="text-lg font-extrabold text-ink">
-              ¿Qué anotamos hoy? 🌱
+              ¿Qué anotamos hoy?
             </h2>
             <p className="text-xs text-ink-muted mt-0.5">
               Registro rápido en un par de toques
             </p>
           </div>
-          <button
+          <button aria-label="Cerrar"
             type="button"
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-track text-ink-muted hover:text-ink transition-colors cursor-pointer"
+            className="min-h-11 min-w-11 inline-flex items-center justify-center p-2 rounded-full hover:bg-track text-ink-muted hover:text-ink transition-colors cursor-pointer"
             title="Cerrar"
           >
             <X className="w-5 h-5" />
@@ -127,8 +127,8 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
             <div className="w-10 h-10 rounded-xl bg-ok/15 text-ok-ink flex items-center justify-center mb-2.5 group-hover:bg-ok-ink group-hover:text-white transition-colors">
               <Droplets className="w-5 h-5 stroke-[2.2]" />
             </div>
-            <span className="text-sm font-bold text-ink">💧 Regué</span>
-            <span className="text-[11px] text-ink-muted mt-0.5 line-clamp-1">
+            <span className="text-sm font-bold text-ink">Regué</span>
+            <span className="text-xs text-ink-muted mt-0.5 line-clamp-1">
               Agua, pH, EC y fertis
             </span>
           </button>
@@ -143,8 +143,8 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
             <div className="w-10 h-10 rounded-xl bg-brand/15 text-brand flex items-center justify-center mb-2.5 group-hover:bg-brand group-hover:text-white transition-colors">
               <Camera className="w-5 h-5 stroke-[2.2]" />
             </div>
-            <span className="text-sm font-bold text-ink">📷 Foto</span>
-            <span className="text-[11px] text-ink-muted mt-0.5 line-clamp-1">
+            <span className="text-sm font-bold text-ink">Foto</span>
+            <span className="text-xs text-ink-muted mt-0.5 line-clamp-1">
               Seguimiento visual
             </span>
           </button>
@@ -159,8 +159,8 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
             <div className="w-10 h-10 rounded-xl bg-warn-line/25 text-ink flex items-center justify-center mb-2.5 group-hover:bg-warn-line transition-colors">
               <BookOpen className="w-5 h-5 stroke-[2.2]" />
             </div>
-            <span className="text-sm font-bold text-ink">📝 Anoté algo</span>
-            <span className="text-[11px] text-ink-muted mt-0.5 line-clamp-1">
+            <span className="text-sm font-bold text-ink">Anoté algo</span>
+            <span className="text-xs text-ink-muted mt-0.5 line-clamp-1">
               Poda, plaga, cambio de luz
             </span>
           </button>
@@ -175,8 +175,8 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
             <div className="w-10 h-10 rounded-xl bg-brand/15 text-brand flex items-center justify-center mb-2.5 group-hover:bg-brand group-hover:text-white transition-colors">
               <Sparkles className="w-5 h-5 stroke-[2.2]" />
             </div>
-            <span className="text-sm font-bold text-ink">✨ Preguntale a Cultiveta</span>
-            <span className="text-[11px] text-ink-muted mt-0.5 line-clamp-1">
+            <span className="text-sm font-bold text-ink">Preguntale a Cultiveta</span>
+            <span className="text-xs text-ink-muted mt-0.5 line-clamp-1">
               Diagnóstico botánico IA
             </span>
           </button>
@@ -188,7 +188,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
             type="button"
             id="quick-action-more-toggle"
             onClick={() => setShowMoreActions((prev) => !prev)}
-            className="w-full py-2.5 px-3 rounded-2xl bg-surface hover:bg-track border border-chip-line flex items-center justify-between text-xs font-bold text-ink transition-colors cursor-pointer"
+            className="w-full min-h-11 py-2.5 px-3 rounded-2xl bg-surface hover:bg-track border border-chip-line flex items-center justify-between text-xs font-bold text-ink transition-colors cursor-pointer"
           >
             <span>Más registros técnicos</span>
             <ChevronDown
@@ -212,7 +212,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
                 </div>
                 <div className="min-w-0 flex-1">
                   <span className="text-xs font-bold text-ink block">Ambiente</span>
-                  <span className="text-[10px] text-ink-muted block">T°, HR, VPD</span>
+                  <span className="text-[11px] text-ink-muted block">T°, HR, VPD</span>
                 </div>
               </button>
 
@@ -228,7 +228,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
                 </div>
                 <div className="min-w-0 flex-1">
                   <span className="text-xs font-bold text-ink block">pH / EC</span>
-                  <span className="text-[10px] text-ink-muted block">Escorrentía</span>
+                  <span className="text-[11px] text-ink-muted block">Escorrentía</span>
                 </div>
               </button>
             </div>
@@ -241,7 +241,7 @@ export const QuickActionModal: React.FC<QuickActionModalProps> = ({
             type="button"
             id="quick-action-new-crop"
             onClick={() => handleActionClick('new-crop')}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand hover:text-[#5B37AE] hover:underline cursor-pointer"
+            className="min-h-11 inline-flex items-center gap-1.5 text-xs font-semibold text-brand hover:underline cursor-pointer"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>¿Querés sumar una carpa o planta nueva? Creá un nuevo cultivo</span>

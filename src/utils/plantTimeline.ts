@@ -6,6 +6,7 @@
 import type { Cultivation, DiaryEntry, Genetics, PhotoRecord, Watering } from '../types';
 import { buildCultivationStageSchedule, daysBetween, getLocalTodayDateOnly, isFloweringStage, isPreFloweringStage, parseDateOnly, floraPhaseOf, normalizeCultivationStages } from './growthStageUtils';
 import { isCropFinished } from './cropCardInfo';
+import { dec } from './formatNumber';
 
 export type PlantEventKind = 'stage' | 'photo' | 'note' | 'watering' | 'watering_group';
 
@@ -99,9 +100,9 @@ export function crownForStage(stage: string | undefined, finished: boolean): Pla
 
 function wateringDetail(w: Watering): string {
   const parts: string[] = [];
-  if (w.volumeLiters) parts.push(`${w.volumeLiters} L`);
-  if (typeof w.phIn === 'number') parts.push(`pH ${w.phIn}`);
-  if (typeof w.ecIn === 'number') parts.push(`EC ${w.ecIn}`);
+  if (w.volumeLiters) parts.push(`${dec(w.volumeLiters)} L`);
+  if (typeof w.phIn === 'number') parts.push(`pH ${dec(w.phIn)}`);
+  if (typeof w.ecIn === 'number') parts.push(`EC ${dec(w.ecIn)}`);
   if (w.productsUsed && w.productsUsed.length > 0) parts.push(w.productsUsed.map((p) => p.name).join(', '));
   if (w.observations && w.observations.trim()) parts.push(w.observations.trim());
   return parts.join(' · ');

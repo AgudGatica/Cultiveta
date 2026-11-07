@@ -164,7 +164,7 @@ async function run() {
     // anillo de Órbita: prendida desde las 18 de ayer, van 16 de las 18 h de luz
     const ring = container.querySelector('#light-ring');
     assert(ring?.getAttribute('data-on') === 'true' && ring.getAttribute('data-progress') === '0.889', `anillo: ${ring?.outerHTML.slice(0, 80)}`);
-    assert(/ON/.test(ring?.textContent || '') && /SE APAGA/.test(container.querySelector('#light-next')?.textContent || ''), 'ON y próximo cambio');
+    assert(/Prendida/.test(ring?.textContent || '') && /SE APAGA/.test(container.querySelector('#light-next')?.textContent || ''), 'ON y próximo cambio');
     assert(container.querySelectorAll('.light-day').length === 7, '7 días');
     assert([...container.querySelectorAll('.light-tick')].map((x) => x.textContent).join(',') === '0,3,6,9,12,15,18,21,24', 'marcas');
     assert(!/promedio/i.test(container.textContent || ''), 'sin promedio en 24 h');

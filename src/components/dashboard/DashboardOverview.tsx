@@ -52,9 +52,9 @@ export function getGreeting(date: Date = new Date()): string {
 }
 
 /**
- * Jardín (la pantalla de inicio): saludo, "Para hoy", cuatro números (ambientes, plantas, racha y nivel)
- * y dos pestañas, como en Canopia: Ambientes (cada uno con su portada) y Plantas (cada genética, con su
- * ambiente). Un cultivo sin ambiente (mientras se le arma uno) se ve abajo, en "Sin ambiente". El detalle de cada cultivo (ambiente, riego, ciclo, gráficos) vive en su pantalla.
+ * Jardín (la pantalla de inicio): saludo, "Para hoy", dos pestañas, como en Canopia: Ambientes (cada uno con
+ * su portada) y Plantas (cada genética, con su ambiente), y cuatro números (ambientes, plantas, racha y nivel).
+ * Un cultivo sin ambiente (mientras se le arma uno) se ve abajo, en "Sin ambiente". El detalle de cada cultivo (ambiente, riego, ciclo, gráficos) vive en su pantalla.
  */
 export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
   cultivations,
@@ -159,18 +159,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
           {/* Avisos al celular: se ofrece una sola vez */}
           {cultivations.some((c) => !c.isFinished) && <PushPromptCard />}
 
-          {/* 3. Cuatro números */}
-          <section aria-label="Resumen" className="grid grid-cols-4 gap-2 sm:gap-3">
-            {numbers.map(({ id, label, value, icon: Icon }) => (
-              <div key={id} id={id} className="cultiveta-card p-3 sm:p-4 flex flex-col items-center text-center gap-1">
-                <Icon className="w-4 h-4 text-brand" aria-hidden="true" />
-                <b className="text-xl sm:text-2xl font-black text-ink leading-none">{value}</b>
-                <small className="text-[10px] sm:text-xs font-semibold text-ink-muted leading-tight">{label}</small>
-              </div>
-            ))}
-          </section>
-
-          {/* 4. Ambientes y Plantas (como en Canopia): las plantas están adentro de cada ambiente */}
+          {/* 3. Ambientes y Plantas (como en Canopia): las plantas están adentro de cada ambiente */}
           {indoors.length === 0 && activeCrops.length === 0 ? (
             <EmptyState
               id="home-empty-crops"
@@ -250,7 +239,7 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
             </section>
           )}
 
-          {/* 5. Cultivos que todavía no están en un ambiente (se les arma uno solo) */}
+          {/* 4. Cultivos que todavía no están en un ambiente (se les arma uno solo) */}
           {loose.length > 0 && (
             <section id="home-loose-crops" aria-labelledby="home-loose-title" className="space-y-3">
               <h2 id="home-loose-title" className="text-sm font-extrabold text-white cultiveta-on-gradient px-1">
@@ -263,6 +252,17 @@ export const DashboardOverview: React.FC<DashboardOverviewProps> = ({
               </div>
             </section>
           )}
+
+          {/* 5. Cuatro números: al final, para que las plantas queden más cerca */}
+          <section aria-label="Resumen" className="grid grid-cols-4 gap-2 sm:gap-3">
+            {numbers.map(({ id, label, value, icon: Icon }) => (
+              <div key={id} id={id} className="cultiveta-card p-3 sm:p-4 flex flex-col items-center text-center gap-1">
+                <Icon className="w-4 h-4 text-brand" aria-hidden="true" />
+                <b className="text-xl sm:text-2xl font-black text-ink leading-none">{value}</b>
+                <small className="text-[11px] sm:text-xs font-semibold text-ink-muted leading-tight">{label}</small>
+              </div>
+            ))}
+          </section>
         </>
       )}
     </div>

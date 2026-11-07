@@ -131,7 +131,7 @@ export const TodayTasksCard: React.FC<TodayTasksCardProps> = ({
           <Bell className="w-4 h-4 text-brand" aria-hidden="true" />
           Para hoy
         </h2>
-        <span className="text-[11px] font-bold text-ink-muted">
+        <span className="text-xs font-bold text-ink-muted">
           {groups.length === 1 ? '1 tarea' : `${groups.length} tareas`}
         </span>
       </div>

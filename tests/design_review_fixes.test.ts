@@ -12,6 +12,15 @@
  *  7. Cultivo en un ambiente: primero lo que más se hace, lo raro al final y sin repetir luz ni ventana de riego.
  *  8. Cultivo sin ambiente: sigue teniendo su luz y su ventana de riego (no tiene otras pantallas).
  *  9. Contraste: los textos que no se leían ya no existen, y los colores llegan al mínimo.
+ * 10. Cuándo revisar la maceta: en palabras, y si ya pasó, lo dice.
+ * 11. Floración: el mismo día en Cultivo y en Genética, semanas enteras y singular bien.
+ * 12. Números con coma y tareas en castellano común.
+ * 13. Preferencias: solo lo que funciona, y lo guardado no se pierde.
+ * 14. Catálogo en filas, la tarjeta grande al tocar y Favoritas con contenido.
+ * 15. La pestaña de abajo se llama Cosechas.
+ * 16. Orden: Genética (corte sobre la foto, ventana junto a pH y EC), Ambiente (plantas primero), Jardín (números al final).
+ * 17. Luz: la semana plegada en 24 h y abierta en superciclos. Equipos: otras marcas plegadas.
+ * 18. Un solo estilo: sin colores sueltos, ventanas desde abajo, menos movimiento y letra mínima de 11 px.
  */
 
 import './helpers/setupDom';
@@ -33,6 +42,18 @@ import { NotificationCenterModal, groupAlerts } from '../src/components/notifica
 import { UserPreferencesModal } from '../src/components/user/UserPreferencesModal';
 import { CultivationDetailView } from '../src/components/cultivations/CultivationDetailView';
 import { StatusPill } from '../src/components/common/StatusPill';
+import { wateringWindowDisplay } from '../src/utils/wateringWindow';
+import { dayMonth, dec } from '../src/utils/formatNumber';
+import { FloweringProgressSection } from '../src/components/dashboard/FloweringProgressSection';
+import { buildDailyTasks } from '../src/utils/dailyTasks';
+import { GeneticsLibraryView } from '../src/components/genetics/GeneticsLibraryView';
+import { GENETICS_DATABASE } from '../src/data/predefinedGenetics';
+import { favoritesService, getGeneticsKey } from '../src/services/favoritesService';
+import { MobileNav } from '../src/components/common/MobileNav';
+import { AmbientDetailView } from '../src/components/indoors/AmbientDetailView';
+import { DashboardOverview } from '../src/components/dashboard/DashboardOverview';
+import { LightCycleCard } from '../src/components/cultivations/LightCycleCard';
+import { DevicesView } from '../src/components/devices/DevicesView';
 
 let passed = 0;
 let failed = 0;
@@ -237,7 +258,7 @@ async function run() {
       const q = (s: string) => m.container.querySelector(s) as HTMLElement;
       const follows = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & 4);
       assert(follows(q('#crop-back-btn'), q('#crop-quick-actions')) && follows(q('#crop-quick-actions'), q('#crop-today')), 'volver, acciones y hoy');
-      assert(!/Último Riego/.test(q('#crop-today').textContent || ''), 'hoy no repite el último riego');
+      assert(!/Último riego/i.test(q('#crop-today').textContent || ''), 'hoy no repite el último riego');
       const more = q('#crop-more-actions');
       assert(more.contains(q('#finalize-crop-btn')) && more.contains(q('#open-calendar-sync-btn')) && more.contains(q('#edit-crop-btn')) && more.contains(q('#delete-crop-btn')), 'lo raro va junto');
       assert(follows(q('#crop-tabs'), more), 'y va al final');
@@ -294,6 +315,170 @@ async function run() {
     const pill = await mount(React.createElement(StatusPill, { status: 'ESTABLE' as any }));
     assert(/text-ok-ink/.test(pill.container.innerHTML) && !/emerald|font-mono|animate-pulse/.test(pill.container.innerHTML), pill.container.innerHTML);
     await pill.unmount();
+  });
+
+  await check('10. Cuándo revisar la maceta: en palabras, y si ya pasó, lo dice', () => {
+    const now = new Date(2026, 10, 6, 15, 0); // viernes 6 de noviembre, 15 h
+    const vencida = wateringWindowDisplay('2026-10-30T04:14', '2026-10-30T15:45', now);
+    assert(vencida?.state === 'vencida' && /Ya pasó/.test(vencida.text) && /30 oct/.test(vencida.note || ''), JSON.stringify(vencida));
+    const ahora = wateringWindowDisplay('2026-11-06T08:00', '2026-11-07T09:00', now);
+    assert(ahora?.state === 'ahora' && ahora.note === 'Hasta mañana a la mañana.', JSON.stringify(ahora));
+    const hoy = wateringWindowDisplay('2026-11-06T20:00', '2026-11-06T22:00', now);
+    assert(hoy?.text === 'Hoy a la noche', JSON.stringify(hoy));
+    const entre = wateringWindowDisplay('2026-11-06T20:00', '2026-11-07T10:00', now);
+    assert(entre?.text === 'Entre hoy a la noche y mañana a la mañana', JSON.stringify(entre));
+    assert(/^El (domingo|lunes|martes)/i.test(wateringWindowDisplay('2026-11-08T07:00', '2026-11-08T09:00', now)?.text || ''), 'día de la semana');
+    assert(wateringWindowDisplay(null, null, now) === null, 'sin datos');
+  });
+
+  await check('11. Floración: el mismo día en Cultivo y en Genética, semanas enteras', async () => {
+    const c = crop('a', { currentStage: 'Floración', stageStartDate: ago(20), floweringStartDate: ago(20), declaredFloweringDays: 55 } as any);
+    const m = await mount(React.createElement(FloweringProgressSection, { cultivation: c, geneticsList: [{ id: 'g', name: 'Genética a', declaredFloweringDays: 55 } as any] }));
+    const text = m.container.textContent || '';
+    assert(/Día 21 de ~/.test(text), text.slice(0, 200));
+    assert(!/~\d+\.\d/.test(text), 'semanas enteras');
+    await m.unmount();
+    const growth = fs.readFileSync(path.resolve('src/utils/growthStageUtils.ts'), 'utf8');
+    assert(/'1 día'/.test(growth), '1 día, no "1 días"');
+  });
+
+  await check('12. Números con coma y tareas en castellano común', () => {
+    assert(dec(1.5) === '1,5' && dec(2) === '2' && dec('6.2') === '6,2' && dec(1.318) === '1,32' && dec(null) === '—' && dec('') === '—', 'coma decimal');
+    const flora = crop('a', { currentStage: 'Floración', stageStartDate: ago(16), floweringStartDate: ago(16) });
+    const titles = buildDailyTasks([flora], [], []).map((t) => t.title);
+    assert(titles.every((t) => !/\b(Programado|Crítico|Inspección|Revisión)\b/.test(t)), titles.join(' | '));
+  });
+
+  await check('13. Preferencias: solo lo que funciona, y lo guardado no se pierde', async () => {
+    Object.assign(pushNotifications, { status: async () => ({ configured: true, subscribed: false, devices: [], settings, publicKey: 'BKey' }) });
+    const realUpdate = authService.updateUserPreferences;
+    const saved: any[] = [];
+    authService.updateUserPreferences = (async (_uid: string, p: any) => void saved.push(p)) as any;
+    try {
+      const profile: any = { uid: 'u1', preferences: { tempUnit: 'F', volumeUnit: 'gal', advancedMode: true, alertTypes: { climateAlerts: true, wateringAlerts: true, calendarReminders: false, soundEnabled: true } } };
+      const m = await mount(React.createElement(UserPreferencesModal, { isOpen: true, onClose: () => {}, userProfile: profile }));
+      const text = m.container.textContent || '';
+      for (const word of ['Galones', '°F', 'Modo avanzado', 'Calendario']) assert(!text.includes(word), `todavía aparece "${word}"`);
+      assert(m.container.querySelector('#toggle-climate-alerts') && m.container.querySelector('#toggle-watering-alerts') && m.container.querySelector('#toggle-sound-alerts'), 'quedan las que funcionan');
+      await click(m.container.querySelector('#save-preferences-btn'));
+      const p = saved[0];
+      assert(p?.tempUnit === 'F' && p.volumeUnit === 'gal' && p.advancedMode === true && p.alertTypes.calendarReminders === false, JSON.stringify(p));
+      await m.unmount();
+    } finally {
+      authService.updateUserPreferences = realUpdate;
+      Object.assign(pushNotifications, realPush);
+    }
+  });
+
+  await check('14. Catálogo en filas, la tarjeta grande al tocar y Favoritas con contenido', async () => {
+    const first = GENETICS_DATABASE[0];
+    const realSub = favoritesService.subscribeFavorites;
+    favoritesService.subscribeFavorites = ((_u: string, cb: any) => {
+      cb([{ id: 'f1', userId: 'u1', geneticsKey: getGeneticsKey(first.name, first.seedBank), name: first.name, seedBank: first.seedBank, createdAt: iso }]);
+      return () => {};
+    }) as any;
+    try {
+      const m = await mount(React.createElement(GeneticsLibraryView, { userId: 'u1', geneticsList: [], harvests: [], onStartCropWithGenetics: () => {}, onGeneticsUpdated: () => {} } as any));
+      const c = m.container;
+      assert(c.querySelectorAll('[data-genetic-row]').length === GENETICS_DATABASE.length && !c.querySelector('article'), 'todas en filas');
+      await click(c.querySelector('[data-genetic-row]'));
+      assert(c.querySelectorAll('article').length === 1 && c.querySelector('[data-genetic-row]')?.getAttribute('aria-expanded') === 'true', 'se abre una');
+      await click(c.querySelector('#tab-favorites-btn'));
+      assert(c.querySelectorAll('#genetics-favorites-list [data-genetic-row]').length === 1, 'Favoritas muestra las favoritas');
+      assert(!/fuchsia/.test(c.innerHTML), 'sin fucsia');
+      await m.unmount();
+    } finally {
+      favoritesService.subscribeFavorites = realSub;
+    }
+  });
+
+  await check('15. La pestaña de abajo se llama Cosechas', async () => {
+    const m = await mount(React.createElement(MobileNav, { currentView: 'dashboard', onNavigate: () => {}, onOpenQuickAction: () => {} }));
+    const text = m.container.querySelector('#mobile-nav-cultivations')?.textContent;
+    assert(text === 'Cosechas', String(text));
+    await m.unmount();
+  });
+
+  await check('16. Orden: Genética, Ambiente y Jardín', async () => {
+    const follows = (a: Element | null, b: Element | null) => Boolean(a && b && a.compareDocumentPosition(b) & 4);
+    const realGet = indoorService.getIndoors;
+    const list = [carpa];
+    (indoorService as any).getIndoors = () => list;
+    try {
+      const c = crop('a', { indoorId: 'in1', cycleStartKnown: true });
+      const waterings = [{ id: 'w1', userId: 'u1', cultivationId: 'a', date: ago(2), volumeLiters: 1, createdAt: iso }] as any[];
+      const g = await mount(React.createElement(GeneticDetailView, { ambient: carpa, ambients: [carpa], crop: c, index: 0, userId: 'u1', waterings, onBack: () => {}, onOpenCrop: () => {}, onWater: () => {} }));
+      assert(g.container.querySelector('#genetic-hero #genetic-harvest-chip'), 'el corte, sobre la foto');
+      assert(/aspect-square/.test(g.container.querySelector('#genetic-hero')?.className || ''), 'foto cuadrada');
+      assert(follows(g.container.querySelector('#crop-irrigation-forecast'), g.container.querySelector('#feed-target')), 'ventana junto a pH y EC');
+      assert(g.container.querySelector('#genetic-stats')?.children.length === 4, 'día y semana no se repiten');
+      assert(/Línea de tiempo/.test(g.container.querySelector('#genetic-tab-timeline')?.textContent || ''), 'en castellano');
+      await g.unmount();
+
+      const a = await mount(React.createElement(AmbientDetailView as any, { ambient: carpa, cultivations: [c], userId: 'u1', onBack: () => {}, onOpenGenetic: () => {}, onEdit: () => {}, onDeleted: () => {}, onAddPlants: () => {} }));
+      assert(follows(a.container.querySelector('#ambient-genetics'), a.container.querySelector('#crop-light-card')), 'primero las plantas');
+      await a.unmount();
+
+      const d = await mount(React.createElement(DashboardOverview as any, { cultivations: [c], waterings: [], envRecords: [], photos: [], indoors: [carpa], userId: 'u1', onSelectCultivation: () => {}, onCreateCultivationClick: () => {}, onOpenWateringModal: () => {} }));
+      assert(follows(d.container.querySelector('#home-tab-ambientes'), d.container.querySelector('#home-stat-ambients')), 'los números, después de las plantas');
+      await d.unmount();
+    } finally {
+      (indoorService as any).getIndoors = realGet;
+    }
+  });
+
+  await check('17. Luz: semana plegada en 24 h y abierta en superciclos. Equipos: otras marcas plegadas', async () => {
+    const light = (h: number, d: number) => crop('a', { lighting: { type: 'LED', photoperiodHoursLight: h, photoperiodHoursDark: d, lightsOnTime: '08:00', lightsOnDate: h + d === 24 ? '' : ago(2) } });
+    const daily = await mount(React.createElement(LightCycleCard, { cultivation: light(12, 12), onSaveSchedule: () => {} }));
+    assert((daily.container.querySelector('#light-week') as HTMLDetailsElement)?.open === false, 'plegada');
+    assert(daily.container.querySelectorAll('.light-day').length === 7, 'los 7 días siguen ahí');
+    assert(/Prendida|Apagada/.test(daily.container.querySelector('#light-ring')?.textContent || ''), 'en castellano');
+    await daily.unmount();
+    const superCycle = await mount(React.createElement(LightCycleCard, { cultivation: light(13, 13), onSaveSchedule: () => {} }));
+    assert((superCycle.container.querySelector('#light-week') as HTMLDetailsElement)?.open === true, 'abierta');
+    await superCycle.unmount();
+
+    const status = { tuya: { connected: true, mock: true, region: 'us', accessId: '' }, ewelink: { connected: false, mock: false, region: null, available: true }, shelly: { connected: false, mock: false, server: null, ids: [] }, regions: { us: 'Américas' } };
+    globalThis.fetch = (async (url: string) => new Response(JSON.stringify(String(url).endsWith('/status') ? status : { devices: [{ id: 'd1', vendor: 'tuya', name: 'Zapatilla', product: 'Tira', category: 'cz', online: true, channels: [], sensors: null, sensorBindings: [], power: null }], errors: {}, connected: true, mock: true, bindings: [] }), { status: 200 })) as any;
+    try {
+      const m = await mount(React.createElement(DevicesView, { cultivations: [] }));
+      for (let i = 0; i < 4; i++) await act(async () => new Promise((r) => setTimeout(r, 0)));
+      const other = m.container.querySelector('#devices-other-brands') as HTMLDetailsElement;
+      assert(other && !other.open && other.querySelector('#device-brand-ewelink') && !other.querySelector('#device-brand-tuya'), 'otras marcas plegadas');
+      assert(m.container.querySelector('#devices-connect #tuya-add'), 'Agregar otro sigue arriba');
+      await m.unmount();
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+
+  await check('18. Un solo estilo: colores, ventanas, movimiento y letra', () => {
+    const walk = (d: string): string[] =>
+      fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => {
+        const p = path.join(d, e.name);
+        return e.isDirectory() ? walk(p) : p.endsWith('.tsx') ? [p] : [];
+      });
+    const bad: string[] = [];
+    for (const f of walk('src/components')) {
+      const t = fs.readFileSync(f, 'utf8');
+      if (path.basename(f) !== 'PhotoLightboxModal.tsx' && /\b(bg|text|border)-(zinc|stone|emerald|fuchsia|violet|purple|rose)-\d/.test(t)) bad.push(`${f}: colores sueltos`);
+      if (/text-\[(8|9)px\]/.test(t)) bad.push(`${f}: letra de menos de 10 px`);
+      if (/className="fixed inset-0 z-50 flex items-center justify-center p-3/.test(t)) bad.push(`${f}: ventana sin el estilo común`);
+    }
+    assert(bad.length === 0, bad.join(', '));
+    const css = fs.readFileSync(path.resolve('src/index.css'), 'utf8');
+    assert(/\.cultiveta-modal-overlay > \.cultiveta-modal-container/.test(css), 'ventanas desde abajo en el celular');
+    assert(/prefers-reduced-motion: reduce/.test(css), 'menos movimiento');
+  });
+
+  await check('19. Gráficos con fechas de acá y en orden; campos con tamaño de dedo en el celular', () => {
+    assert(dayMonth('2026-11-06') === '6/11', 'día/mes');
+    assert(dayMonth('2026-01-05T10:00:00') === '5/1', 'día/mes con hora');
+    const chart = fs.readFileSync(path.resolve('src/components/charts/EnvironmentChart.tsx'), 'utf8');
+    assert(/sort\(\(a, b\) => a\.date\.localeCompare\(b\.date\)\)/.test(chart), 'de la fecha más vieja a la más nueva');
+    assert(!/slice\(5\)/.test(chart), 'sin fechas mes-día');
+    const css = fs.readFileSync(path.resolve('src/index.css'), 'utf8');
+    assert(/min-height: 2\.75rem/.test(css) && /font-size: 1rem/.test(css), 'campos legibles y fáciles de tocar');
   });
 
   console.log('\n================================================================');

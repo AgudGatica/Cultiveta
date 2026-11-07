@@ -42,17 +42,17 @@ export const AmbientCard: React.FC<AmbientCardProps> = ({ ambient, crops, onOpen
             <Sprout className="w-10 h-10 stroke-[1.5]" aria-hidden="true" />
           </div>
         )}
-        <span className="absolute left-3 top-3 px-2.5 py-1 rounded-full bg-white/90 border border-line text-[11px] font-bold text-ink">
+        <span className="absolute left-3 top-3 px-2.5 py-1 rounded-full bg-white/90 border border-line text-xs font-bold text-ink">
           {exterior ? 'Exterior' : 'Interior'} · {INDOOR_KINDS[ambient.kind] || 'Ambiente'}
         </span>
         {exterior ? (
-          <span className="ambient-light-pill absolute right-3 bottom-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider bg-accent text-ink">
+          <span className="ambient-light-pill absolute right-3 bottom-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black tracking-wider bg-accent text-ink">
             <Sun className="w-3 h-3" aria-hidden="true" />
             LUZ NATURAL
           </span>
         ) : state?.started ? (
           <span
-            className={`ambient-light-pill absolute right-3 bottom-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider ${
+            className={`ambient-light-pill absolute right-3 bottom-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black tracking-wider ${
               state.on ? 'bg-accent text-ink' : 'bg-brand-deep text-white'
             }`}
           >
@@ -60,14 +60,14 @@ export const AmbientCard: React.FC<AmbientCardProps> = ({ ambient, crops, onOpen
             {state.on ? 'LUZ PRENDIDA' : 'LUZ APAGADA'}
           </span>
         ) : ambient.lighting?.photoperiodHoursLight ? (
-          <span className="ambient-light-pill absolute right-3 bottom-3 px-2.5 py-1 rounded-full text-[10px] font-black bg-white/90 text-ink">
+          <span className="ambient-light-pill absolute right-3 bottom-3 px-2.5 py-1 rounded-full text-[11px] font-black bg-white/90 text-ink">
             {cycle.lightHours}/{cycle.darkHours}
           </span>
         ) : null}
       </div>
       <div className="p-4 space-y-1.5">
         <h3 className="text-base font-extrabold text-ink truncate">{ambient.name}</h3>
-        {size && <p className="text-[11px] text-ink-muted">{size}</p>}
+        {size && <p className="text-xs text-ink-muted">{size}</p>}
         <p className="text-xs font-semibold text-ink flex items-center gap-1.5">
           <Leaf className="w-3.5 h-3.5 text-brand" aria-hidden="true" />
           {plants
@@ -75,7 +75,7 @@ export const AmbientCard: React.FC<AmbientCardProps> = ({ ambient, crops, onOpen
             : 'Sin plantas todavía'}
         </p>
         {genetics.length > 0 && (
-          <p className="text-[11px] text-ink-muted truncate">
+          <p className="text-xs text-ink-muted truncate">
             {genetics.slice(0, 3).join(' · ')}
             {genetics.length > 3 ? ` y ${genetics.length - 3} más` : ''}
           </p>

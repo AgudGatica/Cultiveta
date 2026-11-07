@@ -91,7 +91,7 @@ export const CropDevicesCard: React.FC<CropDevicesCardProps> = ({ cultivation, u
       <div className="flex items-center justify-between gap-2">
         <span className="text-xs font-bold uppercase tracking-wider text-ink-muted">Equipos del cultivo</span>
         {onOpenDevices && (
-          <button type="button" onClick={onOpenDevices} className="text-[11px] font-bold text-brand hover:underline">
+          <button type="button" onClick={onOpenDevices} className="text-xs font-bold text-brand hover:underline">
             Cambiar en Equipos
           </button>
         )}
@@ -104,7 +104,7 @@ export const CropDevicesCard: React.FC<CropDevicesCardProps> = ({ cultivation, u
               <Droplets className="w-4 h-4 text-brand" aria-hidden="true" />
               Bomba de riego
             </span>
-            <span className="text-[11px] text-ink-subtle">
+            <span className="text-xs text-ink-subtle">
               {pump.deviceName} · {pump.label}
             </span>
           </div>
@@ -143,7 +143,7 @@ export const CropDevicesCard: React.FC<CropDevicesCardProps> = ({ cultivation, u
                   <span>Regar {seconds} s</span>
                 </button>
               </div>
-              <p className="text-[11px] text-ink-subtle">Se apaga sola con la cuenta regresiva del enchufe, aunque se corte internet. El riego queda anotado en el cultivo.</p>
+              <p className="text-xs text-ink-subtle">Se apaga sola con la cuenta regresiva del enchufe, aunque se corte internet. El riego queda anotado en el cultivo.</p>
             </>
           )}
           {pump.auto && pump.auto.mode !== 'off' ? (
@@ -151,14 +151,14 @@ export const CropDevicesCard: React.FC<CropDevicesCardProps> = ({ cultivation, u
               <p className="text-xs font-bold text-ink">Riego automático</p>
               <p className="text-xs text-ink-muted">{describeAutoIrrigation(pump.auto)}</p>
               {pump.irrigation?.last && (
-                <p className="text-[11px] text-ink-subtle">
+                <p className="text-xs text-ink-subtle">
                   Último: {shortWhen(pump.irrigation.last.at)} · {pump.irrigation.last.seconds} s ({liters(pump.irrigation.last.liters)})
                 </p>
               )}
-              {pump.irrigation?.note && <p className="text-[11px] text-ink-subtle">Ahora: {pump.irrigation.note}</p>}
+              {pump.irrigation?.note && <p className="text-xs text-ink-subtle">Ahora: {pump.irrigation.note}</p>}
             </div>
           ) : (
-            <p className="text-[11px] text-ink-subtle">Para que riegue sola (con la luz, a una hora o por humedad), activá el riego automático en Equipos.</p>
+            <p className="text-xs text-ink-subtle">Para que riegue sola (con la luz, a una hora o por humedad), activá el riego automático en Equipos.</p>
           )}
           {error && <p className="text-xs font-bold text-error">{error}</p>}
         </div>
@@ -172,7 +172,7 @@ export const CropDevicesCard: React.FC<CropDevicesCardProps> = ({ cultivation, u
               {b.climateRole ? CLIMATE_ROLES[b.climateRole].label : 'Equipo'}
             </span>
             <span
-              className={`px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider ${
+              className={`px-2 py-0.5 rounded-full text-[11px] font-black tracking-wider ${
                 b.online === false ? 'bg-coral/15 text-error' : b.on ? 'bg-accent text-ink' : 'bg-brand-deep text-white'
               }`}
             >
@@ -180,7 +180,7 @@ export const CropDevicesCard: React.FC<CropDevicesCardProps> = ({ cultivation, u
             </span>
           </div>
           {b.climateRole && b.rule && <p className="text-xs text-ink-muted">{describeClimateRule(b.climateRole, b.rule)}</p>}
-          {b.lastReason && <p className="text-[11px] text-ink-subtle">Ahora: {b.lastReason}</p>}
+          {b.lastReason && <p className="text-xs text-ink-subtle">Ahora: {b.lastReason}</p>}
         </div>
       ))}
     </section>

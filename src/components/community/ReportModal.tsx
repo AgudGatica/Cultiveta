@@ -35,8 +35,8 @@ export const ReportModal: React.FC<Props> = ({ kind, targetId, growlogId, what, 
   };
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="report-title" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs overflow-y-auto">
-      <div id="report-modal" className="w-full max-w-md bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border border-line my-auto space-y-4">
+    <div role="dialog" aria-modal="true" aria-labelledby="report-title" className="cultiveta-modal-overlay animate-in fade-in">
+      <div id="report-modal" className="cultiveta-modal-container my-auto max-w-md p-5 sm:p-6 space-y-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl bg-error/10 text-error">

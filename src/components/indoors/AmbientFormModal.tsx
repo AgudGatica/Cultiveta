@@ -95,8 +95,8 @@ export const AmbientFormModal: React.FC<AmbientFormModalProps> = ({ isOpen, onCl
   };
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="ambient-form-title" className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs overflow-y-auto">
-      <div id="ambient-form-modal" className="w-full max-w-lg bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border border-line my-auto space-y-4">
+    <div role="dialog" aria-modal="true" aria-labelledby="ambient-form-title" className="cultiveta-modal-overlay animate-in fade-in">
+      <div id="ambient-form-modal" className="cultiveta-modal-container my-auto max-w-lg p-5 sm:p-6 space-y-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl bg-brand/10 text-brand">{indoor ? <Home className="w-5 h-5" aria-hidden="true" /> : <Sun className="w-5 h-5" aria-hidden="true" />}</div>
@@ -171,7 +171,7 @@ export const AmbientFormModal: React.FC<AmbientFormModalProps> = ({ isOpen, onCl
               </label>
             </div>
             {(m.volumeM3 || m.wattsPerM2) && (
-              <p id="ambient-form-metrics" className="text-[11px] text-ink-muted">
+              <p id="ambient-form-metrics" className="text-xs text-ink-muted">
                 {m.volumeM3 ? `${m.volumeM3.toFixed(2).replace('.', ',')} m³` : ''}
                 {m.volumeM3 && m.wattsPerM2 ? ' · ' : ''}
                 {m.wattsPerM2 ? `${Math.round(m.wattsPerM2)} W/m²` : ''}
@@ -190,7 +190,7 @@ export const AmbientFormModal: React.FC<AmbientFormModalProps> = ({ isOpen, onCl
                 }}
               />
               {lightHours !== '' && Number(lightHours) + darkHoursFor(Number(lightHours), darkHours) > 24 && !ambientToEdit?.lighting?.lightsOnDate && (
-                <p id="ambient-supercycle-note" className="text-[11px] text-ink-muted">
+                <p id="ambient-supercycle-note" className="text-xs text-ink-muted">
                   Después, en la tarjeta de la luz, elegí el día y la hora de un encendido: con eso Cultiveta calcula los demás.
                 </p>
               )}

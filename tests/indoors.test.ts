@@ -288,7 +288,7 @@ async function run() {
     const shade = c.querySelector('#genetic-hero-shade');
     assert(shade && /bg-gradient-to-t/.test(shade.className) && /\bopacity-50\b/.test(shade.className), `degradé negro al 50%: ${shade?.className}`);
     assert(c.querySelectorAll('#genetic-hero [class*="bg-gradient"]').length === 1, 'una sola capa de degradé');
-    assert([...c.querySelectorAll('[role="tab"]')].map((t) => t.textContent).join() === 'Resumen,Etapas,Timeline', 'pestañas');
+    assert([...c.querySelectorAll('[role="tab"]')].map((t) => t.textContent).join() === 'Resumen,Etapas,Línea de tiempo', 'pestañas');
     assert(c.querySelector('#genetic-stats') && /Riegos1/.test(c.querySelector('#genetic-stats')?.textContent || ''), c.querySelector('#genetic-stats')?.textContent || '');
     await act(async () => (c.querySelector('#genetic-tab-etapas') as HTMLButtonElement).click());
     const stages = [...c.querySelectorAll('.genetic-stage')];

@@ -48,7 +48,7 @@ export const GeneticsHeaderPhoto: React.FC<GeneticsHeaderPhotoProps> = ({
                   loading="lazy"
                   onError={() => setHasError(true)}
                 />
-                <div className="absolute bottom-1 inset-x-1 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-2xs text-[9px] font-bold text-white truncate">
+                <div className="absolute bottom-1 inset-x-1 px-1.5 py-0.5 rounded bg-black/60 backdrop-blur-2xs text-[11px] font-bold text-white truncate">
                   {item.name}
                 </div>
               </div>
@@ -68,7 +68,7 @@ export const GeneticsHeaderPhoto: React.FC<GeneticsHeaderPhotoProps> = ({
         {isReferencePhoto && (
           <div
             data-testid="reference-photo-badge"
-            className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-ink/85 backdrop-blur-xs text-white text-[10px] font-bold tracking-wide flex items-center gap-1 shadow-xs"
+            className="absolute top-2.5 left-2.5 px-2.5 py-1 rounded-full bg-ink/85 backdrop-blur-xs text-white text-[11px] font-bold tracking-wide flex items-center gap-1 shadow-xs"
           >
             <Sparkles className="w-3 h-3 text-warn-line" />
             <span>Foto de referencia</span>
@@ -79,7 +79,7 @@ export const GeneticsHeaderPhoto: React.FC<GeneticsHeaderPhotoProps> = ({
         {hasMultipleGenetics && (
           <div
             data-testid="multiple-genetics-badge"
-            className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-lg bg-black/70 backdrop-blur-xs text-white text-[9px] font-bold flex items-center gap-1 shadow-xs"
+            className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-lg bg-black/70 backdrop-blur-xs text-white text-[11px] font-bold flex items-center gap-1 shadow-xs"
           >
             <Layers className="w-3 h-3 text-ok-ink" />
             <span>

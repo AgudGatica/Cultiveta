@@ -13,6 +13,7 @@ import {
 } from 'recharts';
 import { Watering, Cultivation } from '../../types';
 import { cultivationService } from '../../services/cultivationService';
+import { dec, dayMonth } from '../../utils/formatNumber';
 
 interface WateringChartProps {
   cultivation: Cultivation;
@@ -29,7 +30,7 @@ export const WateringChart: React.FC<WateringChartProps> = ({
     .map((w) => {
       const day = cultivationService.calculateDays(cultivation.startDate, w.date);
       return {
-        date: w.date.slice(5),
+        date: dayMonth(w.date),
         day: `Día ${day}`,
         volume: w.volumeLiters,
         phIn: w.phIn,
@@ -40,14 +41,14 @@ export const WateringChart: React.FC<WateringChartProps> = ({
     });
 
   return (
-    <div className="bg-white rounded-3xl p-6 border border-stone-200 shadow-sm space-y-4">
-      <div className="pb-3 border-b border-stone-100">
-        <h3 className="font-bold text-base text-stone-900">Evolución de pH y EC 💧</h3>
-        <p className="text-xs text-stone-500">Comportamiento de la nutrición en riegos sucesivos</p>
+    <div className="bg-white rounded-3xl p-6 border border-line shadow-sm space-y-4">
+      <div className="pb-3 border-b border-line">
+        <h3 className="font-bold text-base text-ink">Evolución de pH y EC</h3>
+        <p className="text-xs text-ink-muted">Comportamiento de la nutrición en riegos sucesivos</p>
       </div>
 
       {chartData.length === 0 ? (
-        <div className="h-64 flex flex-col items-center justify-center text-center p-6 text-stone-400">
+        <div className="h-64 flex flex-col items-center justify-center text-center p-6 text-ink-subtle">
           <p className="text-sm font-medium">Aún no hay riegos registrados con valores de pH y EC.</p>
         </div>
       ) : (
@@ -56,8 +57,8 @@ export const WateringChart: React.FC<WateringChartProps> = ({
             <LineChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f0ee" vertical={false} />
               <XAxis dataKey="date" tick={{ fontSize: 11, fill: '#78716c' }} stroke="#e7e5e4" />
-              <YAxis yAxisId="ph" domain={[5, 8]} tick={{ fontSize: 11, fill: '#059669' }} stroke="#e7e5e4" />
-              <YAxis yAxisId="ec" orientation="right" domain={[0, 3.5]} tick={{ fontSize: 11, fill: '#0284c7' }} stroke="#e7e5e4" />
+              <YAxis yAxisId="ph" domain={[5, 8]} tick={{ fontSize: 11, fill: '#047857' }} tickFormatter={(v) => dec(v)} stroke="#e7e5e4" />
+              <YAxis yAxisId="ec" orientation="right" domain={[0, 3.5]} tick={{ fontSize: 11, fill: '#0369a1' }} tickFormatter={(v) => dec(v)} stroke="#e7e5e4" />
               <Tooltip
                 contentStyle={{
                   backgroundColor: '#ffffff',

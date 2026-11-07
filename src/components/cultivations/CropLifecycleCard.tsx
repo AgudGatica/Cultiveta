@@ -127,24 +127,24 @@ export const CropLifecycleCard: React.FC<CropLifecycleCardProps> = ({ cultivatio
         />
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-semibold text-ink-muted pt-1 px-0.5">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs font-semibold text-ink-muted pt-1 px-0.5">
         <div className="text-left">
           <span className="block font-bold text-ink">Siembra</span>
-          <span className="text-[10px] text-ink-muted block mt-0.5">
+          <span className="text-[11px] text-ink-muted block mt-0.5">
             {timeline.isCycleStartKnown ? timeline.startDateFormatted : 'Sin fecha registrada'}
           </span>
         </div>
         <div className="text-left sm:text-center">
           <span className="block font-bold text-ink">Vegetativo</span>
-          {timeline.vegeDates && <span className="text-[10px] text-ink-muted block mt-0.5 truncate">{timeline.vegeDates}</span>}
+          {timeline.vegeDates && <span className="text-[11px] text-ink-muted block mt-0.5 truncate">{timeline.vegeDates}</span>}
         </div>
         <div className="text-left sm:text-center">
           <span className="block font-bold text-ink">Floración</span>
-          {timeline.floraDates && <span className="text-[10px] text-ink-muted block mt-0.5 truncate">{timeline.floraDates}</span>}
+          {timeline.floraDates && <span className="text-[11px] text-ink-muted block mt-0.5 truncate">{timeline.floraDates}</span>}
         </div>
         <div className="text-left sm:text-right">
           <span className="block font-bold text-ink">Cosecha</span>
-          <span className="text-[10px] text-ink-muted block mt-0.5">{timeline.harvestDate}</span>
+          <span className="text-[11px] text-ink-muted block mt-0.5">{timeline.harvestDate}</span>
         </div>
       </div>
 
@@ -184,12 +184,12 @@ export const CropLifecycleCard: React.FC<CropLifecycleCardProps> = ({ cultivatio
                 }`}
               >
                 <div className="flex items-center justify-between mb-1">
-                  <span className="text-[10px] text-ink-muted uppercase tracking-wider block">{tag}</span>
+                  <span className="text-[11px] text-ink-muted uppercase tracking-wider block">{tag}</span>
                   {m.isCurrent && <span className="w-2 h-2 rounded-full bg-ok animate-pulse" title="Etapa actual" />}
                 </div>
                 <span className="block font-bold truncate">{m.name}</span>
-                <span className="text-[10px] text-ink-muted block mt-0.5">{dateText}</span>
-                <span className="text-[10px] text-ink-muted block mt-0.5">{m.durationDays} días</span>
+                <span className="text-[11px] text-ink-muted block mt-0.5">{dateText}</span>
+                <span className="text-[11px] text-ink-muted block mt-0.5">{m.durationDays} días</span>
               </div>
             );
           })}

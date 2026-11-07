@@ -14,7 +14,7 @@ export const LevelCard: React.FC<LevelCardProps> = ({ progress, onClick }) => {
   const content = (
     <>
       <div className="w-14 h-14 shrink-0 rounded-2xl bg-brand-deep text-white flex flex-col items-center justify-center shadow-md shadow-brand-deep/20">
-        <span className="text-[9px] font-bold uppercase tracking-wider text-brand-soft leading-none">Nivel</span>
+        <span className="text-[11px] font-bold uppercase tracking-wider text-brand-soft leading-none">Nivel</span>
         <span className="text-2xl font-black leading-none mt-0.5">{level.level}</span>
       </div>
       <div className="min-w-0 flex-1 space-y-1.5">
@@ -34,7 +34,7 @@ export const LevelCard: React.FC<LevelCardProps> = ({ progress, onClick }) => {
         >
           <div className="h-full rounded-full bg-primary transition-[width] duration-700" style={{ width: `${pct}%` }} />
         </div>
-        <div className="flex items-center justify-between gap-2 text-[11px] text-ink-muted">
+        <div className="flex items-center justify-between gap-2 text-xs text-ink-muted">
           <span className="font-semibold">
             {level.nextXp !== null ? `${level.xp} / ${level.nextXp} XP` : `${level.xp} XP · nivel máximo`}
           </span>

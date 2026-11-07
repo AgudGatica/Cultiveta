@@ -140,7 +140,7 @@ export const FinishedCropsView: React.FC<FinishedCropsViewProps> = ({
     <div id="finished-crops-view" className="space-y-4 sm:space-y-5">
       <div className="flex items-center justify-between gap-3 pt-1">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-white cultiveta-on-gradient tracking-tight">Cultivos</h1>
+          <h1 className="text-2xl sm:text-3xl font-extrabold text-white cultiveta-on-gradient tracking-tight">Cosechas</h1>
           <p className="text-xs sm:text-sm text-white cultiveta-on-gradient font-semibold">Tus cultivos terminados y sus cosechas</p>
         </div>
         {onNavigateToCompare && items.length > 1 && (
@@ -169,7 +169,7 @@ export const FinishedCropsView: React.FC<FinishedCropsViewProps> = ({
             {totals.map((t) => (
               <div key={t.label} className="cultiveta-card p-3.5 sm:p-4 text-center">
                 <b className="block text-lg sm:text-2xl font-black text-ink leading-tight">{t.value}</b>
-                <small className="text-[11px] sm:text-xs font-semibold text-ink-muted">{t.label}</small>
+                <small className="text-xs sm:text-xs font-semibold text-ink-muted">{t.label}</small>
               </div>
             ))}
           </section>

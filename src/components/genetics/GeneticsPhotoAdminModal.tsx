@@ -25,6 +25,7 @@ import {
   StorageStatusResult,
 } from '../../services/geneticsCatalogPhotoService';
 import { GeneticsCatalogPhoto } from '../../types';
+import { dec } from '../../utils/formatNumber';
 
 interface GeneticsPhotoAdminModalProps {
   isOpen: boolean;
@@ -219,7 +220,7 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
 
       setFeedbackMessage({
         type: 'success',
-        text: `Fotografía oficial de "${selectedGeneticForUpload.name}" guardada y persistida en Firebase Storage exitosamente.`,
+        text: `Fotografía oficial de "${selectedGeneticForUpload.name}" guardada.`,
       });
 
       if (onPhotoSaved) {
@@ -260,7 +261,7 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
   const handleDeletePhoto = async (genetic: PredefinedGenetic) => {
     const key = getGeneticsPhotoKey(genetic.seedBank, genetic.name);
     const confirmed = window.confirm(
-      `¿Confirmas que deseas eliminar la fotografía oficial de "${genetic.name}" (${genetic.seedBank})?\nLa genética volverá a mostrarse en estado "Sin foto".`
+      `¿Eliminás la fotografía oficial de "${genetic.name}" (${genetic.seedBank})?\nLa genética volverá a mostrarse en estado "Sin foto".`
     );
 
     if (!confirmed) return;
@@ -291,37 +292,37 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
       role="dialog"
       aria-modal="true"
       id="genetics-photo-admin-modal"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+      className="cultiveta-modal-overlay animate-in fade-in"
     >
-      <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[92vh] flex flex-col shadow-2xl border border-stone-200 overflow-hidden">
+      <div className="cultiveta-modal-container my-auto max-w-4xl max-h-[92vh] flex flex-col overflow-hidden">
         {/* Header Modal */}
-        <div className="p-5 sm:p-6 border-b border-stone-200 flex items-start justify-between gap-4 bg-stone-50/80">
+        <div className="p-5 sm:p-6 border-b border-line flex items-start justify-between gap-4 bg-surface">
           <div>
             <div className="flex items-center gap-2">
-              <span className="p-2 rounded-xl bg-purple-100 text-purple-700">
+              <span className="p-2 rounded-xl bg-icon-bg text-brand">
                 <ShieldCheck className="w-5 h-5" />
               </span>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-bold text-stone-900">
-                    Administración de Fotos de Genéticas
+                  <h3 className="text-lg font-bold text-ink">
+                    Administración de fotos de genéticas
                   </h3>
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-200">
+                  <span className="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold uppercase tracking-wider bg-icon-bg text-brand border border-chip-line">
                     Creador / Admin
                   </span>
                 </div>
-                <p className="text-xs text-stone-500 mt-0.5">
-                  Carga manualmente la fotografía representativa oficial para cada variedad del catálogo
+                <p className="text-xs text-ink-muted mt-0.5">
+                  Cargá a mano la foto oficial de cada genética del catálogo
                 </p>
               </div>
             </div>
           </div>
 
-          <button
+          <button aria-label="Cerrar"
             type="button"
             id="close-admin-photo-modal-btn"
             onClick={onClose}
-            className="p-2 text-stone-400 hover:text-stone-700 rounded-xl hover:bg-stone-200/60 transition-colors cursor-pointer"
+            className="p-2 text-ink-subtle hover:text-ink rounded-xl hover:bg-line transition-colors cursor-pointer"
             title="Cerrar panel de administración"
           >
             <X className="w-5 h-5" />
@@ -330,8 +331,8 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
 
         {/* Advertencia de Storage No Habilitado */}
         {isStorageBlocked && (
-          <div className="mx-6 mt-4 p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold flex items-center gap-2.5">
-            <Lock className="w-4 h-4 text-amber-600 shrink-0" />
+          <div className="mx-6 mt-4 p-3.5 rounded-2xl bg-warn-bg border border-warn-line text-warn-ink text-xs font-semibold flex items-center gap-2.5">
+            <Lock className="w-4 h-4 text-warn-ink shrink-0" />
             <span>
               {storageStatus?.message || 'El almacenamiento de imágenes todavía no está habilitado.'}
             </span>
@@ -343,22 +344,22 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
           <div
             className={`mx-6 mt-4 p-3 rounded-2xl flex items-center justify-between gap-2 text-xs font-semibold ${
               feedbackMessage.type === 'success'
-                ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                : 'bg-rose-50 text-rose-800 border border-rose-200'
+                ? 'bg-ok-bg text-ok-ink border border-ok-line'
+                : 'bg-error/10 text-error border border-error/30'
             }`}
           >
             <div className="flex items-center gap-2">
               {feedbackMessage.type === 'success' ? (
-                <Check className="w-4 h-4 text-emerald-600" />
+                <Check className="w-4 h-4 text-ok-ink" />
               ) : (
-                <AlertCircle className="w-4 h-4 text-rose-600" />
+                <AlertCircle className="w-4 h-4 text-error" />
               )}
               <span>{feedbackMessage.text}</span>
             </div>
-            <button
+            <button aria-label="Cerrar"
               type="button"
               onClick={() => setFeedbackMessage(null)}
-              className="p-1 hover:bg-black/5 rounded-lg text-stone-400 hover:text-stone-700 cursor-pointer"
+              className="p-1 hover:bg-black/5 rounded-lg text-ink-subtle hover:text-ink cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -371,36 +372,36 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
              SUBPANEL: CARGA MANUAL Y PREVIEW DE LA GENÉTICA SELECCIONADA
              ========================================================================= */
           <div className="p-6 overflow-y-auto space-y-6 flex-1">
-            <div className="flex items-center justify-between pb-4 border-b border-stone-200">
+            <div className="flex items-center justify-between pb-4 border-b border-line">
               <button
                 type="button"
                 onClick={handleCancelUpload}
-                className="flex items-center gap-1.5 text-xs font-bold text-stone-600 hover:text-stone-900 px-3 py-1.5 rounded-xl hover:bg-stone-100 transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 text-xs font-bold text-ink-muted hover:text-ink px-3 py-1.5 rounded-xl hover:bg-track transition-colors cursor-pointer"
               >
                 <ArrowLeft className="w-4 h-4" />
                 <span>Volver al listado</span>
               </button>
 
               <div className="text-right">
-                <span className="text-xs font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                <span className="text-xs font-semibold text-ok-ink bg-ok-bg px-2.5 py-1 rounded-full border border-ok-line">
                   {selectedGeneticForUpload.seedBank}
                 </span>
               </div>
             </div>
 
             <div>
-              <h4 className="text-base font-bold text-stone-900">
+              <h4 className="text-base font-bold text-ink">
                 Cargar foto de {selectedGeneticForUpload.name}
               </h4>
-              <p className="text-xs text-stone-500 mt-1">
-                Selecciona una imagen representativa (JPG, JPEG, PNG o WEBP). Comprueba la previsualización y registra la fuente antes de guardar.
+              <p className="text-xs text-ink-muted mt-1">
+                Elegí una imagen representativa (JPG, JPEG, PNG o WEBP). Comprobá la previsualización y registra la fuente antes de guardar.
               </p>
             </div>
 
             {/* Error de validación */}
             {validationError && (
-              <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium flex items-start gap-2.5">
-                <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+              <div className="p-3.5 rounded-2xl bg-error/10 border border-error/30 text-error text-xs font-medium flex items-start gap-2.5">
+                <AlertCircle className="w-4 h-4 text-error shrink-0 mt-0.5" />
                 <span>{validationError}</span>
               </div>
             )}
@@ -420,20 +421,20 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
                 /* Zona Drop / Selección */
                 <div
                   onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-stone-300 hover:border-emerald-500 rounded-3xl p-8 sm:p-12 text-center cursor-pointer transition-all bg-stone-50/50 hover:bg-emerald-50/20 group"
+                  className="border-2 border-dashed border-line hover:border-ok-line rounded-3xl p-8 sm:p-12 text-center cursor-pointer transition-all bg-surface hover:bg-ok-bg group"
                 >
-                  <div className="w-16 h-16 rounded-2xl bg-white shadow-xs border border-stone-200 flex items-center justify-center mx-auto text-stone-400 group-hover:text-emerald-600 group-hover:scale-105 transition-all">
+                  <div className="w-16 h-16 rounded-2xl bg-white shadow-xs border border-line flex items-center justify-center mx-auto text-ink-subtle group-hover:text-ok-ink group-hover:scale-105 transition-all">
                     <Upload className="w-8 h-8" />
                   </div>
-                  <h5 className="mt-4 font-bold text-stone-800 text-sm">
+                  <h5 className="mt-4 font-bold text-ink text-sm">
                     Seleccionar imagen representativa
                   </h5>
-                  <p className="text-xs text-stone-500 mt-1 max-w-sm mx-auto">
+                  <p className="text-xs text-ink-muted mt-1 max-w-sm mx-auto">
                     Formatos admitidos: JPG, JPEG, PNG, WEBP. Tamaño máximo: 10 MB.
                   </p>
                   <button
                     type="button"
-                    className="mt-4 px-4 py-2 rounded-xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold transition-all shadow-xs inline-flex items-center gap-1.5"
+                    className="mt-4 px-4 py-2 rounded-xl bg-brand-deep hover:bg-brand-deep text-white text-xs font-bold transition-all shadow-xs inline-flex items-center gap-1.5"
                   >
                     <Camera className="w-3.5 h-3.5" />
                     <span>Examinar archivo</span>
@@ -442,22 +443,22 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
               ) : (
                 /* Preview antes de guardar */
                 <div className="space-y-4">
-                  <div className="bg-stone-50 p-4 rounded-3xl border border-stone-200 space-y-3">
+                  <div className="bg-surface p-4 rounded-3xl border border-line space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                      <span className="text-xs font-bold text-ink flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-ok-ink" />
                         <span>Previsualización antes de guardar</span>
                       </span>
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="text-xs font-semibold text-emerald-700 hover:underline cursor-pointer"
+                        className="text-xs font-semibold text-ok-ink hover:underline cursor-pointer"
                       >
                         Cambiar imagen
                       </button>
                     </div>
 
-                    <div className="relative w-full max-h-72 sm:max-h-80 rounded-2xl overflow-hidden bg-stone-900 flex items-center justify-center border border-stone-300">
+                    <div className="relative w-full max-h-72 sm:max-h-80 rounded-2xl overflow-hidden bg-brand-deep flex items-center justify-center border border-line">
                       <img
                         src={previewUrl}
                         alt={`Preview de ${selectedGeneticForUpload.name}`}
@@ -468,22 +469,22 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
                     {/* Metadata del archivo */}
                     {selectedFile && (
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs pt-1">
-                        <div className="bg-white p-2.5 rounded-xl border border-stone-200">
-                          <span className="text-stone-400 block text-[10px]">Nombre de archivo</span>
-                          <span className="font-semibold text-stone-800 truncate block" title={selectedFile.name}>
+                        <div className="bg-white p-2.5 rounded-xl border border-line">
+                          <span className="text-ink-subtle block text-[11px]">Nombre de archivo</span>
+                          <span className="font-semibold text-ink truncate block" title={selectedFile.name}>
                             {selectedFile.name}
                           </span>
                         </div>
-                        <div className="bg-white p-2.5 rounded-xl border border-stone-200">
-                          <span className="text-stone-400 block text-[10px]">Tamaño</span>
-                          <span className="font-semibold text-stone-800">
-                            {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                        <div className="bg-white p-2.5 rounded-xl border border-line">
+                          <span className="text-ink-subtle block text-[11px]">Tamaño</span>
+                          <span className="font-semibold text-ink">
+                            {dec(selectedFile.size / (1024 * 1024))} MB
                           </span>
                         </div>
                         {previewDimensions && (
-                          <div className="bg-white p-2.5 rounded-xl border border-stone-200 col-span-2 sm:col-span-1">
-                            <span className="text-stone-400 block text-[10px]">Dimensiones</span>
-                            <span className="font-semibold text-stone-800">
+                          <div className="bg-white p-2.5 rounded-xl border border-line col-span-2 sm:col-span-1">
+                            <span className="text-ink-subtle block text-[11px]">Dimensiones</span>
+                            <span className="font-semibold text-ink">
                               {previewDimensions.width} × {previewDimensions.height} px
                             </span>
                           </div>
@@ -496,20 +497,20 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
             </div>
 
             {/* Formulario de Metadatos de la Fuente y Derechos */}
-            <div className="bg-stone-50/80 p-5 rounded-3xl border border-stone-200 space-y-3">
+            <div className="bg-surface p-5 rounded-3xl border border-line space-y-3">
               <div className="flex items-center gap-2">
-                <Globe className="w-4 h-4 text-purple-700" />
-                <h5 className="font-bold text-xs text-stone-800">
-                  Datos de la Fuente y Derechos de la Fotografía
+                <Globe className="w-4 h-4 text-brand" />
+                <h5 className="font-bold text-xs text-ink">
+                  Datos de la fuente y derechos de la fotografía
                 </h5>
               </div>
-              <p className="text-[11px] text-stone-500">
+              <p className="text-xs text-ink-muted">
                 Información administrativa para mantener la trazabilidad del banco de semillas u origen.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div>
-                  <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                  <label className="block text-xs font-semibold text-ink mb-1">
                     Fuente / Breeder
                   </label>
                   <input
@@ -517,12 +518,12 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
                     value={photoSourceName}
                     onChange={(e) => setPhotoSourceName(e.target.value)}
                     placeholder="Ej: Sensi Seeds, Dutch Passion..."
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-purple-600"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-line text-xs text-ink focus:outline-hidden focus:border-chip-line"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                  <label className="block text-xs font-semibold text-ink mb-1">
                     URL de la fuente (página web oficial)
                   </label>
                   <input
@@ -530,12 +531,12 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
                     value={photoSourceUrl}
                     onChange={(e) => setPhotoSourceUrl(e.target.value)}
                     placeholder="https://sensiseeds.com/es/..."
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-purple-600"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-line text-xs text-ink focus:outline-hidden focus:border-chip-line"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                  <label className="block text-xs font-semibold text-ink mb-1">
                     Atribución / Crédito
                   </label>
                   <input
@@ -543,18 +544,18 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
                     value={photoAttribution}
                     onChange={(e) => setPhotoAttribution(e.target.value)}
                     placeholder="Ej: Fotografía oficial cortesía de Sensi Seeds"
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-purple-600"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-line text-xs text-ink focus:outline-hidden focus:border-chip-line"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                  <label className="block text-xs font-semibold text-ink mb-1">
                     Estado de derechos
                   </label>
                   <select
                     value={photoRightsStatus}
                     onChange={(e: any) => setPhotoRightsStatus(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-purple-600"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-line text-xs text-ink focus:outline-hidden focus:border-chip-line"
                   >
                     <option value="official-source">Fuente oficial del breeder</option>
                     <option value="permission-granted">Permiso otorgado</option>
@@ -562,13 +563,13 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
                     <option value="owned">Propia de Cultiveta</option>
                     <option value="unknown">Sin especificar / Desconocida</option>
                   </select>
-                  <p className="text-[10px] text-stone-500 mt-1 leading-tight">
+                  <p className="text-[11px] text-ink-muted mt-1 leading-tight">
                     Que una foto provenga de una web oficial no implica automáticamente permiso de reutilización. Registrá el estado real de derechos antes de publicarla.
                   </p>
                 </div>
 
                 <div className="sm:col-span-2">
-                  <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                  <label className="block text-xs font-semibold text-ink mb-1">
                     Licencia / Términos de uso
                   </label>
                   <input
@@ -576,20 +577,20 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
                     value={photoLicense}
                     onChange={(e) => setPhotoLicense(e.target.value)}
                     placeholder="Ej: Uso oficial de catálogo / Permiso de prensa"
-                    className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-purple-600"
+                    className="w-full px-3 py-2 rounded-xl bg-white border border-line text-xs text-ink focus:outline-hidden focus:border-chip-line"
                   />
                 </div>
               </div>
             </div>
 
             {/* Botones de Acción de Carga */}
-            <div className="pt-4 border-t border-stone-200 flex items-center justify-end gap-3">
+            <div className="pt-4 border-t border-line flex items-center justify-end gap-3">
               <button
                 type="button"
                 id="cancel-photo-upload-btn"
                 onClick={handleCancelUpload}
                 disabled={isSaving}
-                className="px-5 py-2.5 rounded-2xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-bold transition-all cursor-pointer"
+                className="px-5 py-2.5 rounded-2xl bg-track hover:bg-line text-ink text-xs font-bold transition-all cursor-pointer"
               >
                 Cancelar
               </button>
@@ -598,7 +599,7 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
                 id="save-photo-upload-btn"
                 onClick={handleSavePhoto}
                 disabled={!selectedFile || isSaving || isStorageBlocked}
-                className="px-6 py-2.5 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-6 py-2.5 rounded-2xl bg-brand-deep hover:bg-brand-deep text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSaving ? (
                   <>
@@ -620,24 +621,24 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
              ========================================================================= */
           <>
             {/* Barra de Búsqueda y Filtros */}
-            <div className="p-4 sm:p-5 border-b border-stone-200 bg-stone-50/50 space-y-3">
+            <div className="p-4 sm:p-5 border-b border-line bg-surface space-y-3">
               <div className="flex flex-col sm:flex-row items-center gap-3">
                 {/* Input Búsqueda por Nombre o Banco */}
                 <div className="relative flex-1 w-full">
-                  <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-3" />
+                  <Search className="w-4 h-4 text-ink-subtle absolute left-3.5 top-3" />
                   <input
                     type="text"
                     id="admin-search-genetics-input"
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
                     placeholder="Buscar por nombre de genética o banco (ej: Skunk, Amnesia Haze)..."
-                    className="w-full pl-10 pr-10 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs text-stone-800 placeholder-stone-400 focus:outline-hidden focus:border-purple-600 focus:ring-1 focus:ring-purple-600 transition-all"
+                    className="w-full pl-10 pr-10 py-2.5 rounded-2xl bg-white border border-line text-xs text-ink placeholder-ink-subtle focus:outline-hidden focus:border-chip-line focus:ring-1 focus:ring-brand transition-all"
                   />
                   {searchTerm && (
-                    <button
+                    <button aria-label="Borrar búsqueda"
                       type="button"
                       onClick={() => setSearchTerm('')}
-                      className="absolute right-3.5 top-3 text-stone-400 hover:text-stone-600"
+                      className="absolute right-3.5 top-3 text-ink-subtle hover:text-ink-muted"
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -650,7 +651,7 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
                     id="admin-filter-seedbank-select"
                     value={selectedSeedBank}
                     onChange={(e) => setSelectedSeedBank(e.target.value)}
-                    className="w-full sm:w-48 px-3 py-2.5 rounded-2xl bg-white border border-stone-200 text-xs text-stone-700 font-semibold focus:outline-hidden focus:border-purple-600 cursor-pointer"
+                    className="w-full sm:w-48 px-3 py-2.5 rounded-2xl bg-white border border-line text-xs text-ink font-semibold focus:outline-hidden focus:border-chip-line cursor-pointer"
                   >
                     <option value="ALL">Todos los bancos ({seedBanks.length})</option>
                     {seedBanks.map((b) => (
@@ -664,7 +665,7 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
 
               {/* Filtro por Estado de Fotografía */}
               <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
-                <span className="text-stone-400 text-[11px] font-semibold flex items-center gap-1">
+                <span className="text-ink-subtle text-xs font-semibold flex items-center gap-1">
                   <Filter className="w-3 h-3" />
                   <span>Estado:</span>
                 </span>
@@ -673,8 +674,8 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
                   onClick={() => setStatusFilter('all')}
                   className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                     statusFilter === 'all'
-                      ? 'bg-purple-700 text-white shadow-xs'
-                      : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200'
+                      ? 'bg-brand-deep text-white shadow-xs'
+                      : 'bg-white text-ink-muted hover:bg-track border border-line'
                   }`}
                 >
                   Todas ({GENETICS_DATABASE.length})
@@ -684,8 +685,8 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
                   onClick={() => setStatusFilter('with_photo')}
                   className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                     statusFilter === 'with_photo'
-                      ? 'bg-emerald-700 text-white shadow-xs'
-                      : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200'
+                      ? 'bg-brand-deep text-white shadow-xs'
+                      : 'bg-white text-ink-muted hover:bg-track border border-line'
                   }`}
                 >
                   Con foto (
@@ -701,8 +702,8 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
                   onClick={() => setStatusFilter('without_photo')}
                   className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
                     statusFilter === 'without_photo'
-                      ? 'bg-stone-800 text-white shadow-xs'
-                      : 'bg-white text-stone-600 hover:bg-stone-100 border border-stone-200'
+                      ? 'bg-brand-deep text-white shadow-xs'
+                      : 'bg-white text-ink-muted hover:bg-track border border-line'
                   }`}
                 >
                   Sin foto (
@@ -720,11 +721,11 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
             <div className="p-4 sm:p-6 overflow-y-auto flex-1 space-y-3">
               {filteredGenetics.length === 0 ? (
                 <div className="text-center py-16 px-4">
-                  <div className="w-14 h-14 rounded-2xl bg-stone-100 flex items-center justify-center mx-auto text-stone-400 mb-3">
+                  <div className="w-14 h-14 rounded-2xl bg-track flex items-center justify-center mx-auto text-ink-subtle mb-3">
                     <Search className="w-7 h-7" />
                   </div>
-                  <h4 className="font-bold text-stone-800 text-sm">No se encontraron genéticas</h4>
-                  <p className="text-xs text-stone-500 mt-1 max-w-sm mx-auto">
+                  <h4 className="font-bold text-ink text-sm">No se encontraron genéticas</h4>
+                  <p className="text-xs text-ink-muted mt-1 max-w-sm mx-auto">
                     Prueba modificando los filtros de búsqueda o el banco de semillas seleccionado.
                   </p>
                 </div>
@@ -739,10 +740,10 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
                     return (
                       <div
                         key={`${item.seedBank}-${item.name}`}
-                        className="bg-white rounded-2xl p-4 border border-stone-200 shadow-2xs hover:shadow-xs transition-all flex items-start gap-4 justify-between"
+                        className="bg-white rounded-2xl p-4 border border-line shadow-2xs hover:shadow-xs transition-all flex items-start gap-4 justify-between"
                       >
                         {/* Miniatura de la fotografía actual */}
-                        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden bg-stone-100 border border-stone-200 shrink-0 relative flex items-center justify-center">
+                        <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden bg-track border border-line shrink-0 relative flex items-center justify-center">
                           {hasPhoto ? (
                             <img
                               src={photoRecord!.photoUrl}
@@ -751,31 +752,31 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
                               loading="lazy"
                             />
                           ) : (
-                            <div className="flex flex-col items-center justify-center text-stone-400 p-2 text-center">
+                            <div className="flex flex-col items-center justify-center text-ink-subtle p-2 text-center">
                               <ImageIcon className="w-6 h-6 stroke-1" />
-                              <span className="text-[10px] font-medium mt-1">Sin foto</span>
+                              <span className="text-[11px] font-medium mt-1">Sin foto</span>
                             </div>
                           )}
                         </div>
 
                         {/* Datos de la genética */}
                         <div className="flex-1 min-w-0 space-y-1">
-                          <h4 className="font-bold text-sm text-stone-900 truncate" title={item.name}>
+                          <h4 className="font-bold text-sm text-ink truncate" title={item.name}>
                             {item.name}
                           </h4>
-                          <p className="text-xs font-semibold text-emerald-800 truncate" title={item.seedBank}>
+                          <p className="text-xs font-semibold text-ok-ink truncate" title={item.seedBank}>
                             {item.seedBank}
                           </p>
 
                           {/* Estado de Fotografía */}
                           <div className="pt-1">
                             {hasPhoto ? (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
-                                <Check className="w-3 h-3 text-emerald-600" />
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-ok-bg text-ok-ink border border-ok-line">
+                                <Check className="w-3 h-3 text-ok-ink" />
                                 <span>Foto cargada</span>
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-stone-100 text-stone-500 border border-stone-200">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-track text-ink-muted border border-line">
                                 <span>Sin foto</span>
                               </span>
                             )}
@@ -788,7 +789,7 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
                                 type="button"
                                 id={`load-photo-btn-${key}`}
                                 onClick={() => handleStartUpload(item)}
-                                className="px-3.5 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                                className="px-3.5 py-1.5 rounded-xl bg-brand-deep hover:bg-brand-deep text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
                               >
                                 <Camera className="w-3.5 h-3.5" />
                                 <span>Cargar foto</span>
@@ -799,7 +800,7 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
                                   type="button"
                                   id={`replace-photo-btn-${key}`}
                                   onClick={() => handleStartUpload(item)}
-                                  className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
+                                  className="px-3 py-1.5 rounded-xl bg-track hover:bg-line text-ink text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer"
                                   title="Reemplazar por una nueva imagen"
                                 >
                                   <RefreshCw className="w-3 h-3" />
@@ -811,10 +812,10 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
                                   id={`delete-photo-btn-${key}`}
                                   onClick={() => handleDeletePhoto(item)}
                                   disabled={isDeleting}
-                                  className="px-2.5 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                  className="px-2.5 py-1.5 rounded-xl bg-error/10 hover:bg-error/10 text-error border border-error/30 text-xs font-semibold transition-all flex items-center gap-1 cursor-pointer disabled:opacity-50"
                                   title="Eliminar fotografía oficial"
                                 >
-                                  <Trash2 className="w-3 h-3 text-rose-600" />
+                                  <Trash2 className="w-3 h-3 text-error" />
                                   <span>{isDeleting ? '...' : 'Eliminar'}</span>
                                 </button>
                               </>
@@ -829,14 +830,14 @@ export const GeneticsPhotoAdminModal: React.FC<GeneticsPhotoAdminModalProps> = (
             </div>
 
             {/* Footer Informativo */}
-            <div className="p-4 border-t border-stone-200 bg-stone-50/80 flex items-center justify-between text-xs text-stone-500">
+            <div className="p-4 border-t border-line bg-surface flex items-center justify-between text-xs text-ink-muted">
               <span>
-                Mostrando {filteredGenetics.length} de {GENETICS_DATABASE.length} variedades del catálogo
+                Mostrando {filteredGenetics.length} de {GENETICS_DATABASE.length} genéticas del catálogo
               </span>
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 rounded-xl bg-stone-200 hover:bg-stone-300 text-stone-800 font-bold transition-all cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-line hover:bg-chip-line text-ink font-bold transition-all cursor-pointer"
               >
                 Cerrar
               </button>

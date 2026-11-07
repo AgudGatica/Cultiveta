@@ -16,12 +16,12 @@ export const HydroTankCard: React.FC<{ status: TankStatus; onCheck?: () => void;
     const out = value !== null && (value < range.min || value > range.max);
     return (
       <div className="rounded-2xl bg-surface border border-line p-2.5 text-center">
-        <small className="block text-[10px] font-semibold text-ink-muted">{label}</small>
+        <small className="block text-[11px] font-semibold text-ink-muted">{label}</small>
         <b id={id} data-out={out} className={`block text-xl font-black leading-tight ${out ? 'text-error' : 'text-ink'}`}>
           {value === null ? '—' : num(value)}
           {value !== null && unit && <small className="text-xs">{unit}</small>}
         </b>
-        <small className="block text-[10px] text-ink-muted">
+        <small className="block text-[11px] text-ink-muted">
           {num(range.min)}–{num(range.max)}
         </small>
       </div>
@@ -35,7 +35,7 @@ export const HydroTankCard: React.FC<{ status: TankStatus; onCheck?: () => void;
           <Container className="w-4 h-4 text-brand" aria-hidden="true" />
           Tanque
         </span>
-        <small className="text-[11px] font-semibold text-ink-subtle text-right">
+        <small className="text-xs font-semibold text-ink-subtle text-right">
           {target.label}
           {status.hoursSinceCheck !== null ? ` · ${ago(status.hoursSinceCheck)}` : ''}
         </small>
@@ -52,7 +52,7 @@ export const HydroTankCard: React.FC<{ status: TankStatus; onCheck?: () => void;
         {ok && <CheckCircle2 className="w-4 h-4 shrink-0" aria-hidden="true" />}
         {status.alert.text}
       </p>
-      <p className="text-[11px] text-ink-muted">pH y EC todos los días a la misma hora; toda la solución nueva cada 2 semanas.</p>
+      <p className="text-xs text-ink-muted">pH y EC todos los días a la misma hora; toda la solución nueva cada 2 semanas.</p>
       <FeedTableDetails idPrefix="tank" medium={target.medium} phase={target.phase} auto={target.auto} starts={target.starts} />
       {onCheck && (
         <button type="button" id="tank-check" onClick={onCheck} className="cultiveta-btn-primary text-sm w-full justify-center">

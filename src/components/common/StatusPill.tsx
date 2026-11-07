@@ -58,7 +58,7 @@ export const StatusPill: React.FC<StatusPillProps> = ({ status, className = '', 
             id={`status-pill-${String(status).toLowerCase()}`}
             className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-track text-ink-muted border border-line ${className}`}
           >
-            {showIcon && <span className="w-1.5 h-1.5 rounded-full bg-stone-400"></span>}
+            {showIcon && <span className="w-1.5 h-1.5 rounded-full bg-ink-subtle"></span>}
             <span>{String(status).toUpperCase()}</span>
           </span>
         );

@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { EnvironmentRecord, Cultivation } from '../../types';
 import { cultivationService } from '../../services/cultivationService';
+import { dayMonth } from '../../utils/formatNumber';
 
 interface EnvironmentChartProps {
   cultivation: Cultivation;
@@ -34,10 +35,10 @@ export const EnvironmentChart: React.FC<EnvironmentChartProps> = ({
     return new Date(r.date) >= cutOff;
   });
 
-  const chartData = filtered.map((r) => {
+  const chartData = [...filtered].sort((a, b) => a.date.localeCompare(b.date)).map((r) => {
     const day = cultivationService.calculateDays(cultivation.startDate, r.date);
     return {
-      date: r.date.slice(5), // MM-DD
+      date: dayMonth(r.date),
       day: `Día ${day}`,
       temp: r.temperatureC,
       humidity: r.humidityPct,
@@ -47,50 +48,50 @@ export const EnvironmentChart: React.FC<EnvironmentChartProps> = ({
   });
 
   return (
-    <div className="bg-white rounded-3xl p-6 border border-stone-200 shadow-sm space-y-4">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-stone-100">
+    <div className="bg-white rounded-3xl p-6 border border-line shadow-sm space-y-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-line">
         <div>
-          <h3 className="font-bold text-base text-stone-900">Evolución Ambiental 🌡️</h3>
-          <p className="text-xs text-stone-500">Histórico de temperatura, humedad relativa y VPD</p>
+          <h3 className="font-bold text-base text-ink">Evolución del ambiente</h3>
+          <p className="text-xs text-ink-muted">Histórico de temperatura, humedad relativa y VPD</p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setShowVpd(!showVpd)}
-            className={`px-3 py-1 rounded-full text-xs font-bold transition-colors cursor-pointer border ${
+            className={`min-h-11 px-3 rounded-full text-xs font-bold transition-colors cursor-pointer border ${
               showVpd
-                ? 'bg-purple-100 text-purple-900 border-purple-300'
-                : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'
+                ? 'bg-icon-bg text-brand border-chip-line'
+                : 'bg-surface text-ink-muted border-line hover:bg-track'
             }`}
           >
             VPD ({showVpd ? 'Activo' : 'Oculto'})
           </button>
 
-          <div className="bg-stone-100 p-1 rounded-2xl flex items-center gap-1 text-xs font-semibold text-stone-600">
+          <div className="bg-track p-1 rounded-2xl flex items-center gap-1 text-xs font-semibold text-ink-muted">
             <button
               type="button"
               onClick={() => setRange('7d')}
-              className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer ${
-                range === '7d' ? 'bg-white text-stone-900 shadow-2xs font-bold' : 'hover:text-stone-900'
+              className={`min-h-11 px-3 rounded-xl transition-all cursor-pointer ${
+                range === '7d' ? 'bg-white text-ink shadow-2xs font-bold' : 'hover:text-ink'
               }`}
             >
-              7 Días
+              7 días
             </button>
             <button
               type="button"
               onClick={() => setRange('30d')}
-              className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer ${
-                range === '30d' ? 'bg-white text-stone-900 shadow-2xs font-bold' : 'hover:text-stone-900'
+              className={`min-h-11 px-3 rounded-xl transition-all cursor-pointer ${
+                range === '30d' ? 'bg-white text-ink shadow-2xs font-bold' : 'hover:text-ink'
               }`}
             >
-              30 Días
+              30 días
             </button>
             <button
               type="button"
               onClick={() => setRange('all')}
-              className={`px-2.5 py-1 rounded-xl transition-all cursor-pointer ${
-                range === 'all' ? 'bg-white text-stone-900 shadow-2xs font-bold' : 'hover:text-stone-900'
+              className={`min-h-11 px-3 rounded-xl transition-all cursor-pointer ${
+                range === 'all' ? 'bg-white text-ink shadow-2xs font-bold' : 'hover:text-ink'
               }`}
             >
               Ciclo
@@ -100,9 +101,9 @@ export const EnvironmentChart: React.FC<EnvironmentChartProps> = ({
       </div>
 
       {chartData.length === 0 ? (
-        <div className="h-64 flex flex-col items-center justify-center text-center p-6 text-stone-400">
+        <div className="h-64 flex flex-col items-center justify-center text-center p-6 text-ink-subtle">
           <p className="text-sm font-medium">Aún no hay mediciones ambientales en este período.</p>
-          <p className="text-xs mt-1">Registra temperatura y humedad para ver los gráficos.</p>
+          <p className="text-xs mt-1">Registrá temperatura y humedad para ver los gráficos.</p>
         </div>
       ) : (
         <div className="h-72 w-full pt-2">

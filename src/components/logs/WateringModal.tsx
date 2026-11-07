@@ -7,6 +7,7 @@ import { addDays, getLocalTodayDateOnly, parseLocalDate } from '../../utils/grow
 import { checkReading, feedTargetFor, num, type FeedRange } from '../../utils/feedTargets';
 import { growMethodOf } from '../../utils/growMethod';
 import { FeedTableDetails } from '../cultivations/FeedTable';
+import { dec } from '../../utils/formatNumber';
 
 interface WateringModalProps {
   isOpen: boolean;
@@ -30,7 +31,7 @@ const ReadingHint: React.FC<{ id: string; value: number | ''; range: FeedRange }
   if (value === '' || !Number.isFinite(value)) return null;
   const c = checkReading(Number(value), range);
   return (
-    <p id={id} data-check={c} className={`mt-1 text-[11px] font-bold ${c === 'bien' ? 'text-ok-ink' : 'text-error'}`}>
+    <p id={id} data-check={c} className={`mt-1 text-xs font-bold ${c === 'bien' ? 'text-ok-ink' : 'text-error'}`}>
       {c === 'bien' ? 'Bien, está en el rango.' : `${c === 'alto' ? 'Alto' : 'Bajo'}: apuntá a ${num(range.target)}.`}
     </p>
   );
@@ -447,7 +448,7 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                 )}
 
                 {products.map((p, idx) => {
-                  const totalMl = p.dosageMlPerL && currentVolume ? (p.dosageMlPerL * currentVolume).toFixed(1) : null;
+                  const totalMl = p.dosageMlPerL && currentVolume ? dec(p.dosageMlPerL * currentVolume, 1) : null;
                   return (
                     <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-white border border-line text-sm">
                       <div>
@@ -519,7 +520,7 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                 <b>Living soil:</b> solo agua, sin corregir pH ni medir EC.
               </p>
               {!measureAnyway && (
-                <button type="button" id="watering-measure-anyway" onClick={() => setMeasureAnyway(true)} className="text-[11px] font-bold text-brand underline">
+                <button type="button" id="watering-measure-anyway" onClick={() => setMeasureAnyway(true)} className="text-xs font-bold text-brand underline">
                   Medir pH y EC igual (opcional)
                 </button>
               )}
@@ -533,7 +534,7 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                 <b>{tank ? 'El tanque' : 'Para este riego'}</b> <span className="text-ink-muted">({feed.label.toLowerCase()})</span>: pH {num(feed.ph.target)}
                 {usedNutrients || tank ? ` · EC ${num(feed.ec.target)}` : ''}
               </p>
-              <p className="text-[11px] text-ink-muted">
+              <p className="text-xs text-ink-muted">
                 pH entre {num(feed.ph.min)} y {num(feed.ph.max)}
                 {tank
                   ? ` · EC entre ${num(feed.ec.min)} y ${num(feed.ec.max)} · agua a 18–22 °C`
@@ -541,7 +542,7 @@ export const WateringModal: React.FC<WateringModalProps> = ({
                   ? ` · EC entre ${num(feed.ec.min)} y ${num(feed.ec.max)} mS/cm (con el agua)`
                   : ' · con agua sola, la EC es la de tu agua'}
               </p>
-              {feed.note && usedNutrients && !tank && <p className="text-[11px] font-semibold text-warn-ink">{feed.note}</p>}
+              {feed.note && usedNutrients && !tank && <p className="text-xs font-semibold text-warn-ink">{feed.note}</p>}
               <FeedTableDetails key={cultivationId} idPrefix="watering-feed" medium={feed.medium} phase={feed.phase} auto={feed.auto} starts={feed.starts} />
             </div>
           )}

@@ -83,7 +83,7 @@ export const PushSettingsSection: React.FC<PushSettingsSectionProps> = ({ onShow
           <Smartphone className="w-4 h-4 text-brand" aria-hidden="true" />
           Avisos al celular
         </h3>
-        <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${on ? 'bg-ok-bg text-ok-ink border-ok-line' : 'bg-track text-ink-muted border-line'}`}>
+        <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${on ? 'bg-ok-bg text-ok-ink border-ok-line' : 'bg-track text-ink-muted border-line'}`}>
           {on ? 'Activados' : 'Apagados'}
         </span>
       </div>

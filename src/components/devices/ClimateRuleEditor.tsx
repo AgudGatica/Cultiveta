@@ -72,7 +72,7 @@ export const ClimateRuleEditor: React.FC<ClimateRuleEditorProps> = ({ role, rule
 
   return (
     <div className="climate-rule-editor space-y-2 rounded-2xl bg-surface border border-line p-3">
-      <label className="text-[11px] font-semibold text-ink-muted block space-y-1">
+      <label className="text-xs font-semibold text-ink-muted block space-y-1">
         <span>Cómo se maneja</span>
         <select className={`climate-rule-mode ${FIELD}`} value={mode} onChange={(e) => setMode(e.target.value as ClimateMode)} aria-label="Cómo se maneja">
           {MODES.filter((m) => m !== 'sensor' || !info.noSensor).map((m) => (
@@ -84,11 +84,11 @@ export const ClimateRuleEditor: React.FC<ClimateRuleEditorProps> = ({ role, rule
       </label>
       {mode === 'schedule' && (
         <div className="grid grid-cols-2 gap-2">
-          <label className="text-[11px] font-semibold text-ink-muted space-y-1">
+          <label className="text-xs font-semibold text-ink-muted space-y-1">
             <span>Prende a las</span>
             <input type="time" className={`climate-rule-on-time ${FIELD}`} value={onTime} onChange={(e) => setOnTime(e.target.value)} aria-label="Prende a las" />
           </label>
-          <label className="text-[11px] font-semibold text-ink-muted space-y-1">
+          <label className="text-xs font-semibold text-ink-muted space-y-1">
             <span>Apaga a las</span>
             <input type="time" className={`climate-rule-off-time ${FIELD}`} value={offTime} onChange={(e) => setOffTime(e.target.value)} aria-label="Apaga a las" />
           </label>
@@ -96,7 +96,7 @@ export const ClimateRuleEditor: React.FC<ClimateRuleEditorProps> = ({ role, rule
       )}
       {mode === 'sensor' && (
         <>
-          <label className="text-[11px] font-semibold text-ink-muted block space-y-1">
+          <label className="text-xs font-semibold text-ink-muted block space-y-1">
             <span>Mira</span>
             <select className={FIELD} value={metric} onChange={(e) => setMetric(e.target.value as ClimateMetric)} aria-label="Qué mira">
               {(Object.keys(CLIMATE_METRICS) as ClimateMetric[]).map((m) => (
@@ -107,16 +107,16 @@ export const ClimateRuleEditor: React.FC<ClimateRuleEditorProps> = ({ role, rule
             </select>
           </label>
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-[11px] font-semibold text-ink-muted space-y-1">
+            <label className="text-xs font-semibold text-ink-muted space-y-1">
               <span>Prende {dir === 'above' ? 'desde' : 'en'} ({unit})</span>
               <input className={FIELD} inputMode="decimal" value={on} onChange={(e) => setOn(e.target.value)} aria-label="Valor de encendido" />
             </label>
-            <label className="text-[11px] font-semibold text-ink-muted space-y-1">
+            <label className="text-xs font-semibold text-ink-muted space-y-1">
               <span>Apaga {dir === 'above' ? 'al bajar a' : 'al subir a'} ({unit})</span>
               <input className={FIELD} inputMode="decimal" value={off} onChange={(e) => setOff(e.target.value)} aria-label="Valor de apagado" />
             </label>
           </div>
-          <label className="flex items-center gap-2 text-[11px] font-semibold text-ink-muted">
+          <label className="flex items-center gap-2 text-xs font-semibold text-ink-muted">
             <input type="checkbox" checked={useNight} onChange={(e) => setUseNight(e.target.checked)} />
             Otros valores con la luz apagada
           </label>
@@ -126,7 +126,7 @@ export const ClimateRuleEditor: React.FC<ClimateRuleEditorProps> = ({ role, rule
               <input className={FIELD} inputMode="decimal" value={nOff} onChange={(e) => setNOff(e.target.value)} aria-label="Apagado de noche" />
             </div>
           )}
-          <label className="text-[11px] font-semibold text-ink-muted block space-y-1">
+          <label className="text-xs font-semibold text-ink-muted block space-y-1">
             <span>Si el sensor deja de mandar datos</span>
             <select className={FIELD} value={sensorLoss} onChange={(e) => setSensorLoss(e.target.value as ClimateRule['sensorLoss'])} aria-label="Si el sensor se calla">
               <option value="off">Apagarlo</option>
@@ -135,14 +135,14 @@ export const ClimateRuleEditor: React.FC<ClimateRuleEditorProps> = ({ role, rule
             </select>
           </label>
           {hasSensor === false && (
-            <p className="climate-rule-warning text-[11px] font-bold text-warn-ink">
+            <p className="climate-rule-warning text-xs font-bold text-warn-ink">
               Este lugar no tiene un sensor de ambiente asignado: sin datos, el equipo hace lo que elijas arriba. Asigná uno en Equipos.
             </p>
           )}
         </>
       )}
       {(mode === 'follow' || mode === 'follow_inverted') && (
-        <p className="text-[11px] text-ink-muted">
+        <p className="text-xs text-ink-muted">
           {hasLight === false
             ? 'La luz de este lugar todavía no tiene un enchufe asignado: sin eso, Cultiveta no sabe cuándo es de día. Asigná la luz en Equipos.'
             : mode === 'follow'
@@ -150,10 +150,10 @@ export const ClimateRuleEditor: React.FC<ClimateRuleEditorProps> = ({ role, rule
               : 'Prende cuando la luz se apaga y apaga cuando se prende. Queda cargado en el enchufe: sigue andando aunque cierres Cultiveta.'}
         </p>
       )}
-      {mode === 'schedule' && <p className="text-[11px] text-ink-muted">Todos los días a esas horas. Queda cargado en el enchufe: sigue andando aunque cierres Cultiveta.</p>}
-      {mode === 'always' && <p className="text-[11px] text-ink-muted">Queda prendido todo el día. Si alguien lo apaga, Cultiveta lo vuelve a prender en su próxima revisión.</p>}
+      {mode === 'schedule' && <p className="text-xs text-ink-muted">Todos los días a esas horas. Queda cargado en el enchufe: sigue andando aunque cierres Cultiveta.</p>}
+      {mode === 'always' && <p className="text-xs text-ink-muted">Queda prendido todo el día. Si alguien lo apaga, Cultiveta lo vuelve a prender en su próxima revisión.</p>}
       {errors.map((e) => (
-        <p key={e} className="text-[11px] font-bold text-error">
+        <p key={e} className="text-xs font-bold text-error">
           {e}
         </p>
       ))}

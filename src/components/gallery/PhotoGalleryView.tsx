@@ -133,11 +133,11 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
 
   const categories: { label: string; value: string }[] = [
     { label: 'Todas las fotos', value: 'all' },
-    { label: '🌺 Flor / Cogollo', value: 'flor' },
-    { label: '🔍 Tricomas', value: 'tricomas' },
-    { label: '🌿 Planta completa', value: 'planta completa' },
-    { label: '🍃 Hojas', value: 'hoja superior' },
-    { label: '⚠️ Problemas / Plagas', value: 'zona problemática' },
+    { label:'Flor / Cogollo', value: 'flor' },
+    { label:'Tricomas', value: 'tricomas' },
+    { label:'Planta completa', value: 'planta completa' },
+    { label:'Hojas', value: 'hoja superior' },
+    { label:'Problemas / Plagas', value: 'zona problemática' },
   ];
 
   // Crear mapa unificado entre las fotos de estado y los registros de la cola
@@ -162,15 +162,15 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
     <div className="space-y-6">
       {/* Banner de cuota excedida si aplica */}
       {quotaWarning && (
-        <div className="p-3.5 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-center justify-between">
+        <div className="p-3.5 rounded-2xl bg-error/10 border border-error/30 text-error text-xs flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+            <AlertTriangle className="w-4 h-4 text-error shrink-0" />
             <span>{quotaWarning}</span>
           </div>
           <button
             type="button"
             onClick={() => setQuotaWarning(null)}
-            className="text-xs text-rose-400 hover:underline ml-3"
+            className="text-xs text-error hover:underline ml-3"
           >
             Entendido
           </button>
@@ -181,8 +181,8 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white rounded-3xl p-5 sm:p-6 border border-line shadow-xs">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="font-extrabold text-base sm:text-lg text-ink">Galería Cronológica de Fotos 📸</h3>
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-ok/15 text-ok-ink border border-ok/30">
+            <h3 className="font-extrabold text-base sm:text-lg text-ink">Galería de fotos</h3>
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-ok/15 text-ok-ink border border-ok/30">
               {photos.length}
             </span>
           </div>
@@ -238,18 +238,18 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                   {queuedPhotos.length} fotografía{queuedPhotos.length === 1 ? '' : 's'} guardada{queuedPhotos.length === 1 ? '' : 's'} en este dispositivo
                 </p>
                 {failedPhotos.length > 0 && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-coral/20 text-error border border-coral/30">
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-coral/20 text-error border border-coral/30">
                     {failedPhotos.length} requiere atención
                   </span>
                 )}
                 {uploadingPhotos.length > 0 && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-brand/15 text-brand border border-brand/30 flex items-center gap-1">
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-brand/15 text-brand border border-brand/30 flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" />
                     Subiendo binario
                   </span>
                 )}
                 {savingMetaPhotos.length > 0 && (
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-ok/20 text-ok-ink border border-ok/30 flex items-center gap-1">
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-ok/20 text-ok-ink border border-ok/30 flex items-center gap-1">
                     <Loader2 className="w-3 h-3 animate-spin" />
                     Confirmando en servidor
                   </span>
@@ -257,7 +257,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
               </div>
 
               {/* Mensaje descriptivo derivado del estado real de la cola */}
-              <p className="text-[11px] text-ink-muted mt-0.5">
+              <p className="text-xs text-ink-muted mt-0.5">
                 {!isOnline || waitingNetworkPhotos.length > 0
                   ? 'Sin conexión a internet. Los archivos están a salvo en tu dispositivo y se sincronizarán al volver la red.'
                   : uploadingPhotos.length > 0
@@ -386,15 +386,15 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                   />
 
                   {/* Day Badge */}
-                  <div className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full bg-black/80 bg-white/90 backdrop-blur-xs text-ink text-[11px] font-bold shadow-xs border border-line">
+                  <div className="absolute top-2 left-2 px-2.5 py-0.5 rounded-full bg-black/80 bg-white/90 backdrop-blur-xs text-ink text-xs font-bold shadow-xs border border-line">
                     Día {photo.dayOfCultivation}
                   </div>
 
                   {/* Badges de estado observable */}
                   {isSynced && (
                     <div
-                      title="Fotografía confirmada en Storage y Firestore"
-                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-ok/20 backdrop-blur-xs text-ok-ink border border-ok/40 text-[10px] font-bold flex items-center gap-1 shadow-2xs"
+                      title="Foto guardada en la nube"
+                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-ok/20 backdrop-blur-xs text-ok-ink border border-ok/40 text-[11px] font-bold flex items-center gap-1 shadow-2xs"
                     >
                       <Cloud className="w-3 h-3 text-ok-ink" />
                       <span>Sincronizada</span>
@@ -404,7 +404,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                   {isUploading && (
                     <div
                       title={`Subiendo archivo binario a Storage (${queueItem?.progressPercent || 0}%)...`}
-                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-brand/20 backdrop-blur-xs text-brand border border-brand/30 text-[10px] font-bold flex items-center gap-1 shadow-2xs animate-pulse"
+                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-brand/20 backdrop-blur-xs text-brand border border-brand/30 text-[11px] font-bold flex items-center gap-1 shadow-2xs animate-pulse"
                     >
                       <Loader2 className="w-3 h-3 text-brand animate-spin" />
                       <span>{queueItem?.progressPercent ? `${queueItem.progressPercent}%` : 'Subiendo...'}</span>
@@ -414,7 +414,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                   {isSavingMeta && (
                     <div
                       title="Subida a Storage finalizada. Confirmando en servidor..."
-                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-ok/20 backdrop-blur-xs text-ok-ink border border-ok/30 text-[10px] font-bold flex items-center gap-1 shadow-2xs"
+                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-ok/20 backdrop-blur-xs text-ok-ink border border-ok/30 text-[11px] font-bold flex items-center gap-1 shadow-2xs"
                     >
                       <Loader2 className="w-3 h-3 text-ok-ink animate-spin" />
                       <span>Pendiente de confirmación</span>
@@ -424,7 +424,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                   {isWaitingNetwork && (
                     <div
                       title="Esperando conexión a internet para sincronizar"
-                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-warn-line/30 backdrop-blur-xs text-ink border border-warn-line/40 text-[10px] font-bold flex items-center gap-1 shadow-2xs"
+                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-warn-line/30 backdrop-blur-xs text-ink border border-warn-line/40 text-[11px] font-bold flex items-center gap-1 shadow-2xs"
                     >
                       <WifiOff className="w-3 h-3 text-ink" />
                       <span>Esperando red</span>
@@ -434,7 +434,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                   {isFailed && (
                     <div
                       title={`Fallo de sincronización: ${queueItem?.lastError || photo.syncError || 'Desconocido'}`}
-                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-coral/20 backdrop-blur-xs text-error border border-coral/40 text-[10px] font-bold flex items-center gap-1 shadow-2xs"
+                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-coral/20 backdrop-blur-xs text-error border border-coral/40 text-[11px] font-bold flex items-center gap-1 shadow-2xs"
                     >
                       <AlertTriangle className="w-3 h-3 text-error" />
                       <span>Requiere atención</span>
@@ -444,7 +444,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                   {isPending && !isUploading && !isSavingMeta && !isFailed && !isWaitingNetwork && (
                     <div
                       title="Fotografía guardada en este dispositivo (IndexedDB). Pendiente de sincronización."
-                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-track backdrop-blur-xs text-ink-muted border border-line text-[10px] font-bold flex items-center gap-1 shadow-2xs"
+                      className="absolute top-2 right-2 px-2 py-0.5 rounded-full bg-track backdrop-blur-xs text-ink-muted border border-line text-[11px] font-bold flex items-center gap-1 shadow-2xs"
                     >
                       <HardDrive className="w-3 h-3 text-ink-muted" />
                       <span>En dispositivo</span>
@@ -452,7 +452,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                   )}
 
                   {/* Category Pill */}
-                  <div className="absolute bottom-2 left-2 px-2.5 py-0.5 rounded-full bg-white/90 backdrop-blur-xs text-ink-muted border border-line text-[10px] font-bold uppercase tracking-wider shadow-2xs">
+                  <div className="absolute bottom-2 left-2 px-2.5 py-0.5 rounded-full bg-white/90 backdrop-blur-xs text-ink-muted border border-line text-[11px] font-bold uppercase tracking-wider shadow-2xs">
                     {photo.category}
                   </div>
 
@@ -489,7 +489,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                 <div className="p-3.5 space-y-2">
                   <div className="flex items-center justify-between text-xs text-ink-muted">
                     <span className="font-bold text-ink">{photo.date}</span>
-                    <span className="text-[11px] px-2 py-0.5 rounded-lg bg-track border border-line text-ink-muted font-semibold">
+                    <span className="text-xs px-2 py-0.5 rounded-lg bg-track border border-line text-ink-muted font-semibold">
                       {photo.stage}
                     </span>
                   </div>
@@ -502,15 +502,15 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
 
                   {/* Si falló o está pendiente, mostrar opciones de reintento, diagnóstico y exportación */}
                   {isFailed && (
-                    <div className="p-2 rounded-2xl bg-coral/10 border border-coral/20 text-error text-[11px] space-y-1.5">
-                      <p className="line-clamp-1 font-mono text-[10px]">
+                    <div className="p-2 rounded-2xl bg-coral/10 border border-coral/20 text-error text-xs space-y-1.5">
+                      <p className="line-clamp-1 text-[11px]">
                         {queueItem?.lastError || photo.syncError || 'Error de sincronización'}
                       </p>
                       <div className="flex items-center gap-1.5 pt-1 flex-wrap">
                         <button
                           type="button"
                           onClick={() => handleRetryPhoto(photo.id)}
-                          className="px-2 py-1 rounded-lg bg-error hover:brightness-95 text-white text-[10px] font-bold flex items-center gap-1 cursor-pointer"
+                          className="px-2 py-1 rounded-lg bg-error hover:brightness-95 text-white text-[11px] font-bold flex items-center gap-1 cursor-pointer"
                         >
                           <RotateCcw className="w-3 h-3" />
                           <span>Reintentar</span>
@@ -518,7 +518,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                         <button
                           type="button"
                           onClick={() => openDiagnostic(photo.id)}
-                          className="px-2 py-1 rounded-lg bg-white hover:bg-track text-ink text-[10px] font-bold flex items-center gap-1 cursor-pointer border border-line"
+                          className="px-2 py-1 rounded-lg bg-white hover:bg-track text-ink text-[11px] font-bold flex items-center gap-1 cursor-pointer border border-line"
                           title="Ver diagnóstico seguro"
                         >
                           <Activity className="w-3 h-3 text-warn-line" />
@@ -527,7 +527,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                         <button
                           type="button"
                           onClick={() => handleExportPhoto(photo.id)}
-                          className="px-2 py-1 rounded-lg bg-white hover:bg-track text-ink text-[10px] font-bold flex items-center gap-1 cursor-pointer border border-line"
+                          className="px-2 py-1 rounded-lg bg-white hover:bg-track text-ink text-[11px] font-bold flex items-center gap-1 cursor-pointer border border-line"
                         >
                           <Download className="w-3 h-3" />
                           <span>Exportar</span>
@@ -602,9 +602,9 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
                 <div className="p-2 rounded-2xl bg-warn-line/20 text-ink">
                   <Activity className="w-4 h-4 text-brand" />
                 </div>
-                <h4 className="font-extrabold text-sm text-ink">Diagnóstico de Fotografía</h4>
+                <h4 className="font-extrabold text-sm text-ink">Diagnóstico de fotografía</h4>
               </div>
-              <button
+              <button aria-label="Cerrar"
                 type="button"
                 onClick={() => setDiagnosticModalOpen(false)}
                 className="p-1.5 text-ink-subtle hover:text-ink rounded-lg hover:bg-track cursor-pointer"
@@ -613,7 +613,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
               </button>
             </div>
 
-            <div className="space-y-2 text-xs font-mono bg-surface p-3.5 rounded-2xl border border-line overflow-x-auto text-ink leading-relaxed">
+            <div className="space-y-2 text-xs bg-surface p-3.5 rounded-2xl border border-line overflow-x-auto text-ink leading-relaxed">
               <div><span className="text-ink-subtle">ID:</span> {diagnosticInfo.photoId}</div>
               <div><span className="text-ink-subtle">Fase actual:</span> <span className="text-brand font-semibold">{diagnosticInfo.phase}</span></div>
               <div><span className="text-ink-subtle">Estado:</span> {diagnosticInfo.status}</div>
@@ -627,7 +627,7 @@ export const PhotoGalleryView: React.FC<PhotoGalleryViewProps> = ({
               {diagnosticInfo.lastError && (
                 <div><span className="text-ink-subtle">Mensaje:</span> <span className="text-error">{diagnosticInfo.lastError}</span></div>
               )}
-              <div className="pt-2 border-t border-line mt-2 text-[11px] text-ink-muted space-y-0.5">
+              <div className="pt-2 border-t border-line mt-2 text-xs text-ink-muted space-y-0.5">
                 <div><span className="text-ink-subtle">Proyecto:</span> {diagnosticInfo.effectiveProjectId}</div>
                 <div><span className="text-ink-subtle">Base Firestore:</span> {diagnosticInfo.effectiveDatabaseId}</div>
                 <div><span className="text-ink-subtle">Bucket Storage:</span> {diagnosticInfo.effectiveBucket}</div>

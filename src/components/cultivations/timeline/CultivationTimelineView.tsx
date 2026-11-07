@@ -29,6 +29,7 @@ import { StageConfigModal } from './StageConfigModal';
 import { darkHoursFor } from '../../../utils/photoperiods';
 import { StageTransitionModal } from './StageTransitionModal';
 import { cultivationService } from '../../../services/cultivationService';
+import { dec } from '../../../utils/formatNumber';
 
 interface CultivationTimelineViewProps {
   cultivation: Cultivation;
@@ -62,18 +63,17 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
       {/* Top Banner: Progress Overview & Actions */}
-      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-stone-200 shadow-sm space-y-5">
+      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-line shadow-sm space-y-5">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-xl">⏱️</span>
-              <h2 className="text-xl font-extrabold text-stone-900">
-                Línea de Tiempo y Etapas de Crecimiento
+              <h2 className="text-xl font-extrabold text-ink">
+                Línea de tiempo y etapas
               </h2>
             </div>
-            <p className="text-xs sm:text-sm text-stone-500 mt-1">
+            <p className="text-xs sm:text-sm text-ink-muted mt-1">
               Progreso cronológico de{' '}
-              <strong className="text-stone-800 font-semibold">{cultivation.name}</strong> a lo
+              <strong className="text-ink font-semibold">{cultivation.name}</strong> a lo
               largo de las fases fenológicas.
             </p>
           </div>
@@ -84,12 +84,12 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
                 type="button"
                 id="timeline-advance-next-stage-btn"
                 onClick={() => handleOpenTransition(nextStage)}
-                className="px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-xs active:scale-95"
+                className="px-4 py-2.5 rounded-2xl bg-brand-deep hover:bg-brand-deep text-white text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-xs active:scale-95"
                 title={`Avanzar cultivo a ${nextStage.name}`}
               >
-                <PlayCircle className="w-4 h-4 text-emerald-200" />
+                <PlayCircle className="w-4 h-4 text-ok-ink" />
                 <span>Avanzar a {nextStage.name}</span>
-                <ChevronRight className="w-3.5 h-3.5 text-emerald-200" />
+                <ChevronRight className="w-3.5 h-3.5 text-ok-ink" />
               </button>
             )}
 
@@ -98,10 +98,10 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
                 type="button"
                 id="timeline-open-calendar-btn"
                 onClick={onOpenCalendarModal}
-                className="px-3.5 py-2.5 rounded-2xl bg-white border border-stone-200 hover:bg-stone-50 text-stone-800 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+                className="px-3.5 py-2.5 rounded-2xl bg-white border border-line hover:bg-surface text-ink text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
                 title="Sincronizar etapas con Google Calendar"
               >
-                <Calendar className="w-4 h-4 text-emerald-600" />
+                <Calendar className="w-4 h-4 text-ok-ink" />
                 <span className="hidden sm:inline">Google</span>
                 <span>Calendar</span>
               </button>
@@ -111,97 +111,97 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
               type="button"
               id="timeline-change-stage-btn"
               onClick={() => handleOpenTransition(null)}
-              className="px-3.5 py-2.5 rounded-2xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
+              className="px-3.5 py-2.5 rounded-2xl bg-track hover:bg-line text-ink text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs active:scale-95"
               title="Cambiar a cualquier etapa del ciclo"
             >
-              <Clock className="w-4 h-4 text-stone-600" />
-              <span>Cambiar Etapa</span>
+              <Clock className="w-4 h-4 text-ink-muted" />
+              <span>Cambiar etapa</span>
             </button>
 
             <button
               type="button"
               id="open-stage-config-btn"
               onClick={() => setIsConfigModalOpen(true)}
-              className="px-3.5 py-2.5 rounded-2xl bg-stone-900 hover:bg-stone-800 text-white text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-xs active:scale-95"
+              className="px-3.5 py-2.5 rounded-2xl bg-brand-deep hover:bg-brand-deep text-white text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-xs active:scale-95"
             >
-              <Settings2 className="w-4 h-4 text-emerald-400" />
+              <Settings2 className="w-4 h-4 text-ok-ink" />
               <span className="hidden sm:inline">Definir /</span>
-              <span>Configurar Etapas</span>
+              <span>Configurar etapas</span>
             </button>
           </div>
         </div>
 
         {/* Global Cycle Progress Bar */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-stone-50 border border-stone-200/80 space-y-3">
+        <div className="p-4 sm:p-5 rounded-2xl bg-surface border border-line space-y-3">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
             <div className="flex items-center gap-2">
               {schedule.overallProgressPct !== null ? (
                 <>
-                  <span className="font-extrabold text-stone-900 text-sm">
+                  <span className="font-extrabold text-ink text-sm">
                     Día {schedule.totalElapsedDays}
                   </span>
-                  <span className="text-stone-400">de ~{schedule.totalCycleDays} días estimados</span>
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-[11px]">
+                  <span className="text-ink-subtle">de ~{schedule.totalCycleDays} días estimados</span>
+                  <span className="px-2 py-0.5 rounded-full bg-ok-bg text-ok-ink font-extrabold text-xs">
                     {schedule.overallProgressPct}% ciclo total
                   </span>
                 </>
               ) : (
                 <>
-                  <span className="font-extrabold text-stone-900 text-sm">
+                  <span className="font-extrabold text-ink text-sm">
                     Día {schedule.activeStageElapsedDays}
                   </span>
-                  <span className="text-stone-400">en {schedule.activeStage.name}</span>
-                  <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-extrabold text-[11px]">
+                  <span className="text-ink-subtle">en {schedule.activeStage.name}</span>
+                  <span className="px-2 py-0.5 rounded-full bg-icon-bg text-brand font-extrabold text-xs">
                     Inicio de ciclo no registrado
                   </span>
                 </>
               )}
             </div>
 
-            <div className="flex items-center gap-4 text-stone-600 font-medium text-[11px] sm:text-xs">
+            <div className="flex items-center gap-4 text-ink-muted font-medium text-xs sm:text-xs">
               <span className="flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-stone-400" />
+                <Calendar className="w-3.5 h-3.5 text-ink-subtle" />
                 Inicio: <strong>{schedule.isCycleStartKnown ? formatFriendlyDate(schedule.cropStartDate) : 'Sin fecha registrada'}</strong>
               </span>
-              <span className="flex items-center gap-1 text-amber-800 font-bold">
-                <Flag className="w-3.5 h-3.5 text-amber-600" />
+              <span className="flex items-center gap-1 text-warn-ink font-bold">
+                <Flag className="w-3.5 h-3.5 text-warn-ink" />
                 Cosecha estimada:{' '}
                 <strong>{formatFriendlyDate(schedule.estimatedHarvestDate, { isProjected: true })}</strong>
               </span>
-              <span className="px-2 py-0.5 rounded-md bg-stone-200 text-stone-700 font-bold text-[10px]">
+              <span className="px-2 py-0.5 rounded-md bg-line text-ink font-bold text-[11px]">
                 {schedule.daysUntilHarvest} días restantes
               </span>
             </div>
           </div>
 
-          <div className="w-full h-3 rounded-full bg-stone-200 overflow-hidden relative">
+          <div className="w-full h-3 rounded-full bg-line overflow-hidden relative">
             <div
-              className="h-full bg-emerald-600 rounded-full transition-all duration-700"
+              className="h-full bg-brand-deep rounded-full transition-all duration-700"
               style={{ width: `${schedule.roadmapProgressPct}%` }}
             />
           </div>
         </div>
 
         {/* Active Stage Spotlight Card */}
-        <div className="p-4 sm:p-5 rounded-2xl bg-emerald-50/60 border border-emerald-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="p-4 sm:p-5 rounded-2xl bg-ok-bg border border-ok-line flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-600 text-white flex items-center justify-center text-2xl shadow-sm shrink-0">
+            <div className="w-12 h-12 rounded-2xl bg-brand-deep text-white flex items-center justify-center text-2xl shadow-sm shrink-0">
               {getStageIcon(metrics.activeStage.name)}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-xs font-extrabold text-emerald-900 uppercase tracking-wider">
-                  Etapa Actual:
+                <span className="text-xs font-extrabold text-ok-ink uppercase tracking-wider">
+                  Etapa actual:
                 </span>
-                <span className="text-base font-extrabold text-stone-900">
+                <span className="text-base font-extrabold text-ink">
                   {metrics.activeStage.name}
                 </span>
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-200 text-emerald-900 text-[10px] font-extrabold">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-ok-bg text-ok-ink text-[11px] font-extrabold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-brand-deep animate-pulse" />
                   En curso
                 </span>
               </div>
-              <div className="text-xs text-stone-600 mt-1 flex flex-wrap items-center gap-3">
+              <div className="text-xs text-ink-muted mt-1 flex flex-wrap items-center gap-3">
                 <span>
                   Día <strong>{metrics.daysInActiveStage}</strong> de{' '}
                   {metrics.activeStage.expectedDurationDays} días planificados
@@ -213,8 +213,8 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
                 {metrics.activeStage.photoperiodHoursLight !== undefined && (
                   <>
                     <span>·</span>
-                    <span className="flex items-center gap-1 font-semibold text-amber-800">
-                      <Sun className="w-3.5 h-3.5 text-amber-600" />
+                    <span className="flex items-center gap-1 font-semibold text-warn-ink">
+                      <Sun className="w-3.5 h-3.5 text-warn-ink" />
                       {metrics.activeStage.photoperiodHoursLight}/
                       {24 - metrics.activeStage.photoperiodHoursLight}h luz
                     </span>
@@ -225,13 +225,13 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
           </div>
 
           <div className="w-full sm:w-64 space-y-1.5 shrink-0">
-            <div className="flex justify-between text-[11px] font-bold text-emerald-950">
+            <div className="flex justify-between text-xs font-bold text-ok-ink">
               <span>Ritmo de la etapa</span>
               <span>{metrics.activeStageProgressPct}%</span>
             </div>
-            <div className="w-full h-2 rounded-full bg-emerald-200/80 overflow-hidden">
+            <div className="w-full h-2 rounded-full bg-ok-bg overflow-hidden">
               <div
-                className="h-full bg-emerald-700 rounded-full transition-all duration-500"
+                className="h-full bg-brand-deep rounded-full transition-all duration-500"
                 style={{ width: `${metrics.activeStageProgressPct}%` }}
               />
             </div>
@@ -240,17 +240,17 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
       </div>
 
       {/* Visual Roadmap / Timeline Track */}
-      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-stone-200 shadow-sm space-y-6">
+      <div className="bg-white rounded-3xl p-6 sm:p-7 border border-line shadow-sm space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-base font-extrabold text-stone-900">
-              Cronograma Visual de Hitos
+            <h3 className="text-base font-extrabold text-ink">
+              Cronograma visual de hitos
             </h3>
-            <p className="text-xs text-stone-500 mt-0.5">
+            <p className="text-xs text-ink-muted mt-0.5">
               Haz clic en cualquier etapa para ver sus especificaciones u objetivos agronómicos.
             </p>
           </div>
-          <span className="text-xs text-stone-400 font-semibold hidden sm:inline-block">
+          <span className="text-xs text-ink-subtle font-semibold hidden sm:inline-block">
             {stages.length} Etapas planificadas
           </span>
         </div>
@@ -259,7 +259,7 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
         <div className="overflow-x-auto pb-4 pt-2 scrollbar-thin scrollbar-thumb-stone-200">
           <div className="min-w-[720px] px-4 py-3 relative flex items-start justify-between">
             {/* Background connecting line */}
-            <div className="absolute top-9 left-8 right-8 h-1 bg-stone-200 -z-0" />
+            <div className="absolute top-9 left-8 right-8 h-1 bg-line -z-0" />
 
             {stages.map((st, index) => {
               const schedItem =
@@ -282,14 +282,14 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
                   <div
                     className={`w-11 h-11 rounded-2xl flex items-center justify-center text-lg transition-all duration-300 ${
                       isActive
-                        ? 'bg-emerald-600 text-white ring-4 ring-emerald-300 shadow-md scale-110'
+                        ? 'bg-brand-deep text-white ring-4 ring-ok shadow-md scale-110'
                         : isCompleted
-                        ? 'bg-stone-900 text-white hover:bg-stone-800 shadow-xs'
-                        : 'bg-white text-stone-400 border-2 border-stone-300 hover:border-stone-400'
+                        ? 'bg-brand-deep text-white hover:bg-brand-deep shadow-xs'
+                        : 'bg-white text-ink-subtle border-2 border-line hover:border-line'
                     }`}
                   >
                     {isCompleted ? (
-                      <Check className="w-5 h-5 text-emerald-400 stroke-[3]" />
+                      <Check className="w-5 h-5 text-ok-ink stroke-[3]" />
                     ) : (
                       <span>{icon}</span>
                     )}
@@ -300,16 +300,16 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
                     <span
                       className={`text-xs font-bold block truncate max-w-[100px] ${
                         isActive
-                          ? 'text-emerald-900 font-extrabold'
+                          ? 'text-ok-ink font-extrabold'
                           : isCompleted
-                          ? 'text-stone-800'
-                          : 'text-stone-400'
+                          ? 'text-ink'
+                          : 'text-ink-subtle'
                       }`}
                     >
                       {st.name}
                     </span>
 
-                    <span className="text-[10px] text-stone-500 font-medium block">
+                    <span className="text-[11px] text-ink-muted font-medium block">
                       {st.expectedDurationDays}d
                       {st.photoperiodHoursLight !== undefined && (
                         <span> · {st.photoperiodHoursLight}h</span>
@@ -317,7 +317,7 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
                     </span>
 
                     {schedItem && (
-                      <span className="text-[9px] font-mono text-stone-400 block">
+                      <span className="text-[11px] text-ink-subtle block">
                         {formatFriendlyDate(schedItem.startDate, {
                           isProjected: !schedItem.startIsReal,
                           includeYear: false,
@@ -326,7 +326,7 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
                     )}
 
                     {isActive && (
-                      <span className="inline-block px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-extrabold uppercase tracking-wider mt-0.5">
+                      <span className="inline-block px-1.5 py-0.2 rounded-full bg-ok-bg text-ok-ink text-[11px] font-extrabold uppercase tracking-wider mt-0.5">
                         Activa
                       </span>
                     )}
@@ -341,11 +341,11 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
       {/* Stages Detailed Cards List */}
       <div className="space-y-3">
         <div className="flex items-center justify-between px-1">
-          <h3 className="text-sm font-extrabold uppercase tracking-wider text-stone-700">
-            Detalle de Cada Etapa Fenológica
+          <h3 className="text-sm font-extrabold uppercase tracking-wider text-ink">
+            Detalle de cada etapa fenológica
           </h3>
-          <span className="text-xs text-stone-500">
-            Puedes cambiar de etapa según el desarrollo real de tus plantas
+          <span className="text-xs text-ink-muted">
+            Podés cambiar de etapa según el desarrollo real de tus plantas
           </span>
         </div>
 
@@ -388,30 +388,30 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
                 key={st.id || index}
                 className={`rounded-3xl p-5 border transition-all flex flex-col justify-between ${
                   isActive
-                    ? 'bg-white border-emerald-400 ring-2 ring-emerald-400/30 shadow-md'
+                    ? 'bg-white border-ok-line ring-2 ring-ok shadow-md'
                     : isCompleted
-                    ? 'bg-stone-50/70 border-stone-200/90'
-                    : 'bg-white border-stone-200 hover:border-stone-300'
+                    ? 'bg-surface border-line'
+                    : 'bg-white border-line hover:border-line'
                 }`}
               >
                 <div className="space-y-3">
                   {/* Card Header */}
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <span className="text-2xl p-2 rounded-2xl bg-stone-100 shrink-0">
+                      <span className="text-2xl p-2 rounded-2xl bg-track shrink-0">
                         {icon}
                       </span>
                       <div>
                         <div className="flex items-center gap-2">
-                          <h4 className="font-extrabold text-base text-stone-900">{st.name}</h4>
+                          <h4 className="font-extrabold text-base text-ink">{st.name}</h4>
                           {isActive && (
-                            <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[10px] font-extrabold uppercase tracking-wider">
-                              Etapa Actual
+                            <span className="px-2 py-0.5 rounded-full bg-brand-deep text-white text-[11px] font-extrabold uppercase tracking-wider">
+                              Etapa actual
                             </span>
                           )}
                           {isCompleted && (
-                            <span className="px-2 py-0.5 rounded-full bg-stone-200 text-stone-700 text-[10px] font-bold flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                            <span className="px-2 py-0.5 rounded-full bg-line text-ink text-[11px] font-bold flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-ok-ink" />
                               Completada
                             </span>
                           )}
@@ -419,17 +419,17 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
 
                         {/* Fechas calendario reales y proyectadas */}
                         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                          <span className="text-xs text-stone-600 font-medium">
+                          <span className="text-xs text-ink-muted font-medium">
                             {dateDisplay}
                           </span>
                           {schedItem && (
                             <span
-                              className={`text-[9px] font-bold px-1.5 py-0.2 rounded-md ${
+                              className={`text-[11px] font-bold px-1.5 py-0.2 rounded-md ${
                                 schedItem.status === 'completed' && schedItem.isActual
-                                  ? 'bg-emerald-100 text-emerald-800'
+                                  ? 'bg-ok-bg text-ok-ink'
                                   : schedItem.status === 'active'
-                                  ? 'bg-amber-100 text-amber-800'
-                                  : 'bg-purple-100 text-purple-800'
+                                  ? 'bg-warn-bg text-warn-ink'
+                                  : 'bg-icon-bg text-brand'
                               }`}
                             >
                               {schedItem.status === 'completed'
@@ -444,27 +444,27 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
                     </div>
 
                     <div className="text-right shrink-0">
-                      <span className="text-xs font-extrabold text-stone-900 block">
+                      <span className="text-xs font-extrabold text-ink block">
                         {st.expectedDurationDays} días
                       </span>
-                      <span className="text-[11px] text-stone-400">
-                        (~{(st.expectedDurationDays / 7).toFixed(1)} sem)
+                      <span className="text-xs text-ink-subtle">
+                        (~{dec(st.expectedDurationDays / 7, 1)} sem)
                       </span>
                     </div>
                   </div>
 
                   {/* Active progress bar inside card if active */}
                   {isActive && (
-                    <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200/80 space-y-1.5">
-                      <div className="flex justify-between text-xs font-bold text-emerald-950">
+                    <div className="p-3 rounded-2xl bg-ok-bg border border-ok-line space-y-1.5">
+                      <div className="flex justify-between text-xs font-bold text-ok-ink">
                         <span>
                           Día {metrics.daysInActiveStage} de {st.expectedDurationDays}
                         </span>
                         <span>{metrics.activeStageProgressPct}% completado</span>
                       </div>
-                      <div className="w-full h-2 rounded-full bg-emerald-200 overflow-hidden">
+                      <div className="w-full h-2 rounded-full bg-ok-bg overflow-hidden">
                         <div
-                          className="h-full bg-emerald-700 rounded-full"
+                          className="h-full bg-brand-deep rounded-full"
                           style={{ width: `${metrics.activeStageProgressPct}%` }}
                         />
                       </div>
@@ -474,8 +474,8 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
                   {/* Metadata Chips: Photoperiod, Temp, HR */}
                   <div className="flex flex-wrap items-center gap-2 pt-1">
                     {st.photoperiodHoursLight !== undefined && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold">
-                        <Sun className="w-3.5 h-3.5 text-amber-600" />
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-warn-bg border border-warn-line text-warn-ink text-xs font-semibold">
+                        <Sun className="w-3.5 h-3.5 text-warn-ink" />
                         <span>
                           {st.photoperiodHoursLight}/{darkHoursFor(st.photoperiodHoursLight, st.photoperiodHoursDark)}h
                         </span>
@@ -483,8 +483,8 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
                     )}
 
                     {st.targetTempMinC && st.targetTempMaxC && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-stone-100 border border-stone-200 text-stone-700 text-xs font-medium">
-                        <Thermometer className="w-3.5 h-3.5 text-stone-500" />
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-track border border-line text-ink text-xs font-medium">
+                        <Thermometer className="w-3.5 h-3.5 text-ink-muted" />
                         <span>
                           {st.targetTempMinC}°-{st.targetTempMaxC}°C
                         </span>
@@ -492,8 +492,8 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
                     )}
 
                     {st.targetHumidityMinPct && st.targetHumidityMaxPct && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-cyan-50 border border-cyan-200 text-cyan-900 text-xs font-medium">
-                        <Droplets className="w-3.5 h-3.5 text-cyan-600" />
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-icon-bg border border-chip-line text-brand text-xs font-medium">
+                        <Droplets className="w-3.5 h-3.5 text-brand" />
                         <span>
                           HR {st.targetHumidityMinPct}%-{st.targetHumidityMaxPct}%
                         </span>
@@ -503,15 +503,15 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
 
                   {/* Stage Notes / Agronomic advice */}
                   {st.notes && (
-                    <p className="text-xs text-stone-600 bg-stone-50 p-2.5 rounded-xl border border-stone-100 italic">
+                    <p className="text-xs text-ink-muted bg-surface p-2.5 rounded-xl border border-line italic">
                       "{st.notes}"
                     </p>
                   )}
                 </div>
 
                 {/* Quick Action Footer */}
-                <div className="mt-4 pt-3 border-t border-stone-100 flex items-center justify-between">
-                  <span className="text-[11px] text-stone-400">
+                <div className="mt-4 pt-3 border-t border-line flex items-center justify-between">
+                  <span className="text-xs text-ink-subtle">
                     Posición {index + 1} de {stages.length}
                   </span>
 
@@ -519,9 +519,9 @@ export const CultivationTimelineView: React.FC<CultivationTimelineViewProps> = (
                     <button
                       type="button"
                       onClick={() => handleOpenTransition(st)}
-                      className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-emerald-600 hover:text-white text-stone-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs group"
+                      className="px-3 py-1.5 rounded-xl bg-track hover:bg-brand-deep hover:text-white text-white text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-2xs group"
                     >
-                      <PlayCircle className="w-3.5 h-3.5 text-emerald-600 group-hover:text-white transition-colors" />
+                      <PlayCircle className="w-3.5 h-3.5 text-ok-ink group-hover:text-white transition-colors" />
                       <span>Cambiar a esta etapa</span>
                     </button>
                   )}

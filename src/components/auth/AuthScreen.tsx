@@ -38,7 +38,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onSuccess, onExploreDemo
       } else if (err?.code === 'auth/cancelled-popup-request') {
         setError('Operación cancelada. Probá de nuevo.');
       } else if (err?.code === 'auth/unauthorized-domain') {
-        setError('Este dominio todavía no está autorizado en Firebase Auth. Podés entrar con tu email o en Modo Demo.');
+        setError('Desde esta dirección todavía no se puede entrar con Google. Podés entrar con tu email o en Modo Demo.');
       } else {
         setError(err?.message || 'No se pudo iniciar sesión con Google.');
       }

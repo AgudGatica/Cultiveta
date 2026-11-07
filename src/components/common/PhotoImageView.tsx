@@ -35,11 +35,11 @@ export const PhotoImageView: React.FC<PhotoImageViewProps> = ({
   if (isLoading) {
     return (
       <div
-        className="w-full h-full flex flex-col items-center justify-center text-zinc-500 gap-1.5 bg-zinc-950/80 p-3 select-none"
+        className="w-full h-full flex flex-col items-center justify-center text-ink-muted gap-1.5 bg-surface p-3 select-none"
         style={style}
       >
-        <Loader2 className="w-5 h-5 text-emerald-500 animate-spin" />
-        <span className="text-[10px] text-zinc-400 font-medium tracking-tight">Cargando evidencia...</span>
+        <Loader2 className="w-5 h-5 text-ok-ink animate-spin" />
+        <span className="text-[11px] text-ink-muted font-medium tracking-tight">Cargando evidencia...</span>
       </div>
     );
   }
@@ -47,17 +47,17 @@ export const PhotoImageView: React.FC<PhotoImageViewProps> = ({
   if (hasError || !imageUrl) {
     return (
       <div
-        className="w-full h-full flex flex-col items-center justify-center text-zinc-400 gap-2 bg-zinc-950 p-3 text-center border border-zinc-800/80 select-none"
+        className="w-full h-full flex flex-col items-center justify-center text-ink-muted gap-2 bg-surface p-3 text-center border border-line select-none"
         style={style}
         onClick={onClick}
       >
-        <div className="p-2 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
+        <div className="p-2 rounded-xl bg-error/10 text-error border border-error/30">
           <AlertCircle className="w-5 h-5" />
         </div>
         <div className="space-y-0.5">
-          <p className="text-[11px] font-semibold text-zinc-300">Imagen no disponible</p>
+          <p className="text-xs font-semibold text-ink">Imagen no disponible</p>
           {showFallbackDetails && errorMessage && (
-            <p className="text-[10px] text-zinc-500 max-w-[180px] truncate">{errorMessage}</p>
+            <p className="text-[11px] text-ink-muted max-w-[180px] truncate">{errorMessage}</p>
           )}
         </div>
         <button
@@ -66,9 +66,9 @@ export const PhotoImageView: React.FC<PhotoImageViewProps> = ({
             e.stopPropagation();
             reloadPreview();
           }}
-          className="px-2 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-[10px] font-medium text-zinc-300 border border-zinc-700/60 flex items-center gap-1 cursor-pointer transition-colors"
+          className="min-h-11 px-3 py-1 rounded-lg bg-surface hover:bg-track text-xs font-medium text-ink border border-line flex items-center gap-1 cursor-pointer transition-colors"
         >
-          <RefreshCw className="w-3 h-3 text-zinc-400" />
+          <RefreshCw className="w-3 h-3 text-ink-muted" />
           <span>Reintentar</span>
         </button>
       </div>

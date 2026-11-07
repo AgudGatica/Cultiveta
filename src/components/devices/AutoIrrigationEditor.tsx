@@ -60,7 +60,7 @@ export const AutoIrrigationEditor: React.FC<AutoIrrigationEditorProps> = ({ auto
   const shot = mode === 'wetdry' ? toNum(wdShot) : toNum(shotS);
   return (
     <div className="auto-irrigation-editor space-y-2 rounded-2xl bg-surface border border-line p-3">
-      <label className="text-[11px] font-semibold text-ink-muted block space-y-1">
+      <label className="text-xs font-semibold text-ink-muted block space-y-1">
         <span>Riego automático</span>
         <select className={FIELD} value={mode} onChange={(e) => setMode(e.target.value as AutoIrrigation['mode'])} aria-label="Riego automático">
           <option value="off">Solo a mano</option>
@@ -72,7 +72,7 @@ export const AutoIrrigationEditor: React.FC<AutoIrrigationEditorProps> = ({ auto
       {mode === 'scheduled' && (
         <>
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-[11px] font-semibold text-ink-muted space-y-1">
+            <label className="text-xs font-semibold text-ink-muted space-y-1">
               <span>Cuándo</span>
               <select className={FIELD} value={when} onChange={(e) => setWhen(e.target.value as 'light' | 'fixed')} aria-label="Cuándo riega">
                 <option value="light">Con la luz</option>
@@ -80,12 +80,12 @@ export const AutoIrrigationEditor: React.FC<AutoIrrigationEditorProps> = ({ auto
               </select>
             </label>
             {when === 'fixed' ? (
-              <label className="text-[11px] font-semibold text-ink-muted space-y-1">
+              <label className="text-xs font-semibold text-ink-muted space-y-1">
                 <span>Hora</span>
                 <input type="time" className={FIELD} value={fixedTime} onChange={(e) => setFixedTime(e.target.value)} aria-label="Hora del riego" />
               </label>
             ) : (
-              <label className="text-[11px] font-semibold text-ink-muted space-y-1">
+              <label className="text-xs font-semibold text-ink-muted space-y-1">
                 <span>Momento</span>
                 <select className={FIELD} value={trigger} onChange={(e) => setTrigger(e.target.value as 'after_on' | 'before_off')} aria-label="Momento del riego">
                   <option value="after_on">Después de prender</option>
@@ -95,70 +95,70 @@ export const AutoIrrigationEditor: React.FC<AutoIrrigationEditorProps> = ({ auto
             )}
           </div>
           {when === 'light' && (
-            <label className="text-[11px] font-semibold text-ink-muted block space-y-1">
+            <label className="text-xs font-semibold text-ink-muted block space-y-1">
               <span>Minutos {trigger === 'after_on' ? 'después de prender' : 'antes de apagar'}</span>
               <input className={FIELD} inputMode="numeric" value={offsetMin} onChange={(e) => setOffsetMin(e.target.value)} aria-label="Minutos respecto de la luz" />
             </label>
           )}
           {when === 'light' && !hasLightSchedule && (
-            <p className="text-[11px] font-bold text-error">Este cultivo no tiene la hora de encendido de la luz: cargala en la tarjeta Luz para que riegue.</p>
+            <p className="text-xs font-bold text-error">Este cultivo no tiene la hora de encendido de la luz: cargala en la tarjeta Luz para que riegue.</p>
           )}
           <div className="grid grid-cols-3 gap-2">
-            <label className="text-[11px] font-semibold text-ink-muted space-y-1">
+            <label className="text-xs font-semibold text-ink-muted space-y-1">
               <span>Segundos</span>
               <input className={FIELD} inputMode="numeric" value={shotS} onChange={(e) => setShotS(e.target.value)} aria-label="Segundos por riego" />
             </label>
-            <label className="text-[11px] font-semibold text-ink-muted space-y-1">
+            <label className="text-xs font-semibold text-ink-muted space-y-1">
               <span>Pulsos</span>
               <input className={FIELD} inputMode="numeric" value={pulses} onChange={(e) => setPulses(e.target.value)} aria-label="Pulsos" />
             </label>
-            <label className="text-[11px] font-semibold text-ink-muted space-y-1">
+            <label className="text-xs font-semibold text-ink-muted space-y-1">
               <span>Pausa (min)</span>
               <input className={FIELD} inputMode="numeric" value={pauseMin} disabled={toNum(pulses) <= 1} onChange={(e) => setPauseMin(e.target.value)} aria-label="Pausa entre pulsos" />
             </label>
           </div>
-          <p className="text-[11px] text-ink-subtle">Varios pulsos cortos mojan parejo sin encharcar. Si el servidor estuvo caído, el riego que se pasó no se hace tarde.</p>
+          <p className="text-xs text-ink-subtle">Varios pulsos cortos mojan parejo sin encharcar. Si el servidor estuvo caído, el riego que se pasó no se hace tarde.</p>
         </>
       )}
 
       {mode === 'wetdry' && (
         <>
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-[11px] font-semibold text-ink-muted space-y-1">
+            <label className="text-xs font-semibold text-ink-muted space-y-1">
               <span>Riega con (% o menos)</span>
               <input className={FIELD} inputMode="numeric" value={dry} onChange={(e) => setDry(e.target.value)} aria-label="Seco" />
             </label>
-            <label className="text-[11px] font-semibold text-ink-muted space-y-1">
+            <label className="text-xs font-semibold text-ink-muted space-y-1">
               <span>Hasta (%)</span>
               <input className={FIELD} inputMode="numeric" value={wet} onChange={(e) => setWet(e.target.value)} aria-label="Húmedo" />
             </label>
           </div>
           <div className="grid grid-cols-3 gap-2">
-            <label className="text-[11px] font-semibold text-ink-muted space-y-1">
+            <label className="text-xs font-semibold text-ink-muted space-y-1">
               <span>Segundos</span>
               <input className={FIELD} inputMode="numeric" value={wdShot} onChange={(e) => setWdShot(e.target.value)} aria-label="Segundos por riego" />
             </label>
-            <label className="text-[11px] font-semibold text-ink-muted space-y-1">
+            <label className="text-xs font-semibold text-ink-muted space-y-1">
               <span>Pausa (min)</span>
               <input className={FIELD} inputMode="numeric" value={wdPause} onChange={(e) => setWdPause(e.target.value)} aria-label="Pausa entre riegos" />
             </label>
-            <label className="text-[11px] font-semibold text-ink-muted space-y-1">
+            <label className="text-xs font-semibold text-ink-muted space-y-1">
               <span>Por día</span>
               <input className={FIELD} inputMode="numeric" value={maxShots} onChange={(e) => setMaxShots(e.target.value)} aria-label="Riegos por día" />
             </label>
           </div>
-          {!hasSoilSensor && <p className="text-[11px] font-bold text-error">Falta una sonda de sustrato asignada a este cultivo.</p>}
-          <p className="text-[11px] text-ink-subtle">Con la luz apagada no riega: secarse de noche es parte del ciclo. Después de cada riego espera la pausa para que el agua baje.</p>
+          {!hasSoilSensor && <p className="text-xs font-bold text-error">Falta una sonda de sustrato asignada a este cultivo.</p>}
+          <p className="text-xs text-ink-subtle">Con la luz apagada no riega: secarse de noche es parte del ciclo. Después de cada riego espera la pausa para que el agua baje.</p>
         </>
       )}
 
       {mode !== 'off' && Number.isFinite(shot) && shot > 0 && (
-        <p className="text-[11px] text-ink-muted">
+        <p className="text-xs text-ink-muted">
           Cada riego ≈ {liters(secondsToLiters(shot, pump))} (tope de la bomba: {pump.maxSeconds} s). Cada uno queda anotado en el cultivo.
         </p>
       )}
       {errors.map((e) => (
-        <p key={e} className="text-[11px] font-bold text-error">
+        <p key={e} className="text-xs font-bold text-error">
           {e}
         </p>
       ))}

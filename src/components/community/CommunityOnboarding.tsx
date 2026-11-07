@@ -125,7 +125,7 @@ export const CommunityOnboarding: React.FC<Props> = ({ me, suggestedName, sugges
             </button>
           </div>
           <input ref={fileRef} id="avatar-file" type="file" accept="image/*" className="sr-only" tabIndex={-1} onChange={pickPhoto} />
-          {preparing && <p className="text-[11px] text-ink-muted">Preparando la foto…</p>}
+          {preparing && <p className="text-xs text-ink-muted">Preparando la foto…</p>}
         </div>
       </div>
 
@@ -135,7 +135,7 @@ export const CommunityOnboarding: React.FC<Props> = ({ me, suggestedName, sugges
           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-ink-muted">@</span>
           <input id="community-handle" className={`${FIELD} pl-7`} value={handle} maxLength={20} autoCapitalize="none" spellCheck={false} onChange={(e) => setHandle(e.target.value.toLowerCase())} required />
         </div>
-        <small className="block text-[11px] text-ink-subtle">De 3 a 20 letras, números o guion bajo. Es único.</small>
+        <small className="block text-xs text-ink-subtle">De 3 a 20 letras, números o guion bajo. Es único.</small>
       </label>
       <label className={LABEL}>
         <span>Nombre para mostrar</span>
@@ -148,7 +148,7 @@ export const CommunityOnboarding: React.FC<Props> = ({ me, suggestedName, sugges
       <label className={LABEL}>
         <span>Ubicación general (opcional)</span>
         <input id="community-location" className={FIELD} value={location} maxLength={60} onChange={(e) => setLocation(e.target.value)} placeholder="Argentina, Buenos Aires" />
-        <small className="block text-[11px] text-ink-subtle">Solo país, provincia o ciudad. Nunca tu dirección.</small>
+        <small className="block text-xs text-ink-subtle">Solo país, provincia o ciudad. Nunca tu dirección.</small>
       </label>
 
       {!editing && (

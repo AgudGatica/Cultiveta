@@ -474,7 +474,7 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
         .map((g, idx) => {
           const item: CultivationGeneticsItem = {
             id: g.id || `gen-${idx}-${Date.now()}`,
-            name: g.name.trim() || `Variedad ${idx + 1}`,
+            name: g.name.trim() || `Genética ${idx + 1}`,
             photoperiodType: g.photoperiodType || 'Fotoperiódica',
             declaredFloweringWeeks: Number(g.declaredFloweringWeeks) || 8,
             plantCount: Math.max(1, Number(g.plantCount) || 1),
@@ -703,34 +703,34 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+    <div className="cultiveta-modal-overlay animate-in fade-in">
       <div
         id="cultivation-form-modal"
-        className="w-full max-w-2xl bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-stone-200 my-auto"
+        className="cultiveta-modal-container my-auto max-w-2xl p-6 sm:p-8"
       >
-        <div className="flex items-center justify-between pb-4 border-b border-stone-100 mb-6">
+        <div className="flex items-center justify-between pb-4 border-b border-line mb-6">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-emerald-100 text-emerald-700">
+            <div className="p-2.5 rounded-2xl bg-ok-bg text-ok-ink">
               <Sprout className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-stone-900">
-                {cultivationToEdit ? 'Editar Cultivo' : 'Crear Nuevo Cultivo'}
+              <h2 className="text-xl font-bold text-ink">
+                {cultivationToEdit ? 'Editar cultivo' : 'Sumar plantas'}
               </h2>
-              <p className="text-xs text-stone-500">Registra un nuevo ciclo de cultivo independiente</p>
+              <p className="text-xs text-ink-muted">Elegí la genética y cuándo arrancó.</p>
             </div>
           </div>
-          <button
+          <button aria-label="Cerrar"
             type="button"
             onClick={onClose}
-            className="p-2 text-stone-400 hover:text-stone-700 rounded-full hover:bg-stone-100 transition-colors cursor-pointer"
+            className="p-2 text-ink-subtle hover:text-ink rounded-full hover:bg-track transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
+          <div className="mb-4 p-3 rounded-2xl bg-error/10 border border-error/30 text-error text-xs font-medium">
             {error}
           </div>
         )}
@@ -738,14 +738,14 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-6 max-h-[70vh] overflow-y-auto pr-1">
           {/* Section 1: Basic Info */}
           <div className="space-y-4">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-ok-ink flex items-center gap-1.5">
               <Sprout className="w-3.5 h-3.5" />
               1. Datos Principales
             </h3>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">Nombre del cultivo *</label>
+                <label className="block text-xs font-bold text-ink mb-1">Nombre del cultivo *</label>
                 <input
                   id="crop-name-input"
                   type="text"
@@ -753,12 +753,12 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                   placeholder="ej. Carpa Principal #02"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-stone-800 text-sm focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+                  className="w-full px-3.5 py-2 rounded-2xl bg-surface border border-line text-ink text-sm focus:outline-hidden focus:border-ok-line focus:bg-white"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">Etapa actual *</label>
+                <label className="block text-xs font-bold text-ink mb-1">Etapa actual *</label>
                 <select
                   id="crop-stage-select"
                   value={currentStage}
@@ -775,7 +775,7 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                       if (lightHours === 12) setLightHours(18);
                     }
                   }}
-                  className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-stone-800 text-sm focus:outline-hidden focus:border-emerald-500 focus:bg-white cursor-pointer"
+                  className="w-full px-3.5 py-2 rounded-2xl bg-surface border border-line text-ink text-sm focus:outline-hidden focus:border-ok-line focus:bg-white cursor-pointer"
                 >
                   <option value="Germinación">🌱 Germinación</option>
                   <option value="Plántula">🌿 Plántula</option>
@@ -786,7 +786,7 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1" id="crop-stage-start-date-label">
+                <label className="block text-xs font-bold text-ink mb-1" id="crop-stage-start-date-label">
                   {currentStage === 'Germinación'
                     ? '¿Cuándo empezó el cultivo? *'
                     : currentStage === 'Plántula'
@@ -803,15 +803,15 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                   required
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-stone-800 text-sm focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+                  className="w-full px-3.5 py-2 rounded-2xl bg-surface border border-line text-ink text-sm focus:outline-hidden focus:border-ok-line focus:bg-white"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">
+                <label className="block text-xs font-bold text-ink mb-1">
                   Cantidad total de plantas
                   {geneticsEntries.length > 1 && (
-                    <span className="text-[11px] font-normal text-emerald-700 ml-1.5">
+                    <span className="text-xs font-normal text-ok-ink ml-1.5">
                       (Suma de genéticas: {geneticsEntries.reduce((s, g) => s + (Number(g.plantCount) || 1), 0)})
                     </span>
                   )}
@@ -823,12 +823,12 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                   max="100"
                   value={plantCount}
                   onChange={(e) => setPlantCount(parseInt(e.target.value) || 1)}
-                  className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-stone-800 text-sm focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+                  className="w-full px-3.5 py-2 rounded-2xl bg-surface border border-line text-ink text-sm focus:outline-hidden focus:border-ok-line focus:bg-white"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">Tipo de entorno</label>
+                <label className="block text-xs font-bold text-ink mb-1">Tipo de entorno</label>
                 <select
                   id="crop-type-select"
                   value={type}
@@ -854,7 +854,7 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                       }
                     }
                   }}
-                  className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-stone-800 text-sm focus:outline-hidden focus:border-emerald-500 focus:bg-white cursor-pointer"
+                  className="w-full px-3.5 py-2 rounded-2xl bg-surface border border-line text-ink text-sm focus:outline-hidden focus:border-ok-line focus:bg-white cursor-pointer"
                 >
                   <option value="Indoor">Indoor (Carpa / Sala)</option>
                   <option value="Outdoor">Outdoor (Exterior)</option>
@@ -863,14 +863,14 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
 
                 {ambientsForCrop({ type }, indoors).length > 0 && (
                   <div className="mt-2.5">
-                    <label htmlFor="crop-indoor-select" className="block text-xs font-bold text-stone-700 mb-1">
+                    <label htmlFor="crop-indoor-select" className="block text-xs font-bold text-ink mb-1">
                       ¿En qué ambiente está?
                     </label>
                     <select
                       id="crop-indoor-select"
                       value={indoorId}
                       onChange={(e) => setIndoorId(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-stone-800 text-sm focus:outline-hidden focus:border-emerald-500 focus:bg-white cursor-pointer"
+                      className="w-full px-3.5 py-2 rounded-2xl bg-surface border border-line text-ink text-sm focus:outline-hidden focus:border-ok-line focus:bg-white cursor-pointer"
                     >
                       <option value="">{cultivationToEdit?.indoorId ? 'Uno nuevo para este cultivo' : 'Uno nuevo, con el nombre del cultivo'}</option>
                       {ambientsForCrop({ type }, indoors).map((i) => (
@@ -885,9 +885,9 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                 {(type === 'Outdoor' || type === 'Invernadero') && (
                   <div
                     id="crop-environment-vpd-warning"
-                    className="mt-2.5 flex items-start gap-2.5 p-3 rounded-2xl bg-amber-50/90 border border-amber-200/80 text-amber-900 text-xs leading-relaxed"
+                    className="mt-2.5 flex items-start gap-2.5 p-3 rounded-2xl bg-warn-bg border border-warn-line text-warn-ink text-xs leading-relaxed"
                   >
-                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <AlertTriangle className="w-4 h-4 text-warn-ink shrink-0 mt-0.5" />
                     <span>
                       En cultivos de exterior o invernadero sin ambiente controlado, el cálculo de VPD (Déficit de Presión de Vapor) y el control de variables climáticas no estarán disponibles.
                     </span>
@@ -898,26 +898,26 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
 
             {/* Progressive disclosure: Fechas anteriores opcionales */}
             {currentStage !== 'Germinación' && (
-              <div className="pt-2 border-t border-stone-200/60">
+              <div className="pt-2 border-t border-line">
                 <button
                   type="button"
                   id="toggle-prior-history-btn"
                   onClick={() => setShowPreviousHistory(!showPreviousHistory)}
-                  className="text-xs font-semibold text-emerald-800 hover:text-emerald-900 flex items-center gap-1.5 cursor-pointer py-1"
+                  className="text-xs font-semibold text-ok-ink hover:text-ok-ink flex items-center gap-1.5 cursor-pointer py-1"
                 >
                   <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showPreviousHistory ? 'rotate-180' : ''}`} />
                   Agregar fechas anteriores (opcional)
                 </button>
 
                 {showPreviousHistory && (
-                  <div className="mt-2.5 p-3.5 rounded-2xl bg-stone-50 border border-stone-200 space-y-3">
-                    <p className="text-[11px] text-stone-500 leading-relaxed">
-                      Si conoces las fechas reales de inicio de etapas previas, puedes registrarlas aquí. Si no las recuerdas, déjalas vacías y Cultiveta marcará el historial anterior como desconocido sin proyectar fechas hacia atrás.
+                  <div className="mt-2.5 p-3.5 rounded-2xl bg-surface border border-line space-y-3">
+                    <p className="text-xs text-ink-muted leading-relaxed">
+                      Si sabés cuándo empezó cada etapa anterior, cargalo acá. Si no te acordás, dejalas vacías y Cultiveta marcará el historial anterior como desconocido sin proyectar fechas hacia atrás.
                     </p>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                        <label className="block text-xs font-semibold text-ink mb-1">
                           ¿Cuándo empezó Germinación? (opcional)
                         </label>
                         <input
@@ -925,13 +925,13 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                           type="date"
                           value={priorDates.germinacion || ''}
                           onChange={(e) => setPriorDates((p) => ({ ...p, germinacion: e.target.value }))}
-                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-emerald-500"
+                          className="w-full px-3 py-1.5 rounded-xl bg-white border border-line text-xs text-ink focus:outline-hidden focus:border-ok-line"
                         />
                       </div>
 
                       {(currentStage === 'Vegetativo' || currentStage === 'Floración' || currentStage === 'Lavado / Secado') && (
                         <div>
-                          <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                          <label className="block text-xs font-semibold text-ink mb-1">
                             ¿Cuándo empezó Plántula? (opcional)
                           </label>
                           <input
@@ -939,14 +939,14 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                             type="date"
                             value={priorDates.plantula || ''}
                             onChange={(e) => setPriorDates((p) => ({ ...p, plantula: e.target.value }))}
-                            className="w-full px-3 py-1.5 rounded-xl bg-white border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-emerald-500"
+                            className="w-full px-3 py-1.5 rounded-xl bg-white border border-line text-xs text-ink focus:outline-hidden focus:border-ok-line"
                           />
                         </div>
                       )}
 
                       {(currentStage === 'Floración' || currentStage === 'Lavado / Secado') && (
                         <div>
-                          <label className="block text-[11px] font-semibold text-stone-700 mb-1">
+                          <label className="block text-xs font-semibold text-ink mb-1">
                             ¿Cuándo empezó Vegetativo? (opcional)
                           </label>
                           <input
@@ -954,7 +954,7 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                             type="date"
                             value={priorDates.vegetativo || ''}
                             onChange={(e) => setPriorDates((p) => ({ ...p, vegetativo: e.target.value }))}
-                            className="w-full px-3 py-1.5 rounded-xl bg-white border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-emerald-500"
+                            className="w-full px-3 py-1.5 rounded-xl bg-white border border-line text-xs text-ink focus:outline-hidden focus:border-ok-line"
                           />
                         </div>
                       )}
@@ -966,38 +966,38 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
           </div>
 
           {/* Section 2: Genetics */}
-          <div className="space-y-4 pt-2 border-t border-stone-100">
+          <div className="space-y-4 pt-2 border-t border-line">
             <div className="flex items-center justify-between">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-ok-ink flex items-center gap-1.5">
                 <Layers className="w-3.5 h-3.5" />
-                2. Genética y Variedades
+                2. Genéticas
               </h3>
-              <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
-                {geneticsEntries.length} {geneticsEntries.length === 1 ? 'variedad' : 'variedades'}
+              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-ok-bg text-ok-ink border border-ok-line">
+                {geneticsEntries.length} {geneticsEntries.length === 1 ? 'genética' : 'genéticas'}
               </span>
             </div>
 
-            <p className="text-xs text-stone-500">
-              Puedes cultivar una o varias genéticas en el mismo espacio. Configura los datos de cada variedad o selecciónalas de tu biblioteca.
+            <p className="text-xs text-ink-muted">
+              Podés cultivar una o varias genéticas en el mismo lugar. Elegilas del catálogo o de tu biblioteca, o cargá los datos a mano.
             </p>
 
             <div className="space-y-4">
               {geneticsEntries.map((entry, index) => (
                 <div
                   key={entry.id}
-                  className="p-4 rounded-2xl bg-stone-50 border border-stone-200 space-y-3 relative group"
+                  className="p-4 rounded-2xl bg-surface border border-line space-y-3 relative group"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="w-5 h-5 rounded-full bg-emerald-700 text-white font-bold text-xs flex items-center justify-center">
+                      <span className="w-5 h-5 rounded-full bg-brand-deep text-white font-bold text-xs flex items-center justify-center">
                         {index + 1}
                       </span>
-                      <span className="text-xs font-bold text-stone-800">
-                        Variedad #{index + 1}
+                      <span className="text-xs font-bold text-ink">
+                        Genética {index + 1}
                         {entry.name ? `: ${entry.name}` : ''}
                       </span>
                       {entry.seedBank && (
-                        <span className="text-[11px] text-stone-500 font-medium">({entry.seedBank})</span>
+                        <span className="text-xs text-ink-muted font-medium">({entry.seedBank})</span>
                       )}
                     </div>
 
@@ -1006,7 +1006,7 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                         type="button"
                         id={`btn-remove-genetics-${index}`}
                         onClick={() => handleRemoveGeneticsEntry(entry.id)}
-                        className="p-1.5 text-stone-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                        className="p-1.5 text-ink-subtle hover:text-error hover:bg-error/10 rounded-lg transition-colors cursor-pointer"
                         title="Quitar esta genética del cultivo"
                       >
                         <Trash2 className="w-4 h-4" />
@@ -1016,16 +1016,16 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                     <div className="sm:col-span-2">
-                      <label className="block text-xs font-bold text-violet-900 mb-1">
-                        Cargar variedad de la base de datos predefinida
+                      <label className="block text-xs font-bold text-brand mb-1">
+                        Buscar en el catálogo
                       </label>
                       <select
                         id={`crop-predefined-genetics-selector-${index}`}
                         value={entry.seedBank && entry.name ? `${entry.seedBank}:::${entry.name}` : ''}
                         onChange={(e) => handleSelectPredefinedGenetics(entry.id, e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-violet-50/50 border border-violet-200 text-violet-900 text-xs font-medium focus:outline-hidden focus:border-violet-500 focus:ring-1 focus:ring-violet-400 cursor-pointer shadow-2xs"
+                        className="w-full px-3 py-2 rounded-xl bg-icon-bg border border-chip-line text-brand text-xs font-medium focus:outline-hidden focus:border-chip-line focus:ring-1 focus:ring-brand cursor-pointer shadow-2xs"
                       >
-                        <option value="">Seleccionar de base de datos (100 variedades / 20 bancos)...</option>
+                        <option value="">Elegir del catálogo (100)…</option>
                         {Object.entries(PREDEFINED_BY_BANK).map(([bank, strains]) => (
                           <optgroup key={bank} label={bank}>
                             {strains.map((g) => (
@@ -1040,16 +1040,16 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
 
                     {geneticsList.length > 0 && (
                       <div className="sm:col-span-2">
-                        <label className="block text-xs font-semibold text-stone-600 mb-1">
+                        <label className="block text-xs font-semibold text-ink-muted mb-1">
                           Cargar desde biblioteca guardada
                         </label>
                         <select
                           id={`crop-genetics-lib-selector-${index}`}
                           value={entry.geneticsId || ''}
                           onChange={(e) => handleSelectGeneticsFromLibrary(entry.id, e.target.value)}
-                          className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-stone-800 text-xs font-medium focus:outline-hidden focus:border-emerald-500 cursor-pointer shadow-2xs"
+                          className="w-full px-3 py-2 rounded-xl bg-white border border-line text-ink text-xs font-medium focus:outline-hidden focus:border-ok-line cursor-pointer shadow-2xs"
                         >
-                          <option value="">Elegir de mi biblioteca de genéticas...</option>
+                          <option value="">Elegir de mi biblioteca…</option>
                           {geneticsList.map((g) => (
                             <option key={g.id} value={g.id}>
                               {g.name} ({g.seedBank}) · {g.photoperiodType}
@@ -1060,8 +1060,8 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                     )}
 
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 mb-1">
-                        Nombre de la variedad
+                      <label className="block text-xs font-bold text-ink mb-1">
+                        Nombre de la genética
                       </label>
                       <input
                         id={`crop-genetics-name-${index}`}
@@ -1069,31 +1069,31 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                         placeholder="ej. Amnesia Haze, Gorilla Cookies"
                         value={entry.name}
                         onChange={(e) => handleUpdateGeneticsEntry(entry.id, 'name', e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-stone-800 text-xs focus:outline-hidden focus:border-emerald-500"
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-line text-ink text-xs focus:outline-hidden focus:border-ok-line"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 mb-1">Banco / Breeder</label>
+                      <label className="block text-xs font-bold text-ink mb-1">Banco / Breeder</label>
                       <input
                         id={`crop-genetics-seedbank-${index}`}
                         type="text"
                         placeholder="ej. Barney’s Farm, RQS, Fast Buds"
                         value={entry.seedBank}
                         onChange={(e) => handleUpdateGeneticsEntry(entry.id, 'seedBank', e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-stone-800 text-xs focus:outline-hidden focus:border-emerald-500"
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-line text-ink text-xs focus:outline-hidden focus:border-ok-line"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 mb-1">Tipo de fotoperiodo</label>
+                      <label className="block text-xs font-bold text-ink mb-1">Tipo de fotoperiodo</label>
                       <select
                         id={`crop-genetics-photoperiod-${index}`}
                         value={entry.photoperiodType}
                         onChange={(e) =>
                           handleUpdateGeneticsEntry(entry.id, 'photoperiodType', e.target.value as PhotoperiodType)
                         }
-                        className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-stone-800 text-xs focus:outline-hidden focus:border-emerald-500 cursor-pointer"
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-line text-ink text-xs focus:outline-hidden focus:border-ok-line cursor-pointer"
                       >
                         <option value="Fotoperiódica">Fotoperiódica (Feminizada)</option>
                         <option value="Automática">Automática (Auto)</option>
@@ -1103,7 +1103,7 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 mb-1">Floración estimada (semanas)</label>
+                      <label className="block text-xs font-bold text-ink mb-1">Floración estimada (semanas)</label>
                       <input
                         id={`crop-genetics-flowering-${index}`}
                         type="number"
@@ -1117,12 +1117,12 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                             parseInt(e.target.value) || 8
                           )
                         }
-                        className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-stone-800 text-xs focus:outline-hidden focus:border-emerald-500"
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-line text-ink text-xs focus:outline-hidden focus:border-ok-line"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-stone-700 mb-1">Plantas de esta variedad</label>
+                      <label className="block text-xs font-bold text-ink mb-1">Plantas de esta genética</label>
                       <input
                         id={`crop-genetics-plants-${index}`}
                         type="number"
@@ -1132,7 +1132,7 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                         onChange={(e) =>
                           handleGeneticsPlantCountChange(entry.id, parseInt(e.target.value) || 1)
                         }
-                        className="w-full px-3 py-2 rounded-xl bg-white border border-stone-200 text-stone-800 text-xs focus:outline-hidden focus:border-emerald-500"
+                        className="w-full px-3 py-2 rounded-xl bg-white border border-line text-ink text-xs focus:outline-hidden focus:border-ok-line"
                       />
                     </div>
                   </div>
@@ -1146,24 +1146,24 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                 type="button"
                 id="btn-add-another-genetics"
                 onClick={handleAddGeneticsEntry}
-                className="w-full py-2.5 px-4 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-dashed border-emerald-300 text-emerald-800 font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-2xs"
+                className="w-full py-2.5 px-4 rounded-2xl bg-ok-bg hover:bg-ok-bg border border-dashed border-ok-line text-ok-ink font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-2xs"
               >
-                <Plus className="w-4 h-4 text-emerald-700" />
+                <Plus className="w-4 h-4 text-ok-ink" />
                 <span>+ Agregar otra genética</span>
               </button>
             </div>
           </div>
 
           {/* Section 3: Substrate and Setup */}
-          <div className="space-y-4 pt-2 border-t border-stone-100">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
+          <div className="space-y-4 pt-2 border-t border-line">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-ok-ink flex items-center gap-1.5">
               <Sun className="w-3.5 h-3.5" />
               3. Sustrato e Iluminación
             </h3>
 
             {/* Cómo se cultiva: cambia cómo se riega (pH y EC, solo agua o control del tanque) */}
             <fieldset id="crop-grow-method">
-              <legend className="block text-xs font-bold text-stone-700 mb-1">¿Cómo cultivás?</legend>
+              <legend className="block text-xs font-bold text-ink mb-1">¿Cómo cultivás?</legend>
               <div className="grid grid-cols-2 gap-2">
                 {GROW_METHODS.map((m) => {
                   const on = shownMethod === m.id;
@@ -1175,11 +1175,11 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                       aria-pressed={on}
                       onClick={() => setGrowMethod(m.id)}
                       className={`text-left px-3 py-2 rounded-2xl border transition-colors cursor-pointer ${
-                        on ? 'bg-emerald-50 border-emerald-500 ring-1 ring-emerald-500' : 'bg-stone-50 border-stone-200 hover:border-emerald-300'
+                        on ? 'bg-ok-bg border-ok-line ring-1 ring-ok' : 'bg-surface border-line hover:border-ok-line'
                       }`}
                     >
-                      <span className={`block text-xs font-bold ${on ? 'text-emerald-900' : 'text-stone-800'}`}>{m.label}</span>
-                      <span className="block text-[11px] text-stone-500 leading-snug">{m.desc}</span>
+                      <span className={`block text-xs font-bold ${on ? 'text-ok-ink' : 'text-ink'}`}>{m.label}</span>
+                      <span className="block text-xs text-ink-muted leading-snug">{m.desc}</span>
                     </button>
                   );
                 })}
@@ -1188,19 +1188,19 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">Tipo de sustrato</label>
+                <label className="block text-xs font-bold text-ink mb-1">Tipo de sustrato</label>
                 <input
                   id="crop-substrate-type-input"
                   type="text"
                   placeholder="ej. Turba/Perlita, Coco, Living Soil"
                   value={substrateType}
                   onChange={(e) => setSubstrateType(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-stone-800 text-sm focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+                  className="w-full px-3.5 py-2 rounded-2xl bg-surface border border-line text-ink text-sm focus:outline-hidden focus:border-ok-line focus:bg-white"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">Volumen de maceta (Litros)</label>
+                <label className="block text-xs font-bold text-ink mb-1">Volumen de maceta (litros)</label>
                 <input
                   id="crop-pot-volume-input"
                   type="number"
@@ -1208,17 +1208,17 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                   min="0.5"
                   value={potVolumeLiters}
                   onChange={(e) => setPotVolumeLiters(parseFloat(e.target.value) || 11)}
-                  className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-stone-800 text-sm focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+                  className="w-full px-3.5 py-2 rounded-2xl bg-surface border border-line text-ink text-sm focus:outline-hidden focus:border-ok-line focus:bg-white"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">Tipo de maceta</label>
+                <label className="block text-xs font-bold text-ink mb-1">Tipo de maceta</label>
                 <select
                   id="crop-pot-type-select"
                   value={potType}
                   onChange={(e) => setPotType(e.target.value as PotType)}
-                  className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-stone-800 text-sm focus:outline-hidden focus:border-emerald-500 focus:bg-white cursor-pointer"
+                  className="w-full px-3.5 py-2 rounded-2xl bg-surface border border-line text-ink text-sm focus:outline-hidden focus:border-ok-line focus:bg-white cursor-pointer"
                 >
                   <option value="Geotextil">Geotextil (Tela)</option>
                   <option value="Plástico">Plástico tradicional</option>
@@ -1230,14 +1230,14 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
               </div>
 
               {type === 'Indoor' && ambientsForCrop({ type }, indoors).some((i) => i.id === indoorId) ? (
-                <p id="crop-indoor-light-note" className="sm:col-span-3 text-xs font-semibold text-emerald-900 bg-emerald-50 border border-emerald-200 rounded-2xl px-3.5 py-2.5">
+                <p id="crop-indoor-light-note" className="sm:col-span-3 text-xs font-semibold text-ok-ink bg-ok-bg border border-ok-line rounded-2xl px-3.5 py-2.5">
                   La luz (tipo, watts y horas) es la del ambiente {indoors.find((i) => i.id === indoorId)?.name}: se cambia desde el ambiente y vale para todas sus plantas.
                 </p>
               ) : (
               <>
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">
-                  {(type === 'Outdoor' || type === 'Invernadero') ? 'Apoyo lumínico (Opcional)' : 'Iluminación'}
+                <label className="block text-xs font-bold text-ink mb-1">
+                  {(type === 'Outdoor' || type === 'Invernadero') ? 'Apoyo lumínico (opcional)' : 'Iluminación'}
                 </label>
                 <input
                   id="crop-lighting-type-input"
@@ -1249,12 +1249,12 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                   }
                   value={lightingType}
                   onChange={(e) => setLightingType(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-stone-800 text-sm focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+                  className="w-full px-3.5 py-2 rounded-2xl bg-surface border border-line text-ink text-sm focus:outline-hidden focus:border-ok-line focus:bg-white"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">
+                <label className="block text-xs font-bold text-ink mb-1">
                   {(type === 'Outdoor' || type === 'Invernadero')
                     ? 'Potencia de apoyo (Watts, opcional)'
                     : 'Potencia utilizada (Watts)'}
@@ -1270,19 +1270,19 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                     const val = e.target.value;
                     setLightingWatts(val === '' ? '' : parseInt(val) || 0);
                   }}
-                  className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-stone-800 text-sm focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+                  className="w-full px-3.5 py-2 rounded-2xl bg-surface border border-line text-ink text-sm focus:outline-hidden focus:border-ok-line focus:bg-white"
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-stone-700">
+                  <label className="text-xs font-bold text-ink">
                     {(type === 'Outdoor' || type === 'Invernadero')
-                      ? 'Horas de luz diarias (Opcional)'
+                      ? 'Horas de luz diarias (opcional)'
                       : 'Horas de luz diarias'}
                   </label>
                   {lightHours !== '' && Number(lightHours) > 0 && (
-                    <span className="text-[11px] font-bold text-amber-700">
+                    <span className="text-xs font-bold text-warn-ink">
                       {lightHours}h luz / {darkHoursFor(Number(lightHours))}h osc.
                     </span>
                   )}
@@ -1303,37 +1303,37 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
           </div>
 
           {/* Section 4: Critical Environmental Alert Thresholds */}
-          <div className="space-y-4 pt-2 border-t border-stone-100">
+          <div className="space-y-4 pt-2 border-t border-line">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
-                  <ShieldAlert className="w-3.5 h-3.5 text-rose-600" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-ok-ink flex items-center gap-1.5">
+                  <ShieldAlert className="w-3.5 h-3.5 text-error" />
                   4. Umbrales Críticos de Temperatura y Humedad (Alertas IA)
                 </h3>
-                <p className="text-xs text-stone-500 mt-0.5">
-                  Configura los límites térmicos y de humedad que el cron job y Cultiveta IA usarán para disparar alertas inmediatas.
+                <p className="text-xs text-ink-muted mt-0.5">
+                  Elegí entre qué temperatura y humedad están bien tus plantas. Si se salen de ahí, te avisamos.
                 </p>
               </div>
 
               {/* Custom Thresholds Toggle Switch */}
-              <label className="inline-flex items-center gap-2 cursor-pointer self-start sm:self-auto bg-stone-50 hover:bg-stone-100 px-3 py-1.5 rounded-2xl border border-stone-200 transition-colors">
+              <label className="inline-flex items-center gap-2 cursor-pointer self-start sm:self-auto bg-surface hover:bg-track px-3 py-1.5 rounded-2xl border border-line transition-colors">
                 <input
                   type="checkbox"
                   id="crop-enable-custom-thresholds"
                   checked={enableCustomThresholds}
                   onChange={(e) => setEnableCustomThresholds(e.target.checked)}
-                  className="w-4 h-4 text-emerald-600 rounded-md border-stone-300 focus:ring-emerald-500 cursor-pointer"
+                  className="w-4 h-4 text-ok-ink rounded-md border-line focus:ring-ok cursor-pointer"
                 />
-                <span className="text-xs font-bold text-stone-700">
-                  {enableCustomThresholds ? 'Umbrales Personalizados Activos' : 'Usar Umbrales por Defecto'}
+                <span className="text-xs font-bold text-ink">
+                  {enableCustomThresholds ? 'Umbrales personalizados activos' : 'Usar umbrales por defecto'}
                 </span>
               </label>
             </div>
 
             {/* Quick Presets Bar */}
-            <div className="p-3 rounded-2xl bg-stone-50 border border-stone-200/80 flex flex-wrap items-center gap-2">
-              <span className="text-[11px] font-bold text-stone-600 flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            <div className="p-3 rounded-2xl bg-surface border border-line flex flex-wrap items-center gap-2">
+              <span className="text-xs font-bold text-ink-muted flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-warn-ink" />
                 Presets recomendados:
               </span>
               <button
@@ -1346,9 +1346,9 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                   setHumidityMinThreshold(35);
                   setHumidityMaxThreshold(58);
                 }}
-                className="px-2.5 py-1 rounded-xl text-[11px] font-semibold bg-white hover:bg-rose-50 hover:text-rose-700 text-stone-700 border border-stone-200 shadow-2xs transition-colors cursor-pointer"
+                className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-white hover:bg-error/10 hover:text-error text-ink border border-line shadow-2xs transition-colors cursor-pointer"
               >
-                🌸 Floración Segura (Max 58% HR)
+                Floración Segura (Max 58% HR)
               </button>
               <button
                 type="button"
@@ -1360,9 +1360,9 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                   setHumidityMinThreshold(45);
                   setHumidityMaxThreshold(70);
                 }}
-                className="px-2.5 py-1 rounded-xl text-[11px] font-semibold bg-white hover:bg-emerald-50 hover:text-emerald-700 text-stone-700 border border-stone-200 shadow-2xs transition-colors cursor-pointer"
+                className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-white hover:bg-ok-bg hover:text-ok-ink text-ink border border-line shadow-2xs transition-colors cursor-pointer"
               >
-                🌿 Vegetativo Óptimo
+                Vegetativo óptimo
               </button>
               <button
                 type="button"
@@ -1374,9 +1374,9 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                   setHumidityMinThreshold(60);
                   setHumidityMaxThreshold(85);
                 }}
-                className="px-2.5 py-1 rounded-xl text-[11px] font-semibold bg-white hover:bg-cyan-50 hover:text-cyan-700 text-stone-700 border border-stone-200 shadow-2xs transition-colors cursor-pointer"
+                className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-white hover:bg-icon-bg hover:text-brand text-ink border border-line shadow-2xs transition-colors cursor-pointer"
               >
-                🌱 Plántula / Esquejes
+                Plántula / Esquejes
               </button>
               <button
                 type="button"
@@ -1388,9 +1388,9 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                   setHumidityMinThreshold(25);
                   setHumidityMaxThreshold(75);
                 }}
-                className="px-2.5 py-1 rounded-xl text-[11px] font-semibold bg-stone-200 hover:bg-stone-300 text-stone-700 transition-colors cursor-pointer ml-auto"
+                className="px-2.5 py-1 rounded-xl text-xs font-semibold bg-line hover:bg-chip-line text-ink transition-colors cursor-pointer ml-auto"
               >
-                🔄 Valores Estándar (11-35°C | 25-75%)
+                Valores Estándar (11-35°C | 25-75%)
               </button>
             </div>
 
@@ -1400,16 +1400,16 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
               <div
                 className={`p-3.5 rounded-2xl border transition-all ${
                   enableCustomThresholds
-                    ? 'bg-white border-blue-200 shadow-2xs'
-                    : 'bg-stone-50/70 border-stone-200 opacity-80'
+                    ? 'bg-white border-chip-line shadow-2xs'
+                    : 'bg-surface border-line opacity-80'
                 }`}
               >
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
-                    <Thermometer className="w-3.5 h-3.5 text-blue-500" />
-                    Temp Mínima Crítica
+                  <label className="text-xs font-bold text-ink flex items-center gap-1.5">
+                    <Thermometer className="w-3.5 h-3.5 text-brand" />
+                    Temperatura mínima
                   </label>
-                  <span className="text-[10px] font-mono font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                  <span className="text-[11px] font-bold text-brand bg-icon-bg px-1.5 py-0.5 rounded">
                     °C
                   </span>
                 </div>
@@ -1424,10 +1424,10 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                     setTempMinThreshold(e.target.value === '' ? '' : parseFloat(e.target.value));
                     if (!enableCustomThresholds) setEnableCustomThresholds(true);
                   }}
-                  className="w-full px-3 py-1.5 rounded-xl bg-stone-50 border border-stone-200 text-stone-800 text-sm font-bold font-mono focus:outline-hidden focus:border-blue-500"
+                  className="w-full px-3 py-1.5 rounded-xl bg-surface border border-line text-ink text-sm font-bold focus:outline-hidden focus:border-chip-line"
                   placeholder="11"
                 />
-                <p className="text-[10px] text-stone-500 mt-1.5 leading-snug">
+                <p className="text-[11px] text-ink-muted mt-1.5 leading-snug">
                   Alerta si la temperatura desciende por debajo (peligro de shock radicular).
                 </p>
               </div>
@@ -1436,16 +1436,16 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
               <div
                 className={`p-3.5 rounded-2xl border transition-all ${
                   enableCustomThresholds
-                    ? 'bg-white border-rose-200 shadow-2xs'
-                    : 'bg-stone-50/70 border-stone-200 opacity-80'
+                    ? 'bg-white border-error/30 shadow-2xs'
+                    : 'bg-surface border-line opacity-80'
                 }`}
               >
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
-                    <Thermometer className="w-3.5 h-3.5 text-rose-500" />
-                    Temp Máxima Crítica
+                  <label className="text-xs font-bold text-ink flex items-center gap-1.5">
+                    <Thermometer className="w-3.5 h-3.5 text-error" />
+                    Temperatura máxima
                   </label>
-                  <span className="text-[10px] font-mono font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded">
+                  <span className="text-[11px] font-bold text-error bg-error/10 px-1.5 py-0.5 rounded">
                     °C
                   </span>
                 </div>
@@ -1460,10 +1460,10 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                     setTempMaxThreshold(e.target.value === '' ? '' : parseFloat(e.target.value));
                     if (!enableCustomThresholds) setEnableCustomThresholds(true);
                   }}
-                  className="w-full px-3 py-1.5 rounded-xl bg-stone-50 border border-stone-200 text-stone-800 text-sm font-bold font-mono focus:outline-hidden focus:border-rose-500"
+                  className="w-full px-3 py-1.5 rounded-xl bg-surface border border-line text-ink text-sm font-bold focus:outline-hidden focus:border-error/30"
                   placeholder="35"
                 />
-                <p className="text-[10px] text-stone-500 mt-1.5 leading-snug">
+                <p className="text-[11px] text-ink-muted mt-1.5 leading-snug">
                   Alerta si la temperatura supera este valor (estrés térmico y cierre estomático).
                 </p>
               </div>
@@ -1472,16 +1472,16 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
               <div
                 className={`p-3.5 rounded-2xl border transition-all ${
                   enableCustomThresholds
-                    ? 'bg-white border-amber-200 shadow-2xs'
-                    : 'bg-stone-50/70 border-stone-200 opacity-80'
+                    ? 'bg-white border-warn-line shadow-2xs'
+                    : 'bg-surface border-line opacity-80'
                 }`}
               >
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
-                    <Droplets className="w-3.5 h-3.5 text-amber-500" />
-                    Humedad Mínima
+                  <label className="text-xs font-bold text-ink flex items-center gap-1.5">
+                    <Droplets className="w-3.5 h-3.5 text-warn-ink" />
+                    Humedad mínima
                   </label>
-                  <span className="text-[10px] font-mono font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                  <span className="text-[11px] font-bold text-warn-ink bg-warn-bg px-1.5 py-0.5 rounded">
                     % HR
                   </span>
                 </div>
@@ -1496,10 +1496,10 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                     setHumidityMinThreshold(e.target.value === '' ? '' : parseInt(e.target.value));
                     if (!enableCustomThresholds) setEnableCustomThresholds(true);
                   }}
-                  className="w-full px-3 py-1.5 rounded-xl bg-stone-50 border border-stone-200 text-stone-800 text-sm font-bold font-mono focus:outline-hidden focus:border-amber-500"
+                  className="w-full px-3 py-1.5 rounded-xl bg-surface border border-line text-ink text-sm font-bold focus:outline-hidden focus:border-warn-line"
                   placeholder="25"
                 />
-                <p className="text-[10px] text-stone-500 mt-1.5 leading-snug">
+                <p className="text-[11px] text-ink-muted mt-1.5 leading-snug">
                   Alerta por aire muy seco (deshidratación acelerada y quemaduras foliares).
                 </p>
               </div>
@@ -1508,16 +1508,16 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
               <div
                 className={`p-3.5 rounded-2xl border transition-all ${
                   enableCustomThresholds
-                    ? 'bg-white border-purple-200 shadow-2xs'
-                    : 'bg-stone-50/70 border-stone-200 opacity-80'
+                    ? 'bg-white border-chip-line shadow-2xs'
+                    : 'bg-surface border-line opacity-80'
                 }`}
               >
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-xs font-bold text-stone-700 flex items-center gap-1.5">
-                    <Droplets className="w-3.5 h-3.5 text-purple-500" />
-                    Humedad Máxima Crítica
+                  <label className="text-xs font-bold text-ink flex items-center gap-1.5">
+                    <Droplets className="w-3.5 h-3.5 text-brand" />
+                    Humedad máxima
                   </label>
-                  <span className="text-[10px] font-mono font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">
+                  <span className="text-[11px] font-bold text-brand bg-icon-bg px-1.5 py-0.5 rounded">
                     % HR
                   </span>
                 </div>
@@ -1532,47 +1532,47 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                     setHumidityMaxThreshold(e.target.value === '' ? '' : parseInt(e.target.value));
                     if (!enableCustomThresholds) setEnableCustomThresholds(true);
                   }}
-                  className="w-full px-3 py-1.5 rounded-xl bg-stone-50 border border-stone-200 text-stone-800 text-sm font-bold font-mono focus:outline-hidden focus:border-purple-500"
+                  className="w-full px-3 py-1.5 rounded-xl bg-surface border border-line text-ink text-sm font-bold focus:outline-hidden focus:border-chip-line"
                   placeholder="75"
                 />
-                <p className="text-[10px] text-stone-500 mt-1.5 leading-snug">
+                <p className="text-[11px] text-ink-muted mt-1.5 leading-snug">
                   Alerta por humedad excesiva (peligro inminente de botrytis y hongos en cogollos).
                 </p>
               </div>
             </div>
 
             {/* Active Threshold Summary Banner */}
-            <div className="p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-emerald-950">
+            <div className="p-3 rounded-2xl bg-ok-bg border border-ok-line flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-ok-ink">
               <div className="flex items-center gap-2">
-                <BellRing className="w-4 h-4 text-emerald-600 shrink-0" />
+                <BellRing className="w-4 h-4 text-ok-ink shrink-0" />
                 <span>
                   <strong>Rango seguro activo:</strong> Temperatura entre{' '}
-                  <span className="font-mono font-bold">{tempMinThreshold}°C y {tempMaxThreshold}°C</span> · Humedad entre{' '}
-                  <span className="font-mono font-bold">{humidityMinThreshold}% y {humidityMaxThreshold}% HR</span>.
+                  <span className="font-bold">{tempMinThreshold}°C y {tempMaxThreshold}°C</span> · Humedad entre{' '}
+                  <span className="font-bold">{humidityMinThreshold}% y {humidityMaxThreshold}% HR</span>.
                 </span>
               </div>
-              <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 self-start sm:self-auto shrink-0">
-                {enableCustomThresholds ? 'Personalizado Activo' : 'Por Defecto'}
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-ok-bg text-ok-ink border border-ok-line self-start sm:self-auto shrink-0">
+                {enableCustomThresholds ? 'Personalizado' : 'Por defecto'}
               </span>
             </div>
           </div>
 
           {/* Section 5: Photo & Notes */}
-          <div className="space-y-4 pt-2 border-t border-stone-100">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-emerald-800 flex items-center gap-1.5">
+          <div className="space-y-4 pt-2 border-t border-line">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-ok-ink flex items-center gap-1.5">
               <Camera className="w-3.5 h-3.5" />
               5. Foto de Portada y Notas
             </h3>
 
             <div className="space-y-3">
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">Foto de portada (opcional)</label>
+                <label className="block text-xs font-bold text-ink mb-1">Foto de portada (opcional)</label>
                 <div className="flex items-center gap-3">
                   {coverPhotoUrl && (
                     <img
                       src={coverPhotoUrl}
                       alt="Preview"
-                      className="w-14 h-14 rounded-2xl object-cover border border-stone-200 shrink-0"
+                      className="w-14 h-14 rounded-2xl object-cover border border-line shrink-0"
                     />
                   )}
                   <input
@@ -1580,31 +1580,31 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                     type="file"
                     accept="image/*"
                     onChange={handlePhotoUpload}
-                    className="text-xs text-stone-600 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-emerald-100 file:text-emerald-800 hover:file:bg-emerald-200 cursor-pointer"
+                    className="text-xs text-ink-muted file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-ok-bg file:text-ok-ink hover:file:bg-ok-bg cursor-pointer"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-stone-700 mb-1">Notas iniciales</label>
+                <label className="block text-xs font-bold text-ink mb-1">Notas iniciales</label>
                 <textarea
                   id="crop-notes-input"
                   rows={2}
                   placeholder="Detalles sobre germinación, condiciones iniciales, objetivos..."
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-stone-800 text-sm focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+                  className="w-full px-3.5 py-2 rounded-2xl bg-surface border border-line text-ink text-sm focus:outline-hidden focus:border-ok-line focus:bg-white"
                 />
               </div>
             </div>
           </div>
 
           {/* Action buttons */}
-          <div className="pt-4 border-t border-stone-200 flex items-center justify-end gap-3">
+          <div className="pt-4 border-t border-line flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-full text-sm font-semibold text-stone-600 hover:bg-stone-100 transition-colors cursor-pointer"
+              className="px-5 py-2.5 rounded-full text-sm font-semibold text-ink-muted hover:bg-track transition-colors cursor-pointer"
             >
               Cancelar
             </button>
@@ -1612,7 +1612,7 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
               type="submit"
               id="crop-submit-btn"
               disabled={loading}
-              className="px-6 py-2.5 rounded-full text-sm font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+              className="px-6 py-2.5 rounded-full text-sm font-bold bg-brand-deep hover:bg-brand-deep text-white shadow-md transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               {loading ? (
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -1622,7 +1622,7 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
               <span>
                 {loading
                   ? (cultivationToEdit ? 'Guardando...' : 'Creando cultivo...')
-                  : (cultivationToEdit ? 'Guardar Cambios' : 'Crear Cultivo')}
+                  : (cultivationToEdit ? 'Guardar cambios' : 'Sumar plantas')}
               </span>
             </button>
           </div>

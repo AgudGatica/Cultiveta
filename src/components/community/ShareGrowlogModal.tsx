@@ -66,8 +66,8 @@ export const ShareGrowlogModal: React.FC<Props> = ({ cropId, geneticIndex, name,
   };
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="share-growlog-title" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs overflow-y-auto">
-      <div id="share-growlog-modal" className="w-full max-w-md bg-white rounded-3xl p-5 sm:p-6 shadow-2xl border border-line my-auto space-y-4">
+    <div role="dialog" aria-modal="true" aria-labelledby="share-growlog-title" className="cultiveta-modal-overlay animate-in fade-in">
+      <div id="share-growlog-modal" className="cultiveta-modal-container my-auto max-w-md p-5 sm:p-6 space-y-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl bg-brand/10 text-brand">
@@ -115,13 +115,13 @@ export const ShareGrowlogModal: React.FC<Props> = ({ cropId, geneticIndex, name,
           <label className="text-xs font-semibold text-ink-muted block space-y-1">
             <span>Ubicación general (opcional)</span>
             <input id="share-location" className={FIELD} value={location} maxLength={60} onChange={(e) => setLocation(e.target.value)} placeholder="Argentina, Buenos Aires" />
-            <small className="block text-[11px] text-ink-subtle">Solo país, provincia o ciudad. Las fotos se publican sin ubicación.</small>
+            <small className="block text-xs text-ink-subtle">Solo país, provincia o ciudad. Las fotos se publican sin ubicación.</small>
           </label>
         )}
 
         {current && (
           <div className="rounded-2xl bg-surface border border-line p-3 space-y-2">
-            <small className="block text-[11px] font-semibold text-ink-muted">Enlace</small>
+            <small className="block text-xs font-semibold text-ink-muted">Enlace</small>
             <div className="flex items-center gap-2">
               <code id="share-link" className="flex-1 min-w-0 truncate text-xs text-ink">
                 {growlogLink(current.id)}

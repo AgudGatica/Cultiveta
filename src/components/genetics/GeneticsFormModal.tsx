@@ -110,34 +110,34 @@ export const GeneticsFormModal: React.FC<GeneticsFormModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+    <div className="cultiveta-modal-overlay animate-in fade-in">
       <div
         id="genetics-form-modal"
-        className="w-full max-w-lg bg-white rounded-3xl p-6 sm:p-8 shadow-2xl border border-stone-200 my-auto"
+        className="cultiveta-modal-container my-auto max-w-lg p-6 sm:p-8"
       >
-        <div className="flex items-center justify-between pb-4 border-b border-stone-100 mb-6">
+        <div className="flex items-center justify-between pb-4 border-b border-line mb-6">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-2xl bg-emerald-100 text-emerald-800">
+            <div className="p-3 rounded-2xl bg-ok-bg text-ok-ink">
               <Layers className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-stone-900">
-                {geneticsToEdit ? 'Editar Genética' : 'Nueva Genética'} 🧬
+              <h2 className="text-xl font-bold text-ink">
+                {geneticsToEdit ?'Editar genética' : 'Nueva genética'}
               </h2>
-              <p className="text-xs text-stone-500">Agrega variedades a tu biblioteca personal</p>
+              <p className="text-xs text-ink-muted">Sumá genéticas a tu biblioteca</p>
             </div>
           </div>
-          <button
+          <button aria-label="Cerrar"
             type="button"
             onClick={onClose}
-            className="p-2 text-stone-400 hover:text-stone-700 rounded-full hover:bg-stone-100 transition-colors cursor-pointer"
+            className="p-2 text-ink-subtle hover:text-ink rounded-full hover:bg-track transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
+          <div className="mb-4 p-3 rounded-2xl bg-error/10 border border-error/30 text-error text-xs font-medium">
             {error}
           </div>
         )}
@@ -145,7 +145,7 @@ export const GeneticsFormModal: React.FC<GeneticsFormModalProps> = ({
         <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1">Nombre de la variedad *</label>
+              <label className="block text-xs font-bold text-ink mb-1">Nombre de la genética *</label>
               <input
                 id="genetics-name-input"
                 type="text"
@@ -153,12 +153,12 @@ export const GeneticsFormModal: React.FC<GeneticsFormModalProps> = ({
                 placeholder="ej. Gelato #33"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+                className="w-full px-3.5 py-2 rounded-2xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok-line focus:bg-white"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1">Banco / Breeder *</label>
+              <label className="block text-xs font-bold text-ink mb-1">Banco / Breeder *</label>
               <input
                 id="genetics-bank-input"
                 type="text"
@@ -166,16 +166,16 @@ export const GeneticsFormModal: React.FC<GeneticsFormModalProps> = ({
                 placeholder="ej. Barney's Farm"
                 value={seedBank}
                 onChange={(e) => setSeedBank(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+                className="w-full px-3.5 py-2 rounded-2xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok-line focus:bg-white"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1">Tipo de fotoperiodo</label>
+              <label className="block text-xs font-bold text-ink mb-1">Tipo de fotoperiodo</label>
               <select
                 value={photoperiodType}
                 onChange={(e) => setPhotoperiodType(e.target.value as PhotoperiodType)}
-                className="w-full px-3 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-emerald-500 focus:bg-white cursor-pointer"
+                className="w-full px-3 py-2 rounded-2xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok-line focus:bg-white cursor-pointer"
               >
                 <option value="Fotoperiódica">Fotoperiódica</option>
                 <option value="Automática">Automática (Auto)</option>
@@ -185,11 +185,11 @@ export const GeneticsFormModal: React.FC<GeneticsFormModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1">Dominancia</label>
+              <label className="block text-xs font-bold text-ink mb-1">Dominancia</label>
               <select
                 value={dominance}
                 onChange={(e) => setDominance(e.target.value as DominanceType)}
-                className="w-full px-3 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-emerald-500 focus:bg-white cursor-pointer"
+                className="w-full px-3 py-2 rounded-2xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok-line focus:bg-white cursor-pointer"
               >
                 <option value="Índica">Índica</option>
                 <option value="Sativa">Sativa</option>
@@ -201,19 +201,19 @@ export const GeneticsFormModal: React.FC<GeneticsFormModalProps> = ({
 
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1">Floración (Días)</label>
+              <label className="block text-xs font-bold text-ink mb-1">Floración (días)</label>
               <input
                 type="number"
                 min="30"
                 max="120"
                 value={declaredFloweringDays}
                 onChange={(e) => setDeclaredFloweringDays(parseInt(e.target.value) || 60)}
-                className="w-full px-3 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+                className="w-full px-3 py-2 rounded-2xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok-line focus:bg-white"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1">THC (%)</label>
+              <label className="block text-xs font-bold text-ink mb-1">THC (%)</label>
               <input
                 type="number"
                 step="0.5"
@@ -222,12 +222,12 @@ export const GeneticsFormModal: React.FC<GeneticsFormModalProps> = ({
                 placeholder="ej. 24"
                 value={thcPercentage}
                 onChange={(e) => setThcPercentage(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                className="w-full px-3 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+                className="w-full px-3 py-2 rounded-2xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok-line focus:bg-white"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-stone-700 mb-1">CBD (%)</label>
+              <label className="block text-xs font-bold text-ink mb-1">CBD (%)</label>
               <input
                 type="number"
                 step="0.5"
@@ -236,26 +236,27 @@ export const GeneticsFormModal: React.FC<GeneticsFormModalProps> = ({
                 placeholder="ej. 0.5"
                 value={cbdPercentage}
                 onChange={(e) => setCbdPercentage(e.target.value === '' ? '' : parseFloat(e.target.value))}
-                className="w-full px-3 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+                className="w-full px-3 py-2 rounded-2xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok-line focus:bg-white"
               />
             </div>
           </div>
 
           {/* Terpenes */}
           <div className="space-y-2">
-            <label className="block text-xs font-bold text-stone-700">Perfil de Terpenos</label>
+            <label className="block text-xs font-bold text-ink">Perfil de terpenos</label>
             <div className="flex flex-wrap gap-1.5 mb-2">
               {terpenes.map((t) => (
                 <span
                   key={t}
-                  className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 flex items-center gap-1.5"
+                  className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-ok-bg text-ok-ink flex items-center gap-1.5"
                 >
                   <Tag className="w-3 h-3" />
                   {t}
                   <button
                     type="button"
                     onClick={() => handleRemoveTerpene(t)}
-                    className="hover:text-rose-600 cursor-pointer"
+                    aria-label={`Quitar ${t}`}
+                    className="cultiveta-tiny -my-2 -mr-1.5 px-2 py-2 hover:text-error cursor-pointer"
                   >
                     ×
                   </button>
@@ -275,12 +276,12 @@ export const GeneticsFormModal: React.FC<GeneticsFormModalProps> = ({
                     handleAddTerpene();
                   }
                 }}
-                className="flex-1 px-3 py-1.5 rounded-xl bg-stone-50 border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+                className="flex-1 px-3 py-1.5 rounded-xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok-line focus:bg-white"
               />
               <button
                 type="button"
                 onClick={handleAddTerpene}
-                className="px-3 py-1.5 rounded-xl bg-stone-200 hover:bg-stone-300 text-xs font-bold text-stone-700 cursor-pointer"
+                className="px-3 py-1.5 rounded-xl bg-line hover:bg-chip-line text-xs font-bold text-ink cursor-pointer"
               >
                 Agregar
               </button>
@@ -288,21 +289,21 @@ export const GeneticsFormModal: React.FC<GeneticsFormModalProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-stone-700 mb-1">Notas de cultivo y requerimientos</label>
+            <label className="block text-xs font-bold text-ink mb-1">Notas de cultivo y requerimientos</label>
             <textarea
               rows={2}
               placeholder="Sensibilidad a nutrientes, estiramiento en pre-flora, resistencia a hongos..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-stone-800 focus:outline-hidden focus:border-emerald-500 focus:bg-white"
+              className="w-full px-3.5 py-2 rounded-2xl bg-surface border border-line text-xs text-ink focus:outline-hidden focus:border-ok-line focus:bg-white"
             />
           </div>
 
-          <div className="pt-3 border-t border-stone-200 flex items-center justify-end gap-3">
+          <div className="pt-3 border-t border-line flex items-center justify-end gap-3">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2 rounded-full text-xs font-semibold text-stone-600 hover:bg-stone-100 transition-colors cursor-pointer"
+              className="px-5 py-2 rounded-full text-xs font-semibold text-ink-muted hover:bg-track transition-colors cursor-pointer"
             >
               Cancelar
             </button>
@@ -310,10 +311,10 @@ export const GeneticsFormModal: React.FC<GeneticsFormModalProps> = ({
               type="submit"
               id="save-genetics-btn"
               disabled={loading}
-              className="px-6 py-2.5 rounded-full text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+              className="px-6 py-2.5 rounded-full text-xs font-bold bg-brand-deep hover:bg-brand-deep text-white shadow-md transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
             >
               <Save className="w-4 h-4" />
-              <span>Guardar Genética</span>
+              <span>Guardar genética</span>
             </button>
           </div>
         </form>

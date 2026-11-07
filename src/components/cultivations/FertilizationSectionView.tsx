@@ -22,6 +22,7 @@ import { EditScheduleModal } from './EditScheduleModal';
 import { LivingSoilCard } from './FeedTargetCard';
 import { growMethodOf } from '../../utils/growMethod';
 import { livingSoilGuide } from '../../utils/feedTargets';
+import { dec } from '../../utils/formatNumber';
 
 interface FertilizationSectionViewProps {
   cultivation: Cultivation;
@@ -180,7 +181,7 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
             <div className="flex items-center gap-2">
               <span className="px-3 py-1 rounded-full bg-ok/15 text-ok-ink border border-ok/30 text-xs font-bold flex items-center gap-1.5">
                 <FlaskConical className="w-3.5 h-3.5" />
-                Programa Nutricional Activo
+                Programa nutricional activo
               </span>
               {schedule?.brand && (
                 <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-track text-ink">
@@ -189,7 +190,7 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
               )}
             </div>
             <h2 className="text-2xl font-black text-ink tracking-tight">
-              {schedule?.name || 'Tabla de Fertilización'}
+              {schedule?.name || 'Tabla de fertilización'}
             </h2>
             <p className="text-xs text-ink-muted max-w-xl">
               {schedule?.notes || 'Gestioná la dosificación semanal y asociá los nutrientes aplicados a cada riego.'}
@@ -203,7 +204,7 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
                 className="px-3.5 py-2 rounded-2xl bg-surface hover:bg-track text-ink font-bold text-xs border border-chip-line transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
                 <Sparkles className="w-3.5 h-3.5 text-warn-line" />
-                <span>Cambiar Plan / Preset</span>
+                <span>Cambiar plan / preset</span>
               </button>
               <div className="absolute right-0 top-full mt-1.5 hidden group-hover:block bg-white rounded-2xl shadow-xl border border-chip-line p-2 z-20 w-64 space-y-1">
                 <button
@@ -212,7 +213,7 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
                   className="w-full text-left p-2 rounded-xl text-xs font-semibold hover:bg-track hover:text-brand transition-colors block cursor-pointer"
                 >
                   <strong className="block text-ink">Biobizz 100% Orgánico</strong>
-                  <span className="text-[10px] text-ink-muted">All-Mix / Light-Mix (10 sem)</span>
+                  <span className="text-[11px] text-ink-muted">All-Mix / Light-Mix (10 sem)</span>
                 </button>
                 <button
                   type="button"
@@ -220,7 +221,7 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
                   className="w-full text-left p-2 rounded-xl text-xs font-semibold hover:bg-track hover:text-brand transition-colors block cursor-pointer"
                 >
                   <strong className="block text-ink">Top Crop Nutrición</strong>
-                  <span className="text-[10px] text-ink-muted">Mineral + Bioestimulantes (9 sem)</span>
+                  <span className="text-[11px] text-ink-muted">Mineral + Bioestimulantes (9 sem)</span>
                 </button>
                 <button
                   type="button"
@@ -228,7 +229,7 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
                   className="w-full text-left p-2 rounded-xl text-xs font-semibold hover:bg-track hover:text-brand transition-colors block cursor-pointer"
                 >
                   <strong className="block text-ink">Advanced Nutrients pH Perfect</strong>
-                  <span className="text-[10px] text-ink-muted">Sensi Series Autoestabilizante (9 sem)</span>
+                  <span className="text-[11px] text-ink-muted">Sensi Series Autoestabilizante (9 sem)</span>
                 </button>
               </div>
             </div>
@@ -239,7 +240,7 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
               className="cultiveta-btn-primary text-xs"
             >
               <Edit className="w-3.5 h-3.5" />
-              <span>Personalizar Tabla</span>
+              <span>Personalizar tabla</span>
             </button>
           </div>
         </div>
@@ -250,7 +251,7 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-white font-bold text-[11px] border border-white/30 uppercase tracking-wide">
+                  <span className="px-2.5 py-0.5 rounded-full bg-white/20 text-white font-bold text-xs border border-white/30 uppercase tracking-wide">
                     Etapa Actual: Semana {currentWeekData.weekNumber}
                   </span>
                   <span className="text-xs text-white/80 font-medium">
@@ -264,12 +265,12 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
 
               <div className="flex items-center gap-4 bg-white/10 backdrop-blur-xs px-4 py-2 rounded-2xl border border-white/20">
                 <div className="text-center">
-                  <span className="text-[10px] uppercase font-bold text-white/80 block">Target pH</span>
+                  <span className="text-[11px] uppercase font-bold text-white/80 block">Target pH</span>
                   <span className="text-base font-black text-white">{currentWeekData.targetPh || '6.2 - 6.5'}</span>
                 </div>
                 <div className="h-6 w-px bg-white/20" />
                 <div className="text-center">
-                  <span className="text-[10px] uppercase font-bold text-white/80 block">Target EC</span>
+                  <span className="text-[11px] uppercase font-bold text-white/80 block">Target EC</span>
                   <span className="text-base font-black text-warn-line">{currentWeekData.targetEc ? `${currentWeekData.targetEc} mS` : '1.4 - 1.8'}</span>
                 </div>
               </div>
@@ -283,7 +284,7 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
                 </div>
               ) : (
                 currentWeekData.products.map((p, pIdx) => {
-                  const calculatedMl = (p.dosageMlPerL * solutionVolumeLiters).toFixed(1);
+                  const calculatedMl = dec(p.dosageMlPerL * solutionVolumeLiters, 1);
                   return (
                     <div
                       key={pIdx}
@@ -293,7 +294,7 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
                         <div className="flex items-center gap-2">
                           <span className="font-black text-sm text-white">{p.name}</span>
                           {p.brand && (
-                            <span className="text-[10px] text-warn-line font-bold">
+                            <span className="text-[11px] text-warn-line font-bold">
                               {p.brand}
                             </span>
                           )}
@@ -302,12 +303,12 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
                           Dosis: {p.dosageMlPerL} ml / Litro
                         </span>
                         {p.notes && (
-                          <span className="text-[10px] text-white/70 line-clamp-1">{p.notes}</span>
+                          <span className="text-[11px] text-white/70 line-clamp-1">{p.notes}</span>
                         )}
                       </div>
 
                       <div className="text-right pl-3 border-l border-white/20">
-                        <span className="text-[10px] font-bold text-white/80 block uppercase tracking-wider">
+                        <span className="text-[11px] font-bold text-white/80 block uppercase tracking-wider">
                           Para {solutionVolumeLiters}L
                         </span>
                         <div className="text-lg font-black text-warn-line">
@@ -345,7 +346,7 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
                       key={v}
                       type="button"
                       onClick={() => setSolutionVolumeLiters(v)}
-                      className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${
+                      className={`px-2.5 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                         solutionVolumeLiters === v
                           ? 'bg-warn-line text-ink shadow-xs'
                           : 'bg-white/10 hover:bg-white/20 text-white'
@@ -361,10 +362,10 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
                 <button
                   type="button"
                   onClick={handleApplyCurrentRecipeToNewWatering}
-                  className="px-5 py-2.5 rounded-2xl bg-warn-line hover:bg-[#e4ba35] text-ink font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer group active:scale-95"
+                  className="px-5 py-2.5 rounded-2xl bg-warn-line hover:brightness-95 text-ink font-black text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer group active:scale-95"
                 >
                   <Droplets className="w-4 h-4 text-ink group-hover:scale-110 transition-transform" />
-                  <span>Registrar Riego con esta Receta</span>
+                  <span>Registrar riego con esta receta</span>
                 </button>
               )}
             </div>
@@ -377,7 +378,7 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
         <div className="bg-white rounded-3xl p-6 sm:p-8 border border-chip-line shadow-xs space-y-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
-              <h3 className="text-lg font-bold text-ink">Tabla Nutricional Semana a Semana</h3>
+              <h3 className="text-lg font-bold text-ink">Tabla nutricional semana a semana</h3>
               <p className="text-xs text-ink/70">
                 Visualiza los objetivos agronómicos y productos prescritos para cada etapa del cultivo
               </p>
@@ -389,7 +390,7 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
               className="text-xs font-bold text-brand hover:text-brand-deep flex items-center gap-1.5 cursor-pointer"
             >
               <Edit className="w-3.5 h-3.5" />
-              <span>Editar Dosis de la Tabla</span>
+              <span>Editar dosis de la tabla</span>
             </button>
           </div>
 
@@ -456,8 +457,8 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
 
               {/* Products in selected week */}
               <div className="space-y-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-ink/60 block">
-                  Productos y Dosis Prescritas:
+                <span className="text-xs font-bold uppercase tracking-wider text-ink/60 block">
+                  Productos y dosis prescritas:
                 </span>
 
                 {activeWeekData.products.length === 0 ? (
@@ -473,7 +474,7 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
                       >
                         <div>
                           <span className="font-bold text-xs text-ink block">{prod.name}</span>
-                          <span className="text-[10px] text-ink/60 font-medium">
+                          <span className="text-[11px] text-ink/60 font-medium">
                             {prod.brand || schedule.brand || 'Nutriente'}
                           </span>
                         </div>
@@ -481,8 +482,8 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
                           <span className="text-xs font-extrabold text-ok-ink block">
                             {prod.dosageMlPerL} ml/L
                           </span>
-                          <span className="text-[10px] text-ink/50">
-                            {(prod.dosageMlPerL * solutionVolumeLiters).toFixed(1)} ml ({solutionVolumeLiters}L)
+                          <span className="text-[11px] text-ink/50">
+                            {dec(prod.dosageMlPerL * solutionVolumeLiters, 1)} ml ({solutionVolumeLiters}L)
                           </span>
                         </div>
                       </div>
@@ -500,13 +501,13 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <h3 className="text-lg font-bold text-ink">Historial de Riegos y Nutrición Aplicada</h3>
+              <h3 className="text-lg font-bold text-ink">Historial de riegos y nutrición aplicada</h3>
               <span className="px-2 py-0.5 rounded-full bg-surface text-ink text-xs font-semibold border border-chip-line">
                 {cropWaterings.length} riegos
               </span>
             </div>
             <p className="text-xs text-ink/70 mt-0.5">
-              Revisa los productos específicos añadidos en cada fecha o asocia nutrientes a riegos pasados
+              Revisá los productos que usaste en cada fecha o asociá nutrientes a riegos pasados
             </p>
           </div>
 
@@ -556,7 +557,7 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
             <Droplets className="w-8 h-8 text-ink/30 mx-auto" />
             <p className="text-sm font-bold text-ink">No hay registros de riego en esta categoría.</p>
             <p className="text-xs text-ink/60">
-              Registra un riego desde la botonera superior o asocia productos a tus riegos anteriores.
+              Anotá un riego o asociá productos a tus riegos anteriores.
             </p>
           </div>
         ) : (
@@ -594,7 +595,7 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
                             <span className="text-xs text-ink/50">· {watering.time}</span>
                           )}
                           {watering.fertilizationWeekNumber && (
-                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-ok/15 text-ok-ink border border-ok/30">
+                            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-ok/15 text-ok-ink border border-ok/30">
                               Semana {watering.fertilizationWeekNumber}
                             </span>
                           )}
@@ -602,21 +603,21 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
 
                         <div className="flex items-center gap-3 text-xs text-ink/70 mt-0.5">
                           <span>
-                            Volumen: <strong className="text-ink">{watering.volumeLiters} L</strong>
+                            Volumen: <strong className="text-ink">{dec(watering.volumeLiters)} L</strong>
                           </span>
                           <span>·</span>
                           <span>
-                            pH entrada: <strong className="text-ink">{watering.phIn ?? '—'}</strong>
+                            pH entrada: <strong className="text-ink">{dec(watering.phIn)}</strong>
                           </span>
                           <span>·</span>
                           <span>
-                            EC entrada: <strong className="text-ink">{watering.ecIn ? `${watering.ecIn} mS` : '—'}</strong>
+                            EC entrada: <strong className="text-ink">{watering.ecIn ? `${dec(watering.ecIn)} mS` : '—'}</strong>
                           </span>
                           {watering.ecRunoff && (
                             <>
                               <span>·</span>
                               <span className="text-error">
-                                EC Drenaje: <strong>{watering.ecRunoff} mS</strong>
+                                EC drenaje: <strong>{dec(watering.ecRunoff)} mS</strong>
                               </span>
                             </>
                           )}
@@ -630,18 +631,18 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
                       className="px-3.5 py-1.5 rounded-xl bg-white hover:bg-ok/15 hover:text-ok-ink text-ink font-bold text-xs border border-chip-line hover:border-ok/50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs self-end sm:self-center"
                     >
                       <Plus className="w-3.5 h-3.5 text-ok-ink" />
-                      <span>{hasProducts ? 'Editar Nutrición' : 'Asociar Productos'}</span>
+                      <span>{hasProducts ? 'Editar nutrición' : 'Asociar productos'}</span>
                     </button>
                   </div>
 
                   {/* Products applied breakdown */}
                   <div className="pt-2 border-t border-chip-line/60 flex flex-wrap items-center gap-2">
-                    <span className="text-[11px] font-semibold text-ink/60">
+                    <span className="text-xs font-semibold text-ink/60">
                       Nutrición aplicada:
                     </span>
                     {!hasProducts ? (
-                      <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-white border border-chip-line text-ink/70">
-                        💧 Solo Agua (Sin fertilizantes)
+                      <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-white border border-chip-line text-ink/70">
+                        Solo Agua (Sin fertilizantes)
                       </span>
                     ) : (
                       watering.productsUsed!.map((prod, pIdx) => (
@@ -651,13 +652,13 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
                         >
                           <span className="font-bold">{prod.name}</span>
                           {prod.dosageMlPerL && (
-                            <span className="text-ok-ink text-[10px] font-black bg-ok/10 px-1.5 py-0.5 rounded">
+                            <span className="text-ok-ink text-[11px] font-black bg-ok/10 px-1.5 py-0.5 rounded">
                               {prod.dosageMlPerL} ml/L
                             </span>
                           )}
                           {prod.dosageMlPerL && (
-                            <span className="text-ink/50 text-[10px]">
-                              ({(prod.dosageMlPerL * watering.volumeLiters).toFixed(1)} ml)
+                            <span className="text-ink/50 text-[11px]">
+                              ({dec(prod.dosageMlPerL * watering.volumeLiters, 1)} ml)
                             </span>
                           )}
                         </div>
@@ -666,7 +667,7 @@ export const FertilizationSectionView: React.FC<FertilizationSectionViewProps> =
                   </div>
 
                   {watering.observations && (
-                    <p className="text-[11px] text-ink/70 italic bg-white p-2 rounded-xl border border-chip-line/60">
+                    <p className="text-xs text-ink/70 italic bg-white p-2 rounded-xl border border-chip-line/60">
                       Observación: {watering.observations}
                     </p>
                   )}

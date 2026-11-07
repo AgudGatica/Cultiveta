@@ -171,7 +171,7 @@ export function subscribeCollection<T extends { id: string; userId?: string; _is
                 code: (error as any)?.code,
                 message:
                   (error as any)?.code === 'permission-denied'
-                    ? `Permisos denegados en la colección ${collectionName}. Verifica tu sesión.`
+                    ? `Permisos denegados en la colección ${collectionName}. Verificá tu sesión.`
                     : `Firestore sin conexión para ${collectionName}. Usando datos locales.`,
               },
             })

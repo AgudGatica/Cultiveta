@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Droplets, Plus, Trash2, Check, Sparkles, AlertCircle, Save } from 'lucide-react';
 import { Watering, FertilizationSchedule, WateringProductItem } from '../../types';
 import { wateringService } from '../../services/wateringService';
+import { dec } from '../../utils/formatNumber';
 
 interface AssociateFertilizationModalProps {
   isOpen: boolean;
@@ -135,13 +136,13 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
               <Droplets className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-ink">Asociar Productos al Riego</h2>
+              <h2 className="text-xl font-black text-ink">Asociar productos al riego</h2>
               <p className="text-xs text-ink/70">
                 Riego del <strong className="text-ink">{watering.date}</strong> · {watering.volumeLiters} Litros
               </p>
             </div>
           </div>
-          <button
+          <button aria-label="Cerrar"
             type="button"
             onClick={onClose}
             className="p-2 text-ink/40 hover:text-ink rounded-full hover:bg-surface transition-colors cursor-pointer"
@@ -163,9 +164,9 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
             <div className="flex items-center justify-between">
               <span className="text-xs font-black text-ink flex items-center gap-1.5">
                 <Sparkles className="w-4 h-4 text-brand" />
-                Cargar Receta de la Tabla de Fertilización:
+                Cargar receta de la tabla de fertilización:
               </span>
-              <span className="text-[11px] font-bold text-brand">
+              <span className="text-xs font-bold text-brand">
                 {schedule.brand || schedule.name}
               </span>
             </div>
@@ -199,8 +200,8 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
               <label className="text-xs font-bold text-ink/80 uppercase tracking-wider">
                 Productos Nutricionales ({products.length})
               </label>
-              <span className="text-[11px] text-ink/60">
-                Calculado para <strong className="text-ink">{watering.volumeLiters} L</strong> de solución
+              <span className="text-xs text-ink/60">
+                Calculado para <strong className="text-ink">{dec(watering.volumeLiters)} L</strong> de solución
               </span>
             </div>
 
@@ -211,7 +212,7 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
             ) : (
               <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                 {products.map((p, idx) => {
-                  const totalMl = p.dosageMlPerL ? (p.dosageMlPerL * watering.volumeLiters).toFixed(1) : '—';
+                  const totalMl = p.dosageMlPerL ? dec(p.dosageMlPerL * watering.volumeLiters, 1) : '—';
                   return (
                     <div
                       key={idx}
@@ -221,12 +222,12 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-ink">{p.name}</span>
                           {p.brand && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-md bg-surface border border-chip-line text-ink/70 font-medium">
+                            <span className="text-[11px] px-2 py-0.5 rounded-md bg-surface border border-chip-line text-ink/70 font-medium">
                               {p.brand}
                             </span>
                           )}
                         </div>
-                        <div className="text-[11px] text-ok-ink font-semibold">
+                        <div className="text-xs text-ok-ink font-semibold">
                           Total a preparar: <strong className="text-ink">{totalMl} ml</strong>
                         </div>
                       </div>
@@ -241,7 +242,7 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
                             onChange={(e) => handleDosageChange(idx, parseFloat(e.target.value) || 0)}
                             className="w-16 px-2 py-1 rounded-lg bg-white border border-chip-line text-xs font-bold text-ink text-center"
                           />
-                          <span className="text-ink/50 text-[11px]">ml/L</span>
+                          <span className="text-ink/50 text-xs">ml/L</span>
                         </div>
 
                         <button
@@ -262,7 +263,7 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
 
           {/* Add Product Line */}
           <div className="p-3.5 rounded-2xl bg-surface border border-chip-line space-y-2">
-            <span className="text-[11px] font-bold text-ink/80 block">Agregar otro producto específico:</span>
+            <span className="text-xs font-bold text-ink/80 block">Agregar otro producto específico:</span>
             <div className="flex flex-col sm:flex-row items-center gap-2">
               <input
                 type="text"
@@ -331,7 +332,7 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
             </div>
 
             <div className="col-span-2">
-              <label className="block text-xs font-semibold text-ink/80 mb-1">Observaciones de Riego</label>
+              <label className="block text-xs font-semibold text-ink/80 mb-1">Observaciones de riego</label>
               <input
                 type="text"
                 placeholder="Reacción foliar, absorción, etc."
@@ -357,7 +358,7 @@ export const AssociateFertilizationModal: React.FC<AssociateFertilizationModalPr
               className="cultiveta-btn-primary py-2.5 text-xs font-black flex items-center gap-2 disabled:opacity-50"
             >
               <Save className="w-4 h-4" />
-              <span>Guardar Nutrición en Riego</span>
+              <span>Guardar nutrición en riego</span>
             </button>
           </div>
         </form>

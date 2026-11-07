@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   LayoutDashboard,
-  Sprout,
+  Award,
   Plus,
   Sparkles,
   MoreHorizontal,
@@ -132,7 +132,7 @@ export const MobileNav: React.FC<MobileNavProps> = ({
           <span className="text-[11px]">Jardín</span>
         </button>
 
-        {/* 2. Cultivos */}
+        {/* 2. Cosechas: los cultivos terminados (los activos están en el Jardín) */}
         <button
           type="button"
           id="mobile-nav-cultivations"
@@ -146,8 +146,8 @@ export const MobileNav: React.FC<MobileNavProps> = ({
               : 'text-ink-muted hover:text-ink'
           }`}
         >
-          <Sprout className="w-5 h-5" />
-          <span className="text-[11px]">Cultivos</span>
+          <Award className="w-5 h-5" />
+          <span className="text-[11px]">Cosechas</span>
         </button>
 
         {/* 3. Central Registrar Button */}

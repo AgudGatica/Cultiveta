@@ -220,12 +220,12 @@ function PhotoCard({ event, userId }: { event: PlantTimelineEvent; userId?: stri
           “{caption}”
         </figcaption>
       )}
-      <div className="flex flex-wrap items-center justify-center gap-1.5 pb-0.5 text-[11px] font-bold">
+      <div className="flex flex-wrap items-center justify-center gap-1.5 pb-0.5 text-xs font-bold">
         <span className="text-ink-muted">{dateLine(event)}</span>
         {stage && <span className="px-2 py-0.5 rounded-full bg-ok-bg border border-ok-line text-ok-ink">{stage}</span>}
       </div>
       {syncNote && (
-        <p className="photo-sync-note px-1 pb-0.5 text-center text-[11px] font-bold text-warn-ink" data-sync={sync || 'queued'}>
+        <p className="photo-sync-note px-1 pb-0.5 text-center text-xs font-bold text-warn-ink" data-sync={sync || 'queued'}>
           {syncNote}
         </p>
       )}
@@ -246,7 +246,7 @@ function SideCard({ event }: { event: PlantTimelineEvent }) {
         <span className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${meta.iconTone}`}>
           <Icon className="w-3.5 h-3.5" aria-hidden="true" />
         </span>
-        <span className="text-[10px] font-bold uppercase tracking-wide text-ink-muted truncate">{meta.label}</span>
+        <span className="text-[11px] font-bold uppercase tracking-wide text-ink-muted truncate">{meta.label}</span>
       </div>
       {isNote ? (
         <>
@@ -256,10 +256,10 @@ function SideCard({ event }: { event: PlantTimelineEvent }) {
       ) : (
         <>
           <p className="text-xs font-bold text-ink leading-snug line-clamp-2">{event.title}</p>
-          {event.detail && <p className="text-[11px] text-ink-muted leading-snug line-clamp-3">{event.detail}</p>}
+          {event.detail && <p className="text-xs text-ink-muted leading-snug line-clamp-3">{event.detail}</p>}
         </>
       )}
-      <p className="text-[10px] font-semibold text-ink-subtle leading-snug">
+      <p className="text-[11px] font-semibold text-ink-subtle leading-snug">
         {dateLine(event)}
         {stage && (
           <>

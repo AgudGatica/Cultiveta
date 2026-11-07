@@ -49,7 +49,7 @@ export const ActiveCropCard: React.FC<ActiveCropCardProps> = ({ cultivation, gen
           </div>
         )}
         <span
-          className={`absolute left-3 bottom-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] ${stageClasses.badge}`}
+          className={`absolute left-3 bottom-3 inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-xs ${stageClasses.badge}`}
         >
           <span aria-hidden="true">{getStageIcon(stage)}</span>
           {stage}
@@ -60,7 +60,7 @@ export const ActiveCropCard: React.FC<ActiveCropCardProps> = ({ cultivation, gen
         <h3 className="text-base font-extrabold text-ink truncate">{cultivation.name}</h3>
         <p className="text-xs text-ink-muted truncate">{genetics || 'Genética sin cargar'}</p>
         {indoorName && (
-          <p className="crop-indoor-name text-[11px] font-bold text-brand flex items-center gap-1 truncate">
+          <p className="crop-indoor-name text-xs font-bold text-brand flex items-center gap-1 truncate">
             <Home className="w-3 h-3 shrink-0" aria-hidden="true" />
             En {indoorName}
           </p>

@@ -156,7 +156,7 @@ export const PhotoLightboxModal: React.FC<PhotoLightboxModalProps> = ({
                 <Calendar className="w-3 h-3 text-stone-400" />
                 {currentPhoto.date}
               </span>
-              <span className="flex items-center gap-1 uppercase tracking-wider text-[10px] text-stone-400">
+              <span className="flex items-center gap-1 uppercase tracking-wider text-[11px] text-stone-400">
                 <Tag className="w-2.5 h-2.5 text-stone-400" />
                 {currentPhoto.category}
               </span>
@@ -232,7 +232,7 @@ export const PhotoLightboxModal: React.FC<PhotoLightboxModalProps> = ({
             <button
               type="button"
               onClick={() => {
-                if (window.confirm('¿Seguro que deseas eliminar esta fotografía del cultivo?')) {
+                if (window.confirm('¿Eliminás esta foto del cultivo?')) {
                   const targetId = currentPhoto.id;
                   if (photos.length === 1) {
                     onClose();
@@ -250,7 +250,7 @@ export const PhotoLightboxModal: React.FC<PhotoLightboxModalProps> = ({
           )}
 
           {/* Close Button */}
-          <button
+          <button aria-label="Cerrar"
             type="button"
             id="lightbox-close-btn"
             onClick={onClose}
@@ -353,7 +353,7 @@ export const PhotoLightboxModal: React.FC<PhotoLightboxModalProps> = ({
                     alt={`Miniatura ${index + 1}`}
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute bottom-0 inset-x-0 bg-stone-950/80 text-[9px] font-bold text-stone-200 text-center py-0.5 leading-none">
+                  <div className="absolute bottom-0 inset-x-0 bg-stone-950/80 text-[11px] font-bold text-stone-200 text-center py-0.5 leading-none">
                     D{photo.dayOfCultivation}
                   </div>
                 </button>

@@ -56,12 +56,12 @@ export const AmbientDevicesCard: React.FC<AmbientDevicesCardProps> = ({ devices,
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <p className="text-sm font-bold text-ink">{role?.label || 'Equipo'}</p>
-                  <p className="text-[11px] text-ink-subtle truncate">
+                  <p className="text-xs text-ink-subtle truncate">
                     {b.deviceName} · {b.label}
                   </p>
                 </div>
                 <span
-                  className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-black tracking-wider ${
+                  className={`shrink-0 px-2 py-0.5 rounded-full text-[11px] font-black tracking-wider ${
                     b.online === false ? 'bg-coral/15 text-error' : b.on ? 'bg-accent text-ink' : 'bg-brand-deep text-white'
                   }`}
                 >
@@ -75,12 +75,12 @@ export const AmbientDevicesCard: React.FC<AmbientDevicesCardProps> = ({ devices,
                 </p>
               )}
               {note ? (
-                <p className="ambient-device-manual text-[11px] font-bold text-brand">{note}</p>
+                <p className="ambient-device-manual text-xs font-bold text-brand">{note}</p>
               ) : (
-                b.lastReason && <p className="text-[11px] text-ink-subtle">Ahora: {b.lastReason}</p>
+                b.lastReason && <p className="text-xs text-ink-subtle">Ahora: {b.lastReason}</p>
               )}
               {(b.rule?.mode === 'follow' || b.rule?.mode === 'follow_inverted') && !hasLight && (
-                <p className="text-[11px] font-bold text-warn-ink">La luz de este ambiente todavía no tiene un enchufe asignado: sin eso no sabe cuándo es de día.</p>
+                <p className="text-xs font-bold text-warn-ink">La luz de este ambiente todavía no tiene un enchufe asignado: sin eso no sabe cuándo es de día.</p>
               )}
               {editing === b.id && b.climateRole && b.rule ? (
                 <ClimateRuleEditor

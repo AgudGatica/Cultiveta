@@ -54,7 +54,7 @@ export const AdminReportsView: React.FC<{ onBack: () => void; onOpenGrowlog: (id
         <section key={`${g.kind}_${g.targetId}`} className="report-group bg-white rounded-[24px] border border-line p-4 space-y-2">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <small className="text-[10px] font-black uppercase tracking-wider text-ink-muted">
+              <small className="text-[11px] font-black uppercase tracking-wider text-ink-muted">
                 {KIND[g.kind]} · {g.reports.length} {g.reports.length === 1 ? 'denuncia' : 'denuncias'}
                 {g.target?.hidden ? ' · oculto' : ''}
               </small>

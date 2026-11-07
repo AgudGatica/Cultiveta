@@ -134,7 +134,7 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
     badgeBg: string;
     textColor: string;
   } = {
-    label: 'Está joya 🌱',
+    label:'Está joya ',
     isHealthy: true,
     hint: 'Todo en orden por acá',
     badgeBg: 'bg-ok/15',
@@ -144,7 +144,7 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
   if (isFinished) {
     const isHarvest = cultivation.status?.toLowerCase() === 'cosechado' || cultivation.currentStage?.toLowerCase() === 'cosechado';
     overallStatus = {
-      label: isHarvest ? 'Cosechado ✂️' : 'Finalizado',
+      label: isHarvest ?'Cosechado ' : 'Finalizado',
       isHealthy: true,
       hint: cultivation.harvestDate ? `Cosechado el ${cultivation.harvestDate.split('T')[0]}` : 'Ciclo completado',
       badgeBg: 'bg-brand/15',
@@ -152,15 +152,15 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
     };
   } else if (isWateringUrgent) {
     overallStatus = {
-      label: 'Conviene regar 💧',
+      label:'Conviene regar ',
       isHealthy: false,
       hint: `Último riego hace ${daysSinceWatering} días`,
       badgeBg: 'bg-warn-line/25',
-      textColor: 'text-[#B8860B]',
+      textColor: 'text-warn-ink',
     };
   } else if (isEnvAlert) {
     overallStatus = {
-      label: 'Revisar ambiente 🌡️',
+      label:'Revisar ambiente ',
       isHealthy: false,
       hint: `${tempVal}°C · ${humVal}% HR`,
       badgeBg: 'bg-coral/15',
@@ -205,7 +205,7 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
               {photoResolution.isReferencePhoto && (
                 <div
                   title="Foto de referencia del catálogo"
-                  className="absolute bottom-0 inset-x-0 bg-black/60 backdrop-blur-2xs text-[8px] text-white font-bold text-center leading-tight py-0.5"
+                  className="absolute bottom-0 inset-x-0 bg-black/60 backdrop-blur-2xs text-[11px] text-white font-bold text-center leading-tight py-0.5"
                 >
                   Ref
                 </div>
@@ -250,7 +250,7 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
               <span className={`text-xs font-bold block ${overallStatus.textColor}`}>
                 {overallStatus.label}
               </span>
-              <span className="text-[11px] text-ink-muted block truncate">
+              <span className="text-xs text-ink-muted block truncate">
                 {overallStatus.hint}
               </span>
             </div>
@@ -262,7 +262,7 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
               e.stopPropagation();
               setShowTechnicalDetails((prev) => !prev);
             }}
-            className="inline-flex items-center gap-1 text-[11px] font-bold text-brand hover:underline px-2 py-1 rounded-lg hover:bg-brand/10 transition-colors cursor-pointer"
+            className="inline-flex items-center gap-1 text-xs font-bold text-brand hover:underline px-2 py-1 rounded-lg hover:bg-brand/10 transition-colors cursor-pointer"
           >
             <span>Detalles</span>
             <ChevronDown className={`w-3 h-3 transition-transform duration-200 ${showTechnicalDetails ? 'rotate-180' : ''}`} />
@@ -274,19 +274,19 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
           <div className="mb-3.5 p-3.5 rounded-2xl bg-track/60 border border-line text-xs space-y-2 animate-in fade-in duration-200">
             <div className="grid grid-cols-2 gap-2 text-ink">
               <div>
-                <span className="text-[10px] uppercase font-bold text-ink-subtle block">Medio</span>
+                <span className="text-[11px] uppercase font-bold text-ink-subtle block">Medio</span>
                 <span className="font-semibold">{cultivation.substrate?.type || 'No especificado'}</span>
               </div>
               <div>
-                <span className="text-[10px] uppercase font-bold text-ink-subtle block">Macetas</span>
+                <span className="text-[11px] uppercase font-bold text-ink-subtle block">Macetas</span>
                 <span className="font-semibold">{cultivation.substrate?.potVolumeLiters ? `${cultivation.substrate.potVolumeLiters}L (${cultivation.substrate.potType || 'Geotextil'})` : 'No especificado'}</span>
               </div>
               <div>
-                <span className="text-[10px] uppercase font-bold text-ink-subtle block">Iluminación</span>
+                <span className="text-[11px] uppercase font-bold text-ink-subtle block">Iluminación</span>
                 <span className="font-semibold">{cultivation.lighting?.type || 'No especificado'}</span>
               </div>
               <div>
-                <span className="text-[10px] uppercase font-bold text-ink-subtle block">Potencia</span>
+                <span className="text-[11px] uppercase font-bold text-ink-subtle block">Potencia</span>
                 <span className="font-semibold">{cultivation.lighting?.usedWatts ? `${cultivation.lighting.usedWatts}W` : 'No especificado'}</span>
               </div>
             </div>
@@ -303,7 +303,7 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
             if (onQuickWater) onQuickWater(cultivation);
           }}
           disabled={isFinished}
-          className={`flex-1 py-2 px-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${isFinished ? 'opacity-40 cursor-not-allowed bg-stone-100 text-stone-400 border-stone-200' : 'bg-ok/10 hover:bg-ok/20 text-ok-ink border-ok/20 active:scale-95'}`}
+          className={`flex-1 py-2 px-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${isFinished ? 'opacity-40 cursor-not-allowed bg-track text-ink-subtle border-line' : 'bg-ok/10 hover:bg-ok/20 text-ok-ink border-ok/20 active:scale-95'}`}
           title="Registrar riego rápido"
         >
           <Droplets className="w-3.5 h-3.5 shrink-0" />
@@ -317,7 +317,7 @@ export const CultivationCard: React.FC<CultivationCardProps> = ({
             if (onQuickPhoto) onQuickPhoto(cultivation);
           }}
           disabled={isFinished}
-          className={`flex-1 py-2 px-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${isFinished ? 'opacity-40 cursor-not-allowed bg-stone-100 text-stone-400 border-stone-200' : 'bg-warn-line/15 hover:bg-warn-line/25 text-ink border-warn-line/30 active:scale-95'}`}
+          className={`flex-1 py-2 px-2.5 rounded-xl border text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${isFinished ? 'opacity-40 cursor-not-allowed bg-track text-ink-subtle border-line' : 'bg-warn-line/15 hover:bg-warn-line/25 text-ink border-warn-line/30 active:scale-95'}`}
           title="Tomar fotografía del cultivo"
         >
           <Camera className="w-3.5 h-3.5 shrink-0 text-ink" />

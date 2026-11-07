@@ -230,11 +230,11 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
           </div>
           <div>
             <h3 className="font-extrabold text-ink text-sm sm:text-base flex items-center gap-2">
-              <span>Asistente Cultiveta IA 🌱</span>
+              <span>Asistente Cultiveta IA</span>
               {isSummaryMode && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand/15 text-brand border border-brand/30">
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-full bg-brand/15 text-brand border border-brand/30">
                   <Zap className="w-3 h-3 text-brand" />
-                  Modo Resumen
+                  Modo resumen
                 </span>
               )}
             </h3>
@@ -248,13 +248,13 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
         <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-between md:justify-end">
           {/* Crop Selector */}
           {cultivations.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold text-ink-muted shrink-0">Carpa:</span>
+            <div className="flex items-center gap-2 min-w-0 max-w-full">
+              <span className="text-xs font-bold text-ink-muted shrink-0">Cultivo:</span>
               <select
                 id="ai-crop-select"
                 value={selectedCropId}
                 onChange={(e) => setSelectedCropId(e.target.value)}
-                className="px-3 py-1.5 rounded-2xl bg-white border border-chip-line text-xs font-bold text-ink focus:outline-hidden focus:border-brand cursor-pointer shadow-2xs"
+                className="min-w-0 max-w-full px-3 py-1.5 rounded-2xl bg-white border border-chip-line text-xs font-bold text-ink focus:outline-hidden focus:border-brand cursor-pointer shadow-2xs"
               >
                 <option value="">Pregunta general</option>
                 {cultivations.map((c) => (
@@ -271,9 +271,9 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
             <div className="flex flex-col text-right">
               <span className="text-xs font-bold text-ink flex items-center justify-end gap-1">
                 <FileText className={`w-3.5 h-3.5 ${isSummaryMode ? 'text-brand' : 'text-ink-subtle'}`} />
-                Modo Resumen
+                Modo resumen
               </span>
-              <span className="text-[10px] text-ink-muted hidden sm:inline">
+              <span className="text-[11px] text-ink-muted hidden sm:inline">
                 {isSummaryMode ? 'Condensando datos' : 'Condensar registros'}
               </span>
             </div>
@@ -312,12 +312,12 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-ink">Modo Resumen Activo</span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand/20 text-brand">
+                  <span className="text-xs font-bold text-ink">Modo resumen activo</span>
+                  <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-brand/20 text-brand">
                     {condensedSummary.envRecordsCount} registros de ambiente • {condensedSummary.wateringsCount} riegos
                   </span>
                 </div>
-                <p className="text-[11px] text-ink-muted">
+                <p className="text-xs text-ink-muted">
                   Los registros se condensan en puntos clave y se envían como base antes de cada consulta.
                 </p>
               </div>
@@ -337,7 +337,7 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
           {/* Expanded preview of condensed key points */}
           {showSummaryPreview && (
             <div className="mt-3 pt-3 border-t border-brand/20 space-y-2">
-              <div className="text-[11px] font-bold text-ink uppercase tracking-wide flex items-center gap-1.5">
+              <div className="text-xs font-bold text-ink uppercase tracking-wide flex items-center gap-1.5">
                 <Sparkles className="w-3.5 h-3.5 text-brand" />
                 Puntos clave condensados para el asistente:
               </div>
@@ -356,11 +356,11 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
 
               {condensedSummary.alerts.length > 0 && (
                 <div className="mt-2 pt-1 flex flex-wrap items-center gap-1.5">
-                  <span className="text-[10px] font-bold text-error uppercase">Alertas clave:</span>
+                  <span className="text-[11px] font-bold text-error uppercase">Alertas clave:</span>
                   {condensedSummary.alerts.map((alt, idx) => (
                     <span
                       key={idx}
-                      className="inline-flex items-center gap-1 text-[11px] bg-coral/15 text-error border border-coral/30 px-2.5 py-0.5 rounded-full font-bold"
+                      className="inline-flex items-center gap-1 text-xs bg-coral/15 text-error border border-coral/30 px-2.5 py-0.5 rounded-full font-bold"
                     >
                       <AlertTriangle className="w-3 h-3 text-error shrink-0" />
                       {alt}
@@ -403,14 +403,14 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
 
               {/* Tag indicating that this message included a condensed summary */}
               {msg.summaryModeActive && msg.sender === 'user' && (
-                <div className="mt-2 pt-1.5 border-t border-white/30 flex items-center gap-1 text-[10px] text-white/90 font-medium">
+                <div className="mt-2 pt-1.5 border-t border-white/30 flex items-center gap-1 text-[11px] text-white/90 font-medium">
                   <Zap className="w-3 h-3 text-white shrink-0" />
                   <span>Modo Resumen activado ({msg.condensedPoints?.length || 0} puntos clave adjuntados)</span>
                 </div>
               )}
 
               <div
-                className={`text-[10px] mt-2 font-semibold ${
+                className={`text-[11px] mt-2 font-semibold ${
                   msg.sender === 'user' ? 'text-white/80' : 'text-ink-subtle'
                 }`}
               >
@@ -440,13 +440,13 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
 
       {/* Quick Prompt Chips */}
       <div className="px-4 py-2 bg-surface border-t border-chip-line flex items-center gap-2 overflow-x-auto scrollbar-none">
-        <span className="text-[11px] font-bold text-ink-subtle shrink-0">Sugerencias:</span>
+        <span className="text-xs font-bold text-ink-subtle shrink-0">Sugerencias:</span>
         {quickQuestions.map((q, idx) => (
           <button
             key={idx}
             type="button"
             onClick={() => handleSendMessage(q)}
-            className="px-3 py-1.5 rounded-full bg-white hover:bg-track text-ink hover:text-brand border border-chip-line text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer shadow-2xs"
+            className="min-h-11 px-3 py-1.5 rounded-full bg-white hover:bg-track text-ink hover:text-brand border border-chip-line text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer shadow-2xs"
           >
             {q}
           </button>
@@ -478,8 +478,9 @@ export const AIAssistantView: React.FC<AIAssistantViewProps> = ({
           <button
             type="submit"
             id="send-ai-chat-btn"
+            aria-label="Enviar"
             disabled={!inputMessage.trim() || loading}
-            className="p-3 rounded-2xl bg-brand hover:bg-brand-deep text-white transition-all disabled:opacity-40 cursor-pointer shadow-md shadow-brand/20"
+            className="min-h-11 min-w-11 inline-flex items-center justify-center p-3 rounded-2xl bg-brand hover:bg-brand-deep text-white transition-all disabled:opacity-40 cursor-pointer shadow-md shadow-brand/20"
           >
             <Send className="w-4 h-4" />
           </button>

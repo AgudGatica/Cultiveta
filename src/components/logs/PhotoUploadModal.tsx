@@ -124,7 +124,7 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
       const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
       if (evidenceDate.getTime() < todayMidnight.getTime()) {
         setDateWarning(
-          `Evidencia histórica: Asegúrate de indicar la etapa que la planta tenía en esa fecha (${date}).`
+          `Evidencia histórica: Fijate de indicar la etapa que la planta tenía en esa fecha (${date}).`
         );
       } else {
         setDateWarning(null);
@@ -265,14 +265,15 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
               <Camera className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-ink">Subir foto de seguimiento 📸</h2>
+              <h2 className="text-xl font-black text-ink">Subir foto de seguimiento</h2>
               <p className="text-xs text-ink-muted">Sacá una foto para ver la evolución de tus cogollos y hojas</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-ink-subtle hover:text-ink rounded-full hover:bg-track transition-colors cursor-pointer"
+            aria-label="Cerrar"
+            className="min-h-11 min-w-11 flex items-center justify-center text-ink-muted hover:text-ink rounded-full hover:bg-track transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -307,7 +308,7 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
 
             <div>
               <label className="block text-xs font-bold text-ink mb-1">
-                Fecha de la foto * <span className="text-[11px] text-ok-ink font-bold">(Día {computedDay})</span>
+                Fecha de la foto * <span className="text-xs text-ok-ink font-bold">(Día {computedDay})</span>
               </label>
               <div className="relative">
                 <input
@@ -323,7 +324,7 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
           </div>
 
           {dateWarning && (
-            <div className="p-3 rounded-2xl bg-warn-line/20 border border-warn-line/40 text-ink text-[11px] font-medium flex items-start gap-2">
+            <div className="p-3 rounded-2xl bg-warn-line/20 border border-warn-line/40 text-ink text-xs font-medium flex items-start gap-2">
               <Info className="w-3.5 h-3.5 text-ink shrink-0 mt-0.5" />
               <span>{dateWarning}</span>
             </div>
@@ -404,7 +405,7 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
               </div>
               <input id="photo-camera-input" type="file" accept="image/*" capture="environment" onChange={onPick} className="sr-only" tabIndex={-1} />
               <input id="photo-file-input" type="file" accept="image/*" onChange={onPick} className="sr-only" />
-              <p className="text-[11px] text-ink-subtle">JPG, PNG, WebP o HEIC. Las fotos grandes se achican solas y se guardan sin la ubicación del celular.</p>
+              <p className="text-xs text-ink-subtle">JPG, PNG, WebP o HEIC. Las fotos grandes se achican solas y se guardan sin la ubicación del celular.</p>
             </div>
           </div>
 
@@ -427,7 +428,7 @@ export const PhotoUploadModal: React.FC<PhotoUploadModalProps> = ({
               <Sparkles className="w-4 h-4 text-brand shrink-0" />
               <div>
                 <div className="text-xs font-bold text-ink">Diagnóstico con Cultiveta IA</div>
-                <div className="text-[11px] text-ink-muted">
+                <div className="text-xs text-ink-muted">
                   Evaluá la salud de la planta y detectá carencias o plagas automáticamente.
                 </div>
               </div>

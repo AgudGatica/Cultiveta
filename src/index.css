@@ -173,6 +173,57 @@
   box-shadow: 0 20px 48px rgba(41, 32, 47, 0.18);
 }
 
+/* En el celular las ventanas suben desde abajo, al alcance del pulgar */
+@media (max-width: 639px) {
+  .cultiveta-modal-overlay {
+    padding: 1rem 0 0;
+  }
+
+  .cultiveta-modal-overlay > .cultiveta-modal-container {
+    margin-top: auto;
+    margin-bottom: 0;
+    border-bottom: 0;
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+}
+
+/* En el celular los campos se leen y se tocan bien (16 px también evita que iPhone haga zoom) */
+@media (max-width: 639px) {
+  input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [type='color'], [class*='text-lg'], [class*='text-xl'], [class*='text-2xl'], [class*='text-3xl']),
+  select:not([class*='text-lg'], [class*='text-xl'], [class*='text-2xl']),
+  textarea {
+    font-size: 1rem;
+  }
+
+  input:not([type='checkbox'], [type='radio'], [type='file'], [type='color']),
+  select,
+  textarea {
+    min-height: 2.75rem;
+  }
+
+  ::placeholder {
+    font-size: 0.875rem;
+  }
+
+  .cultiveta-modal-container button:not(.cultiveta-tiny) {
+    min-height: 2.75rem;
+    min-width: 2.75rem;
+  }
+}
+
+/* Quien pidió menos movimiento en el celular no ve animaciones */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* Botones base */
 .cultiveta-btn-primary,
 .cultiveta-btn-green,

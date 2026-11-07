@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Droplets, ExternalLink, Lightbulb, Plug, Thermometer } from 'lucide-react';
+import { ChevronDown, Droplets, ExternalLink, Lightbulb, Plug, Thermometer } from 'lucide-react';
 import {
   DEVICE_USES,
   SHOP_ITEMS,
@@ -67,25 +67,31 @@ export const DevicesView: React.FC<DevicesViewProps> = ({ focus = null, cultivat
       {/* Arriba, conectar una marca o sumar otro equipo; abajo, Tus equipos (y desconectar cada marca) */}
       <SmartLifePanel cultivations={cultivations} showToast={showToast} onDevicesChange={onDevicesChange} />
 
-      <section id="devices-uses" className={`${CARD} space-y-3`}>
-        <h2 className="text-sm font-bold text-ink">Qué hace cada equipo en tu cultivo</h2>
-        <div className="grid grid-cols-1 gap-3">
-          {DEVICE_USES.map((u) => {
-            const Icon = USE_ICON[u.id];
-            const on = focus === u.id;
-            return (
-              <div key={u.id} id={`device-use-${u.id}`} className={`${ITEM} flex gap-3 ${on ? 'border-brand ring-2 ring-brand/20' : ''}`}>
-                <div className="p-2 rounded-xl bg-icon-bg text-brand h-fit">
-                  <Icon className="w-5 h-5" aria-hidden="true" />
+      {/* Con equipos conectados ya se sabe para qué sirven: queda plegado */}
+      <section id="devices-uses" className={CARD}>
+        <details className="group" open={!hasDevices || !!focus}>
+          <summary className="min-h-11 flex items-center justify-between gap-2 text-sm font-bold text-ink cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+            Qué hace cada equipo en tu cultivo
+            <ChevronDown className="w-4 h-4 text-ink-muted transition-transform group-open:rotate-180" aria-hidden="true" />
+          </summary>
+          <div className="grid grid-cols-1 gap-3 pt-2">
+            {DEVICE_USES.map((u) => {
+              const Icon = USE_ICON[u.id];
+              const on = focus === u.id;
+              return (
+                <div key={u.id} id={`device-use-${u.id}`} className={`${ITEM} flex gap-3 ${on ? 'border-brand ring-2 ring-brand/20' : ''}`}>
+                  <div className="p-2 rounded-xl bg-icon-bg text-brand h-fit">
+                    <Icon className="w-5 h-5" aria-hidden="true" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-ink">{u.title}</p>
+                    <p className="text-xs text-ink-muted mt-0.5">{u.text}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-ink">{u.title}</p>
-                  <p className="text-xs text-ink-muted mt-0.5">{u.text}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </details>
       </section>
 
       {!hasDevices && (
@@ -116,12 +122,12 @@ export const DevicesView: React.FC<DevicesViewProps> = ({ focus = null, cultivat
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <p className="text-sm font-bold text-ink">{i.name}</p>
-                    <p className="text-[11px] text-ink-subtle">
+                    <p className="text-xs text-ink-subtle">
                       {i.brand} · {i.install}
                     </p>
                   </div>
                   {i.recommended && (
-                    <span className="text-[9px] font-black tracking-wider uppercase bg-ok-bg border border-ok-line text-ok-ink px-1.5 py-0.5 rounded-md shrink-0">
+                    <span className="text-[11px] font-black tracking-wider uppercase bg-ok-bg border border-ok-line text-ok-ink px-1.5 py-0.5 rounded-md shrink-0">
                       Ideal para empezar
                     </span>
                   )}
@@ -142,7 +148,7 @@ export const DevicesView: React.FC<DevicesViewProps> = ({ focus = null, cultivat
               </article>
             ))}
           </div>
-          <p className="text-[11px] text-ink-subtle">Precios orientativos. Cultiveta no vende estos equipos ni cobra por los enlaces.</p>
+          <p className="text-xs text-ink-subtle">Precios orientativos. Cultiveta no vende estos equipos ni cobra por los enlaces.</p>
         </section>
       )}
     </div>

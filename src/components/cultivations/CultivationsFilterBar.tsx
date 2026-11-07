@@ -121,7 +121,7 @@ export const CultivationsFilterBar: React.FC<CultivationsFilterBarProps> = ({
               >
                 <span>{tab.label}</span>
                 <span
-                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                  className={`px-1.5 py-0.2 rounded-full text-[11px] font-bold ${
                     isSelected ? 'bg-white/20 text-white' : 'bg-line text-ink'
                   }`}
                 >
@@ -145,7 +145,7 @@ export const CultivationsFilterBar: React.FC<CultivationsFilterBarProps> = ({
               className="w-full pl-10 pr-9 py-2 rounded-2xl bg-surface border border-chip-line text-xs font-medium text-ink placeholder-ink-subtle focus:outline-hidden focus:border-brand focus:bg-white transition-colors"
             />
             {searchQuery && (
-              <button
+              <button aria-label="Borrar búsqueda"
                 type="button"
                 onClick={() => onSearchChange('')}
                 className="p-1 rounded-lg text-ink-subtle hover:text-ink absolute right-2.5 top-1/2 -translate-y-1/2 transition-colors cursor-pointer"
@@ -177,7 +177,7 @@ export const CultivationsFilterBar: React.FC<CultivationsFilterBarProps> = ({
       {/* Segundo Nivel: Filtro por Etapas (solo en modo 'Activos') */}
       {statusFilter === 'active' && (
         <div className="pt-3 border-t border-chip-line flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
-          <span className="flex items-center gap-1 text-[11px] font-bold text-ink-subtle mr-1 shrink-0">
+          <span className="flex items-center gap-1 text-xs font-bold text-ink-subtle mr-1 shrink-0">
             <SlidersHorizontal className="w-3 h-3 text-brand" />
             Etapa:
           </span>
@@ -201,7 +201,7 @@ export const CultivationsFilterBar: React.FC<CultivationsFilterBarProps> = ({
                 <span className={isSelected ? 'text-ok-ink' : 'text-ink-subtle'}>{tab.icon}</span>
                 <span>{tab.label}</span>
                 <span
-                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold ${
+                  className={`px-1.5 py-0.2 rounded-full text-[11px] font-bold ${
                     isSelected ? 'bg-ok-ink text-white' : 'bg-track text-ink-muted'
                   }`}
                 >
@@ -215,7 +215,7 @@ export const CultivationsFilterBar: React.FC<CultivationsFilterBarProps> = ({
 
       {/* Indicador de resultados activos cuando hay filtros */}
       {hasActiveFilters && (
-        <div className="flex items-center justify-between text-[11px] text-ink-muted px-1 pt-1 border-t border-chip-line">
+        <div className="flex items-center justify-between text-xs text-ink-muted px-1 pt-1 border-t border-chip-line">
           <span>
             Mostrando <strong className="text-ink">{totalFilteredCount}</strong> cultivo{totalFilteredCount !== 1 ? 's' : ''}
             {hasStageFilter && (
@@ -225,7 +225,7 @@ export const CultivationsFilterBar: React.FC<CultivationsFilterBarProps> = ({
               <> con búsqueda &quot;<strong className="text-ink">{searchQuery}</strong>&quot;</>
             )}
           </span>
-          <span className="text-[10px] text-ink-subtle">
+          <span className="text-[11px] text-ink-subtle">
             {statusFilter === 'active' && `Activos: ${activeCrops.length}`}
             {statusFilter === 'finished' && `Finalizados: ${finishedCrops.length}`}
             {statusFilter === 'all' && `Total: ${cultivations.length}`}

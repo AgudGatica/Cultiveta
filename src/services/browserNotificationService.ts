@@ -609,7 +609,7 @@ class BrowserNotificationService {
       urgency: 'today',
       priority: 'critical',
       isCompleted: false,
-      title: '¡Prueba de Notificación de Alerta Climática!',
+      title: '¡Prueba de aviso de clima!',
       description: 'Esta alerta te avisará incluso si estás en otra pestaña o con el navegador minimizado.',
       dueDate: getLocalTodayDateOnly(),
       createdAt: new Date().toISOString(),

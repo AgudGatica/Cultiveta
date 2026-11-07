@@ -111,7 +111,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         {isEditing && (
           <div className="mt-4 space-y-3">
             <label className="block space-y-1">
-              <span className="text-[11px] font-bold text-ink-muted">Usuario</span>
+              <span className="text-xs font-bold text-ink-muted">Usuario</span>
               <div className="flex items-center rounded-2xl border border-chip-line bg-surface focus-within:border-brand">
                 <span className="pl-3 text-sm font-bold text-ink-subtle">@</span>
                 <input
@@ -124,10 +124,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                   className="w-full bg-transparent px-1.5 py-2.5 text-sm text-ink outline-none"
                 />
               </div>
-              <span className="text-[10px] text-ink-subtle">Letras, números, punto y guion bajo.</span>
+              <span className="text-[11px] text-ink-subtle">Letras, números, punto y guion bajo.</span>
             </label>
             <label className="block space-y-1">
-              <span className="text-[11px] font-bold text-ink-muted">Bio</span>
+              <span className="text-xs font-bold text-ink-muted">Bio</span>
               <textarea
                 id="profile-bio-input"
                 value={draftBio}
@@ -136,7 +136,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
                 placeholder="Indoor 80x80, LED, sustrato con perlita…"
                 className="w-full rounded-2xl border border-chip-line bg-surface px-3 py-2.5 text-sm text-ink outline-none focus:border-brand resize-none"
               />
-              <span className="text-[10px] text-ink-subtle block text-right">
+              <span className="text-[11px] text-ink-subtle block text-right">
                 {draftBio.length}/{BIO_MAX}
               </span>
             </label>
@@ -158,7 +158,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           <div key={label} className="cultiveta-card p-3 sm:p-4 flex flex-col items-center text-center gap-1">
             <Icon className="w-4 h-4 text-brand" />
             <span className="text-lg sm:text-xl font-black text-ink leading-none">{value}</span>
-            <span className="text-[10px] sm:text-[11px] font-semibold text-ink-muted">{label}</span>
+            <span className="text-[11px] sm:text-xs font-semibold text-ink-muted">{label}</span>
           </div>
         ))}
       </section>
@@ -173,7 +173,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             <Trophy className="w-4 h-4 text-brand" />
             Logros
           </h2>
-          <span className="text-[11px] font-bold text-ink-muted">
+          <span className="text-xs font-bold text-ink-muted">
             {unlocked.length} de {BADGES.length}
           </span>
         </div>
@@ -184,7 +184,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
               return (
                 <span
                   key={b.id}
-                  className="inline-flex items-center gap-1.5 rounded-full bg-ok-bg border border-ok-line px-3 py-1.5 text-[11px] font-bold text-ok-ink"
+                  className="inline-flex items-center gap-1.5 rounded-full bg-ok-bg border border-ok-line px-3 py-1.5 text-xs font-bold text-ok-ink"
                 >
                   <Icon className="w-3.5 h-3.5" />
                   {b.name}

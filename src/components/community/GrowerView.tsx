@@ -118,7 +118,7 @@ export const GrowerView: React.FC<Props> = ({ handle, userId, onBack, onOpenGrow
           ].map(([v, l]) => (
             <div key={l}>
               <b className="block text-lg font-black text-ink">{v}</b>
-              <small className="text-[11px] text-ink-muted">{l}</small>
+              <small className="text-xs text-ink-muted">{l}</small>
             </div>
           ))}
         </div>

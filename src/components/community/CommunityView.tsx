@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Bell, Compass, Dna, Eye, Flag, Globe, Heart, Link2, Lock, Search, Share2, ShieldAlert, Trophy, Users } from 'lucide-react';
+import { Compass, Dna, Eye, Flag, Globe, Heart, Link2, Lock, Search, Share2, ShieldAlert, Trophy, Users } from 'lucide-react';
 import type { Cultivation, Genetics } from '../../types';
 import { communityService, growlogFor, useCommunityMe } from '../../services/communityService';
 import { useGeneticsCatalogPhotos } from '../../hooks/useGeneticsCatalogPhotos';
@@ -139,22 +139,24 @@ export const CommunityView: React.FC<Props> = ({ userId, cultivations, geneticsL
       <div className="flex items-center justify-between gap-3 pt-1">
         <h1 className="text-2xl sm:text-3xl font-extrabold text-white cultiveta-on-gradient tracking-tight">Comunidad</h1>
         <div className="flex items-center gap-2">
-          <button type="button" id="community-bell" onClick={() => setNotices(true)} aria-label={me?.unread ? `Avisos: ${me.unread} sin leer` : 'Avisos'} className="relative min-h-10 min-w-10 rounded-full bg-white/15 text-white inline-flex items-center justify-center hover:bg-white/25">
-            <Bell className="w-5 h-5" aria-hidden="true" />
+          <button type="button" id="community-bell" onClick={() => setNotices(true)} aria-label={me?.unread ? `Actividad: ${me.unread} sin leer` : 'Actividad'} className="relative min-h-11 min-w-11 rounded-full bg-white/15 text-white inline-flex items-center justify-center hover:bg-white/25">
+            <Heart className="w-5 h-5" aria-hidden="true" />
             {!!me?.unread && (
-              <span id="community-unread" className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 rounded-full bg-error text-white text-[10px] font-black inline-flex items-center justify-center">
+              <span id="community-unread" className="absolute -top-0.5 -right-0.5 min-w-5 h-5 px-1 rounded-full bg-error text-white text-[11px] font-black inline-flex items-center justify-center">
                 {me.unread > 9 ? '9+' : me.unread}
               </span>
             )}
           </button>
           {me?.isAdmin && (
-            <button type="button" id="community-admin" onClick={onOpenAdmin} aria-label="Denuncias" className="min-h-10 min-w-10 rounded-full bg-white/15 text-white inline-flex items-center justify-center hover:bg-white/25">
+            <button type="button" id="community-admin" onClick={onOpenAdmin} aria-label="Denuncias" className="min-h-11 min-w-11 rounded-full bg-white/15 text-white inline-flex items-center justify-center hover:bg-white/25">
               <ShieldAlert className="w-5 h-5" aria-hidden="true" />
             </button>
           )}
           {me?.profile ? (
-            <button type="button" id="community-me" onClick={() => onOpenGrower(me.profile!.handle)} aria-label="Tu perfil de grower" className="rounded-full ring-2 ring-white/60">
-              <Avatar url={me.profile.avatarUrl} name={me.profile.displayName} color={me.profile.avatarColor} size={36} />
+            <button type="button" id="community-me" onClick={() => onOpenGrower(me.profile!.handle)} aria-label="Tu perfil de grower" className="min-h-11 min-w-11 inline-flex items-center justify-center rounded-full">
+              <span className="inline-flex rounded-full ring-2 ring-white/60">
+                <Avatar url={me.profile.avatarUrl} name={me.profile.displayName} color={me.profile.avatarColor} size={36} />
+              </span>
             </button>
           ) : (
             <button type="button" id="community-join" onClick={() => setOnboarding('new')} className="min-h-10 px-3 rounded-full bg-primary text-ink text-xs font-black">
@@ -339,7 +341,7 @@ export const CommunityView: React.FC<Props> = ({ userId, cultivations, geneticsL
                       Ver
                     </button>
                   )}
-                  <button type="button" aria-label={`Compartir ${e.card.name}`} data-share={`${e.crop.id}_${e.index}`} onClick={() => setSharing({ cropId: e.crop.id, index: e.index, name: e.card.name })} className="min-h-10 min-w-10 rounded-full bg-icon-bg text-brand inline-flex items-center justify-center">
+                  <button type="button" aria-label={`Compartir ${e.card.name}`} data-share={`${e.crop.id}_${e.index}`} onClick={() => setSharing({ cropId: e.crop.id, index: e.index, name: e.card.name })} className="min-h-11 min-w-11 rounded-full bg-icon-bg text-brand inline-flex items-center justify-center">
                     <Share2 className="w-4 h-4" aria-hidden="true" />
                   </button>
                 </div>
@@ -389,7 +391,7 @@ const GrowerRow: React.FC<{ growers: GrowerCard[]; onOpen: (handle: string) => v
       <button key={p.uid} type="button" data-grower={p.handle} onClick={() => onOpen(p.handle)} className="w-28 shrink-0 bg-white rounded-[22px] border border-line p-3 text-center space-y-1">
         <Avatar url={p.avatarUrl} name={p.displayName} color={p.avatarColor} size={52} className="mx-auto" />
         <b className="block text-xs text-ink truncate">{p.displayName}</b>
-        <small className="block text-[10px] text-ink-muted truncate">@{p.handle}</small>
+        <small className="block text-[11px] text-ink-muted truncate">@{p.handle}</small>
       </button>
     ))}
   </Row>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, Image as ImageIcon, Scale, Sparkles } from 'lucide-react';
+import { ChevronDown, Clock, Dna, Heart, Image as ImageIcon, Scale, Sparkles } from 'lucide-react';
 
 export interface GeneticsShowcaseCardProps {
   name: string;
@@ -15,6 +15,41 @@ export interface GeneticsShowcaseCardProps {
   children?: React.ReactNode;
   id?: string;
 }
+
+export interface GeneticsCatalogRowProps {
+  name: string;
+  seedBank: string;
+  dominance?: string | null;
+  photoUrl?: string | null;
+  estimatedYield?: string | number | null;
+  floweringDays?: string | number | null;
+  isFavorite?: boolean;
+  open: boolean;
+  onToggle: () => void;
+}
+
+/** Una genética del catálogo en una fila: al tocarla se abre su tarjeta grande. 100 variedades entran en pocas pantallas. */
+export const GeneticsCatalogRow: React.FC<GeneticsCatalogRowProps> = ({ name, seedBank, dominance, photoUrl, estimatedYield, floweringDays, isFavorite = false, open, onToggle }) => (
+  <button
+    type="button"
+    data-genetic-row={name}
+    aria-expanded={open}
+    aria-label={`${name}, ${seedBank}`}
+    onClick={onToggle}
+    className="cultiveta-card w-full flex items-center gap-3 p-2.5 text-left cursor-pointer"
+  >
+    <span className="relative w-16 h-16 rounded-2xl overflow-hidden bg-icon-bg shrink-0 flex items-center justify-center text-brand">
+      {photoUrl ? <img src={photoUrl} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover" /> : <Dna className="w-6 h-6 stroke-[1.5]" aria-hidden="true" />}
+    </span>
+    <span className="min-w-0 flex-1">
+      <span className="block text-sm font-extrabold text-ink truncate">{name}</span>
+      <span className="block text-xs text-ink-muted truncate">{[seedBank, dominance].filter(Boolean).join(' · ')}</span>
+      <span className="block text-xs font-semibold text-brand truncate">{[floweringDays ? `${floweringDays} d` : null, estimatedYield ? `${estimatedYield} g/m²` : null].filter(Boolean).join(' · ') || 'Sin datos de rinde'}</span>
+    </span>
+    {isFavorite && <Heart className="w-4 h-4 fill-error text-error shrink-0" aria-hidden="true" />}
+    <ChevronDown className={`w-4 h-4 text-ink-muted shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+  </button>
+);
 
 /**
  * Tarjeta de genética de la pantalla Genéticas: foto grande con nombre, banco y dominancia encima,
@@ -33,7 +68,7 @@ export const GeneticsShowcaseCard: React.FC<GeneticsShowcaseCardProps> = ({
 }) => (
   <article id={id} className="bg-white rounded-[30px] border border-chip-line shadow-sm overflow-hidden p-4 space-y-4 w-full">
     {/* Foto grande con nombre, banco y dominancia encima */}
-    <div className="group relative w-full aspect-[295/176] rounded-[24px] overflow-hidden bg-stone-100 border border-stone-200/60">
+    <div className="group relative w-full aspect-[295/176] rounded-[24px] overflow-hidden bg-track border border-line">
       {photoUrl ? (
         <img
           src={photoUrl}
@@ -42,9 +77,9 @@ export const GeneticsShowcaseCard: React.FC<GeneticsShowcaseCardProps> = ({
           loading="lazy"
         />
       ) : (
-        <div className="w-full h-full flex flex-col items-center justify-center text-stone-400 bg-stone-100 rounded-[24px]">
-          <ImageIcon className="w-10 h-10 stroke-1 text-stone-400" />
-          <span className="text-xs font-medium text-stone-500 mt-1">Sin fotografía</span>
+        <div className="w-full h-full flex flex-col items-center justify-center bg-track rounded-[24px]">
+          <ImageIcon className="w-10 h-10 stroke-1 text-ink-subtle" aria-hidden="true" />
+          <span className="text-xs font-medium text-ink-muted mt-1">Sin fotografía</span>
         </div>
       )}
 
@@ -53,12 +88,12 @@ export const GeneticsShowcaseCard: React.FC<GeneticsShowcaseCardProps> = ({
           {name}
         </h2>
         {seedBank && (
-          <span className="inline-flex items-center rounded-lg bg-emerald-50 border border-emerald-200 px-2.5 py-1 text-xs font-semibold text-emerald-800 shadow-2xs">
+          <span className="inline-flex items-center rounded-lg bg-ok-bg border border-ok-line px-2.5 py-1 text-xs font-semibold text-ok-ink shadow-2xs">
             {seedBank}
           </span>
         )}
         {dominance && (
-          <span className="inline-flex items-center rounded-full bg-[#FFF8EB] border border-amber-400 px-2.5 py-1 text-xs font-bold text-stone-800 shadow-2xs">
+          <span className="inline-flex items-center rounded-full bg-warn-bg border border-warn-line px-2.5 py-1 text-xs font-bold text-ink shadow-2xs">
             {dominance}
           </span>
         )}
@@ -78,19 +113,19 @@ export const GeneticsShowcaseCard: React.FC<GeneticsShowcaseCardProps> = ({
     </div>
 
     {/* Aroma y gusto */}
-    <div className="rounded-[22px] border border-stone-200 bg-white p-4 space-y-1.5">
-      <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold uppercase tracking-wide text-stone-400">
-        <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
+    <div className="rounded-[22px] border border-line bg-white p-4 space-y-1.5">
+      <div className="flex items-center gap-1.5 text-xs sm:text-sm font-bold uppercase tracking-wide text-ink-muted">
+        <Sparkles className="w-4 h-4 text-brand shrink-0" aria-hidden="true" />
         <span>AROMA Y GUSTO</span>
       </div>
-      <p className="text-stone-700 font-medium italic leading-relaxed text-xs sm:text-sm">
+      <p className="text-ink font-medium italic leading-relaxed text-xs sm:text-sm">
         {organolepticProfile ? `"${organolepticProfile}"` : 'Sin perfil cargado.'}
       </p>
     </div>
 
     {children && (
       <>
-        <div className="border-t border-stone-100 my-1" />
+        <div className="border-t border-line my-1" />
         {children}
       </>
     )}

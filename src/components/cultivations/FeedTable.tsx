@@ -35,7 +35,7 @@ export const FeedTableDetails: React.FC<{
         aria-expanded={open}
         aria-controls={`${idPrefix}-table`}
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between text-xs font-bold text-ink-muted min-h-9"
+        className="w-full min-h-11 flex items-center justify-between text-xs font-bold text-ink-muted min-h-11"
       >
         <span className="flex items-center gap-1">
           <Table2 className="w-3.5 h-3.5" aria-hidden="true" />
@@ -53,7 +53,7 @@ export const FeedTableDetails: React.FC<{
                 data-medium={m.id}
                 aria-pressed={shown === m.id}
                 onClick={() => setShown(m.id)}
-                className={`flex-1 min-h-9 px-2 rounded-xl border text-[11px] font-bold transition-colors cursor-pointer ${
+                className={`flex-1 min-h-11 px-2 rounded-xl border text-xs font-bold transition-colors cursor-pointer ${
                   shown === m.id ? 'bg-brand-deep text-white border-brand-deep' : 'bg-white text-ink border-chip-line hover:bg-surface'
                 }`}
               >
@@ -63,7 +63,7 @@ export const FeedTableDetails: React.FC<{
           </div>
           <table className="w-full text-left text-xs">
             <thead>
-              <tr className="text-[10px] font-semibold text-ink-muted">
+              <tr className="text-[11px] font-semibold text-ink-muted">
                 <th scope="col" className="py-1 font-semibold">Etapa</th>
                 <th scope="col" className="py-1 font-semibold text-center w-16">pH</th>
                 <th scope="col" className="py-1 font-semibold text-center w-20">EC</th>
@@ -76,19 +76,19 @@ export const FeedTableDetails: React.FC<{
                   <tr key={r.phase} data-phase={r.phase} data-when={r.when} className={`border-t border-line ${now ? 'bg-ok-bg' : ''} ${r.when === 'antes' ? 'text-ink-subtle' : 'text-ink'}`}>
                     <th scope="row" className="py-1.5 pl-1.5 pr-1 font-semibold align-top">
                       {r.label}
-                      {now && <span className="block text-[10px] font-bold text-ok-ink">Ahora</span>}
-                      {r.when === 'proxima' && <span className="block text-[10px] font-bold text-brand">Próxima{r.from ? ` · desde el ${shortDate(r.from)}` : ''}</span>}
-                      {r.when === 'despues' && r.from && <span className="block text-[10px] font-semibold text-ink-muted">desde el {shortDate(r.from)}</span>}
+                      {now && <span className="block text-[11px] font-bold text-ok-ink">Ahora</span>}
+                      {r.when === 'proxima' && <span className="block text-[11px] font-bold text-brand">Próxima{r.from ? ` · desde el ${shortDate(r.from)}` : ''}</span>}
+                      {r.when === 'despues' && r.from && <span className="block text-[11px] font-semibold text-ink-muted">desde el {shortDate(r.from)}</span>}
                     </th>
                     <td className="py-1.5 text-center align-top">
                       <b className="block">{num(r.ph.target)}</b>
-                      <small className="text-[10px] text-ink-muted">
+                      <small className="text-[11px] text-ink-muted">
                         {num(r.ph.min)}–{num(r.ph.max)}
                       </small>
                     </td>
                     <td className="py-1.5 text-center align-top">
                       <b className="block">{num(r.ec.target)}</b>
-                      <small className="text-[10px] text-ink-muted">
+                      <small className="text-[11px] text-ink-muted">
                         {num(r.ec.min)}–{num(r.ec.max)}
                       </small>
                     </td>
@@ -97,7 +97,7 @@ export const FeedTableDetails: React.FC<{
               })}
             </tbody>
           </table>
-          <p className="text-[11px] text-ink-muted">
+          <p className="text-xs text-ink-muted">
             El pH es el mismo en todo el ciclo. EC total, con el agua, en mS/cm{auto ? '; automática: un 20 % menos' : ''}. Las fechas son aproximadas, según el
             calendario del cultivo. Si la marca de tu fertilizante indica otra EC, seguí la de la marca.
           </p>

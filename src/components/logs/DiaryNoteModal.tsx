@@ -91,11 +91,11 @@ export const DiaryNoteModal: React.FC<DiaryNoteModalProps> = ({
               <BookOpen className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-ink">Anotá algo en el diario 📝</h2>
+              <h2 className="text-xl font-black text-ink">Anotá algo en el diario</h2>
               <p className="text-xs text-ink-muted">Registrá podas, trasplantes o cómo viste tus plantas</p>
             </div>
           </div>
-          <button
+          <button aria-label="Cerrar"
             type="button"
             onClick={onClose}
             className="p-2 text-ink-subtle hover:text-ink rounded-full hover:bg-track transition-colors cursor-pointer"
@@ -206,7 +206,7 @@ export const DiaryNoteModal: React.FC<DiaryNoteModalProps> = ({
               <button
                 type="button"
                 onClick={handleAddTag}
-                className="px-3.5 py-1.5 rounded-xl bg-track hover:bg-[#ebdcc0] text-xs font-bold text-ink border border-line transition-colors cursor-pointer"
+                className="px-3.5 py-1.5 rounded-xl bg-track hover:bg-line text-xs font-bold text-ink border border-line transition-colors cursor-pointer"
               >
                 Agregar
               </button>

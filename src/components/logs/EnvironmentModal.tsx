@@ -3,6 +3,7 @@ import { X, Thermometer, Save, SunMedium, Loader2, AlertCircle, ChevronDown, Spa
 import { Cultivation, EnvironmentRecord } from '../../types';
 import { environmentService } from '../../services/environmentService';
 import { getLocalTodayDateOnly } from '../../utils/growthStageUtils';
+import { dec } from '../../utils/formatNumber';
 
 interface EnvironmentModalProps {
   isOpen: boolean;
@@ -186,14 +187,15 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
               <Thermometer className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-ink">¿Cómo está el ambiente? 🌡️</h2>
+              <h2 className="text-xl font-black text-ink">¿Cómo está el ambiente?</h2>
               <p className="text-xs text-ink-muted">Anotá temperatura y humedad para cuidar tus plantas</p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="p-2 text-ink-subtle hover:text-ink rounded-full hover:bg-track transition-colors cursor-pointer"
+            aria-label="Cerrar"
+            className="min-h-11 min-w-11 flex items-center justify-center text-ink-muted hover:text-ink rounded-full hover:bg-track transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -265,7 +267,7 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
                     <span>Obteniendo clima local...</span>
                   </>
                 ) : (
-                  <span>🌤️ Obtener clima local de estación</span>
+                  <span>Obtener clima local de estación</span>
                 )}
               </button>
 
@@ -326,7 +328,7 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
               <div className="flex items-center justify-between pt-2 border-t border-line text-xs">
                 <span className="text-ink-muted">VPD estimado en aire:</span>
                 <span className="font-extrabold text-brand bg-brand/10 px-2.5 py-0.5 rounded-full border border-brand/20">
-                  {estimatedVpd} kPa
+                  {dec(estimatedVpd)} kPa
                 </span>
               </div>
             )}
@@ -354,7 +356,7 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
               <div className="p-4 pt-0 space-y-4 animate-in fade-in duration-200">
                 <div className="grid grid-cols-3 gap-2.5">
                   <div>
-                    <label className="block text-[11px] font-semibold text-ink-muted mb-1">Temp Foliar (°C)</label>
+                    <label className="block text-xs font-semibold text-ink-muted mb-1">Temp foliar (°C)</label>
                     <input
                       id="env-leaf-temp-input"
                       type="number"
@@ -367,7 +369,7 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-ink-muted mb-1">PPFD (µmol)</label>
+                    <label className="block text-xs font-semibold text-ink-muted mb-1">PPFD (µmol)</label>
                     <input
                       id="env-ppfd-input"
                       type="number"
@@ -380,7 +382,7 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold text-ink-muted mb-1">CO₂ (ppm)</label>
+                    <label className="block text-xs font-semibold text-ink-muted mb-1">CO₂ (ppm)</label>
                     <input
                       id="env-co2-input"
                       type="number"
@@ -408,6 +410,20 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
             )}
           </div>
 
+          {onConnectDevice && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onConnectDevice();
+              }}
+              className="w-full min-h-11 rounded-2xl border border-dashed border-line text-xs font-bold text-brand hover:bg-track transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <Plug className="w-4 h-4" aria-hidden="true" />
+              Conectar mi sensor
+              <span className="font-medium text-ink-subtle">· mide solo, sin cargar a mano</span>
+            </button>
+          )}
           {/* Actions */}
           <div className="pt-3 border-t border-line flex items-center justify-end gap-3">
             <button
@@ -427,20 +443,6 @@ export const EnvironmentModal: React.FC<EnvironmentModalProps> = ({
               <span>Guardar medición</span>
             </button>
           </div>
-          {onConnectDevice && (
-            <button
-              type="button"
-              onClick={() => {
-                onClose();
-                onConnectDevice();
-              }}
-              className="w-full min-h-11 rounded-2xl border border-dashed border-line text-xs font-bold text-brand hover:bg-track transition-colors cursor-pointer flex items-center justify-center gap-1.5"
-            >
-              <Plug className="w-4 h-4" aria-hidden="true" />
-              Conectar mi sensor
-              <span className="font-medium text-ink-subtle">· mide solo, sin cargar a mano</span>
-            </button>
-          )}
         </form>
       </div>
     </div>

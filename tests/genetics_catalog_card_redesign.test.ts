@@ -106,7 +106,13 @@ export async function runGeneticsCatalogCardRedesignTests(): Promise<{ passed: n
     );
   });
 
-  // Tomamos la primera tarjeta del catálogo renderizada (Skunk #1)
+  // Las 100 variedades van en filas compactas: la tarjeta grande se abre al tocar una
+  assert(container.querySelectorAll('[data-genetic-row]').length === GENETICS_DATABASE.length && container.querySelectorAll('article').length === 0, 'Catálogo en filas compactas');
+  await act(async () => {
+    (container.querySelector('[data-genetic-row]') as HTMLElement).dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+  });
+
+  // Tomamos la tarjeta abierta (Skunk #1)
   const cardEl = container.querySelector('article') as HTMLElement;
   assert(cardEl !== null, 'Tarjeta mobile de genética montada en DOM');
 
@@ -155,10 +161,10 @@ export async function runGeneticsCatalogCardRedesignTests(): Promise<{ passed: n
   const allButtons = Array.from(cardEl.querySelectorAll('button'));
   assert(allButtons.length === 2, '8a. Exactamente 2 botones en la tarjeta');
 
-  const startCropBtn = allButtons.find((b) => b.textContent?.includes('Iniciar Cultivo'));
+  const startCropBtn = allButtons.find((b) => b.textContent?.includes('Iniciar cultivo'));
   assert(startCropBtn !== undefined, '8b. Botón "Iniciar Cultivo" presente');
 
-  const favBtn = allButtons.find((b) => b.textContent?.includes('FAVORITOS'));
+  const favBtn = allButtons.find((b) => b.textContent?.includes('Favoritos'));
   assert(favBtn !== undefined, '8c. Botón "FAVORITOS" presente con corazón');
 
   // 9. NO deben existir botones eliminados

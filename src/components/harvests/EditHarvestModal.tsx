@@ -15,6 +15,7 @@ import {
 import { Harvest } from '../../types';
 import { harvestService } from '../../services/harvestService';
 import { getLocalTodayDateOnly } from '../../utils/growthStageUtils';
+import { dec } from '../../utils/formatNumber';
 
 interface EditHarvestModalProps {
   isOpen: boolean;
@@ -68,8 +69,8 @@ export const EditHarvestModal: React.FC<EditHarvestModalProps> = ({
   const currentDry = typeof finalDryWeightGrams === 'number' ? finalDryWeightGrams : 0;
   const currentWet = typeof wetWeightGrams === 'number' ? wetWeightGrams : 0;
   const currentPlants = Math.max(1, plantCount || 1);
-  const calculatedGramsPerPlant = (currentDry / currentPlants).toFixed(1);
-  const retentionPct = currentWet > 0 && currentDry > 0 ? ((currentDry / currentWet) * 100).toFixed(1) : null;
+  const calculatedGramsPerPlant = dec(currentDry / currentPlants, 1);
+  const retentionPct = currentWet > 0 && currentDry > 0 ? dec((currentDry / currentWet) * 100, 1) : null;
   const dryDiff = currentDry - (harvest.finalDryWeightGrams || 0);
 
   const handlePreSubmit = (e: React.FormEvent) => {
@@ -125,54 +126,52 @@ export const EditHarvestModal: React.FC<EditHarvestModalProps> = ({
   const getRatingLabel = (val: number) => {
     switch (val) {
       case 5:
-        return '5/5 · Excepcional / Calidad de Copa';
+        return '5/5 · Excepcional, calidad de copa';
       case 4:
-        return '4/5 · Muy Buena / Flores Premium';
+        return '4/5 · Muy buena, flores premium';
       case 3:
-        return '3/5 · Buena / Estándar';
+        return '3/5 · Buena';
       case 2:
-        return '2/5 · Regular / Mejorable';
+        return '2/5 · Regular, mejorable';
       case 1:
-        return '1/5 · Baja Calidad';
+        return '1/5 · Baja calidad';
       default:
         return `${val}/5`;
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+    <div className="cultiveta-modal-overlay animate-in fade-in">
       <div
         id="edit-harvest-modal"
-        className="w-full max-w-xl bg-zinc-950 rounded-3xl p-6 sm:p-8 shadow-2xl border border-zinc-800 text-zinc-100 my-auto relative overflow-hidden"
+        className="cultiveta-modal-container my-auto max-w-xl p-6 sm:p-8 text-ink overflow-hidden"
       >
-        {/* Subtle background glow */}
-        <div className="absolute top-0 right-0 w-80 h-80 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20" />
 
         {/* Modal Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-zinc-800 mb-6 relative z-10">
+        <div className="flex items-center justify-between pb-4 border-b border-line mb-6 relative z-10">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+            <div className="p-2.5 rounded-2xl bg-ok-bg text-ok-ink border border-ok-line">
               <Scale className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">Editar Cosecha</h2>
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-zinc-900 text-emerald-400 border border-emerald-500/30">
+                <h2 className="text-lg sm:text-xl font-bold text-ink tracking-tight">Editar cosecha</h2>
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-surface text-ok-ink border border-ok-line">
                   {harvest.cultivationName}
                 </span>
               </div>
-              <p className="text-xs text-zinc-400 mt-0.5">
-                Modifica el peso cosechado, rendimiento por planta y notas finales
+              <p className="text-xs text-ink-muted mt-0.5">
+                Modificá el peso cosechado, rendimiento por planta y notas finales
               </p>
             </div>
           </div>
-          <button
+          <button aria-label="Cerrar"
             type="button"
             onClick={() => {
               setShowConfirmModal(false);
               onClose();
             }}
-            className="p-2 text-zinc-400 hover:text-white rounded-full hover:bg-zinc-900 transition-colors cursor-pointer"
+            className="p-2 text-ink-muted hover:text-ink rounded-full hover:bg-surface transition-colors cursor-pointer"
             title="Cerrar"
           >
             <X className="w-5 h-5" />
@@ -180,28 +179,28 @@ export const EditHarvestModal: React.FC<EditHarvestModalProps> = ({
         </div>
 
         {error && (
-          <div className="mb-4 p-3.5 rounded-2xl bg-rose-950/60 border border-rose-500/40 text-rose-300 text-xs font-medium relative z-10">
+          <div className="mb-4 p-3.5 rounded-2xl bg-error/10 border border-error/30 text-error text-xs font-medium relative z-10">
             {error}
           </div>
         )}
 
         <form onSubmit={handlePreSubmit} className="space-y-5 max-h-[72vh] overflow-y-auto pr-1 relative z-10">
           {/* Section: Cuánto se cosechó (Weights and Yield) */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-zinc-900/90 border border-zinc-800 space-y-4 shadow-sm">
+          <div className="p-4 sm:p-5 rounded-2xl bg-surface border border-line space-y-4 shadow-sm">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+              <span className="text-xs font-bold uppercase tracking-wider text-ok-ink flex items-center gap-1.5">
                 <Scale className="w-4 h-4" />
-                Cantidad Cosechada y Rendimiento
+                Cantidad cosechada y rendimiento
               </span>
-              <span className="text-[11px] text-zinc-500 font-mono">Gramos secos / húmedos</span>
+              <span className="text-xs text-ink-muted ">Gramos secos / húmedos</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Peso Seco Final (Requerido) */}
               <div>
-                <label className="block text-xs font-bold text-zinc-200 mb-1.5 flex items-center justify-between">
-                  <span>Peso Seco Final (g) *</span>
-                  <span className="text-[10px] text-emerald-400 font-normal">Obligatorio</span>
+                <label className="block text-xs font-bold text-ink mb-1.5 flex items-center justify-between">
+                  <span>Peso seco final (g) *</span>
+                  <span className="text-[11px] text-ok-ink font-normal">Obligatorio</span>
                 </label>
                 <div className="relative">
                   <input
@@ -212,20 +211,20 @@ export const EditHarvestModal: React.FC<EditHarvestModalProps> = ({
                     value={finalDryWeightGrams}
                     onChange={(e) => setFinalDryWeightGrams(e.target.value === '' ? '' : Number(e.target.value))}
                     placeholder="Ej. 125.5"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-700 hover:border-zinc-600 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-white font-mono text-base font-bold outline-none transition-all pl-3.5 pr-10"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-line hover:border-line focus:border-ok-line focus:ring-1 focus:ring-ok text-ink text-base font-bold outline-none transition-all pl-3.5 pr-10"
                   />
-                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-zinc-400">
+                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-ink-muted">
                     g
                   </span>
                 </div>
-                <p className="text-[11px] text-zinc-500 mt-1">Flores manicuradas tras el periodo de secado</p>
+                <p className="text-xs text-ink-muted mt-1">Flores manicuradas tras el periodo de secado</p>
               </div>
 
               {/* Peso Húmedo (Opcional) */}
               <div>
-                <label className="block text-xs font-bold text-zinc-200 mb-1.5 flex items-center justify-between">
-                  <span>Peso Húmedo Inicial (g)</span>
-                  <span className="text-[10px] text-zinc-500 font-normal">Opcional</span>
+                <label className="block text-xs font-bold text-ink mb-1.5 flex items-center justify-between">
+                  <span>Peso húmedo inicial (g)</span>
+                  <span className="text-[11px] text-ink-muted font-normal">Opcional</span>
                 </label>
                 <div className="relative">
                   <input
@@ -235,20 +234,20 @@ export const EditHarvestModal: React.FC<EditHarvestModalProps> = ({
                     value={wetWeightGrams}
                     onChange={(e) => setWetWeightGrams(e.target.value === '' ? '' : Number(e.target.value))}
                     placeholder="Ej. 550"
-                    className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-700 hover:border-zinc-600 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-white font-mono text-base font-bold outline-none transition-all pl-3.5 pr-10"
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-surface border border-line hover:border-line focus:border-ok-line focus:ring-1 focus:ring-ok text-ink text-base font-bold outline-none transition-all pl-3.5 pr-10"
                   />
-                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-mono font-bold text-zinc-400">
+                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-ink-muted">
                     g
                   </span>
                 </div>
-                <p className="text-[11px] text-zinc-500 mt-1">Peso inmediatamente después del corte</p>
+                <p className="text-xs text-ink-muted mt-1">Peso inmediatamente después del corte</p>
               </div>
             </div>
 
             {/* Cantidad de Plantas */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
               <div>
-                <label className="block text-xs font-bold text-zinc-200 mb-1.5">Cantidad de Plantas</label>
+                <label className="block text-xs font-bold text-ink mb-1.5">Cantidad de plantas</label>
                 <div className="relative">
                   <input
                     type="number"
@@ -256,22 +255,22 @@ export const EditHarvestModal: React.FC<EditHarvestModalProps> = ({
                     step="1"
                     value={plantCount}
                     onChange={(e) => setPlantCount(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-full px-3.5 py-2 rounded-xl bg-zinc-950 border border-zinc-700 focus:border-emerald-500 text-white font-mono text-sm outline-none transition-all pr-16"
+                    className="w-full px-3.5 py-2 rounded-xl bg-surface border border-line focus:border-ok-line text-ink text-sm outline-none transition-all pr-16"
                   />
-                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-zinc-400">plantas</span>
+                  <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-xs text-ink-muted">plantas</span>
                 </div>
               </div>
 
               {/* Dynamic Live Calculated Metric Chips */}
-              <div className="p-3 rounded-xl bg-zinc-950 border border-zinc-800/80 flex flex-col justify-center gap-1">
+              <div className="p-3 rounded-xl bg-surface border border-line flex flex-col justify-center gap-1">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-zinc-400">Rendimiento por planta:</span>
-                  <span className="font-mono font-bold text-emerald-400">{calculatedGramsPerPlant} g/planta</span>
+                  <span className="text-ink-muted">Rendimiento por planta:</span>
+                  <span className="font-bold text-ok-ink">{calculatedGramsPerPlant} g/planta</span>
                 </div>
                 {retentionPct && (
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-zinc-400">Retención de secado:</span>
-                    <span className="font-mono font-medium text-teal-300">{retentionPct}% (seco/húmedo)</span>
+                    <span className="text-ink-muted">Retención de secado:</span>
+                    <span className="font-medium text-ok-ink">{retentionPct} % (seco/húmedo)</span>
                   </div>
                 )}
               </div>
@@ -281,26 +280,26 @@ export const EditHarvestModal: React.FC<EditHarvestModalProps> = ({
           {/* Section: Fecha de Cosecha & Calificación */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-bold text-zinc-300 mb-1.5 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5 text-zinc-400" />
-                Fecha de Cosecha
+              <label className="block text-xs font-bold text-ink mb-1.5 flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-ink-muted" />
+                Fecha de cosecha
               </label>
               <input
                 type="date"
                 required
                 value={harvestDate}
                 onChange={(e) => setHarvestDate(e.target.value)}
-                className="w-full px-3.5 py-2 rounded-xl bg-zinc-900 border border-zinc-700 focus:border-emerald-500 text-white font-mono text-xs outline-none"
+                className="w-full px-3.5 py-2 rounded-xl bg-surface border border-line focus:border-ok-line text-ink text-xs outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-zinc-300 mb-1.5 flex items-center justify-between">
+              <label className="block text-xs font-bold text-ink mb-1.5 flex items-center justify-between">
                 <span className="flex items-center gap-1.5">
-                  <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                  Calificación Global
+                  <Star className="w-3.5 h-3.5 text-warn-ink fill-warn-line" />
+                  Calificación global
                 </span>
-                <span className="text-[10px] text-amber-400 font-mono font-semibold">
+                <span className="text-[11px] text-warn-ink font-semibold">
                   {hoverRating !== null ? getRatingLabel(hoverRating) : getRatingLabel(rating1To5)}
                 </span>
               </label>
@@ -314,11 +313,11 @@ export const EditHarvestModal: React.FC<EditHarvestModalProps> = ({
                       onClick={() => setRating1To5(star)}
                       onMouseEnter={() => setHoverRating(star)}
                       onMouseLeave={() => setHoverRating(null)}
-                      className="p-1 text-zinc-600 hover:scale-125 transition-transform cursor-pointer"
+                      className="p-1 text-ink-muted hover:scale-125 transition-transform cursor-pointer"
                       title={`${star} estrellas`}
                     >
                       <Star
-                        className={`w-5 h-5 ${active ? 'fill-amber-400 text-amber-400' : 'text-zinc-700'}`}
+                        className={`w-5 h-5 ${active ? 'fill-warn-line text-warn-ink' : 'text-ink-subtle'}`}
                       />
                     </button>
                   );
@@ -328,44 +327,44 @@ export const EditHarvestModal: React.FC<EditHarvestModalProps> = ({
           </div>
 
           {/* Section: Tasting & Organoleptic Notes */}
-          <div className="p-4 rounded-2xl bg-zinc-900/60 border border-zinc-800/90 space-y-3">
-            <span className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              Perfil Organoléptico y Cata
+          <div className="p-4 rounded-2xl bg-surface border border-line space-y-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-warn-ink" />
+              Perfil organoléptico y cata
             </span>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label className="block text-[11px] font-semibold text-zinc-300 mb-1">Perfil de Aroma</label>
+                <label className="block text-xs font-semibold text-ink mb-1">Perfil de aroma</label>
                 <input
                   type="text"
                   value={aromaReview}
                   onChange={(e) => setAromaReview(e.target.value)}
                   placeholder="Ej. Cítrico intenso, pino, combustible diésel..."
-                  className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-700 focus:border-emerald-500 text-xs text-white placeholder-zinc-600 outline-none"
+                  className="w-full px-3 py-2 rounded-xl bg-surface border border-line focus:border-ok-line text-xs text-ink placeholder-ink-subtle outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-zinc-300 mb-1">Perfil de Sabor</label>
+                <label className="block text-xs font-semibold text-ink mb-1">Perfil de sabor</label>
                 <input
                   type="text"
                   value={flavorReview}
                   onChange={(e) => setFlavorReview(e.target.value)}
                   placeholder="Ej. Terroso dulce, toques especiados y lima..."
-                  className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-700 focus:border-emerald-500 text-xs text-white placeholder-zinc-600 outline-none"
+                  className="w-full px-3 py-2 rounded-xl bg-surface border border-line focus:border-ok-line text-xs text-ink placeholder-ink-subtle outline-none"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-[11px] font-semibold text-zinc-300 mb-1">Estructura y Densidad de Flores</label>
+              <label className="block text-xs font-semibold text-ink mb-1">Estructura y densidad de flores</label>
               <input
                 type="text"
                 value={structureDensityReview}
                 onChange={(e) => setStructureDensityReview(e.target.value)}
                 placeholder="Ej. Flores compactas como piedra, cálices inflados, gran cobertura de tricomas..."
-                className="w-full px-3 py-2 rounded-xl bg-zinc-950 border border-zinc-700 focus:border-emerald-500 text-xs text-white placeholder-zinc-600 outline-none"
+                className="w-full px-3 py-2 rounded-xl bg-surface border border-line focus:border-ok-line text-xs text-ink placeholder-ink-subtle outline-none"
               />
             </div>
           </div>
@@ -373,30 +372,30 @@ export const EditHarvestModal: React.FC<EditHarvestModalProps> = ({
           {/* Section: Secado, Curado y Conclusiones */}
           <div className="space-y-3">
             <div>
-              <label className="block text-xs font-bold text-zinc-300 mb-1">Condiciones de Secado y Curado</label>
+              <label className="block text-xs font-bold text-ink mb-1">Condiciones de secado y curado</label>
               <textarea
-                rows={2}
+                rows={3}
                 value={curingNotes}
                 onChange={(e) => setCuringNotes(e.target.value)}
                 placeholder="Ej. 14 días a 18°C y 55% HR. Curado en frascos de vidrio herméticos con Boveda 62%."
-                className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 focus:border-emerald-500 text-xs text-white placeholder-zinc-600 outline-none resize-none"
+                className="w-full px-3 py-2 rounded-xl bg-surface border border-line focus:border-ok-line text-xs text-ink placeholder-ink-subtle outline-none resize-none"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-zinc-300 mb-1">Notas y Conclusiones Finales</label>
+              <label className="block text-xs font-bold text-ink mb-1">Notas y conclusiones finales</label>
               <textarea
-                rows={2}
+                rows={3}
                 value={finalNotes}
                 onChange={(e) => setFinalNotes(e.target.value)}
                 placeholder="Ej. Excelente resistencia a plagas, cogollos centrales de gran calibre. Repetir genética."
-                className="w-full px-3 py-2 rounded-xl bg-zinc-900 border border-zinc-700 focus:border-emerald-500 text-xs text-white placeholder-zinc-600 outline-none resize-none"
+                className="w-full px-3 py-2 rounded-xl bg-surface border border-line focus:border-ok-line text-xs text-ink placeholder-ink-subtle outline-none resize-none"
               />
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-zinc-800">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-line">
             <button
               type="button"
               onClick={() => {
@@ -404,7 +403,7 @@ export const EditHarvestModal: React.FC<EditHarvestModalProps> = ({
                 onClose();
               }}
               disabled={saving}
-              className="px-4 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 font-bold text-xs transition-colors cursor-pointer disabled:opacity-50"
+              className="px-4 py-2.5 rounded-xl bg-surface hover:bg-track text-ink font-bold text-xs transition-colors cursor-pointer disabled:opacity-50"
             >
               Cancelar
             </button>
@@ -412,10 +411,10 @@ export const EditHarvestModal: React.FC<EditHarvestModalProps> = ({
             <button
               type="submit"
               disabled={saving}
-              className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs flex items-center gap-2 transition-all shadow-lg shadow-emerald-500/20 cursor-pointer disabled:opacity-50"
+              className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary text-ink font-bold text-xs flex items-center gap-2 transition-all shadow-lg cursor-pointer disabled:opacity-50"
             >
               <Check className="w-4 h-4 stroke-[2.5]" />
-              <span>Guardar Cambios</span>
+              <span>Guardar cambios</span>
             </button>
           </div>
         </form>
@@ -426,77 +425,75 @@ export const EditHarvestModal: React.FC<EditHarvestModalProps> = ({
         <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in">
           <div
             id="confirm-edit-harvest-modal"
-            className="w-full max-w-lg bg-zinc-950 rounded-3xl p-6 sm:p-7 shadow-2xl border border-amber-500/30 text-zinc-100 animate-in zoom-in-95 duration-150 relative overflow-hidden"
+            className="w-full max-w-lg bg-surface rounded-3xl p-6 sm:p-7 shadow-2xl border border-warn-line text-ink animate-in zoom-in-95 duration-150 relative overflow-hidden"
           >
-            {/* Ambient amber glow */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none -mr-16 -mt-16" />
 
             {/* Header */}
             <div className="flex items-start justify-between gap-4 mb-4 relative z-10">
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-2xl bg-amber-500/15 text-amber-400 border border-amber-500/30 shrink-0">
+                <div className="p-3 rounded-2xl bg-warn-bg text-warn-ink border border-warn-line shrink-0">
                   <AlertTriangle className="w-6 h-6" />
                 </div>
                 <div>
-                  <h3 className="text-base sm:text-lg font-bold text-white leading-tight">
+                  <h3 className="text-base sm:text-lg font-bold text-ink leading-tight">
                     ¿Confirmar cambios en la cosecha histórica?
                   </h3>
-                  <p className="text-xs text-zinc-400 mt-0.5">
-                    Cultivo: <span className="text-white font-semibold">{harvest.cultivationName}</span>
+                  <p className="text-xs text-ink-muted mt-0.5">
+                    Cultivo: <span className="text-ink font-semibold">{harvest.cultivationName}</span>
                   </p>
                 </div>
               </div>
-              <button
+              <button aria-label="Cerrar"
                 type="button"
                 onClick={() => setShowConfirmModal(false)}
-                className="p-1.5 text-zinc-400 hover:text-white rounded-full hover:bg-zinc-800 transition-colors cursor-pointer shrink-0"
+                className="p-1.5 text-ink-muted hover:text-ink rounded-full hover:bg-track transition-colors cursor-pointer shrink-0"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <p className="text-xs text-zinc-300 mb-4 leading-relaxed relative z-10">
+            <p className="text-xs text-ink mb-4 leading-relaxed relative z-10">
               Estás a punto de modificar un registro histórico de cosecha ya finalizada. Esta acción actualizará los rendimientos globales, promedios acumulados y fichas impresas.
             </p>
 
             {/* Comparison summary card */}
-            <div className="p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800 space-y-3 mb-5 relative z-10">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
+            <div className="p-4 rounded-2xl bg-surface border border-line space-y-3 mb-5 relative z-10">
+              <div className="text-xs font-bold uppercase tracking-wider text-warn-ink flex items-center gap-1.5">
                 <Scale className="w-3.5 h-3.5" />
-                <span>Resumen de Modificaciones</span>
+                <span>Resumen de modificaciones</span>
               </div>
 
               <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800/90">
-                  <span className="text-[10px] text-zinc-400 block mb-1 font-medium">Peso Seco Total</span>
+                <div className="p-2.5 rounded-xl bg-surface border border-line">
+                  <span className="text-[11px] text-ink-muted block mb-1 font-medium">Peso seco total</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-zinc-500 line-through font-mono text-xs">
+                    <span className="text-ink-muted line-through text-xs">
                       {harvest.finalDryWeightGrams} g
                     </span>
-                    <ArrowRight className="w-3 h-3 text-zinc-500 shrink-0" />
-                    <span className="font-mono font-bold text-emerald-400 text-sm">
+                    <ArrowRight className="w-3 h-3 text-ink-muted shrink-0" />
+                    <span className="font-bold text-ok-ink text-sm">
                       {Number(finalDryWeightGrams)} g
                     </span>
                   </div>
                   {dryDiff !== 0 && (
                     <span
-                      className={`text-[10px] font-mono font-semibold block mt-0.5 ${
-                        dryDiff > 0 ? 'text-emerald-400' : 'text-amber-400'
+                      className={`text-[11px] font-semibold block mt-0.5 ${
+                        dryDiff > 0 ? 'text-ok-ink' : 'text-warn-ink'
                       }`}
                     >
-                      {dryDiff > 0 ? `+${dryDiff.toFixed(1)} g` : `${dryDiff.toFixed(1)} g`}
+                      {dryDiff > 0 ? `+${dec(dryDiff, 1)} g` : `${dec(dryDiff, 1)} g`}
                     </span>
                   )}
                 </div>
 
-                <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800/90">
-                  <span className="text-[10px] text-zinc-400 block mb-1 font-medium">Por Planta</span>
+                <div className="p-2.5 rounded-xl bg-surface border border-line">
+                  <span className="text-[11px] text-ink-muted block mb-1 font-medium">Por planta</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-zinc-500 line-through font-mono text-xs">
+                    <span className="text-ink-muted line-through text-xs">
                       {harvest.gramsPerPlant} g
                     </span>
-                    <ArrowRight className="w-3 h-3 text-zinc-500 shrink-0" />
-                    <span className="font-mono font-bold text-emerald-400 text-sm">
+                    <ArrowRight className="w-3 h-3 text-ink-muted shrink-0" />
+                    <span className="font-bold text-ok-ink text-sm">
                       {calculatedGramsPerPlant} g
                     </span>
                   </div>
@@ -504,21 +501,21 @@ export const EditHarvestModal: React.FC<EditHarvestModalProps> = ({
               </div>
 
               {(harvest.rating1To5 !== rating1To5 || (harvest.harvestDate && harvest.harvestDate !== harvestDate)) && (
-                <div className="pt-2 border-t border-zinc-800/80 flex flex-wrap gap-3 text-[11px] text-zinc-300">
+                <div className="pt-2 border-t border-line flex flex-wrap gap-3 text-xs text-ink">
                   {harvest.rating1To5 !== rating1To5 && (
                     <div className="flex items-center gap-1.5">
-                      <span className="text-zinc-500">Calificación:</span>
-                      <span className="text-zinc-400 line-through">{harvest.rating1To5} ⭐</span>
-                      <ArrowRight className="w-2.5 h-2.5 text-zinc-500" />
-                      <span className="text-amber-400 font-bold">{rating1To5} ⭐</span>
+                      <span className="text-ink-muted">Calificación:</span>
+                      <span className="text-ink-muted line-through">{harvest.rating1To5} ⭐</span>
+                      <ArrowRight className="w-2.5 h-2.5 text-ink-muted" />
+                      <span className="text-warn-ink font-bold">{rating1To5} ⭐</span>
                     </div>
                   )}
                   {harvest.harvestDate && harvest.harvestDate !== harvestDate && (
                     <div className="flex items-center gap-1.5">
-                      <span className="text-zinc-500">Fecha:</span>
-                      <span className="text-zinc-400 line-through">{harvest.harvestDate}</span>
-                      <ArrowRight className="w-2.5 h-2.5 text-zinc-500" />
-                      <span className="text-white font-mono">{harvestDate}</span>
+                      <span className="text-ink-muted">Fecha:</span>
+                      <span className="text-ink-muted line-through">{harvest.harvestDate}</span>
+                      <ArrowRight className="w-2.5 h-2.5 text-ink-muted" />
+                      <span className="text-ink ">{harvestDate}</span>
                     </div>
                   )}
                 </div>
@@ -531,7 +528,7 @@ export const EditHarvestModal: React.FC<EditHarvestModalProps> = ({
                 type="button"
                 onClick={() => setShowConfirmModal(false)}
                 disabled={saving}
-                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-zinc-300 hover:bg-zinc-800 transition-colors cursor-pointer border border-zinc-800"
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-ink hover:bg-track transition-colors cursor-pointer border border-line"
               >
                 Cancelar / Seguir editando
               </button>
@@ -539,7 +536,7 @@ export const EditHarvestModal: React.FC<EditHarvestModalProps> = ({
                 type="button"
                 onClick={handleExecuteSave}
                 disabled={saving}
-                className="px-5 py-2.5 text-xs font-bold rounded-xl bg-amber-500 hover:bg-amber-400 text-black shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                className="px-5 py-2.5 text-xs font-bold rounded-xl bg-warn-line hover:bg-warn-line text-ink shadow-lg transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 {saving ? (
                   <>

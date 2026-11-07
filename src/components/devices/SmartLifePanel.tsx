@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Loader2, Plus, Power, RefreshCw, Search, Unplug } from 'lucide-react';
+import { Loader2, Plus, Power, RefreshCw, Search, Unplug, ChevronDown } from 'lucide-react';
 import type { Cultivation } from '../../types';
 import { devicesService, scheduleSnapshot, takeEwelinkReturn, type DeviceBindingState, type DeviceVendor, type DevicesStatus, type SmartDevice } from '../../services/devicesService';
 import { CLIMATE_MODE_LABEL, CLIMATE_ROLES, DEFAULT_PUMP, defaultClimateRule, describeAutoIrrigation, describeClimateRule, validatePump, type ClimateRole, type PumpConfig } from '../../utils/deviceRules';
@@ -72,14 +72,14 @@ const PumpEditor: React.FC<{ pump: PumpConfig; onSave: (p: PumpConfig) => Promis
     <div className="pump-editor space-y-2 rounded-2xl bg-surface border border-line p-3">
       <div className="grid grid-cols-3 gap-2">
         {([['flowLph', 'Caudal (L/h)'], ['maxSeconds', 'Tope (s)'], ['maxLiters', 'Tope (L)']] as const).map(([k, l]) => (
-          <label key={k} className="text-[11px] font-semibold text-ink-muted space-y-1">
+          <label key={k} className="text-xs font-semibold text-ink-muted space-y-1">
             <span>{l}</span>
             <input className={`${SMALL} w-full`} inputMode="decimal" value={v[k]} onChange={(e) => setV({ ...v, [k]: e.target.value })} aria-label={l} />
           </label>
         ))}
       </div>
-      <p className="text-[11px] text-ink-subtle">Caudal: goteros × litros por hora de cada uno (4 goteros de 2 L/h = 8 L/h).</p>
-      {err && <p className="text-[11px] font-bold text-error">{err}</p>}
+      <p className="text-xs text-ink-subtle">Caudal: goteros × litros por hora de cada uno (4 goteros de 2 L/h = 8 L/h).</p>
+      {err && <p className="text-xs font-bold text-error">{err}</p>}
       <div className="flex gap-2">
         <button type="button" onClick={save} className="cultiveta-btn-primary text-xs">Guardar</button>
         <button type="button" onClick={onCancel} className="cultiveta-btn-secondary text-xs">Cancelar</button>
@@ -300,7 +300,7 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
           <li key={s}>{s}</li>
         ))}
       </ol>
-      {ADD_STEPS[v].extra && <p className="text-[11px] text-ink-subtle">{ADD_STEPS[v].extra}</p>}
+      {ADD_STEPS[v].extra && <p className="text-xs text-ink-subtle">{ADD_STEPS[v].extra}</p>}
       <button type="button" id={`${v}-search`} disabled={busy === `search-${v}`} onClick={() => searchNew(v)} className="cultiveta-btn-primary text-xs w-full justify-center disabled:opacity-50">
         <Search className="w-3.5 h-3.5" aria-hidden="true" />
         <span>{busy === `search-${v}` ? 'Buscando…' : 'Buscar equipos nuevos'}</span>
@@ -316,7 +316,7 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0">
             <p className="text-sm font-bold text-ink">{VENDOR_TITLE[v]}</p>
-            <p className={`text-[11px] ${connected ? 'text-ok-ink font-bold' : 'text-ink-muted'}`}>{connected || desc}</p>
+            <p className={`text-xs ${connected ? 'text-ok-ink font-bold' : 'text-ink-muted'}`}>{connected || desc}</p>
           </div>
           {connected ? (
             <button type="button" id={`${v}-add`} aria-expanded={adding === v} onClick={() => setAdding(adding === v ? null : v)} className="cultiveta-btn-secondary text-xs">
@@ -388,7 +388,7 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
           {busy === 'connect' ? 'Conectando…' : 'Conectar Smart Life'}
         </button>
       </form>
-      <p className="text-[11px] text-ink-subtle">Las claves quedan guardadas solo en el servidor de Cultiveta; la app nunca las vuelve a mostrar.</p>
+      <p className="text-xs text-ink-subtle">Las claves quedan guardadas solo en el servidor de Cultiveta; la app nunca las vuelve a mostrar.</p>
       <button type="button" id="tuya-mock" onClick={() => connect(true)} className="cultiveta-btn-secondary text-xs w-full justify-center">
         Probar con una zapatilla de prueba (sin cuenta)
       </button>
@@ -438,7 +438,7 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
         <span>Device Id (opcional, si alguno no aparece)</span>
         <input id="shelly-ids" className={FIELD} placeholder="a8032ab1c2d3, e8db84d4b2f1" value={shellyForm.ids} onChange={(e) => setShellyForm({ ...shellyForm, ids: e.target.value })} spellCheck={false} />
       </label>
-      <p className="text-[11px] text-ink-subtle">La nube de Shelly no deja guardar horarios en el equipo: la luz la maneja la revisión de Cultiveta, que deja programado cada cambio en el Shelly. La bomba se apaga sola igual.</p>
+      <p className="text-xs text-ink-subtle">La nube de Shelly no deja guardar horarios en el equipo: la luz la maneja la revisión de Cultiveta, que deja programado cada cambio en el Shelly. La bomba se apaga sola igual.</p>
       <button type="submit" id="shelly-submit" disabled={busy === 'shelly'} className="cultiveta-btn-primary text-xs w-full justify-center disabled:opacity-50">
         {busy === 'shelly' ? 'Conectando…' : 'Conectar Shelly'}
       </button>
@@ -448,18 +448,39 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
     </form>
   );
 
+  const brandRow = (v: DeviceVendor) => (
+    <React.Fragment key={v}>
+      {v === 'tuya' && brand('tuya', 'Enchufes, zapatillas y sensores de la app Smart Life o Tuya.', tuyaForm)}
+      {v === 'ewelink' && brand('ewelink', 'Relés, enchufes y sensores Sonoff de la app eWeLink.', ewelinkForm)}
+      {v === 'shelly' && brand('shelly', 'Enchufes, relés y sensores Shelly, por la nube de Shelly.', shellyFormEl)}
+    </React.Fragment>
+  );
+
   return (
     <div id="smartlife-devices" className="space-y-5">
       <section id="devices-connect" className={`${CARD} space-y-3`}>
         <div>
-          <h2 className="text-sm font-bold text-ink">Conectar un equipo nuevo</h2>
-          <p className="text-xs text-ink-muted mt-1">
-            Cada equipo se agrega primero en la app de su marca (Smart Life, eWeLink o Shelly). Después se conecta la marca acá y cada toma o sensor se asigna a un ambiente o cultivo. Si la marca ya está conectada, tocá <b>Agregar otro</b>.
-          </p>
+          <h2 className="text-sm font-bold text-ink">{anyConnected ? 'Sumar equipos' : 'Conectar un equipo nuevo'}</h2>
+          {!anyConnected && (
+            <p className="text-xs text-ink-muted mt-1">
+              Cada equipo se agrega primero en la app de su marca (Smart Life, eWeLink o Shelly). Después se conecta la marca acá y cada toma o sensor se asigna a un ambiente o cultivo.
+            </p>
+          )}
         </div>
-        {brand('tuya', 'Enchufes, zapatillas y sensores de la app Smart Life o Tuya.', tuyaForm)}
-        {brand('ewelink', 'Relés, enchufes y sensores Sonoff de la app eWeLink.', ewelinkForm)}
-        {brand('shelly', 'Enchufes, relés y sensores Shelly, por la nube de Shelly.', shellyFormEl)}
+        {VENDORS.filter((v) => connectedText(v)).map((v) => brandRow(v))}
+        {anyConnected ? (
+          VENDORS.some((v) => !connectedText(v)) && (
+            <details id="devices-other-brands" className="group">
+              <summary className="min-h-11 flex items-center justify-between gap-2 text-xs font-bold text-brand cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+                Conectar otra marca
+                <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" aria-hidden="true" />
+              </summary>
+              <div className="space-y-3 pt-1">{VENDORS.filter((v) => !connectedText(v)).map((v) => brandRow(v))}</div>
+            </details>
+          )
+        ) : (
+          VENDORS.map((v) => brandRow(v))
+        )}
         {!st && <p className="text-xs text-ink-muted">{error || 'Cargando tus marcas…'}</p>}
         {st && !anyConnected && error && <p className="text-xs font-bold text-error">{error}</p>}
       </section>
@@ -478,7 +499,7 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
             <div key={v} id={`device-connected-${v}`} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl bg-surface border border-line px-3 py-2">
               <div className="min-w-0">
                 <p className="text-xs font-bold text-ink">{VENDOR_TITLE[v]}</p>
-                <p className="text-[11px] font-bold text-ok-ink truncate">{connectedText(v)}</p>
+                <p className="text-xs font-bold text-ok-ink truncate">{connectedText(v)}</p>
               </div>
               <button type="button" id={`${v}-disconnect`} onClick={() => disconnect(v)} disabled={busy === `disconnect-${v}`} className="cultiveta-btn-secondary text-xs text-error disabled:opacity-50">
                 <Unplug className="w-3.5 h-3.5" aria-hidden="true" />
@@ -502,12 +523,12 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
           <div className="flex items-start justify-between gap-2">
             <div>
               <p className="text-sm font-bold text-ink">{d.name}</p>
-              <p className="text-[11px] text-ink-subtle">
+              <p className="text-xs text-ink-subtle">
                 {VENDOR_LABEL[d.vendor] || 'Smart Life'} · {d.product}
                 {d.power ? ` · ${String(d.power.watts).replace('.', ',')} W ahora` : ''}
               </p>
             </div>
-            <span className={`text-[9px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded-md border ${d.online ? 'bg-ok-bg border-ok-line text-ok-ink' : 'bg-coral/10 border-coral/30 text-error'}`}>
+            <span className={`text-[11px] font-black tracking-wider uppercase px-1.5 py-0.5 rounded-md border ${d.online ? 'bg-ok-bg border-ok-line text-ok-ink' : 'bg-coral/10 border-coral/30 text-error'}`}>
               {d.online ? 'En línea' : 'Sin conexión'}
             </span>
           </div>
@@ -521,7 +542,7 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
                     {ch.label} · <span className={ch.on ? 'text-ok-ink' : 'text-ink-muted'}>{ch.on ? 'PRENDIDO' : 'APAGADO'}</span>
                   </span>
                   {ch.binding ? (
-                    <span className="text-[11px] font-bold text-brand text-right">{bindingText(ch.binding)}</span>
+                    <span className="text-xs font-bold text-brand text-right">{bindingText(ch.binding)}</span>
                   ) : (
                     <button
                       type="button"
@@ -589,22 +610,22 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
                           }}
                         />
                         {manualText(ch.binding, Date.now(), ch.binding.role === 'light') && (
-                          <span className="device-manual-note text-[11px] font-bold text-brand">{manualText(ch.binding, Date.now(), ch.binding.role === 'light')}</span>
+                          <span className="device-manual-note text-xs font-bold text-brand">{manualText(ch.binding, Date.now(), ch.binding.role === 'light')}</span>
                         )}
                       </div>
                     )}
                     <div className="flex flex-wrap gap-3">
                       {ch.binding.role === 'pump' && editing !== `${ch.binding.id}|auto` && (
-                        <button type="button" onClick={() => setEditing(`${ch.binding!.id}|auto`)} className="pump-auto-btn text-[11px] font-bold text-brand hover:underline">
+                        <button type="button" onClick={() => setEditing(`${ch.binding!.id}|auto`)} className="pump-auto-btn min-h-11 text-xs font-bold text-brand hover:underline">
                           Riego automático
                         </button>
                       )}
                       {(ch.binding.role === 'climate' || ch.binding.role === 'pump') && editing !== ch.binding.id && (
-                        <button type="button" onClick={() => setEditing(ch.binding!.id)} className="text-[11px] font-bold text-brand hover:underline">
+                        <button type="button" onClick={() => setEditing(ch.binding!.id)} className="min-h-11 text-xs font-bold text-brand hover:underline">
                           {ch.binding.role === 'pump' ? 'Caudal y topes' : 'Cómo se maneja'}
                         </button>
                       )}
-                      <button type="button" onClick={() => run(key, async () => { await devicesService.unbind(ch.binding!.id); await loadDevices(); }, 'Asignación quitada')} className="text-[11px] font-bold text-ink-muted hover:underline">
+                      <button type="button" onClick={() => run(key, async () => { await devicesService.unbind(ch.binding!.id); await loadDevices(); }, 'Asignación quitada')} className="min-h-11 text-xs font-bold text-ink-muted hover:underline">
                         {d.vendor === 'shelly' ? 'Desasignar' : `Desasignar (vuelven tus horarios de ${VENDOR_LABEL[d.vendor] || 'Smart Life'})`}
                       </button>
                     </div>
@@ -648,7 +669,7 @@ export const SmartLifePanel: React.FC<SmartLifePanelProps> = ({ cultivations, sh
             <div className="device-sensor rounded-2xl bg-white border border-line p-3 space-y-2">
               <p className="text-xs font-bold text-ink">{reading(d.sensors)}</p>
               {d.sensorBindings.map((b) => (
-                <div key={b.id} className="flex items-center justify-between gap-2 text-[11px]">
+                <div key={b.id} className="flex items-center justify-between gap-2 text-xs">
                   <span className="font-bold text-brand">
                     {b.role === 'sensor_soil' ? 'Sustrato' : 'Ambiente'} de {b.cultivationName}
                   </span>

@@ -70,7 +70,7 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
               </p>
             </div>
           </div>
-          <button
+          <button aria-label="Cerrar"
             type="button"
             onClick={onClose}
             className="p-2 text-ink-subtle hover:text-ink rounded-full hover:bg-track transition-colors cursor-pointer"
@@ -175,7 +175,7 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
             <div className="flex items-center gap-2">
               <Sparkles className="w-5 h-5 text-brand" />
               <div>
-                <h4 className="font-black text-sm text-ink">Análisis Comparativo con Cultiveta IA</h4>
+                <h4 className="font-black text-sm text-ink">Análisis comparativo con Cultiveta IA</h4>
                 <p className="text-xs text-ink-muted">Detectá cambios morfológicos y desarrollo botánico</p>
               </div>
             </div>
@@ -196,15 +196,15 @@ export const PhotoCompareModal: React.FC<PhotoCompareModalProps> = ({
           {comparisonResult && (
             <div className="mt-4 pt-4 border-t border-brand/20 space-y-3 text-xs text-ink bg-white p-4 sm:p-5 rounded-2xl border border-line">
               <div>
-                <span className="font-bold text-brand block mb-1">🌿 Cambios visuales observados:</span>
+                <span className="font-bold text-brand block mb-1">Cambios visuales observados:</span>
                 <p className="leading-relaxed text-ink-muted">{comparisonResult.visualChanges}</p>
               </div>
               <div>
-                <span className="font-bold text-ok-ink block mb-1">📈 Desarrollo estructural y vegetativo:</span>
+                <span className="font-bold text-ok-ink block mb-1">Desarrollo estructural y vegetativo:</span>
                 <p className="leading-relaxed text-ink-muted">{comparisonResult.structuralGrowth}</p>
               </div>
               <div>
-                <span className="font-bold text-error block mb-1">🩺 Observaciones de salud foliar:</span>
+                <span className="font-bold text-error block mb-1">Observaciones de salud foliar:</span>
                 <p className="leading-relaxed text-ink-muted">{comparisonResult.healthNotes}</p>
               </div>
             </div>

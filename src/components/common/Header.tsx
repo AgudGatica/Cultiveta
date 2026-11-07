@@ -91,7 +91,7 @@ export const Header: React.FC<HeaderProps> = ({
           className="mb-2.5 px-4 py-2 rounded-2xl bg-warn-line/20 border border-warn-line/40 flex items-center justify-between text-xs text-ink"
         >
           <div className="flex items-center gap-2">
-            <span className="px-2 py-0.5 rounded-lg bg-warn-line text-ink font-bold tracking-wider text-[10px]">
+            <span className="px-2 py-0.5 rounded-lg bg-warn-line text-ink font-bold tracking-wider text-[11px]">
               DEMO
             </span>
             <span className="font-medium">Estás explorando datos de muestra precargados.</span>
@@ -120,9 +120,9 @@ export const Header: React.FC<HeaderProps> = ({
               <Sprout className="w-5 h-5 text-ink stroke-[2.5]" />
             </div>
             <div className="flex flex-col">
-              <h1 className="text-xl font-extrabold tracking-tight text-ink flex items-center">
+              <span className="text-xl font-extrabold tracking-tight text-ink flex items-center">
                 Cultiveta<span className="text-primary">.</span>
-              </h1>
+              </span>
             </div>
           </button>
 
@@ -209,7 +209,7 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <Bell className="w-4 h-4 text-ink" />
               {notificationCount > 0 && (
-                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-error text-white text-[10px] font-bold flex items-center justify-center">
+                <span className="absolute -top-1 -right-1 min-w-4 h-4 px-1 rounded-full bg-error text-white text-[11px] font-bold flex items-center justify-center">
                   {notificationCount > 9 ? '9+' : notificationCount}
                 </span>
               )}
@@ -289,10 +289,10 @@ export const Header: React.FC<HeaderProps> = ({
                     <span className="text-xs font-bold text-ink block truncate">
                       {displayName}
                     </span>
-                    <span className="text-[11px] text-ink-muted block truncate">
+                    <span className="text-xs text-ink-muted block truncate">
                       {currentUser?.email || 'Cultivador registrado'}
                     </span>
-                    <span className="inline-flex items-center gap-1 text-[10px] text-ok-ink font-bold mt-0.5">
+                    <span className="inline-flex items-center gap-1 text-[11px] text-ok-ink font-bold mt-0.5">
                       <ShieldCheck className="w-3 h-3" />
                       Cuenta activa
                     </span>
@@ -315,7 +315,7 @@ export const Header: React.FC<HeaderProps> = ({
                     </div>
                     <div className="min-w-0 flex-1">
                       <span className="font-bold block">Mi perfil</span>
-                      <span className="text-[10px] text-ink-muted block truncate">
+                      <span className="text-[11px] text-ink-muted block truncate">
                         Tu nivel, tu racha y tus logros
                       </span>
                     </div>
@@ -336,65 +336,12 @@ export const Header: React.FC<HeaderProps> = ({
                     <Settings className="w-4 h-4" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <span className="font-bold block">Preferencias & Alertas</span>
-                    <span className="text-[10px] text-ink-muted block truncate">
-                      Ajustá límites ambientales y notificaciones
+                    <span className="font-bold block">Preferencias</span>
+                    <span className="text-[11px] text-ink-muted block truncate">
+                      Qué te avisamos y cómo
                     </span>
                   </div>
                 </button>
-
-                {/* Opción 2: Centro de Notificaciones */}
-                {onOpenNotifications && (
-                  <button
-                    type="button"
-                    id="menu-open-notifications-btn"
-                    onClick={() => {
-                      setIsUserMenuOpen(false);
-                      onOpenNotifications();
-                    }}
-                    className="w-full p-2.5 rounded-2xl hover:bg-track text-left transition-colors flex items-center gap-3 text-xs text-ink cursor-pointer group"
-                  >
-                    <div className="p-2 rounded-xl bg-warn-line/20 text-ink border border-warn-line/40 group-hover:bg-warn-line/30 transition-colors">
-                      <Bell className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold">Avisos y Alertas</span>
-                        {notificationCount > 0 && (
-                          <span className="text-[9px] px-1.5 py-0.2 rounded-full bg-error text-white font-bold">
-                            {notificationCount}
-                          </span>
-                        )}
-                      </div>
-                      <span className="text-[10px] text-ink-muted block truncate">
-                        Historial de recordatorios y avisos
-                      </span>
-                    </div>
-                  </button>
-                )}
-
-                {/* Opción 3: Cultiveta IA */}
-                {onNavigate && (
-                  <button
-                    type="button"
-                    id="menu-open-ai-btn"
-                    onClick={() => {
-                      setIsUserMenuOpen(false);
-                      onNavigate('ai_assistant');
-                    }}
-                    className="w-full p-2.5 rounded-2xl hover:bg-track text-left transition-colors flex items-center gap-3 text-xs text-ink cursor-pointer group"
-                  >
-                    <div className="p-2 rounded-xl bg-brand/10 text-brand border border-brand/20 group-hover:bg-brand/20 transition-colors">
-                      <Sparkles className="w-4 h-4" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <span className="font-bold block">Preguntale a Cultiveta</span>
-                      <span className="text-[10px] text-ink-muted block truncate">
-                        Asistencia botánica y diagnóstico
-                      </span>
-                    </div>
-                  </button>
-                )}
 
                 {/* Opción: Tus datos y tu cuenta (exportación y borrado) */}
                 {onOpenAccount && (
@@ -412,7 +359,7 @@ export const Header: React.FC<HeaderProps> = ({
                     </div>
                     <div className="min-w-0 flex-1">
                       <span className="font-bold block">Tus datos y tu cuenta</span>
-                      <span className="text-[10px] text-ink-muted block truncate">
+                      <span className="text-[11px] text-ink-muted block truncate">
                         Descargá tus datos o eliminá la cuenta
                       </span>
                     </div>

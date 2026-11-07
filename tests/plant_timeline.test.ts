@@ -133,7 +133,7 @@ async function run() {
     assert(group && group.count === 2 && group.liters === 3.5, `grupo: ${JSON.stringify(group)}`);
     assert(group.title === '2 riegos' && group.detail === '3.5 L en total', `${group.title} / ${group.detail}`);
     const important = model.events.find((e) => e.id === 'watering_w_ph');
-    assert(important && important.detail?.includes('pH 6.1') && important.detail.includes('EC 1.2'), important?.detail || 'falta');
+    assert(important && important.detail?.includes('pH 6,1') && important.detail.includes('EC 1,2'), important?.detail || 'falta');
   });
 
   await check('5. Cambios de etapa con fecha real, sin el arranque', () => {

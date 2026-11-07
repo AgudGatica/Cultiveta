@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, CalendarDays, Clock, Dna, Droplets, Flag, Home, Leaf, Scale, Scissors, Share2, Sparkles, Sprout, Sun } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Clock, Dna, Droplets, Flag, Leaf, Scale, Scissors, Share2, Sparkles, Sprout } from 'lucide-react';
 import type { Cultivation, DiaryEntry, EnvironmentRecord, Genetics, Indoor, PhotoRecord, Watering } from '../../types';
 import { indoorService } from '../../services/indoorService';
 import { useGeneticsCatalogPhotos } from '../../hooks/useGeneticsCatalogPhotos';
 import { resolveCropGenetics } from '../../utils/cropGenetics';
 import { FLORA_PHASE_SHORT, buildCultivationStageSchedule, floraPhaseOf, getNextStage, getStagesForCultivation, isFloweringStage } from '../../utils/growthStageUtils';
-import { ambientsForCrop, cropForGenetic, harvestText, isExteriorAmbient } from '../../utils/indoors';
+import { ambientsForCrop, cropForGenetic, harvestText } from '../../utils/indoors';
 import { IrrigationForecastCard } from '../cultivations/IrrigationForecastCard';
 import { PlantTimeline } from '../cultivations/PlantTimeline';
 import { StageTransitionModal } from '../cultivations/timeline/StageTransitionModal';
@@ -17,6 +17,7 @@ import { tankStatus } from '../../utils/hydroTank';
 import { feedTargetFor, livingSoilGuide } from '../../utils/feedTargets';
 import { ShareGrowlogModal } from '../community/ShareGrowlogModal';
 import { communityService, growlogFor, useCommunityMe } from '../../services/communityService';
+import { dec } from '../../utils/formatNumber';
 
 interface GeneticDetailViewProps {
   /** Ambiente donde está (para volver y para moverla). */
@@ -46,7 +47,7 @@ interface GeneticDetailViewProps {
 }
 
 type Tab = 'resumen' | 'etapas' | 'timeline';
-const TABS: Record<Tab, string> = { resumen: 'Resumen', etapas: 'Etapas', timeline: 'Timeline' };
+const TABS: Record<Tab, string> = { resumen: 'Resumen', etapas: 'Etapas', timeline: 'Línea de tiempo' };
 
 const CARD = 'bg-white rounded-[28px] p-5 sm:p-6 border border-line shadow-2xs';
 const num = (v: number, d = 1) => (Math.round(v * 10 ** d) / 10 ** d).toString().replace('.', ',');
@@ -54,7 +55,7 @@ const num = (v: number, d = 1) => (Math.round(v * 10 ** d) / 10 ** d).toString()
 /**
  * Una genética dentro de su ambiente, como una planta en Canopia: su foto grande arriba, en qué etapa
  * está y tres pestañas. Resumen (para cortar, números, riegos y su ficha), Etapas (por las que pasó y
- * las que vienen) y Timeline (la planta que crece desde la maceta hasta el cogollo, con las fotos).
+ * las que vienen) y Línea de tiempo (la planta que crece desde la maceta hasta el cogollo, con las fotos).
  * Los riegos, las fotos y las etapas son del cultivo: si tiene más de una genética, los comparten.
  */
 export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
@@ -110,7 +111,6 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
   const day = schedule.isCycleStartKnown && typeof schedule.totalElapsedDays === 'number' && schedule.totalElapsedDays > 0 ? schedule.totalElapsedDays : null;
   const liters = cropWaterings.reduce((a, w) => a + (Number(w.volumeLiters) || 0), 0);
   const phs = cropWaterings.map((w) => Number(w.phIn)).filter((v) => Number.isFinite(v) && v > 0);
-  const exterior = ambient ? isExteriorAmbient(ambient) : crop.type !== 'Indoor';
   // pH y EC para el próximo riego (con el tipo de esta genética: las automáticas, más suave)
   const feed = useMemo(() => feedTargetFor(one, cropWaterings), [one, cropWaterings]);
   const living = useMemo(() => livingSoilGuide(one), [one]);
@@ -138,7 +138,7 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
   return (
     <div id="genetic-detail" className="space-y-4 max-w-3xl mx-auto">
       {/* Foto principal de la genética, con su nombre, en qué etapa está y en qué ambiente */}
-      <section id="genetic-hero" className="relative overflow-hidden rounded-[28px] bg-brand-deep aspect-[4/5] sm:aspect-[16/10] shadow-sm">
+      <section id="genetic-hero" className="relative overflow-hidden rounded-[28px] bg-brand-deep aspect-square sm:aspect-[16/10] shadow-sm">
         {heroPhoto ? (
           <img src={heroPhoto} alt={`${card.name}${card.seedBank ? ` - ${card.seedBank}` : ''}`} referrerPolicy="no-referrer" onError={() => setHeroFailed(true)} className="absolute inset-0 w-full h-full object-cover" />
         ) : latestPhoto ? (
@@ -153,7 +153,7 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
         <button
           type="button"
           onClick={onBack}
-          className="absolute top-3 left-3 min-h-10 px-3 rounded-full bg-black/35 backdrop-blur-sm text-white text-sm font-bold inline-flex items-center gap-1.5 hover:bg-black/50"
+          className="absolute top-3 left-3 min-h-11 px-3 rounded-full bg-black/35 backdrop-blur-sm text-white text-sm font-bold inline-flex items-center gap-1.5 hover:bg-black/50"
         >
           <ArrowLeft className="w-4 h-4" aria-hidden="true" />
           {ambient ? ambient.name : 'Jardín'}
@@ -171,16 +171,14 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
               {/* la floración se cuenta desde el 12/12: preflora, engorde y maduración son partes de ella */}
               {isFloweringStage(stageName) ? ` · ${FLORA_PHASE_SHORT[floraPhaseOf(Math.max(1, schedule.activeStageElapsedDays), schedule.floweringDaysGenetics)]}` : ''}
             </span>
+            <span id="genetic-harvest-chip" className="inline-flex items-center gap-1 rounded-full bg-accent text-ink px-2.5 py-1 text-xs font-black">
+              <Scissors className="w-3.5 h-3.5" aria-hidden="true" />
+              {harvestText(schedule.daysUntilHarvest)}
+            </span>
             {day && (
               <span className="inline-flex items-center gap-1 rounded-full bg-black/40 backdrop-blur-sm px-2.5 py-1 text-xs font-bold">
                 <Clock className="w-3.5 h-3.5" aria-hidden="true" />
                 Día {day} · Semana {Math.floor((day - 1) / 7) + 1}
-              </span>
-            )}
-            {ambient && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-black/40 backdrop-blur-sm px-2.5 py-1 text-xs font-bold">
-                {exterior ? <Sun className="w-3.5 h-3.5" aria-hidden="true" /> : <Home className="w-3.5 h-3.5" aria-hidden="true" />}
-                {ambient.name}
               </span>
             )}
             <span className="inline-flex items-center gap-1 rounded-full bg-black/40 backdrop-blur-sm px-2.5 py-1 text-xs font-bold">
@@ -224,7 +222,7 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
             aria-selected={tab === t}
             aria-controls={`genetic-panel-${t}`}
             onClick={() => setTab(t)}
-            className={`min-h-11 rounded-xl text-sm font-extrabold transition-colors ${tab === t ? 'bg-white text-ink shadow-xs' : 'text-white hover:bg-white/10'}`}
+            className={`min-h-11 px-1 rounded-xl text-sm leading-tight font-extrabold transition-colors ${tab === t ? 'bg-white text-ink shadow-xs' : 'text-white hover:bg-white/10'}`}
           >
             {TABS[t]}
           </button>
@@ -250,16 +248,15 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
             </div>
           </section>
 
+          {!tank && <IrrigationForecastCard cultivation={crop} waterings={waterings} envRecords={envRecords} />}
+
           {tank ? <HydroTankCard status={tank} /> : living ? <LivingSoilCard guide={living} /> : feed && <FeedTargetCard target={feed} />}
 
-          <section id="genetic-stats" aria-label="Números" className="grid grid-cols-3 gap-2">
+          <section id="genetic-stats" aria-label="Números" className={`grid gap-2 ${day ? 'grid-cols-4' : 'grid-cols-3'}`}>
             {[
-              // sin el día de arranque del cultivo, los de la etapa actual
+              // día y semana están sobre la foto; sin el día de arranque del cultivo, van los de la etapa actual
               ...(day
-                ? [
-                    ['Día', String(day)],
-                    ['Semana', String(Math.floor((day - 1) / 7) + 1)],
-                  ]
+                ? []
                 : [
                     [`Día de ${stageName.toLowerCase()}`, String(Math.max(1, schedule.activeStageElapsedDays))],
                     [`Semana de ${stageName.toLowerCase()}`, String(Math.floor((Math.max(1, schedule.activeStageElapsedDays) - 1) / 7) + 1)],
@@ -270,7 +267,7 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
               ['pH prom.', phs.length ? num(phs.reduce((a, v) => a + v, 0) / phs.length) : '—'],
             ].map(([l, v]) => (
               <div key={l} className="cultiveta-card p-3 text-center">
-                <small className="block text-[10px] font-semibold text-ink-muted">{l}</small>
+                <small className="block text-[11px] font-semibold text-ink-muted">{l}</small>
                 <b className="block text-xl font-black text-ink leading-tight">{v}</b>
               </div>
             ))}
@@ -292,19 +289,17 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
                       {w.time ? ` · ${w.time}` : ''}
                     </span>
                     <span className="text-ink-muted">
-                      {String(w.volumeLiters).replace('.', ',')} L{w.phIn ? ` · pH ${w.phIn}` : ''}
-                      {w.ecIn ? ` · EC ${w.ecIn}` : ''}
+                      {dec(w.volumeLiters)} L{w.phIn ? ` · pH ${dec(w.phIn)}` : ''}
+                      {w.ecIn ? ` · EC ${dec(w.ecIn)}` : ''}
                     </span>
                   </li>
                 ))}
               </ul>
             )}
             {others.length > 0 && (
-              <p className="text-[11px] text-ink-subtle">Comparte cultivo con {others.join(', ')}: los riegos y las etapas son los mismos.</p>
+              <p className="text-xs text-ink-subtle">Comparte cultivo con {others.join(', ')}: los riegos y las etapas son los mismos.</p>
             )}
           </section>
-
-          {!tank && <IrrigationForecastCard cultivation={crop} waterings={waterings} envRecords={envRecords} />}
 
           <section id="genetic-showcase" className={`${CARD} space-y-3`}>
             <span className="text-xs font-bold uppercase tracking-wider text-ink-muted flex items-center gap-1.5">
@@ -313,14 +308,14 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
             </span>
             <div className="grid grid-cols-2 gap-2">
               <div className="rounded-2xl bg-surface border border-line p-3">
-                <small className="text-[10px] font-semibold text-ink-muted flex items-center gap-1">
+                <small className="text-[11px] font-semibold text-ink-muted flex items-center gap-1">
                   <Scale className="w-3 h-3" aria-hidden="true" />
                   Rendimiento
                 </small>
                 <b className="block text-sm font-black text-ink">{card.estimatedYield ? `${card.estimatedYield} g/m²` : '—'}</b>
               </div>
               <div className="rounded-2xl bg-surface border border-line p-3">
-                <small className="text-[10px] font-semibold text-ink-muted flex items-center gap-1">
+                <small className="text-[11px] font-semibold text-ink-muted flex items-center gap-1">
                   <Clock className="w-3 h-3" aria-hidden="true" />
                   Floración
                 </small>
@@ -344,7 +339,7 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
             {moveTargets.length > 0 && (
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-xs font-semibold text-ink-muted w-full">Pasar a otro ambiente</span>
-                <select id="genetic-move-select" aria-label="Ambiente" value={moveTo || moveTargets[0].id} onChange={(e) => setMoveTo(e.target.value)} className="min-h-10 px-3 rounded-xl bg-white border border-line text-sm text-ink flex-1 min-w-0">
+                <select id="genetic-move-select" aria-label="Ambiente" value={moveTo || moveTargets[0].id} onChange={(e) => setMoveTo(e.target.value)} className="min-h-11 px-3 rounded-xl bg-white border border-line text-sm text-ink flex-1 min-w-0">
                   {moveTargets.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.name}

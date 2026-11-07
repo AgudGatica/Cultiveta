@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Moon, Plug, Pencil, Sun } from 'lucide-react';
+import { Moon, Plug, Pencil, Sun, ChevronDown } from 'lucide-react';
 import type { Cultivation } from '../../types';
 import type { DeviceBindingState } from '../../services/devicesService';
 import {
@@ -213,12 +213,12 @@ export const LightCycleCard: React.FC<LightCycleCardProps> = ({ cultivation, sha
         )}
       </div>
       {device && (
-        <p className="text-[11px] font-bold text-brand">
+        <p className="text-xs font-bold text-brand">
           Enchufe: {device.deviceName} · {device.label}. Con la hora, Cultiveta carga el horario en el enchufe.
         </p>
       )}
       {!formDaily && (
-        <p className="text-[11px] text-ink-subtle">
+        <p className="text-xs text-ink-subtle">
           En un superciclo cada encendido arranca a otra hora: con el día y la hora de uno, Cultiveta calcula todos los demás.
         </p>
       )}
@@ -249,13 +249,13 @@ export const LightCycleCard: React.FC<LightCycleCardProps> = ({ cultivation, sha
         Luz · {title}
       </span>
       {device && device.online === false ? (
-        <span id="light-state-pill" className="px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider bg-coral/15 text-error">
+        <span id="light-state-pill" className="px-2.5 py-1 rounded-full text-[11px] font-black tracking-wider bg-coral/15 text-error">
           SIN CONEXIÓN
         </span>
       ) : (deviceOn != null || (state && state.started)) ? (
         <span
           id="light-state-pill"
-          className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider ${
+          className={`px-2.5 py-1 rounded-full text-[11px] font-black tracking-wider ${
             (deviceOn ?? state?.on) ? 'bg-accent text-ink' : 'bg-brand-deep text-white'
           }`}
         >
@@ -266,7 +266,7 @@ export const LightCycleCard: React.FC<LightCycleCardProps> = ({ cultivation, sha
   );
 
   const shared = sharedNote ? (
-    <p id="light-shared-note" className="text-[11px] font-bold text-brand -mt-2">
+    <p id="light-shared-note" className="text-xs font-bold text-brand -mt-2">
       {sharedNote}
     </p>
   ) : null;
@@ -280,7 +280,7 @@ export const LightCycleCard: React.FC<LightCycleCardProps> = ({ cultivation, sha
         {power && !editing && (
           <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
             {power}
-            <span className="text-[11px] text-ink-subtle">Prender o apagar la luz ahora, a mano.</span>
+            <span className="text-xs text-ink-subtle">Prender o apagar la luz ahora, a mano.</span>
           </div>
         )}
       </section>
@@ -300,7 +300,7 @@ export const LightCycleCard: React.FC<LightCycleCardProps> = ({ cultivation, sha
 
       <div className="flex items-center gap-4 sm:gap-6">
         <LightRing on={ringOn} progress={phaseProgress(cycle, anchor, now)}>
-          <b className="text-[28px] font-black leading-none tracking-wide text-ink">{state.alwaysOn ? 'ON' : ringOn ? 'ON' : 'OFF'}</b>
+          <b className="text-lg font-black leading-none text-ink">{ringOn ? 'Prendida' : 'Apagada'}</b>
           {state.alwaysOn ? (
             <small className="text-sm font-bold text-ink-muted mt-1">siempre</small>
           ) : (
@@ -335,10 +335,14 @@ export const LightCycleCard: React.FC<LightCycleCardProps> = ({ cultivation, sha
         </dl>
       </div>
 
-      <div>
-        <h4 className="text-xs font-bold uppercase tracking-wider text-ink-muted mb-1.5">Próximos 7 días</h4>
+      {/* Con un ciclo de 24 h todos los días son iguales: queda plegado. En un superciclo se ve abierto. */}
+      <details id="light-week" className="group" open={!daily}>
+        <summary className="min-h-11 flex items-center justify-between gap-2 text-xs font-bold uppercase tracking-wider text-ink-muted cursor-pointer list-none [&::-webkit-details-marker]:hidden">
+          Próximos 7 días
+          <ChevronDown className="w-4 h-4 transition-transform group-open:rotate-180" aria-hidden="true" />
+        </summary>
         <div id="light-projection" className="space-y-1.5">
-          <div className="flex justify-end text-[10px] text-ink-subtle">h de luz</div>
+          <div className="flex justify-end text-[11px] text-ink-subtle">h de luz</div>
           {days.map((d) => {
             const span = d.end - d.start;
             const label = `${weekdayShort(d.start)} ${new Date(d.start).getDate()}`;
@@ -371,11 +375,11 @@ export const LightCycleCard: React.FC<LightCycleCardProps> = ({ cultivation, sha
           })}
           <div className="grid grid-cols-[52px_1fr_40px] gap-2" aria-hidden="true">
             <span />
-            <div className="relative h-3.5 text-[10px] text-ink-subtle">
+            <div className="relative h-3.5 text-[11px] text-ink-subtle">
               {TICKS.map((h) => (
                 <span
                   key={h}
-                  className={`light-tick absolute -translate-x-1/2 ${h % 6 ? 'opacity-60 text-[9px] top-px' : ''}`}
+                  className={`light-tick absolute -translate-x-1/2 ${h % 6 ? 'opacity-60 text-[11px] top-px' : ''}`}
                   style={{ left: `${(h / 24) * 100}%` }}
                 >
                   {h}
@@ -386,16 +390,16 @@ export const LightCycleCard: React.FC<LightCycleCardProps> = ({ cultivation, sha
           </div>
         </div>
         {totalMs !== DAY_MS && offMs > 0 && (
-          <p id="light-shift-note" className="text-[11px] text-ink-muted mt-2">
+          <p id="light-shift-note" className="text-xs text-ink-muted mt-2">
             Cada encendido dura {onH} h seguidas y arranca {hoursText(Math.abs(shift))} h {shift > 0 ? 'más tarde' : 'más temprano'} que el
             anterior. El número de cada fila es la luz de ese día, de 0 a 24 h: cuando un encendido pasa la medianoche, una parte se
             cuenta en el día siguiente. Por eso algunos días no suman {onH} h.
           </p>
         )}
-      </div>
+      </details>
 
       {device && (
-        <div id="light-device-note" className="text-[11px] space-y-1">
+        <div id="light-device-note" className="text-xs space-y-1">
           {device.loaded?.error ? (
             <p className="font-bold text-error">No se pudo cargar el horario en {app}: {device.loaded.error}</p>
           ) : device.loaded?.mode === 'daily' ? (
@@ -427,7 +431,7 @@ export const LightCycleCard: React.FC<LightCycleCardProps> = ({ cultivation, sha
       )}
 
       <div className="flex flex-wrap items-center gap-2 pt-1">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-ink-subtle bg-track px-2 py-1 rounded-lg">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-ink-subtle bg-track px-2 py-1 rounded-lg">
           {device ? `Enchufe · ${device.deviceName} · ${device.label}` : 'A mano · timer'}
         </span>
         {power}

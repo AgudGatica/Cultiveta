@@ -24,7 +24,7 @@ import {
 import { Genetics, Harvest, PhotoperiodType, DominanceType, FavoriteGenetic, UserProfile, GeneticsCatalogPhoto } from '../../types';
 import { GeneticsFormModal } from './GeneticsFormModal';
 import { GeneticsPhotoAdminModal } from './GeneticsPhotoAdminModal';
-import { GeneticsShowcaseCard } from './GeneticsShowcaseCard';
+import { GeneticsCatalogRow, GeneticsShowcaseCard } from './GeneticsShowcaseCard';
 import { GENETICS_DATABASE, PredefinedGenetic } from '../../data/predefinedGenetics';
 import { geneticsService } from '../../services/geneticsService';
 import { favoritesService, getGeneticsKey } from '../../services/favoritesService';
@@ -140,7 +140,8 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedSeedBank, setSelectedSeedBank] = useState<string>('ALL');
   const [filterPhotoperiod, setFilterPhotoperiod] = useState('all');
-  const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
+  // La genética abierta del catálogo: las demás quedan en una fila
+  const [openGenetic, setOpenGenetic] = useState<string | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [geneticsToEdit, setGeneticsToEdit] = useState<Genetics | null>(null);
   const [savingMap, setSavingMap] = useState<Record<string, boolean>>({});
@@ -211,11 +212,6 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
   // Filtrado de la base de datos predefinida
   const filteredPredefined = useMemo(() => {
     return GENETICS_DATABASE.filter((item) => {
-      // Filtro solo favoritas
-      if (showOnlyFavorites && !isGeneticsFavorite(item.name, item.seedBank)) {
-        return false;
-      }
-
       // Filtro por banco
       if (selectedSeedBank !== 'ALL' && item.seedBank !== selectedSeedBank) {
         return false;
@@ -242,14 +238,11 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
 
       return true;
     });
-  }, [searchTerm, selectedSeedBank, filterPhotoperiod, showOnlyFavorites, favoriteKeysSet]);
+  }, [searchTerm, selectedSeedBank, filterPhotoperiod]);
 
   // Filtrado de las genéticas guardadas del usuario
   const filteredSavedGenetics = useMemo(() => {
     return geneticsList.filter((g) => {
-      if (showOnlyFavorites && !isGeneticsFavorite(g.name, g.seedBank)) {
-        return false;
-      }
       if (selectedSeedBank !== 'ALL' && (g.seedBank || '') !== selectedSeedBank) return false;
       if (filterPhotoperiod !== 'all' && g.photoperiodType !== filterPhotoperiod) return false;
       if (searchTerm.trim()) {
@@ -262,7 +255,7 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
       }
       return true;
     });
-  }, [geneticsList, selectedSeedBank, filterPhotoperiod, searchTerm, showOnlyFavorites, favoriteKeysSet]);
+  }, [geneticsList, selectedSeedBank, filterPhotoperiod, searchTerm]);
 
   // Filtrado de las genéticas favoritas
   const filteredFavorites = useMemo(() => {
@@ -336,21 +329,102 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
     return { count, avgGrams, avgRating };
   };
 
-  const hasActiveFilters = searchTerm.trim() !== '' || selectedSeedBank !== 'ALL' || filterPhotoperiod !== 'all' || showOnlyFavorites;
+  const hasActiveFilters = searchTerm.trim() !== '' || selectedSeedBank !== 'ALL' || filterPhotoperiod !== 'all';
+
+  /** Una favorita como genética del catálogo (si salió del catálogo, con todos sus datos). */
+  const predefinedFromFavorite = (fav: FavoriteGenetic): PredefinedGenetic =>
+    GENETICS_DATABASE.find((g) => getGeneticsKey(g.name, g.seedBank) === (fav.geneticsKey || getGeneticsKey(fav.name, fav.seedBank))) ||
+    ({
+      name: fav.name,
+      seedBank: fav.seedBank,
+      dominance: String(fav.dominance || ''),
+      floweringDays: String(fav.floweringDays || ''),
+      estimatedYield: String(fav.estimatedYield || ''),
+      organolepticProfile: fav.organolepticProfile || '',
+    } as PredefinedGenetic);
+
+  const renderCatalogItem = (item: PredefinedGenetic) => {
+    const photoKey = getGeneticsPhotoKey(item.seedBank, item.name);
+    const officialPhoto = catalogPhotos[photoKey]?.photoUrl;
+    const key = `${item.seedBank}-${item.name}`;
+    const isOpen = openGenetic === key;
+    const isFav = isGeneticsFavorite(item.name, item.seedBank);
+
+    return (
+      <React.Fragment key={key}>
+        <GeneticsCatalogRow
+          name={item.name}
+          seedBank={item.seedBank}
+          dominance={item.dominance}
+          photoUrl={officialPhoto}
+          estimatedYield={item.estimatedYield}
+          floweringDays={item.floweringDays}
+          isFavorite={isFav}
+          open={isOpen}
+          onToggle={() => setOpenGenetic(isOpen ? null : key)}
+        />
+        {isOpen && (
+          <GeneticsShowcaseCard
+            name={item.name}
+            seedBank={item.seedBank}
+            dominance={item.dominance}
+            photoUrl={officialPhoto}
+            estimatedYield={item.estimatedYield}
+            floweringDays={item.floweringDays}
+            organolepticProfile={item.organolepticProfile}
+          >
+            {/* Dos botones: Iniciar cultivo y Favoritos */}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => onStartCropWithGenetics(convertPredefinedToGenetics(item, userId, officialPhoto))}
+                className="cultiveta-btn-primary rounded-full min-h-[52px] text-xs sm:text-sm active:scale-98"
+                title={`Iniciar cultivo con ${item.name}`}
+              >
+                <Sprout className="w-4 h-4 shrink-0" aria-hidden="true" />
+                <span>Iniciar cultivo</span>
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  handleToggleFavorite({
+                    name: item.name,
+                    seedBank: item.seedBank,
+                    photoperiodType: convertPredefinedToGenetics(item, userId, officialPhoto).photoperiodType,
+                    dominance: item.dominance,
+                    floweringDays: item.floweringDays,
+                    estimatedYield: item.estimatedYield,
+                    organolepticProfile: item.organolepticProfile,
+                  })
+                }
+                disabled={Boolean(togglingFavMap[getGeneticsKey(item.name, item.seedBank)])}
+                aria-pressed={isFav}
+                title={isFav ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                className="bg-brand-deep hover:bg-brand text-white font-bold rounded-full min-h-[52px] text-xs sm:text-sm shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-60"
+              >
+                <span>Favoritos</span>
+                <Heart className={`w-4 h-4 shrink-0 transition-transform ${isFav ? 'fill-white text-white scale-110' : 'text-white'}`} aria-hidden="true" />
+              </button>
+            </div>
+          </GeneticsShowcaseCard>
+        )}
+      </React.Fragment>
+    );
+  };
 
   return (
     <div className="space-y-6">
       {/* Top Banner & Actions */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white rounded-3xl p-6 border border-stone-200 shadow-sm">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 bg-white rounded-3xl p-6 border border-line shadow-sm">
         <div>
-          <h2 className="font-bold text-xl text-stone-900 flex items-center gap-2">
-            <span>Biblioteca y Catálogo de Genéticas</span>
-            <span className="text-sm font-normal text-stone-500 bg-stone-100 px-2.5 py-0.5 rounded-full border border-stone-200">
-              {GENETICS_DATABASE.length} variedades
+          <h2 className="font-bold text-xl text-ink flex items-center gap-2">
+            <span>Genéticas</span>
+            <span className="text-sm font-normal text-ink-muted bg-track px-2.5 py-0.5 rounded-full border border-line">
+              {GENETICS_DATABASE.length} en el catálogo
             </span>
           </h2>
-          <p className="text-xs text-stone-500 mt-1">
-            Encuentra rápidamente variedades por banco de semillas o nombre para iniciar tus nuevos cultivos
+          <p className="text-xs text-ink-muted mt-1">
+            Encontrá rápido genéticas por banco de semillas o nombre para iniciar tus nuevos cultivos
           </p>
         </div>
 
@@ -360,7 +434,7 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
               type="button"
               id="admin-manage-genetics-photos-btn"
               onClick={() => setIsAdminPhotoModalOpen(true)}
-              className="px-4 py-2.5 rounded-2xl bg-purple-700 hover:bg-purple-800 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer"
+              className="px-4 py-2.5 rounded-2xl bg-brand-deep hover:bg-brand-deep text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer"
               title="Panel privado de administración y carga de fotos de genéticas"
             >
               <Camera className="w-4 h-4" />
@@ -375,78 +449,56 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
               setGeneticsToEdit(null);
               setIsFormOpen(true);
             }}
-            className="px-5 py-2.5 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer"
+            className="min-h-11 px-5 py-2.5 rounded-2xl bg-brand-deep hover:bg-brand-deep text-white text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            <span>Nueva Genética Personalizada</span>
+            <span>Nueva genética</span>
           </button>
         </div>
       </div>
 
-      {/* Tabs Switcher: Catálogo Base vs Mis Genéticas vs Favoritas */}
-      <div className="flex items-center gap-2 border-b border-stone-200 pb-2 overflow-x-auto no-scrollbar">
-        <button
-          type="button"
-          id="tab-catalog-btn"
-          onClick={() => setActiveTab('catalog')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'catalog'
-              ? 'bg-emerald-800 text-white shadow-xs'
-              : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-          }`}
-        >
-          <BookOpen className="w-4 h-4" />
-          <span>Catálogo de Genéticas ({GENETICS_DATABASE.length})</span>
-        </button>
-
-        <button
-          type="button"
-          id="tab-saved-btn"
-          onClick={() => setActiveTab('saved')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'saved'
-              ? 'bg-emerald-800 text-white shadow-xs'
-              : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-          }`}
-        >
-          <Bookmark className="w-4 h-4" />
-          <span>Mis Genéticas Guardadas ({geneticsList.length})</span>
-        </button>
-
-        <button
-          type="button"
-          id="tab-favorites-btn"
-          onClick={() => setActiveTab('favorites')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-            activeTab === 'favorites'
-              ? 'bg-rose-600 text-white shadow-xs'
-              : 'text-stone-600 hover:text-stone-900 hover:bg-stone-100'
-          }`}
-        >
-          <Heart className={`w-4 h-4 ${activeTab === 'favorites' ? 'fill-white text-white' : 'text-rose-500 fill-rose-100'}`} />
-          <span>Mis Favoritas ({favorites.length})</span>
-        </button>
+      {/* Catálogo, las guardadas y las favoritas */}
+      <div role="tablist" aria-label="Genéticas" className="grid grid-cols-3 p-1 rounded-2xl bg-brand-deep/55 gap-1">
+        {(
+          [
+            ['catalog', 'tab-catalog-btn', `Catálogo (${GENETICS_DATABASE.length})`],
+            ['saved', 'tab-saved-btn', `Guardadas (${geneticsList.length})`],
+            ['favorites', 'tab-favorites-btn', `Favoritas (${favorites.length})`],
+          ] as const
+        ).map(([key, id, label]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            id={id}
+            aria-selected={activeTab === key}
+            onClick={() => setActiveTab(key)}
+            className={`min-h-11 px-1 rounded-xl text-xs sm:text-sm font-extrabold transition-colors cursor-pointer ${activeTab === key ? 'bg-white text-ink shadow-xs' : 'text-white hover:bg-white/10'}`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* Search Bar & Photoperiod Dropdown */}
-      <div className="space-y-3 bg-white p-4 rounded-3xl border border-stone-200 shadow-xs">
+      <div className="space-y-3 bg-white p-4 rounded-3xl border border-line shadow-xs">
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[260px]">
-            <Search className="w-4 h-4 text-stone-400 absolute left-3.5 top-3" />
+            <Search className="w-4 h-4 text-ink-subtle absolute left-3.5 top-3" />
             <input
               id="filter-genetics-name"
               type="text"
-              placeholder="Filtrar por nombre de genética (ej: Skunk, Amnesia, Gelato)..."
+              placeholder="Buscar por nombre (ej: Skunk)"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-10 py-2.5 rounded-2xl bg-stone-50 border border-stone-200 text-xs text-stone-800 placeholder-stone-400 focus:outline-hidden focus:border-emerald-600 focus:bg-white transition-all"
+              className="w-full pl-10 pr-10 py-2.5 rounded-2xl bg-surface border border-line text-xs text-ink placeholder-ink-subtle focus:outline-hidden focus:border-ok-line focus:bg-white transition-all"
             />
             {searchTerm && (
-              <button
+              <button aria-label="Borrar búsqueda"
                 type="button"
                 id="clear-genetics-name-search"
                 onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-2.5 p-1 rounded-full text-stone-400 hover:text-stone-700 hover:bg-stone-200 transition-colors cursor-pointer"
+                className="absolute right-3 top-2.5 p-1 rounded-full text-ink-subtle hover:text-ink hover:bg-line transition-colors cursor-pointer"
                 title="Borrar filtro de nombre"
               >
                 <X className="w-3.5 h-3.5" />
@@ -458,29 +510,13 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
             id="genetics-photoperiod-filter"
             value={filterPhotoperiod}
             onChange={(e) => setFilterPhotoperiod(e.target.value)}
-            className="px-4 py-2.5 rounded-2xl bg-stone-50 border border-stone-200 text-xs font-semibold text-stone-700 focus:outline-hidden cursor-pointer"
+            className="px-4 py-2.5 rounded-2xl bg-surface border border-line text-xs font-semibold text-ink focus:outline-hidden cursor-pointer"
           >
             <option value="all">Todos los fotoperiodos</option>
             <option value="Fotoperiódica">Fotoperiódicas</option>
             <option value="Automática">Automáticas</option>
             <option value="CBD">CBD</option>
           </select>
-
-          {/* Quick toggle for Favorites filter */}
-          <button
-            type="button"
-            id="toggle-only-favorites-btn"
-            onClick={() => setShowOnlyFavorites((prev) => !prev)}
-            className={`px-3.5 py-2.5 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
-              showOnlyFavorites
-                ? 'bg-rose-50 border border-rose-300 text-rose-700 shadow-2xs'
-                : 'bg-stone-50 border border-stone-200 text-stone-600 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200'
-            }`}
-            title="Filtrar solo genéticas marcadas como favoritas"
-          >
-            <Heart className={`w-3.5 h-3.5 ${showOnlyFavorites ? 'fill-rose-600 text-rose-600' : 'text-stone-400'}`} />
-            <span>Favoritas ({favorites.length})</span>
-          </button>
 
           {hasActiveFilters && (
             <button
@@ -490,9 +526,8 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                 setSearchTerm('');
                 setSelectedSeedBank('ALL');
                 setFilterPhotoperiod('all');
-                setShowOnlyFavorites(false);
               }}
-              className="px-3 py-2 text-xs font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer flex items-center gap-1"
+              className="px-3 py-2 text-xs font-semibold text-error hover:text-error hover:bg-error/10 rounded-xl transition-colors cursor-pointer flex items-center gap-1"
             >
               <X className="w-3.5 h-3.5" />
               <span>Limpiar filtros</span>
@@ -501,18 +536,18 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
         </div>
 
         {/* Filter Chips for seedBank */}
-        <div className="space-y-1.5 pt-2 border-t border-stone-100">
-          <div className="flex items-center justify-between text-xs font-bold text-stone-500 px-1">
+        <div className="space-y-1.5 pt-2 border-t border-line">
+          <div className="flex items-center justify-between text-xs font-bold text-ink-muted px-1">
             <span className="flex items-center gap-1.5">
-              <Filter className="w-3.5 h-3.5 text-stone-400" />
-              <span>Bancos de Semillas ({seedBanks.length}):</span>
+              <Filter className="w-3.5 h-3.5 text-ink-subtle" />
+              <span>Bancos de semillas ({seedBanks.length}):</span>
             </span>
             {selectedSeedBank !== 'ALL' && (
               <button
                 type="button"
                 id="reset-seedbank-chip"
                 onClick={() => setSelectedSeedBank('ALL')}
-                className="text-[11px] font-semibold text-emerald-700 hover:underline cursor-pointer"
+                className="text-xs font-semibold text-ok-ink hover:underline cursor-pointer"
               >
                 Ver todos los bancos
               </button>
@@ -524,10 +559,10 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
               type="button"
               id="seedbank-chip-all"
               onClick={() => setSelectedSeedBank('ALL')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+              className={`min-h-11 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
                 selectedSeedBank === 'ALL'
-                  ? 'bg-emerald-700 text-white shadow-xs'
-                  : 'bg-stone-100 hover:bg-stone-200 text-stone-700'
+                  ? 'bg-brand-deep text-white shadow-xs'
+                  : 'bg-track hover:bg-line text-ink'
               }`}
             >
               Todos ({GENETICS_DATABASE.length})
@@ -542,18 +577,18 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                   id={chipId}
                   type="button"
                   onClick={() => setSelectedSeedBank(isSelected ? 'ALL' : name)}
-                  className={`px-3 py-1.5 rounded-xl text-xs whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                  className={`min-h-11 px-3 py-1.5 rounded-xl text-xs whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
                     isSelected
-                      ? 'bg-emerald-700 text-white font-semibold shadow-xs'
-                      : 'bg-stone-100 hover:bg-stone-200 text-stone-700 font-medium'
+                      ? 'bg-brand-deep text-white font-semibold shadow-xs'
+                      : 'bg-track hover:bg-line text-ink font-medium'
                   }`}
                 >
                   <span>{name}</span>
                   <span
-                    className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                    className={`text-[11px] px-1.5 py-0.2 rounded-full font-bold ${
                       isSelected
-                        ? 'bg-emerald-800 text-emerald-100'
-                        : 'bg-stone-200/80 text-stone-600'
+                        ? 'bg-brand-deep text-white'
+                        : 'bg-line text-ink-muted'
                     }`}
                   >
                     {count}
@@ -565,25 +600,24 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
         </div>
 
         {/* Counter & Current Filter Summary */}
-        <div className="flex items-center justify-between text-xs text-stone-500 pt-1 px-1">
+        <div className="flex items-center justify-between text-xs text-ink-muted pt-1 px-1">
           <span>
             Mostrando{' '}
-            <strong className="text-stone-800">
+            <strong className="text-ink">
               {activeTab === 'catalog'
                 ? filteredPredefined.length
                 : activeTab === 'saved'
                 ? filteredSavedGenetics.length
                 : filteredFavorites.length}
             </strong>{' '}
-            variedades
+            genéticas
             {selectedSeedBank !== 'ALL' && (
               <span>
                 {' '}
-                de <strong className="text-emerald-800">{selectedSeedBank}</strong>
+                de <strong className="text-ok-ink">{selectedSeedBank}</strong>
               </span>
             )}
             {searchTerm && <span> para "{searchTerm}"</span>}
-            {showOnlyFavorites && <span className="text-rose-600 font-semibold"> (solo favoritas)</span>}
           </span>
         </div>
       </div>
@@ -592,13 +626,13 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
       {activeTab === 'catalog' && (
         <>
           {filteredPredefined.length === 0 ? (
-            <div className="bg-white rounded-3xl p-12 border border-stone-200 text-center space-y-3 max-w-[570px] mx-auto">
-              <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
-                <Search className="w-8 h-8 text-stone-400" />
+            <div className="bg-white rounded-3xl p-12 border border-line text-center space-y-3 max-w-[570px] mx-auto">
+              <div className="w-16 h-16 rounded-full bg-ok-bg text-ok-ink flex items-center justify-center mx-auto">
+                <Search className="w-8 h-8 text-ink-subtle" />
               </div>
-              <h4 className="font-bold text-stone-800 text-base">No se encontraron genéticas en el catálogo</h4>
-              <p className="text-xs text-stone-500 max-w-sm mx-auto">
-                No hay variedades que coincidan con los filtros seleccionados. Prueba con otro banco de semillas o término de búsqueda.
+              <h4 className="font-bold text-ink text-base">No se encontraron genéticas en el catálogo</h4>
+              <p className="text-xs text-ink-muted max-w-sm mx-auto">
+                Ninguna genética coincide con esos filtros. Probá con otro banco de semillas u otra búsqueda.
               </p>
               <button
                 type="button"
@@ -607,76 +641,31 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                   setSelectedSeedBank('ALL');
                   setFilterPhotoperiod('all');
                 }}
-                className="px-4 py-2 rounded-2xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold transition-colors cursor-pointer"
+                className="px-4 py-2 rounded-2xl bg-track hover:bg-line text-ink text-xs font-semibold transition-colors cursor-pointer"
               >
                 Limpiar búsqueda y filtros
               </button>
             </div>
           ) : (
-            <div className="flex flex-col gap-6 w-full max-w-[570px] mx-auto">
-              {filteredPredefined.map((item) => {
-                const photoKey = getGeneticsPhotoKey(item.seedBank, item.name);
-                const officialPhoto = catalogPhotos[photoKey]?.photoUrl;
-                const converted = convertPredefinedToGenetics(item, userId, officialPhoto);
+            <div id="genetics-catalog-list" className="flex flex-col gap-2 w-full max-w-[570px] mx-auto">
+              {filteredPredefined.map(renderCatalogItem)}
+            </div>
+          )}
+        </>
+      )}
 
-                const isFav = isGeneticsFavorite(item.name, item.seedBank);
-                const itemFavKey = getGeneticsKey(item.name, item.seedBank);
-                const isTogglingFav = Boolean(togglingFavMap[itemFavKey]);
-
-                return (
-                  <GeneticsShowcaseCard
-                    key={`${item.seedBank}-${item.name}`}
-                    name={item.name}
-                    seedBank={item.seedBank}
-                    dominance={item.dominance}
-                    photoUrl={officialPhoto}
-                    estimatedYield={item.estimatedYield}
-                    floweringDays={item.floweringDays}
-                    organolepticProfile={item.organolepticProfile}
-                  >
-                    {/* 6. Dos botones inferiores: Iniciar Cultivo + FAVORITOS */}
-                    <div className="grid grid-cols-2 gap-3">
-                      {/* BOTÓN 1: INICIAR CULTIVO */}
-                      <button
-                        type="button"
-                        onClick={() => onStartCropWithGenetics(converted)}
-                        className="bg-primary hover:brightness-95 text-ink font-bold rounded-full min-h-[52px] text-xs sm:text-sm shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer active:scale-98"
-                        title={`Iniciar cultivo con ${item.name}`}
-                      >
-                        <Sprout className="w-4 h-4 shrink-0" />
-                        <span>Iniciar Cultivo</span>
-                      </button>
-
-                      {/* BOTÓN 2: FAVORITOS */}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleToggleFavorite({
-                            name: item.name,
-                            seedBank: item.seedBank,
-                            photoperiodType: converted.photoperiodType,
-                            dominance: item.dominance,
-                            floweringDays: item.floweringDays,
-                            estimatedYield: item.estimatedYield,
-                            organolepticProfile: item.organolepticProfile,
-                          })
-                        }
-                        disabled={isTogglingFav}
-                        aria-pressed={isFav}
-                        title={isFav ? 'Quitar de favoritos' : 'Agregar a favoritos'}
-                        className="bg-fuchsia-600 hover:bg-fuchsia-700 active:bg-fuchsia-800 text-white font-black rounded-full min-h-[52px] text-xs sm:text-sm shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-60"
-                      >
-                        <span>FAVORITOS</span>
-                        <Heart
-                          className={`w-4 h-4 shrink-0 transition-transform ${
-                            isFav ? 'fill-white text-white scale-110' : 'text-white'
-                          }`}
-                        />
-                      </button>
-                    </div>
-                  </GeneticsShowcaseCard>
-                );
-              })}
+      {/* Favoritas */}
+      {activeTab === 'favorites' && (
+        <>
+          {filteredFavorites.length === 0 ? (
+            <div id="genetics-favorites-empty" className="bg-white rounded-3xl p-10 border border-line text-center space-y-2 max-w-[570px] mx-auto">
+              <Heart className="w-8 h-8 text-ink-subtle mx-auto" aria-hidden="true" />
+              <h4 className="font-bold text-ink text-base">{favorites.length === 0 ? 'Todavía no marcaste favoritas' : 'Ninguna favorita con estos filtros'}</h4>
+              <p className="text-xs text-ink-muted">{favorites.length === 0 ? 'Abrí una genética del catálogo y tocá Favoritos.' : 'Probá limpiando la búsqueda o el filtro de banco de semillas.'}</p>
+            </div>
+          ) : (
+            <div id="genetics-favorites-list" className="flex flex-col gap-2 w-full max-w-[570px] mx-auto">
+              {filteredFavorites.map((fav) => renderCatalogItem(predefinedFromFavorite(fav)))}
             </div>
           )}
         </>
@@ -686,19 +675,19 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
       {activeTab === 'saved' && (
         <>
           {filteredSavedGenetics.length === 0 ? (
-            <div className="bg-white rounded-3xl p-12 border border-stone-200 text-center space-y-3">
-              <div className="w-16 h-16 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center mx-auto">
+            <div className="bg-white rounded-3xl p-12 border border-line text-center space-y-3">
+              <div className="w-16 h-16 rounded-full bg-ok-bg text-ok-ink flex items-center justify-center mx-auto">
                 <Layers className="w-8 h-8" />
               </div>
-              <h4 className="font-bold text-stone-800 text-base">
+              <h4 className="font-bold text-ink text-base">
                 {hasActiveFilters
                   ? 'No se encontraron genéticas guardadas con estos filtros'
-                  : 'Aún no tienes genéticas personalizadas guardadas'}
+                  : 'Todavía no guardaste genéticas tuyas'}
               </h4>
-              <p className="text-xs text-stone-500 max-w-sm mx-auto">
+              <p className="text-xs text-ink-muted max-w-sm mx-auto">
                 {hasActiveFilters
-                  ? 'Prueba limpiando la búsqueda o el filtro de banco de semillas.'
-                  : 'Explora el Catálogo de Genéticas predefinidas o crea una nueva con el botón superior.'}
+                  ? 'Probá limpiando la búsqueda o el filtro de banco de semillas.'
+                  : 'Mirá el catálogo o creá una con el botón de arriba.'}
               </p>
               {hasActiveFilters ? (
                 <button
@@ -708,7 +697,7 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                     setSelectedSeedBank('ALL');
                     setFilterPhotoperiod('all');
                   }}
-                  className="px-4 py-2 rounded-2xl bg-stone-100 hover:bg-stone-200 text-stone-800 text-xs font-semibold transition-colors cursor-pointer"
+                  className="px-4 py-2 rounded-2xl bg-track hover:bg-line text-ink text-xs font-semibold transition-colors cursor-pointer"
                 >
                   Limpiar filtros
                 </button>
@@ -716,9 +705,9 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setActiveTab('catalog')}
-                  className="px-4 py-2 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold transition-colors cursor-pointer"
+                  className="px-4 py-2 rounded-2xl bg-brand-deep hover:bg-brand-deep text-white text-xs font-semibold transition-colors cursor-pointer"
                 >
-                  Explorar Catálogo de Genéticas
+                  Ver el catálogo
                 </button>
               )}
             </div>
@@ -732,12 +721,12 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                 return (
                   <div
                     key={genetics.id}
-                    className="bg-white rounded-3xl p-5 border border-stone-200 shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
+                    className="bg-white rounded-3xl p-5 border border-line shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
                   >
                     <div className="space-y-3">
                       {/* Fotografía si existe */}
                       {effectivePhoto && (
-                        <div className="relative w-full h-44 rounded-2xl overflow-hidden bg-stone-100 border border-stone-200/80">
+                        <div className="relative w-full h-44 rounded-2xl overflow-hidden bg-track border border-line">
                           <img
                             src={effectivePhoto}
                             alt={`${genetics.name} - ${genetics.seedBank}`}
@@ -750,8 +739,8 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                       {/* Card Title & Bank */}
                       <div className="flex items-start justify-between">
                         <div>
-                          <h3 className="font-bold text-base text-stone-900">{genetics.name}</h3>
-                          <p className="text-xs font-semibold text-emerald-800">{genetics.seedBank}</p>
+                          <h3 className="font-bold text-base text-ink">{genetics.name}</h3>
+                          <p className="text-xs font-semibold text-ok-ink">{genetics.seedBank}</p>
                         </div>
 
                         <div className="flex items-center gap-1">
@@ -761,7 +750,7 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                               setGeneticsToEdit(genetics);
                               setIsFormOpen(true);
                             }}
-                            className="p-1.5 text-stone-400 hover:text-stone-700 rounded-lg hover:bg-stone-100 cursor-pointer"
+                            className="p-1.5 text-ink-subtle hover:text-ink rounded-lg hover:bg-track cursor-pointer"
                             title="Editar"
                           >
                             <Edit className="w-3.5 h-3.5" />
@@ -770,7 +759,7 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                             <button
                               type="button"
                               onClick={() => onGeneticsDeleted(genetics.id)}
-                              className="p-1.5 text-stone-400 hover:text-rose-600 rounded-lg hover:bg-stone-100 cursor-pointer"
+                              className="p-1.5 text-ink-subtle hover:text-error rounded-lg hover:bg-track cursor-pointer"
                               title="Eliminar"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -781,14 +770,14 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
 
                       {/* Badges */}
                       <div className="flex flex-wrap gap-1.5">
-                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold">
+                        <span className="px-2.5 py-0.5 rounded-full bg-ok-bg border border-ok-line text-ok-ink text-xs font-bold">
                           {genetics.photoperiodType}
                         </span>
-                        <span className="px-2.5 py-0.5 rounded-full bg-stone-100 text-stone-700 text-[11px] font-semibold">
+                        <span className="px-2.5 py-0.5 rounded-full bg-track text-ink text-xs font-semibold">
                           {genetics.dominance}
                         </span>
                         {genetics.declaredFloweringDays && (
-                          <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[11px] font-semibold">
+                          <span className="px-2.5 py-0.5 rounded-full bg-warn-bg text-warn-ink border border-warn-line text-xs font-semibold">
                             ~{genetics.declaredFloweringDays} días flor
                           </span>
                         )}
@@ -796,17 +785,17 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
 
                       {/* Cannabinoids */}
                       {(genetics.thcPercentage || genetics.cbdPercentage) && (
-                        <div className="grid grid-cols-2 gap-2 bg-stone-50 p-2.5 rounded-2xl border border-stone-200/60 text-xs">
+                        <div className="grid grid-cols-2 gap-2 bg-surface p-2.5 rounded-2xl border border-line text-xs">
                           {genetics.thcPercentage && (
                             <div>
-                              <span className="text-stone-400 block text-[10px]">THC</span>
-                              <span className="font-bold text-stone-800">{genetics.thcPercentage}%</span>
+                              <span className="text-ink-subtle block text-[11px]">THC</span>
+                              <span className="font-bold text-ink">{genetics.thcPercentage}%</span>
                             </div>
                           )}
                           {genetics.cbdPercentage && (
                             <div>
-                              <span className="text-stone-400 block text-[10px]">CBD</span>
-                              <span className="font-bold text-stone-800">{genetics.cbdPercentage}%</span>
+                              <span className="text-ink-subtle block text-[11px]">CBD</span>
+                              <span className="font-bold text-ink">{genetics.cbdPercentage}%</span>
                             </div>
                           )}
                         </div>
@@ -815,12 +804,12 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                       {/* Terpenes */}
                       {genetics.terpenes && genetics.terpenes.length > 0 && (
                         <div className="space-y-1">
-                          <span className="text-[10px] uppercase font-bold text-stone-400">Terpenos dominantes</span>
+                          <span className="text-[11px] uppercase font-bold text-ink-subtle">Terpenos dominantes</span>
                           <div className="flex flex-wrap gap-1">
                             {genetics.terpenes.map((t, idx) => (
                               <span
                                 key={idx}
-                                className="px-2 py-0.5 rounded-md bg-stone-100 text-stone-600 text-[10px] font-medium"
+                                className="px-2 py-0.5 rounded-md bg-track text-ink-muted text-[11px] font-medium"
                               >
                                 {t}
                               </span>
@@ -831,26 +820,26 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
 
                       {/* Notes */}
                       {genetics.notes && (
-                        <p className="text-xs text-stone-600 italic bg-emerald-50/40 p-2.5 rounded-xl border border-emerald-100">
+                        <p className="text-xs text-ink-muted italic bg-ok-bg p-2.5 rounded-xl border border-ok-line">
                           "{genetics.notes}"
                         </p>
                       )}
 
                       {/* Harvest stats */}
                       {stats.count > 0 && (
-                        <div className="p-3 rounded-2xl bg-amber-50/50 border border-amber-200/60 text-xs space-y-1">
-                          <div className="flex items-center justify-between font-bold text-amber-900">
+                        <div className="p-3 rounded-2xl bg-warn-bg border border-warn-line text-xs space-y-1">
+                          <div className="flex items-center justify-between font-bold text-warn-ink">
                             <span>{stats.count} cosechas registradas</span>
                             {stats.avgRating && (
                               <span className="flex items-center gap-1">
-                                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                                <Star className="w-3.5 h-3.5 fill-warn-line text-warn-ink" />
                                 {stats.avgRating}
                               </span>
                             )}
                           </div>
                           {stats.avgGrams && (
-                            <div className="text-stone-600 text-[11px]">
-                              Rendimiento promedio: <span className="font-bold text-stone-800">{stats.avgGrams} g / planta</span>
+                            <div className="text-ink-muted text-xs">
+                              Rendimiento promedio: <span className="font-bold text-ink">{stats.avgGrams} g / planta</span>
                             </div>
                           )}
                         </div>
@@ -861,10 +850,10 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                     <button
                       type="button"
                       onClick={() => onStartCropWithGenetics(genetics)}
-                      className="w-full py-2.5 rounded-2xl bg-emerald-700 hover:bg-emerald-800 text-white font-bold text-xs shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                      className="w-full py-2.5 rounded-2xl bg-brand-deep hover:bg-brand-deep text-white font-bold text-xs shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <Sprout className="w-4 h-4" />
-                      <span>Iniciar Cultivo con esta Genética</span>
+                      <span>Iniciar cultivo</span>
                     </button>
                   </div>
                 );

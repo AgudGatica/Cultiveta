@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Thermometer, Droplets, CalendarCheck, Volume2, VolumeX, Save, RotateCcw, Settings } from 'lucide-react';
+import { X, Thermometer, Droplets, Volume2, VolumeX, Save, RotateCcw, Settings } from 'lucide-react';
 import { UserProfile, UserPreferences, UserAlertPreferences } from '../../types';
 import { authService } from '../../services/authService';
 import { browserNotificationService } from '../../services/browserNotificationService';
@@ -43,39 +43,11 @@ const ToggleRow: React.FC<{
   </div>
 );
 
-/** Dos opciones, una elegida. */
-function Segmented<T extends string>({ label, value, options, onChange }: { label: string; value: T; options: Array<{ value: T; text: string }>; onChange: (v: T) => void }) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="text-sm font-semibold text-ink">{label}</span>
-      <div className="flex gap-1 p-1 rounded-2xl bg-track shrink-0" role="group" aria-label={label}>
-        {options.map((o) => (
-          <button
-            key={o.value}
-            type="button"
-            aria-pressed={value === o.value}
-            onClick={() => onChange(o.value)}
-            className={`min-h-11 min-w-11 px-3 rounded-xl text-sm font-bold transition-colors cursor-pointer ${value === o.value ? 'bg-brand-deep text-white' : 'text-ink-muted hover:text-ink'}`}
-          >
-            {o.text}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 export const UserPreferencesModal: React.FC<UserPreferencesModalProps> = ({ isOpen, onClose, userProfile, onPreferencesUpdated, onShowToast }) => {
   // Estado local para tipos de alertas
   const [climateAlerts, setClimateAlerts] = useState<boolean>(true);
   const [wateringAlerts, setWateringAlerts] = useState<boolean>(true);
-  const [calendarReminders, setCalendarReminders] = useState<boolean>(true);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
-
-  // Preferencias generales
-  const [tempUnit, setTempUnit] = useState<'C' | 'F'>('C');
-  const [volumeUnit, setVolumeUnit] = useState<'L' | 'gal'>('L');
-  const [advancedMode, setAdvancedMode] = useState<boolean>(false);
 
   // Estado de permisos de notificación
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
@@ -89,12 +61,7 @@ export const UserPreferencesModal: React.FC<UserPreferencesModalProps> = ({ isOp
 
       setClimateAlerts(alerts?.climateAlerts ?? DEFAULT_ALERT_PREFERENCES.climateAlerts);
       setWateringAlerts(alerts?.wateringAlerts ?? DEFAULT_ALERT_PREFERENCES.wateringAlerts);
-      setCalendarReminders(alerts?.calendarReminders ?? DEFAULT_ALERT_PREFERENCES.calendarReminders);
       setSoundEnabled(alerts?.soundEnabled ?? DEFAULT_ALERT_PREFERENCES.soundEnabled ?? true);
-
-      setTempUnit(prefs?.tempUnit || 'C');
-      setVolumeUnit(prefs?.volumeUnit || 'L');
-      setAdvancedMode(Boolean(prefs?.advancedMode));
 
       if (browserNotificationService.isSupported()) {
         setNotificationPermission(browserNotificationService.getPermission());
@@ -118,11 +85,7 @@ export const UserPreferencesModal: React.FC<UserPreferencesModalProps> = ({ isOp
   const handleResetDefaults = () => {
     setClimateAlerts(DEFAULT_ALERT_PREFERENCES.climateAlerts);
     setWateringAlerts(DEFAULT_ALERT_PREFERENCES.wateringAlerts);
-    setCalendarReminders(DEFAULT_ALERT_PREFERENCES.calendarReminders);
     setSoundEnabled(DEFAULT_ALERT_PREFERENCES.soundEnabled ?? true);
-    setTempUnit('C');
-    setVolumeUnit('L');
-    setAdvancedMode(false);
     onShowToast?.('Volvimos a los valores recomendados. Tocá Guardar para dejarlos.');
   };
 
@@ -133,17 +96,17 @@ export const UserPreferencesModal: React.FC<UserPreferencesModalProps> = ({ isOp
     }
 
     setIsSaving(true);
+    // Unidades, modo avanzado y calendario ya no se ofrecen (no cambiaban nada): lo guardado queda como estaba
+    const saved = userProfile.preferences;
     const updatedAlertTypes: UserAlertPreferences = {
       climateAlerts,
       wateringAlerts,
-      calendarReminders,
+      calendarReminders: saved?.alertTypes?.calendarReminders ?? DEFAULT_ALERT_PREFERENCES.calendarReminders,
       soundEnabled,
     };
 
     const updatedPreferences: UserPreferences = {
-      advancedMode,
-      tempUnit,
-      volumeUnit,
+      ...saved,
       notificationsEnabled: notificationPermission === 'granted',
       alertTypes: updatedAlertTypes,
     };
@@ -219,50 +182,7 @@ export const UserPreferencesModal: React.FC<UserPreferencesModalProps> = ({ isOp
               checked={wateringAlerts}
               onChange={setWateringAlerts}
             />
-            <ToggleRow
-              id="toggle-calendar-reminders"
-              cardId="pref-card-calendar-reminders"
-              icon={CalendarCheck}
-              title="Calendario"
-              desc="Cambio de luz, podas, lavado de raíces y cosecha."
-              checked={calendarReminders}
-              onChange={setCalendarReminders}
-            />
             <ToggleRow id="toggle-sound-alerts" icon={soundEnabled ? Volume2 : VolumeX} title="Sonido en las alertas" checked={soundEnabled} onChange={setSoundEnabled} />
-          </section>
-
-          {/* Unidades y detalle */}
-          <section aria-labelledby="pref-units-title" className="space-y-2">
-            <h3 id="pref-units-title" className="text-sm font-bold text-ink">
-              Unidades y detalle
-            </h3>
-            <div className="p-3 rounded-2xl bg-surface border border-line space-y-3">
-              <Segmented<'C' | 'F'>
-                label="Temperatura"
-                value={tempUnit}
-                onChange={setTempUnit}
-                options={[
-                  { value: 'C', text: '°C' },
-                  { value: 'F', text: '°F' },
-                ]}
-              />
-              <Segmented<'L' | 'gal'>
-                label="Volumen"
-                value={volumeUnit}
-                onChange={setVolumeUnit}
-                options={[
-                  { value: 'L', text: 'Litros' },
-                  { value: 'gal', text: 'Galones' },
-                ]}
-              />
-            </div>
-            <div className="p-3 rounded-2xl bg-surface border border-line flex items-center gap-3">
-              <label htmlFor="toggle-advanced-mode" className="min-w-0 flex-1 cursor-pointer">
-                <span className="block text-sm font-bold text-ink">Modo avanzado</span>
-                <span className="block text-xs text-ink-muted">VPD, EC y pH con más detalle en los registros.</span>
-              </label>
-              <Toggle id="toggle-advanced-mode" checked={advancedMode} onChange={setAdvancedMode} />
-            </div>
           </section>
 
           <button

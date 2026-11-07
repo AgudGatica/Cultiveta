@@ -58,7 +58,7 @@ export const ManualPowerButton: React.FC<ManualPowerButtonProps> = ({ binding, f
         <Power className="w-3.5 h-3.5" aria-hidden="true" />
         <span>{busy ? (on ? 'Apagando…' : 'Prendiendo…') : on ? 'Apagar' : 'Prender'}</span>
       </button>
-      {error && <span className="text-[11px] font-bold text-error">{error}</span>}
+      {error && <span className="text-xs font-bold text-error">{error}</span>}
     </span>
   );
 };

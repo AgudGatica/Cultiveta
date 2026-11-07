@@ -51,7 +51,8 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
 
     const startDateStr = florStage?.startDate || cultivation.floweringStartDate || (isFloweringStage(cultivation.currentStage) ? cultivation.stageStartDate : todayStr);
     const startIsReal = Boolean(cultivation.floweringStartDate || florStage?.startIsReal || (isFloweringStage(cultivation.currentStage) && cultivation.stageStartDate));
-    const floweringDaysElapsed = Math.max(1, daysBetween(startDateStr, todayStr));
+    // El día del 12/12 es el día 1 (igual que en Genética y en la línea de tiempo)
+    const floweringDaysElapsed = Math.max(1, daysBetween(startDateStr, todayStr) + 1);
     const typicalFloweringDays = schedule.floweringDaysGenetics || 56;
     const typicalFloweringWeeks = schedule.floweringWeeksGenetics || 8;
 
@@ -81,7 +82,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
 
     // Sub-fases dentro de la floración, por días desde el 12/12: preflora (semanas 1–3), engorde,
     // compactación y, los últimos días, maduración y lavado de raíces (todo dentro de los días de la genética).
-    const floraDay = Math.max(1, daysBetween(startDateStr, todayStr) + 1);
+    const floraDay = floweringDaysElapsed;
     const phase = floraPhaseOf(floraDay, typicalFloweringDays);
     const prefloraEnd = Math.min(PREFLORA_DAYS, Math.round(typicalFloweringDays * 0.4));
     const maturationStart = typicalFloweringDays - MATURATION_DAYS;
@@ -99,7 +100,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
         stageName: `Engorde (días ${prefloraEnd + 1}-${midEngorde})`,
         description: 'Termina el estiramiento. Desarrollo masivo de flores y primeros tricomas.',
         advice: 'Pico de nutrición PK (fósforo y potasio), humedad por debajo de 55 % y defoliación si corresponde.',
-        badgeColor: 'bg-warn-line/25 text-[#735308] border-warn-line/40',
+        badgeColor: 'bg-warn-line/25 text-warn-ink border-warn-line/40',
       };
     } else if (phase === 'engorde') {
       subPhase = {
@@ -177,10 +178,10 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h3 className="text-lg sm:text-xl font-black text-ink">
-                Floración 🌸
+                Floración
               </h3>
               <span className="px-2.5 py-0.5 rounded-full bg-coral/15 text-error border border-coral/30 text-xs font-bold">
-                Semana {analysis.currentWeekNumber} de ~{analysis.typicalFloweringWeeks}
+                Semana {analysis.currentWeekNumber} de ~{Math.ceil(analysis.typicalFloweringWeeks)}
               </span>
             </div>
             <p className="text-xs text-ink-muted mt-0.5">
@@ -192,7 +193,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
         {/* Fechas de inicio y corte estimado en primera capa */}
         <div className="flex items-center gap-4 text-xs font-semibold self-stretch sm:self-auto justify-between sm:justify-start pt-2 sm:pt-0 border-t sm:border-t-0 border-line">
           <div>
-            <span className="text-[10px] text-ink-subtle block uppercase tracking-wider">
+            <span className="text-[11px] text-ink-subtle block uppercase tracking-wider">
               {analysis.startIsReal ? 'Inicio real' : 'Inicio estimado'}
             </span>
             <span className="font-bold text-ink block">
@@ -201,13 +202,13 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
           </div>
           <span className="text-line">→</span>
           <div>
-            <span className="text-[10px] text-ink-subtle block uppercase tracking-wider">Corte estimado</span>
+            <span className="text-[11px] text-ink-subtle block uppercase tracking-wider">Corte estimado</span>
             <span className="font-bold text-brand block">
               {formatFriendlyDate(analysis.estimatedHarvestDate, { isProjected: true })}
             </span>
           </div>
           <div className="text-right pl-2 sm:border-l sm:border-line">
-            <span className="text-[10px] text-ink-subtle block uppercase tracking-wider">Faltan aprox.</span>
+            <span className="text-[11px] text-ink-subtle block uppercase tracking-wider">Faltan aprox.</span>
             <span className="font-extrabold text-error block">
               {analysis.daysRemaining === 0
                 ? 'Ventana de cosecha'
@@ -246,7 +247,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
           type="button"
           id="toggle-flowering-details-btn"
           onClick={() => setShowDetails((prev) => !prev)}
-          className="text-xs font-bold text-brand hover:underline cursor-pointer inline-flex items-center gap-1.5 py-1 px-2.5 rounded-xl hover:bg-brand/10 transition-colors"
+          className="min-h-11 text-xs font-bold text-brand hover:underline cursor-pointer inline-flex items-center gap-1.5 py-1 px-2.5 rounded-xl hover:bg-brand/10 transition-colors"
         >
           <span>{showDetails ? 'Ocultar detalle' : 'Ver detalle de floración'}</span>
           <ChevronDown
@@ -282,7 +283,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
           {/* Hitos semanales de floración */}
           <div className="space-y-2">
             <span className="text-xs font-extrabold text-ink uppercase tracking-wider block">
-              Hitos de la Floración
+              Hitos de la floración
             </span>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs">
               {analysis.milestones.map((m, idx) => (
@@ -297,13 +298,13 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] uppercase font-bold text-ink-subtle">
+                    <span className="text-[11px] uppercase font-bold text-ink-subtle">
                       Sem. {m.week}
                     </span>
                     {m.isPassed && <CheckCircle2 className="w-3.5 h-3.5 text-ok-ink" />}
                   </div>
                   <span className="block font-bold text-xs truncate">{m.title}</span>
-                  <span className="text-[10px] text-ink-muted block mt-0.5">{m.subtitle}</span>
+                  <span className="text-[11px] text-ink-muted block mt-0.5">{m.subtitle}</span>
                 </div>
               ))}
             </div>
@@ -318,7 +319,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
                 className="px-3.5 py-2 rounded-xl bg-white hover:bg-track border border-line text-xs font-bold text-ink transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
                 <Droplets className="w-3.5 h-3.5 text-ok-ink" />
-                <span>Riego de Flora</span>
+                <span>Riego de flora</span>
               </button>
             )}
 
@@ -329,7 +330,7 @@ export const FloweringProgressSection: React.FC<FloweringProgressSectionProps> =
                 className="px-3.5 py-2 rounded-xl bg-white hover:bg-track border border-line text-xs font-bold text-ink transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
               >
                 <Camera className="w-3.5 h-3.5 text-brand" />
-                <span>Foto de Cogollos</span>
+                <span>Foto de cogollos</span>
               </button>
             )}
 

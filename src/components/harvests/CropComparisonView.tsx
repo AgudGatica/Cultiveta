@@ -37,6 +37,7 @@ import {
 } from 'recharts';
 import { Cultivation, Harvest, EnvironmentRecord, Watering } from '../../types';
 import { parseLocalDate } from '../../utils/growthStageUtils';
+import { dec } from '../../utils/formatNumber';
 
 interface CropComparisonViewProps {
   cultivations: Cultivation[];
@@ -368,19 +369,19 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
   const yieldComparisonBarData = useMemo(() => {
     return [
       {
-        metric: 'Peso Seco Total',
+        metric: 'Peso seco total',
         unit: 'g',
         [cropA?.name || 'Cultivo A']: yieldA.dryGrams,
         [cropB?.name || 'Cultivo B']: yieldB.dryGrams,
       },
       {
-        metric: 'Rendimiento por Planta',
+        metric: 'Rendimiento por planta',
         unit: 'g/planta',
         [cropA?.name || 'Cultivo A']: yieldA.gramsPerPlant,
         [cropB?.name || 'Cultivo B']: yieldB.gramsPerPlant,
       },
       {
-        metric: 'Duración Ciclo',
+        metric: 'Duración del ciclo',
         unit: 'días',
         [cropA?.name || 'Cultivo A']: yieldA.totalDays,
         [cropB?.name || 'Cultivo B']: yieldB.totalDays,
@@ -388,7 +389,7 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
       ...(yieldA.gramsPerWatt && yieldB.gramsPerWatt
         ? [
             {
-              metric: 'Eficiencia Lumínica (x100)',
+              metric: 'Eficiencia lumínica (x100)',
               unit: 'g/100W',
               [cropA?.name || 'Cultivo A']: Number((yieldA.gramsPerWatt * 100).toFixed(1)),
               [cropB?.name || 'Cultivo B']: Number((yieldB.gramsPerWatt * 100).toFixed(1)),
@@ -402,46 +403,46 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
   const CustomSuperimposedTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-zinc-950/95 backdrop-blur-md p-4 rounded-2xl border border-zinc-800 shadow-2xl text-xs space-y-3 min-w-[240px]">
-          <div className="border-b border-zinc-800 pb-2 flex items-center justify-between">
-            <span className="font-mono font-bold text-white uppercase tracking-wider">{label}</span>
-            <span className="text-[10px] text-zinc-500 font-mono">Día normalizado</span>
+        <div className="bg-surface backdrop-blur-md p-4 rounded-2xl border border-line shadow-2xl text-xs space-y-3 min-w-[240px]">
+          <div className="border-b border-line pb-2 flex items-center justify-between">
+            <span className="font-bold text-ink uppercase tracking-wider">{label}</span>
+            <span className="text-[11px] text-ink-muted ">Día normalizado</span>
           </div>
 
           {/* Crop A Section */}
           <div className="space-y-1">
-            <div className="flex items-center gap-1.5 font-bold text-emerald-400">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 inline-block"></span>
+            <div className="flex items-center gap-1.5 font-bold text-ok-ink">
+              <span className="w-2.5 h-2.5 rounded-full bg-primary inline-block"></span>
               <span className="truncate max-w-[180px]">{cropA?.name}</span>
             </div>
-            <div className="pl-4 grid grid-cols-2 gap-x-2 text-[11px] text-zinc-300">
+            <div className="pl-4 grid grid-cols-2 gap-x-2 text-xs text-ink">
               {payload.find((p: any) => p.dataKey === 'tempA') && (
-                <div>Temp: <strong className="text-amber-400">{payload.find((p: any) => p.dataKey === 'tempA').value} °C</strong></div>
+                <div>Temp: <strong className="text-warn-ink">{dec(payload.find((p: any) => p.dataKey === 'tempA').value, 1)} °C</strong></div>
               )}
               {payload.find((p: any) => p.dataKey === 'humA') && (
-                <div>Hum: <strong className="text-cyan-400">{payload.find((p: any) => p.dataKey === 'humA').value} %</strong></div>
+                <div>Hum: <strong className="text-brand">{dec(payload.find((p: any) => p.dataKey === 'humA').value, 1)} %</strong></div>
               )}
               {payload.find((p: any) => p.dataKey === 'vpdA') && (
-                <div>VPD: <strong className="text-purple-400">{payload.find((p: any) => p.dataKey === 'vpdA').value} kPa</strong></div>
+                <div>VPD: <strong className="text-brand">{dec(payload.find((p: any) => p.dataKey === 'vpdA').value, 2)} kPa</strong></div>
               )}
             </div>
           </div>
 
           {/* Crop B Section */}
-          <div className="space-y-1 pt-1 border-t border-zinc-800/60">
-            <div className="flex items-center gap-1.5 font-bold text-violet-400">
-              <span className="w-2.5 h-2.5 rounded-full bg-violet-400 inline-block"></span>
+          <div className="space-y-1 pt-1 border-t border-line">
+            <div className="flex items-center gap-1.5 font-bold text-brand">
+              <span className="w-2.5 h-2.5 rounded-full bg-brand inline-block"></span>
               <span className="truncate max-w-[180px]">{cropB?.name}</span>
             </div>
-            <div className="pl-4 grid grid-cols-2 gap-x-2 text-[11px] text-zinc-300">
+            <div className="pl-4 grid grid-cols-2 gap-x-2 text-xs text-ink">
               {payload.find((p: any) => p.dataKey === 'tempB') && (
-                <div>Temp: <strong className="text-amber-300">{payload.find((p: any) => p.dataKey === 'tempB').value} °C</strong></div>
+                <div>Temp: <strong className="text-warn-ink">{dec(payload.find((p: any) => p.dataKey === 'tempB').value, 1)} °C</strong></div>
               )}
               {payload.find((p: any) => p.dataKey === 'humB') && (
-                <div>Hum: <strong className="text-pink-400">{payload.find((p: any) => p.dataKey === 'humB').value} %</strong></div>
+                <div>Hum: <strong className="text-error">{dec(payload.find((p: any) => p.dataKey === 'humB').value, 1)} %</strong></div>
               )}
               {payload.find((p: any) => p.dataKey === 'vpdB') && (
-                <div>VPD: <strong className="text-indigo-300">{payload.find((p: any) => p.dataKey === 'vpdB').value} kPa</strong></div>
+                <div>VPD: <strong className="text-brand">{dec(payload.find((p: any) => p.dataKey === 'vpdB').value, 2)} kPa</strong></div>
               )}
             </div>
           </div>
@@ -459,23 +460,23 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
           <button
             type="button"
             onClick={onBack}
-            className="p-2.5 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="min-h-11 min-w-11 inline-flex items-center justify-center p-2.5 rounded-2xl bg-surface border border-line text-ink-muted hover:text-ink hover:bg-track transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-extrabold text-white">Comparador de Cosechas</h1>
-            <p className="text-xs text-zinc-400">Análisis comparativo de rendimiento y condiciones agronómicas</p>
+            <h1 className="text-2xl font-extrabold text-ink">Comparador de Cosechas</h1>
+            <p className="text-xs text-ink-muted">Análisis comparativo de rendimiento y condiciones agronómicas</p>
           </div>
         </div>
 
-        <div className="bg-[#0F0F0F] rounded-[32px] p-8 sm:p-12 border border-zinc-800 text-center space-y-4 shadow-xl">
-          <div className="w-16 h-16 rounded-3xl bg-zinc-900 border border-zinc-700 flex items-center justify-center text-emerald-400 mx-auto shadow-inner">
+        <div className="bg-card rounded-[32px] p-8 sm:p-12 border border-line text-center space-y-4 shadow-xl">
+          <div className="w-16 h-16 rounded-3xl bg-surface border border-line flex items-center justify-center text-ok-ink mx-auto shadow-inner">
             <Scale className="w-8 h-8" />
           </div>
           <div className="space-y-1">
-            <h3 className="text-lg font-bold text-white">Se requieren al menos 2 cultivos para comparar</h3>
-            <p className="text-xs text-zinc-400 max-w-md mx-auto leading-relaxed">
+            <h3 className="text-lg font-bold text-ink">Se requieren al menos 2 cultivos para comparar</h3>
+            <p className="text-xs text-ink-muted max-w-md mx-auto leading-relaxed">
               El comparador superpone las curvas climáticas y el rendimiento seco de dos ciclos finalizados para identificar qué variables generaron mayor producción.
             </p>
           </div>
@@ -485,10 +486,10 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
               <button
                 type="button"
                 onClick={onSeedDemoData}
-                className="px-5 py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs transition-all shadow-lg shadow-emerald-500/10 inline-flex items-center gap-2 cursor-pointer"
+                className="px-5 py-3 rounded-2xl bg-primary hover:bg-primary text-ink font-bold text-xs transition-all shadow-lg inline-flex items-center gap-2 cursor-pointer"
               >
                 <Sparkles className="w-4 h-4 fill-black" />
-                <span>Cargar Cosechas de Demostración</span>
+                <span>Cargar cosechas de demostración</span>
               </button>
             </div>
           )}
@@ -500,27 +501,27 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-16 animate-in fade-in">
       {/* Top Header & Navigation */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800/80">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-line">
         <div className="flex items-center gap-3">
           <button
             type="button"
             onClick={onBack}
-            className="p-2.5 rounded-2xl bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors cursor-pointer"
+            className="min-h-11 min-w-11 inline-flex items-center justify-center p-2.5 rounded-2xl bg-surface border border-line text-ink-muted hover:text-ink hover:bg-track transition-colors cursor-pointer"
             title="Volver a cosechas"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div>
             <div className="flex items-center gap-2 mb-0.5">
-              <div className="p-1 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <div className="p-1 rounded-md bg-ok-bg text-ok-ink border border-ok-line">
                 <Scale className="w-3.5 h-3.5" />
               </div>
-              <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-emerald-400">
-                Benchmarking Agronómico
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-white cultiveta-on-gradient">
+                Comparador
               </span>
             </div>
-            <h1 className="text-2xl font-extrabold text-white tracking-tight flex items-center gap-2">
-              Comparador de Cultivos Finalizados
+            <h1 className="text-2xl font-extrabold text-white cultiveta-on-gradient tracking-tight flex items-center gap-2">
+              Comparador de cosechas
             </h1>
           </div>
         </div>
@@ -529,10 +530,10 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
         <button
           type="button"
           onClick={handleSwapCrops}
-          className="px-4 py-2.5 rounded-2xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-white text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-xs"
+          className="min-h-11 px-4 py-2.5 rounded-2xl bg-surface hover:bg-track border border-line text-ink hover:text-ink text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-xs"
           title="Intercambiar Cultivo A y Cultivo B"
         >
-          <ArrowRightLeft className="w-4 h-4 text-zinc-400" />
+          <ArrowRightLeft className="w-4 h-4 text-ink-muted" />
           <span>Intercambiar (A ⇄ B)</span>
         </button>
       </div>
@@ -540,30 +541,30 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
       {/* Selectors Bar: Crop A vs Crop B */}
       <div className="grid grid-cols-1 lg:grid-cols-11 gap-4 items-center">
         {/* Card Crop A (Emerald Theme) */}
-        <div className="lg:col-span-5 bg-[#0F0F0F] border-2 border-emerald-500/40 rounded-[28px] p-5 space-y-3 shadow-lg relative overflow-hidden">
+        <div className="lg:col-span-5 bg-card border-2 border-ok-line rounded-[28px] p-5 space-y-3 shadow-lg relative overflow-hidden">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-emerald-400 shadow-xs shadow-emerald-400"></span>
-              <span className="text-xs font-mono font-bold uppercase tracking-wider text-emerald-400">
+              <span className="w-3 h-3 rounded-full bg-primary shadow-xs"></span>
+              <span className="text-xs font-bold uppercase tracking-wider text-ok-ink">
                 Cultivo A (Referencia)
               </span>
             </div>
             {harvestA && (
-              <div className="flex items-center gap-1 text-amber-400">
+              <div className="flex items-center gap-1 text-warn-ink">
                 {[...Array(harvestA.rating1To5 || 5)].map((_, i) => (
-                  <Star key={i} className="w-3 h-3 fill-amber-400" />
+                  <Star key={i} className="w-3 h-3 fill-warn-line" />
                 ))}
               </div>
             )}
           </div>
 
           <div>
-            <label htmlFor="select-crop-a" className="sr-only">Seleccionar Cultivo A</label>
+            <label htmlFor="select-crop-a" className="sr-only">Seleccionar cultivo A</label>
             <select
               id="select-crop-a"
               value={cropAId}
               onChange={(e) => setCropAId(e.target.value)}
-              className="w-full bg-zinc-900/90 border border-zinc-700/80 rounded-2xl p-3 text-sm font-bold text-white outline-none cursor-pointer focus:border-emerald-500 transition-colors"
+              className="w-full bg-surface border border-line rounded-2xl p-3 text-sm font-bold text-ink outline-none cursor-pointer focus:border-ok-line transition-colors"
             >
               {finishedCultivations.map((c) => (
                 <option key={c.id} value={c.id} disabled={c.id === cropBId}>
@@ -574,54 +575,54 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
           </div>
 
           {/* Quick Badges Crop A */}
-          <div className="flex flex-wrap gap-2 text-[11px] text-zinc-400 pt-1">
-            <span className="px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300">
-              🌱 {cropA?.geneticsName || 'Genética estándar'}
+          <div className="flex flex-wrap gap-2 text-xs text-ink-muted pt-1">
+            <span className="px-2.5 py-1 rounded-xl bg-surface border border-line text-ink">
+              {cropA?.geneticsName ||'Genética estándar'}
             </span>
-            <span className="px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300">
-              ⏱️ {yieldA.totalDays} días
+            <span className="px-2.5 py-1 rounded-xl bg-surface border border-line text-ink">
+              {yieldA.totalDays} días
             </span>
-            <span className="px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-800 text-emerald-400 font-bold">
-              ⚖️ {yieldA.dryGrams} g secos
+            <span className="px-2.5 py-1 rounded-xl bg-surface border border-line text-ok-ink font-bold">
+              {dec(yieldA.dryGrams, 1)} g secos
             </span>
-            <span className="px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300">
-              🪴 {cropA?.substrate?.type || 'Sustrato'} ({cropA?.substrate?.potVolumeLiters || 11}L)
+            <span className="px-2.5 py-1 rounded-xl bg-surface border border-line text-ink">
+              {cropA?.substrate?.type ||'Sustrato'} ({cropA?.substrate?.potVolumeLiters || 11}L)
             </span>
           </div>
         </div>
 
         {/* VS Divider */}
         <div className="lg:col-span-1 flex flex-col items-center justify-center">
-          <div className="w-12 h-12 rounded-full bg-zinc-900 border border-zinc-700 flex items-center justify-center font-extrabold text-xs text-white shadow-xl">
+          <div className="w-12 h-12 rounded-full bg-surface border border-line flex items-center justify-center font-extrabold text-xs text-ink shadow-xl">
             VS
           </div>
         </div>
 
         {/* Card Crop B (Violet Theme) */}
-        <div className="lg:col-span-5 bg-[#0F0F0F] border-2 border-violet-500/40 rounded-[28px] p-5 space-y-3 shadow-lg relative overflow-hidden">
+        <div className="lg:col-span-5 bg-card border-2 border-chip-line rounded-[28px] p-5 space-y-3 shadow-lg relative overflow-hidden">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full bg-violet-400 shadow-xs shadow-violet-400"></span>
-              <span className="text-xs font-mono font-bold uppercase tracking-wider text-violet-400">
+              <span className="w-3 h-3 rounded-full bg-brand shadow-xs"></span>
+              <span className="text-xs font-bold uppercase tracking-wider text-brand">
                 Cultivo B (Contraste)
               </span>
             </div>
             {harvestB && (
-              <div className="flex items-center gap-1 text-amber-400">
+              <div className="flex items-center gap-1 text-warn-ink">
                 {[...Array(harvestB.rating1To5 || 5)].map((_, i) => (
-                  <Star key={i} className="w-3 h-3 fill-amber-400" />
+                  <Star key={i} className="w-3 h-3 fill-warn-line" />
                 ))}
               </div>
             )}
           </div>
 
           <div>
-            <label htmlFor="select-crop-b" className="sr-only">Seleccionar Cultivo B</label>
+            <label htmlFor="select-crop-b" className="sr-only">Seleccionar cultivo B</label>
             <select
               id="select-crop-b"
               value={cropBId}
               onChange={(e) => setCropBId(e.target.value)}
-              className="w-full bg-zinc-900/90 border border-zinc-700/80 rounded-2xl p-3 text-sm font-bold text-white outline-none cursor-pointer focus:border-violet-500 transition-colors"
+              className="w-full bg-surface border border-line rounded-2xl p-3 text-sm font-bold text-ink outline-none cursor-pointer focus:border-chip-line transition-colors"
             >
               {finishedCultivations.map((c) => (
                 <option key={c.id} value={c.id} disabled={c.id === cropAId}>
@@ -632,18 +633,18 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
           </div>
 
           {/* Quick Badges Crop B */}
-          <div className="flex flex-wrap gap-2 text-[11px] text-zinc-400 pt-1">
-            <span className="px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300">
-              🌱 {cropB?.geneticsName || 'Genética estándar'}
+          <div className="flex flex-wrap gap-2 text-xs text-ink-muted pt-1">
+            <span className="px-2.5 py-1 rounded-xl bg-surface border border-line text-ink">
+              {cropB?.geneticsName ||'Genética estándar'}
             </span>
-            <span className="px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300">
-              ⏱️ {yieldB.totalDays} días
+            <span className="px-2.5 py-1 rounded-xl bg-surface border border-line text-ink">
+              {yieldB.totalDays} días
             </span>
-            <span className="px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-800 text-violet-400 font-bold">
-              ⚖️ {yieldB.dryGrams} g secos
+            <span className="px-2.5 py-1 rounded-xl bg-surface border border-line text-brand font-bold">
+              {dec(yieldB.dryGrams, 1)} g secos
             </span>
-            <span className="px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-800 text-zinc-300">
-              🪴 {cropB?.substrate?.type || 'Sustrato'} ({cropB?.substrate?.potVolumeLiters || 11}L)
+            <span className="px-2.5 py-1 rounded-xl bg-surface border border-line text-ink">
+              {cropB?.substrate?.type ||'Sustrato'} ({cropB?.substrate?.potVolumeLiters || 11}L)
             </span>
           </div>
         </div>
@@ -652,44 +653,44 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
       {/* Differential Performance KPI Matrix */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {/* KPI 1: Rendimiento Total */}
-        <div className="bg-[#0F0F0F] rounded-3xl p-5 border border-zinc-800 shadow-md space-y-2">
-          <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold">
-            <span>Rendimiento Total</span>
-            <Award className="w-4 h-4 text-amber-400" />
+        <div className="bg-card rounded-3xl p-5 border border-line shadow-md space-y-2">
+          <div className="flex items-center justify-between text-ink-muted text-xs font-semibold">
+            <span>Rendimiento total</span>
+            <Award className="w-4 h-4 text-warn-ink" />
           </div>
 
           <div className="flex items-baseline justify-between gap-2">
             <div className="space-y-0.5">
-              <div className="text-xs text-zinc-400 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <div className="text-xs text-ink-muted flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-primary"></span>
                 <span>A:</span>
-                <strong className="text-white font-mono">{yieldA.dryGrams}g</strong>
+                <strong className="text-ink ">{dec(yieldA.dryGrams, 1)} g</strong>
               </div>
-              <div className="text-xs text-zinc-400 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-violet-400"></span>
+              <div className="text-xs text-ink-muted flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-brand"></span>
                 <span>B:</span>
-                <strong className="text-white font-mono">{yieldB.dryGrams}g</strong>
+                <strong className="text-ink ">{dec(yieldB.dryGrams, 1)} g</strong>
               </div>
             </div>
 
             <div
-              className={`px-2.5 py-1 rounded-xl text-xs font-bold font-mono flex items-center gap-1 ${
+              className={`px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1 ${
                 yieldDeltaPct > 0
-                  ? 'bg-violet-500/10 text-violet-400 border border-violet-500/30'
+                  ? 'bg-icon-bg text-brand border border-chip-line'
                   : yieldDeltaPct < 0
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-zinc-800 text-zinc-400'
+                  ? 'bg-ok-bg text-ok-ink border border-ok-line'
+                  : 'bg-track text-ink-muted'
               }`}
             >
               {yieldDeltaPct > 0 ? (
                 <>
                   <TrendingUp className="w-3 h-3" />
-                  <span>+{yieldDeltaPct}% B</span>
+                  <span>+{dec(yieldDeltaPct, 1)} % B</span>
                 </>
               ) : yieldDeltaPct < 0 ? (
                 <>
                   <TrendingUp className="w-3 h-3" />
-                  <span>+{Math.abs(yieldDeltaPct)}% A</span>
+                  <span>+{dec(Math.abs(yieldDeltaPct), 1)} % A</span>
                 </>
               ) : (
                 <span>Igual</span>
@@ -699,39 +700,39 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
         </div>
 
         {/* KPI 2: Rendimiento por Planta */}
-        <div className="bg-[#0F0F0F] rounded-3xl p-5 border border-zinc-800 shadow-md space-y-2">
-          <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold">
+        <div className="bg-card rounded-3xl p-5 border border-line shadow-md space-y-2">
+          <div className="flex items-center justify-between text-ink-muted text-xs font-semibold">
             <span>Rendimiento / Planta</span>
-            <Sprout className="w-4 h-4 text-emerald-400" />
+            <Sprout className="w-4 h-4 text-ok-ink" />
           </div>
 
           <div className="flex items-baseline justify-between gap-2">
             <div className="space-y-0.5">
-              <div className="text-xs text-zinc-400 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <div className="text-xs text-ink-muted flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-primary"></span>
                 <span>A:</span>
-                <strong className="text-white font-mono">{yieldA.gramsPerPlant}g</strong>
+                <strong className="text-ink ">{dec(yieldA.gramsPerPlant, 1)} g</strong>
               </div>
-              <div className="text-xs text-zinc-400 flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-violet-400"></span>
+              <div className="text-xs text-ink-muted flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-brand"></span>
                 <span>B:</span>
-                <strong className="text-white font-mono">{yieldB.gramsPerPlant}g</strong>
+                <strong className="text-ink ">{dec(yieldB.gramsPerPlant, 1)} g</strong>
               </div>
             </div>
 
             <div
-              className={`px-2.5 py-1 rounded-xl text-xs font-bold font-mono flex items-center gap-1 ${
+              className={`px-2.5 py-1 rounded-xl text-xs font-bold flex items-center gap-1 ${
                 gramsPerPlantDeltaPct > 0
-                  ? 'bg-violet-500/10 text-violet-400 border border-violet-500/30'
+                  ? 'bg-icon-bg text-brand border border-chip-line'
                   : gramsPerPlantDeltaPct < 0
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                  : 'bg-zinc-800 text-zinc-400'
+                  ? 'bg-ok-bg text-ok-ink border border-ok-line'
+                  : 'bg-track text-ink-muted'
               }`}
             >
               {gramsPerPlantDeltaPct > 0 ? (
-                <span>+{gramsPerPlantDeltaPct}% B</span>
+                <span>+{dec(gramsPerPlantDeltaPct, 1)} % B</span>
               ) : gramsPerPlantDeltaPct < 0 ? (
-                <span>+{Math.abs(gramsPerPlantDeltaPct)}% A</span>
+                <span>+{dec(Math.abs(gramsPerPlantDeltaPct), 1)} % A</span>
               ) : (
                 <span>=</span>
               )}
@@ -740,51 +741,51 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
         </div>
 
         {/* KPI 3: Eficiencia Lumínica (g/W) */}
-        <div className="bg-[#0F0F0F] rounded-3xl p-5 border border-zinc-800 shadow-md space-y-2">
-          <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold">
-            <span>Eficiencia Lumínica</span>
-            <Zap className="w-4 h-4 text-amber-400" />
+        <div className="bg-card rounded-3xl p-5 border border-line shadow-md space-y-2">
+          <div className="flex items-center justify-between text-ink-muted text-xs font-semibold">
+            <span>Eficiencia lumínica</span>
+            <Zap className="w-4 h-4 text-warn-ink" />
           </div>
 
           <div className="space-y-0.5">
-            <div className="text-xs text-zinc-400 flex items-center justify-between">
+            <div className="text-xs text-ink-muted flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span className="w-2 h-2 rounded-full bg-primary"></span>
                 <span>A ({yieldA.watts || '?'}W):</span>
               </span>
-              <strong className="text-white font-mono">{yieldA.gramsPerWatt ? `${yieldA.gramsPerWatt} g/W` : '—'}</strong>
+              <strong className="text-ink ">{yieldA.gramsPerWatt ? `${dec(yieldA.gramsPerWatt)} g/W` : '—'}</strong>
             </div>
-            <div className="text-xs text-zinc-400 flex items-center justify-between">
+            <div className="text-xs text-ink-muted flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-violet-400"></span>
+                <span className="w-2 h-2 rounded-full bg-brand"></span>
                 <span>B ({yieldB.watts || '?'}W):</span>
               </span>
-              <strong className="text-white font-mono">{yieldB.gramsPerWatt ? `${yieldB.gramsPerWatt} g/W` : '—'}</strong>
+              <strong className="text-ink ">{yieldB.gramsPerWatt ? `${dec(yieldB.gramsPerWatt)} g/W` : '—'}</strong>
             </div>
           </div>
         </div>
 
         {/* KPI 4: Duración Total y Velocidad */}
-        <div className="bg-[#0F0F0F] rounded-3xl p-5 border border-zinc-800 shadow-md space-y-2">
-          <div className="flex items-center justify-between text-zinc-400 text-xs font-semibold">
-            <span>Velocidad de Producción</span>
-            <Clock className="w-4 h-4 text-cyan-400" />
+        <div className="bg-card rounded-3xl p-5 border border-line shadow-md space-y-2">
+          <div className="flex items-center justify-between text-ink-muted text-xs font-semibold">
+            <span>Velocidad de producción</span>
+            <Clock className="w-4 h-4 text-brand" />
           </div>
 
           <div className="space-y-0.5">
-            <div className="text-xs text-zinc-400 flex items-center justify-between">
+            <div className="text-xs text-ink-muted flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+                <span className="w-2 h-2 rounded-full bg-primary"></span>
                 <span>A ({yieldA.totalDays}d):</span>
               </span>
-              <strong className="text-white font-mono">{yieldA.gramsPerDay ? `${yieldA.gramsPerDay} g/día` : '—'}</strong>
+              <strong className="text-ink ">{yieldA.gramsPerDay ? `${dec(yieldA.gramsPerDay)} g/día` : '—'}</strong>
             </div>
-            <div className="text-xs text-zinc-400 flex items-center justify-between">
+            <div className="text-xs text-ink-muted flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-violet-400"></span>
+                <span className="w-2 h-2 rounded-full bg-brand"></span>
                 <span>B ({yieldB.totalDays}d):</span>
               </span>
-              <strong className="text-white font-mono">{yieldB.gramsPerDay ? `${yieldB.gramsPerDay} g/día` : '—'}</strong>
+              <strong className="text-ink ">{yieldB.gramsPerDay ? `${dec(yieldB.gramsPerDay)} g/día` : '—'}</strong>
             </div>
           </div>
         </div>
@@ -793,26 +794,23 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
       {/* Main Historical Superimposed Environmental Chart Card */}
       <div
         id="crop-comparison-superimposed-chart"
-        className="bg-[#0F0F0F] text-white rounded-[32px] p-6 sm:p-8 border border-zinc-800 shadow-xl space-y-6 relative overflow-hidden"
+        className="bg-card text-ink rounded-[32px] p-6 sm:p-8 border border-line shadow-xl space-y-6 relative overflow-hidden"
       >
-        {/* Subtle background glow */}
-        <div className="absolute top-0 right-1/4 w-96 h-96 rounded-full bg-violet-500/5 blur-3xl pointer-events-none"></div>
-
         {/* Section Header with Mode Toggles */}
-        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pb-4 border-b border-line">
           <div>
             <div className="flex items-center gap-2 mb-1">
-              <div className="p-1.5 rounded-xl bg-violet-500/10 text-violet-400 border border-violet-500/20">
+              <div className="p-1.5 rounded-xl bg-icon-bg text-brand border border-chip-line">
                 <BarChart3 className="w-4 h-4" />
               </div>
-              <span className="text-[10px] font-mono font-bold uppercase tracking-[0.2em] text-violet-400">
-                Curvas Superpuestas
+              <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-brand">
+                Curvas superpuestas
               </span>
             </div>
-            <h2 className="text-xl font-extrabold text-white tracking-tight">
-              Condiciones Ambientales Superpuestas
+            <h2 className="text-xl font-extrabold text-ink tracking-tight">
+              Condiciones ambientales superpuestas
             </h2>
-            <p className="text-xs text-zinc-400">
+            <p className="text-xs text-ink-muted">
               Contraste de curvas a lo largo del ciclo vital (Día 1 a N) entre {cropA?.name} y {cropB?.name}
             </p>
           </div>
@@ -820,40 +818,40 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
           {/* Controls: Metric Tabs & View Mode (Days vs Weeks) */}
           <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
             {/* View Mode: Days or Weeks */}
-            <div className="bg-zinc-900 border border-zinc-800 p-1 rounded-2xl flex items-center gap-1 text-xs font-semibold">
+            <div className="bg-surface border border-line p-1 rounded-2xl flex flex-wrap items-center gap-1 text-xs font-semibold">
               <button
                 type="button"
                 onClick={() => setChartViewMode('cycleDays')}
-                className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${
+                className={`min-h-10 px-3 py-1 rounded-xl transition-all cursor-pointer ${
                   chartViewMode === 'cycleDays'
-                    ? 'bg-zinc-800 text-white font-bold'
-                    : 'text-zinc-400 hover:text-zinc-200'
+                    ? 'bg-track text-ink font-bold'
+                    : 'text-ink-muted hover:text-ink'
                 }`}
               >
-                Por Día
+                Por día
               </button>
               <button
                 type="button"
                 onClick={() => setChartViewMode('weeks')}
-                className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${
+                className={`min-h-10 px-3 py-1 rounded-xl transition-all cursor-pointer ${
                   chartViewMode === 'weeks'
-                    ? 'bg-zinc-800 text-white font-bold'
-                    : 'text-zinc-400 hover:text-zinc-200'
+                    ? 'bg-track text-ink font-bold'
+                    : 'text-ink-muted hover:text-ink'
                 }`}
               >
-                Por Semana
+                Por semana
               </button>
             </div>
 
             {/* Metric Tab Pills */}
-            <div className="bg-zinc-900 border border-zinc-800 p-1 rounded-2xl flex items-center gap-1 text-xs font-semibold">
+            <div className="bg-surface border border-line p-1 rounded-2xl flex flex-wrap items-center gap-1 text-xs font-semibold">
               <button
                 type="button"
                 onClick={() => setMetricTab('combined')}
-                className={`px-3 py-1 rounded-xl transition-all cursor-pointer ${
+                className={`min-h-10 px-3 py-1 rounded-xl transition-all cursor-pointer ${
                   metricTab === 'combined'
-                    ? 'bg-zinc-800 text-white font-bold shadow-xs'
-                    : 'text-zinc-400 hover:text-zinc-200'
+                    ? 'bg-track text-ink font-bold shadow-xs'
+                    : 'text-ink-muted hover:text-ink'
                 }`}
               >
                 Combinado
@@ -861,10 +859,10 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
               <button
                 type="button"
                 onClick={() => setMetricTab('temperature')}
-                className={`px-3 py-1 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
+                className={`min-h-10 px-3 py-1 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
                   metricTab === 'temperature'
-                    ? 'bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30'
-                    : 'text-zinc-400 hover:text-zinc-200'
+                    ? 'bg-warn-bg text-warn-ink font-bold border border-warn-line'
+                    : 'text-ink-muted hover:text-ink'
                 }`}
               >
                 <Thermometer className="w-3 h-3" />
@@ -873,10 +871,10 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
               <button
                 type="button"
                 onClick={() => setMetricTab('humidity')}
-                className={`px-3 py-1 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
+                className={`min-h-10 px-3 py-1 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
                   metricTab === 'humidity'
-                    ? 'bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30'
-                    : 'text-zinc-400 hover:text-zinc-200'
+                    ? 'bg-icon-bg text-brand font-bold border border-chip-line'
+                    : 'text-ink-muted hover:text-ink'
                 }`}
               >
                 <Droplets className="w-3 h-3" />
@@ -885,10 +883,10 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
               <button
                 type="button"
                 onClick={() => setMetricTab('vpd')}
-                className={`px-3 py-1 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
+                className={`min-h-10 px-3 py-1 rounded-xl transition-all cursor-pointer flex items-center gap-1 ${
                   metricTab === 'vpd'
-                    ? 'bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30'
-                    : 'text-zinc-400 hover:text-zinc-200'
+                    ? 'bg-icon-bg text-brand font-bold border border-chip-line'
+                    : 'text-ink-muted hover:text-ink'
                 }`}
               >
                 <Gauge className="w-3 h-3" />
@@ -900,43 +898,43 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
 
         {/* Environmental Summary Comparison Chips */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-3">
-            <span className="text-[10px] uppercase font-mono text-zinc-500 block mb-0.5">Temp. Promedio A</span>
-            <span className="text-base font-bold font-mono text-emerald-400">{statsA.avgTemp ? `${statsA.avgTemp} °C` : '—'}</span>
+          <div className="bg-surface border border-line rounded-2xl p-3">
+            <span className="text-[11px] uppercase text-ink-muted block mb-0.5">Temp. Promedio A</span>
+            <span className="text-base font-bold text-ok-ink">{statsA.avgTemp ? `${dec(statsA.avgTemp, 1)} °C` : '—'}</span>
           </div>
 
-          <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-3">
-            <span className="text-[10px] uppercase font-mono text-zinc-500 block mb-0.5">Temp. Promedio B</span>
-            <span className="text-base font-bold font-mono text-violet-400">{statsB.avgTemp ? `${statsB.avgTemp} °C` : '—'}</span>
+          <div className="bg-surface border border-line rounded-2xl p-3">
+            <span className="text-[11px] uppercase text-ink-muted block mb-0.5">Temp. Promedio B</span>
+            <span className="text-base font-bold text-brand">{statsB.avgTemp ? `${dec(statsB.avgTemp, 1)} °C` : '—'}</span>
           </div>
 
-          <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-3">
-            <span className="text-[10px] uppercase font-mono text-zinc-500 block mb-0.5">Humedad Media A</span>
-            <span className="text-base font-bold font-mono text-emerald-400">{statsA.avgHum ? `${statsA.avgHum} %` : '—'}</span>
+          <div className="bg-surface border border-line rounded-2xl p-3">
+            <span className="text-[11px] uppercase text-ink-muted block mb-0.5">Humedad media A</span>
+            <span className="text-base font-bold text-ok-ink">{statsA.avgHum ? `${statsA.avgHum} %` : '—'}</span>
           </div>
 
-          <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-3">
-            <span className="text-[10px] uppercase font-mono text-zinc-500 block mb-0.5">Humedad Media B</span>
-            <span className="text-base font-bold font-mono text-violet-400">{statsB.avgHum ? `${statsB.avgHum} %` : '—'}</span>
+          <div className="bg-surface border border-line rounded-2xl p-3">
+            <span className="text-[11px] uppercase text-ink-muted block mb-0.5">Humedad media B</span>
+            <span className="text-base font-bold text-brand">{statsB.avgHum ? `${statsB.avgHum} %` : '—'}</span>
           </div>
 
-          <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-3">
-            <span className="text-[10px] uppercase font-mono text-zinc-500 block mb-0.5">VPD Medio A</span>
-            <span className="text-base font-bold font-mono text-emerald-400">{statsA.avgVpd ? `${statsA.avgVpd} kPa` : '—'}</span>
+          <div className="bg-surface border border-line rounded-2xl p-3">
+            <span className="text-[11px] uppercase text-ink-muted block mb-0.5">VPD Medio A</span>
+            <span className="text-base font-bold text-ok-ink">{statsA.avgVpd ? `${dec(statsA.avgVpd)} kPa` : '—'}</span>
           </div>
 
-          <div className="bg-zinc-900/80 border border-zinc-800 rounded-2xl p-3">
-            <span className="text-[10px] uppercase font-mono text-zinc-500 block mb-0.5">VPD Medio B</span>
-            <span className="text-base font-bold font-mono text-violet-400">{statsB.avgVpd ? `${statsB.avgVpd} kPa` : '—'}</span>
+          <div className="bg-surface border border-line rounded-2xl p-3">
+            <span className="text-[11px] uppercase text-ink-muted block mb-0.5">VPD Medio B</span>
+            <span className="text-base font-bold text-brand">{statsB.avgVpd ? `${dec(statsB.avgVpd)} kPa` : '—'}</span>
           </div>
         </div>
 
         {/* Superimposed Line Chart Container */}
         {superimposedChartData.length === 0 ? (
-          <div className="h-64 flex flex-col items-center justify-center text-center p-8 bg-zinc-900/40 border border-zinc-800 rounded-2xl">
-            <AlertCircle className="w-8 h-8 text-zinc-500 mb-2" />
-            <p className="text-sm font-bold text-zinc-300">Sin lecturas climáticas suficientes para superponer</p>
-            <p className="text-xs text-zinc-500 max-w-sm mt-0.5">
+          <div className="h-64 flex flex-col items-center justify-center text-center p-8 bg-surface border border-line rounded-2xl">
+            <AlertCircle className="w-8 h-8 text-ink-muted mb-2" />
+            <p className="text-sm font-bold text-ink">Sin lecturas climáticas suficientes para superponer</p>
+            <p className="text-xs text-ink-muted max-w-sm mt-0.5">
               Uno o ambos cultivos no cuentan con registros ambientales históricos en sus respectivas fechas.
             </p>
           </div>
@@ -982,6 +980,7 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
                 <Legend
                   wrapperStyle={{ fontSize: '11px', paddingTop: '16px' }}
                   iconType="circle"
+                  formatter={(value) => <span style={{ color: 'var(--color-ink)' }}>{value}</span>}
                 />
 
                 {/* Lines according to active metricTab */}
@@ -1115,16 +1114,16 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
       {/* Yield Side-by-Side Comparison Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Yield Bar Chart (7 cols) */}
-        <div className="lg:col-span-7 bg-[#0F0F0F] rounded-[32px] p-6 sm:p-8 border border-zinc-800 shadow-xl space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+        <div className="lg:col-span-7 bg-card rounded-[32px] p-6 sm:p-8 border border-line shadow-xl space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-line">
             <div>
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <BarChart3 className="w-4 h-4 text-emerald-400" />
-                <span>Comparativa de Rendimiento y Biomasa</span>
+              <h3 className="text-base font-bold text-ink flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-ok-ink" />
+                <span>Comparativa de rendimiento y biomasa</span>
               </h3>
-              <p className="text-xs text-zinc-400">Contraste directo de peso seco y duración</p>
+              <p className="text-xs text-ink-muted">Contraste directo de peso seco y duración</p>
             </div>
-            <span className="text-xs font-mono text-zinc-500">Valores finales</span>
+            <span className="text-xs text-ink-muted">Valores finales</span>
           </div>
 
           <div className="h-64 sm:h-72 w-full pt-2">
@@ -1142,7 +1141,7 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
                     color: '#fff',
                   }}
                 />
-                <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} />
+                <Legend wrapperStyle={{ fontSize: '11px', paddingTop: '10px' }} formatter={(value) => <span style={{ color: 'var(--color-ink)' }}>{value}</span>} />
                 <Bar dataKey={cropA?.name || 'Cultivo A'} fill="#10b981" radius={[8, 8, 0, 0]} maxBarSize={45} />
                 <Bar dataKey={cropB?.name || 'Cultivo B'} fill="#8b5cf6" radius={[8, 8, 0, 0]} maxBarSize={45} />
               </BarChart>
@@ -1151,66 +1150,66 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
         </div>
 
         {/* Agronomic Technical Specs Matrix (5 cols) */}
-        <div className="lg:col-span-5 bg-[#0F0F0F] rounded-[32px] p-6 sm:p-8 border border-zinc-800 shadow-xl space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+        <div className="lg:col-span-5 bg-card rounded-[32px] p-6 sm:p-8 border border-line shadow-xl space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-line">
             <div>
-              <h3 className="text-base font-bold text-white flex items-center gap-2">
-                <Layers className="w-4 h-4 text-violet-400" />
-                <span>Parámetros de Cultivo</span>
+              <h3 className="text-base font-bold text-ink flex items-center gap-2">
+                <Layers className="w-4 h-4 text-brand" />
+                <span>Parámetros de cultivo</span>
               </h3>
-              <p className="text-xs text-zinc-400">Diferencias estructurales entre montajes</p>
+              <p className="text-xs text-ink-muted">Diferencias estructurales entre montajes</p>
             </div>
           </div>
 
           <div className="space-y-3 text-xs">
             {/* Row 1: Genetics & Seedbank */}
-            <div className="p-3 rounded-2xl bg-zinc-900/80 border border-zinc-800 space-y-1">
-              <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider block">Genética y Banco</span>
+            <div className="p-3 rounded-2xl bg-surface border border-line space-y-1">
+              <span className="text-[11px] text-ink-muted uppercase tracking-wider block">Genética y banco</span>
               <div className="grid grid-cols-2 gap-2">
-                <div className="text-emerald-400 font-semibold truncate">
+                <div className="text-ok-ink font-semibold truncate">
                   A: {cropA?.geneticsName || 'N/A'} {cropA?.seedBank && `(${cropA.seedBank})`}
                 </div>
-                <div className="text-violet-400 font-semibold truncate">
+                <div className="text-brand font-semibold truncate">
                   B: {cropB?.geneticsName || 'N/A'} {cropB?.seedBank && `(${cropB.seedBank})`}
                 </div>
               </div>
             </div>
 
             {/* Row 2: Substrate & Pot Volume */}
-            <div className="p-3 rounded-2xl bg-zinc-900/80 border border-zinc-800 space-y-1">
-              <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider block">Sustrato y Macetas</span>
+            <div className="p-3 rounded-2xl bg-surface border border-line space-y-1">
+              <span className="text-[11px] text-ink-muted uppercase tracking-wider block">Sustrato y macetas</span>
               <div className="grid grid-cols-2 gap-2">
-                <div className="text-zinc-300">
-                  <span className="text-emerald-400 font-bold">A:</span> {cropA?.substrate?.type || 'Sustrato'} ({cropA?.substrate?.potVolumeLiters || 11}L {cropA?.substrate?.potType || ''})
+                <div className="text-ink">
+                  <span className="text-ok-ink font-bold">A:</span> {cropA?.substrate?.type || 'Sustrato'} ({cropA?.substrate?.potVolumeLiters || 11}L {cropA?.substrate?.potType || ''})
                 </div>
-                <div className="text-zinc-300">
-                  <span className="text-violet-400 font-bold">B:</span> {cropB?.substrate?.type || 'Sustrato'} ({cropB?.substrate?.potVolumeLiters || 11}L {cropB?.substrate?.potType || ''})
+                <div className="text-ink">
+                  <span className="text-brand font-bold">B:</span> {cropB?.substrate?.type || 'Sustrato'} ({cropB?.substrate?.potVolumeLiters || 11}L {cropB?.substrate?.potType || ''})
                 </div>
               </div>
             </div>
 
             {/* Row 3: Lighting and Wattage */}
-            <div className="p-3 rounded-2xl bg-zinc-900/80 border border-zinc-800 space-y-1">
-              <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider block">Iluminación</span>
+            <div className="p-3 rounded-2xl bg-surface border border-line space-y-1">
+              <span className="text-[11px] text-ink-muted uppercase tracking-wider block">Iluminación</span>
               <div className="grid grid-cols-2 gap-2">
-                <div className="text-zinc-300">
-                  <span className="text-emerald-400 font-bold">A:</span> {cropA?.lighting?.type || 'LED'} ({yieldA.watts || 0}W)
+                <div className="text-ink">
+                  <span className="text-ok-ink font-bold">A:</span> {cropA?.lighting?.type || 'LED'} ({yieldA.watts || 0}W)
                 </div>
-                <div className="text-zinc-300">
-                  <span className="text-violet-400 font-bold">B:</span> {cropB?.lighting?.type || 'LED'} ({yieldB.watts || 0}W)
+                <div className="text-ink">
+                  <span className="text-brand font-bold">B:</span> {cropB?.lighting?.type || 'LED'} ({yieldB.watts || 0}W)
                 </div>
               </div>
             </div>
 
             {/* Row 4: Plant Count */}
-            <div className="p-3 rounded-2xl bg-zinc-900/80 border border-zinc-800 space-y-1">
-              <span className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider block">Densidad de Plantas</span>
+            <div className="p-3 rounded-2xl bg-surface border border-line space-y-1">
+              <span className="text-[11px] text-ink-muted uppercase tracking-wider block">Densidad de plantas</span>
               <div className="grid grid-cols-2 gap-2">
-                <div className="text-zinc-300">
-                  <span className="text-emerald-400 font-bold">A:</span> {yieldA.plants} plantas
+                <div className="text-ink">
+                  <span className="text-ok-ink font-bold">A:</span> {yieldA.plants} plantas
                 </div>
-                <div className="text-zinc-300">
-                  <span className="text-violet-400 font-bold">B:</span> {yieldB.plants} plantas
+                <div className="text-ink">
+                  <span className="text-brand font-bold">B:</span> {yieldB.plants} plantas
                 </div>
               </div>
             </div>
@@ -1220,80 +1219,80 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
 
       {/* Tasting & Quality Organoleptic Comparison Card */}
       {(harvestA || harvestB) && (
-        <div className="bg-[#0F0F0F] rounded-[32px] p-6 sm:p-8 border border-zinc-800 shadow-xl space-y-4">
-          <div className="flex items-center gap-2 pb-3 border-b border-zinc-800">
-            <Sparkles className="w-5 h-5 text-amber-400" />
-            <h3 className="text-base font-bold text-white">Ficha de Cata y Calidad Final</h3>
+        <div className="bg-card rounded-[32px] p-6 sm:p-8 border border-line shadow-xl space-y-4">
+          <div className="flex items-center gap-2 pb-3 border-b border-line">
+            <Sparkles className="w-5 h-5 text-warn-ink" />
+            <h3 className="text-base font-bold text-ink">Ficha de cata y calidad final</h3>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
             {/* Crop A Tasting */}
-            <div className="p-4 rounded-2xl bg-zinc-900/70 border border-emerald-500/20 space-y-2">
+            <div className="p-4 rounded-2xl bg-surface border border-ok-line space-y-2">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-emerald-400 text-sm">{cropA?.name}</span>
-                <div className="flex items-center gap-0.5 text-amber-400">
+                <span className="font-bold text-ok-ink text-sm">{cropA?.name}</span>
+                <div className="flex items-center gap-0.5 text-warn-ink">
                   {[...Array(harvestA?.rating1To5 || 5)].map((_, i) => (
-                    <Star key={i} className="w-3.5 h-3.5 fill-amber-400" />
+                    <Star key={i} className="w-3.5 h-3.5 fill-warn-line" />
                   ))}
                 </div>
               </div>
 
               {harvestA?.aromaReview && (
-                <div className="text-zinc-300">
-                  <strong className="text-zinc-400">Aroma: </strong>
+                <div className="text-ink">
+                  <strong className="text-ink-muted">Aroma: </strong>
                   {harvestA.aromaReview}
                 </div>
               )}
               {harvestA?.flavorReview && (
-                <div className="text-zinc-300">
-                  <strong className="text-zinc-400">Sabor: </strong>
+                <div className="text-ink">
+                  <strong className="text-ink-muted">Sabor: </strong>
                   {harvestA.flavorReview}
                 </div>
               )}
               {harvestA?.structureDensityReview && (
-                <div className="text-zinc-300">
-                  <strong className="text-zinc-400">Densidad: </strong>
+                <div className="text-ink">
+                  <strong className="text-ink-muted">Densidad: </strong>
                   {harvestA.structureDensityReview}
                 </div>
               )}
               {harvestA?.finalNotes && (
-                <div className="text-zinc-400 italic pt-1 border-t border-zinc-800">
+                <div className="text-ink-muted italic pt-1 border-t border-line">
                   "{harvestA.finalNotes}"
                 </div>
               )}
             </div>
 
             {/* Crop B Tasting */}
-            <div className="p-4 rounded-2xl bg-zinc-900/70 border border-violet-500/20 space-y-2">
+            <div className="p-4 rounded-2xl bg-surface border border-chip-line space-y-2">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-violet-400 text-sm">{cropB?.name}</span>
-                <div className="flex items-center gap-0.5 text-amber-400">
+                <span className="font-bold text-brand text-sm">{cropB?.name}</span>
+                <div className="flex items-center gap-0.5 text-warn-ink">
                   {[...Array(harvestB?.rating1To5 || 5)].map((_, i) => (
-                    <Star key={i} className="w-3.5 h-3.5 fill-amber-400" />
+                    <Star key={i} className="w-3.5 h-3.5 fill-warn-line" />
                   ))}
                 </div>
               </div>
 
               {harvestB?.aromaReview && (
-                <div className="text-zinc-300">
-                  <strong className="text-zinc-400">Aroma: </strong>
+                <div className="text-ink">
+                  <strong className="text-ink-muted">Aroma: </strong>
                   {harvestB.aromaReview}
                 </div>
               )}
               {harvestB?.flavorReview && (
-                <div className="text-zinc-300">
-                  <strong className="text-zinc-400">Sabor: </strong>
+                <div className="text-ink">
+                  <strong className="text-ink-muted">Sabor: </strong>
                   {harvestB.flavorReview}
                 </div>
               )}
               {harvestB?.structureDensityReview && (
-                <div className="text-zinc-300">
-                  <strong className="text-zinc-400">Densidad: </strong>
+                <div className="text-ink">
+                  <strong className="text-ink-muted">Densidad: </strong>
                   {harvestB.structureDensityReview}
                 </div>
               )}
               {harvestB?.finalNotes && (
-                <div className="text-zinc-400 italic pt-1 border-t border-zinc-800">
+                <div className="text-ink-muted italic pt-1 border-t border-line">
                   "{harvestB.finalNotes}"
                 </div>
               )}
@@ -1303,27 +1302,27 @@ export const CropComparisonView: React.FC<CropComparisonViewProps> = ({
       )}
 
       {/* Agronomic Conclusions / Key Takeaways */}
-      <div className="bg-gradient-to-r from-emerald-950/20 via-zinc-900 to-violet-950/20 border border-zinc-800 rounded-[32px] p-6 sm:p-8 space-y-3">
-        <div className="flex items-center gap-2 text-white font-bold text-sm">
-          <Lightbulb className="w-4 h-4 text-amber-400" />
-          <span>Conclusiones del Contraste Agronómico</span>
+      <div className="bg-surface border border-line rounded-[32px] p-6 sm:p-8 space-y-3">
+        <div className="flex items-center gap-2 text-ink font-bold text-sm">
+          <Lightbulb className="w-4 h-4 text-warn-ink" />
+          <span>Conclusiones del contraste agronómico</span>
         </div>
-        <div className="text-xs text-zinc-300 space-y-1.5 leading-relaxed">
+        <div className="text-xs text-ink space-y-1.5 leading-relaxed">
           <p>
-            • <strong>Diferencial de Biomasa:</strong> El cultivo{' '}
-            <span className={yieldDeltaPct >= 0 ? 'text-violet-400 font-bold' : 'text-emerald-400 font-bold'}>
+            • <strong>Diferencial de biomasa:</strong> El cultivo{' '}
+            <span className={yieldDeltaPct >= 0 ? 'text-brand font-bold' : 'text-ok-ink font-bold'}>
               {yieldDeltaPct >= 0 ? cropB?.name : cropA?.name}
             </span>{' '}
             obtuvo un mayor rendimiento de peso seco ({Math.abs(yieldDeltaPct)}% de diferencia).
           </p>
           {statsA.avgTemp && statsB.avgTemp && (
             <p>
-              • <strong>Estabilidad Térmica:</strong> La temperatura media de {cropA?.name} fue de {statsA.avgTemp}°C frente a {statsB.avgTemp}°C en {cropB?.name} (Δ {Number(Math.abs(statsB.avgTemp - statsA.avgTemp).toFixed(1))}°C).
+              • <strong>Estabilidad térmica:</strong> La temperatura media de {cropA?.name} fue de {dec(statsA.avgTemp, 1)} °C frente a {dec(statsB.avgTemp, 1)} °C en {cropB?.name} (Δ {Number(Math.abs(statsB.avgTemp - statsA.avgTemp).toFixed(1))}°C).
             </p>
           )}
           {statsA.avgHum && statsB.avgHum && (
             <p>
-              • <strong>Humedad Relativa:</strong> {cropA?.name} operó con un promedio de {statsA.avgHum}% HR mientras que {cropB?.name} registró {statsB.avgHum}% HR.
+              • <strong>Humedad relativa:</strong> {cropA?.name} operó con un promedio de {statsA.avgHum}% HR mientras que {cropB?.name} registró {statsB.avgHum}% HR.
             </p>
           )}
         </div>

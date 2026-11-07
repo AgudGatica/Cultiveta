@@ -98,20 +98,20 @@ export const AmbientClimateCard: React.FC<AmbientClimateCardProps> = ({ reading,
           Clima · {targets.label}
         </span>
         {outdoor && !evalr && (
-          <span id="ambient-auto-badge" className="px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider bg-surface border border-line text-ink-muted">
+          <span id="ambient-auto-badge" className="px-2.5 py-1 rounded-full text-[11px] font-black tracking-wider bg-surface border border-line text-ink-muted">
             AUTOMÁTICO
           </span>
         )}
         {evalr && stale ? (
-          <span id="ambient-band" className="px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider bg-surface border border-line text-ink-muted">
+          <span id="ambient-band" className="px-2.5 py-1 rounded-full text-[11px] font-black tracking-wider bg-surface border border-line text-ink-muted">
             ÚLTIMA LECTURA
           </span>
         ) : evalr ? (
-          <span id="ambient-band" className={`px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider ${evalr.band === 'optimo' ? 'bg-ok-bg text-ok-ink border border-ok-line' : 'bg-coral/15 text-error'}`}>
-            {evalr.band === 'optimo' ? 'EN BANDA' : evalr.band === 'seco' ? 'AIRE SECO' : 'AIRE HÚMEDO'}
+          <span id="ambient-band" className={`px-2.5 py-1 rounded-full text-[11px] font-black tracking-wider ${evalr.band === 'optimo' ? 'bg-ok-bg text-ok-ink border border-ok-line' : 'bg-coral/15 text-error'}`}>
+            {evalr.band === 'optimo' ? 'EN RANGO' : evalr.band === 'seco' ? 'AIRE SECO' : 'AIRE HÚMEDO'}
           </span>
         ) : outdoor ? null : (
-          <span className="px-2.5 py-1 rounded-full text-[10px] font-black tracking-wider bg-surface border border-line text-ink-muted">SIN DATOS</span>
+          <span className="px-2.5 py-1 rounded-full text-[11px] font-black tracking-wider bg-surface border border-line text-ink-muted">SIN DATOS</span>
         )}
       </div>
 
@@ -120,31 +120,31 @@ export const AmbientClimateCard: React.FC<AmbientClimateCardProps> = ({ reading,
           <div className="grid grid-cols-3 gap-2 text-center">
             <div className="rounded-2xl bg-surface border border-line p-2.5">
               <b className="block text-xl font-black text-ink">{num(reading.temperatureC)}<small className="text-xs"> °C</small></b>
-              <span className={`text-[10px] font-black ${levelClass(evalr.temp)}`}>TEMP. {LEVEL_TEXT[evalr.temp]}</span>
+              <span className={`text-[11px] font-black ${levelClass(evalr.temp)}`}>TEMP. {LEVEL_TEXT[evalr.temp]}</span>
             </div>
             <div className="rounded-2xl bg-surface border border-line p-2.5">
               <b className="block text-xl font-black text-ink">{num(reading.humidityPct, 0)}<small className="text-xs"> %</small></b>
-              <span className={`text-[10px] font-black ${levelClass(evalr.rh)}`}>HUMEDAD {LEVEL_TEXT[evalr.rh]}</span>
+              <span className={`text-[11px] font-black ${levelClass(evalr.rh)}`}>HUMEDAD {LEVEL_TEXT[evalr.rh]}</span>
             </div>
             <div className="rounded-2xl bg-surface border border-line p-2.5">
               <b className="block text-xl font-black text-ink">{num(evalr.vpd, 2)}<small className="text-xs"> kPa</small></b>
-              <span className="text-[10px] font-black text-ink-muted">VPD</span>
+              <span className="text-[11px] font-black text-ink-muted">VPD</span>
             </div>
           </div>
           <div aria-label={`VPD ${num(evalr.vpd, 2)} kPa: ${evalr.band === 'optimo' ? 'óptimo' : evalr.band}`}>
             <div className="relative h-3 rounded-full overflow-hidden bg-surface border border-line">
-              <span className="absolute inset-y-0 left-0 bg-sky-300/70" style={{ width: `${evalr.bar.optStart}%` }} />
+              <span className="absolute inset-y-0 left-0 bg-icon-bg" style={{ width: `${evalr.bar.optStart}%` }} />
               <span className="absolute inset-y-0 bg-ok-line" style={{ left: `${evalr.bar.optStart}%`, width: `${evalr.bar.optEnd - evalr.bar.optStart}%` }} />
-              <span className="absolute inset-y-0 right-0 bg-amber-300/70" style={{ left: `${evalr.bar.optEnd}%` }} />
+              <span className="absolute inset-y-0 right-0 bg-warn-bg" style={{ left: `${evalr.bar.optEnd}%` }} />
               <em id="ambient-marker" className="absolute -top-0.5 w-1.5 h-4 rounded-full bg-ink" style={{ left: `calc(${evalr.bar.marker}% - 3px)` }} />
             </div>
-            <div className="flex justify-between text-[10px] font-bold text-ink-muted mt-1">
+            <div className="flex justify-between text-[11px] font-bold text-ink-muted mt-1">
               <span>húmedo</span>
               <span>óptimo</span>
               <span>seco</span>
             </div>
           </div>
-          <p id="ambient-reading-source" className="text-[11px] text-ink-subtle flex items-center gap-1">
+          <p id="ambient-reading-source" className="text-xs text-ink-subtle flex items-center gap-1">
             {reading.source === 'sensor' ? <Wifi className="w-3 h-3" aria-hidden="true" /> : reading.source === 'auto' ? <CloudSun className="w-3 h-3" aria-hidden="true" /> : <Pencil className="w-3 h-3" aria-hidden="true" />}
             {reading.source === 'sensor'
               ? `Medido por ${reading.deviceName || 'el sensor'} · ${ago(reading.at, now)}`
@@ -153,7 +153,7 @@ export const AmbientClimateCard: React.FC<AmbientClimateCardProps> = ({ reading,
                 : `Anotado a mano ${ago(reading.at, now)}`}
           </p>
           {stale && (
-            <p className="text-[11px] text-ink-muted">
+            <p className="text-xs text-ink-muted">
               {reading.source === 'auto' ? 'La medición se atrasó: la próxima llega sola.' : 'Es lo último que anotaste. Para saber cómo está ahora, cargá lo que marca el termómetro.'}
             </p>
           )}
@@ -176,8 +176,8 @@ export const AmbientClimateCard: React.FC<AmbientClimateCardProps> = ({ reading,
               {locating ? 'Buscando…' : 'Usar mi ubicación'}
             </button>
           )}
-          {outdoor.hasPlants && !outdoor.located && <p className="text-[11px] text-ink-subtle">Se guarda solo la zona (no la dirección) y nunca se publica.</p>}
-          {locError && <p className="text-[11px] font-bold text-error">{locError}</p>}
+          {outdoor.hasPlants && !outdoor.located && <p className="text-xs text-ink-subtle">Se guarda solo la zona (no la dirección) y nunca se publica.</p>}
+          {locError && <p className="text-xs font-bold text-error">{locError}</p>}
         </div>
       ) : (
         <p className="text-xs text-ink-muted">Sin datos de temperatura y humedad. Conectá un sensor o cargá lo que marca tu termómetro: Cultiveta no inventa valores.</p>
@@ -186,16 +186,16 @@ export const AmbientClimateCard: React.FC<AmbientClimateCardProps> = ({ reading,
       {outdoor ? null : editing ? (
         <div id="ambient-manual-form" className="rounded-2xl bg-surface border border-line p-3 space-y-2">
           <div className="grid grid-cols-2 gap-2">
-            <label className="text-[11px] font-semibold text-ink-muted space-y-1">
+            <label className="text-xs font-semibold text-ink-muted space-y-1">
               <span>Temperatura (°C)</span>
               <input id="ambient-manual-temp" inputMode="decimal" value={form.t} onChange={(e) => setForm({ ...form, t: e.target.value })} className="w-full min-h-10 px-3 rounded-xl bg-white border border-line text-sm text-ink" />
             </label>
-            <label className="text-[11px] font-semibold text-ink-muted space-y-1">
+            <label className="text-xs font-semibold text-ink-muted space-y-1">
               <span>Humedad (%)</span>
               <input id="ambient-manual-rh" inputMode="decimal" value={form.h} onChange={(e) => setForm({ ...form, h: e.target.value })} className="w-full min-h-10 px-3 rounded-xl bg-white border border-line text-sm text-ink" />
             </label>
           </div>
-          {error && <p className="text-[11px] font-bold text-error">{error}</p>}
+          {error && <p className="text-xs font-bold text-error">{error}</p>}
           <div className="flex gap-2">
             <button type="button" id="ambient-manual-save" disabled={saving} onClick={save} className="cultiveta-btn-primary text-xs disabled:opacity-50">
               {saving ? 'Guardando…' : 'Guardar'}
@@ -204,7 +204,7 @@ export const AmbientClimateCard: React.FC<AmbientClimateCardProps> = ({ reading,
               Cancelar
             </button>
           </div>
-          <p className="text-[11px] text-ink-subtle">Vale para todas las plantas del ambiente.</p>
+          <p className="text-xs text-ink-subtle">Vale para todas las plantas del ambiente.</p>
         </div>
       ) : (
         <div className="flex flex-wrap gap-2">
@@ -222,7 +222,7 @@ export const AmbientClimateCard: React.FC<AmbientClimateCardProps> = ({ reading,
           )}
         </div>
       )}
-      {!outdoor && manualBlockedReason && !editing && reading?.source !== 'sensor' && <p className="text-[11px] text-ink-subtle">{manualBlockedReason}</p>}
+      {!outdoor && manualBlockedReason && !editing && reading?.source !== 'sensor' && <p className="text-xs text-ink-subtle">{manualBlockedReason}</p>}
       {children}
       <div className="border-t border-line pt-2">
         <button
@@ -236,7 +236,7 @@ export const AmbientClimateCard: React.FC<AmbientClimateCardProps> = ({ reading,
           <span className="flex items-center gap-1.5">
             <LineChart className="w-4 h-4 text-brand" aria-hidden="true" />
             Histórico
-            {history.length > 0 && <small className="text-[11px] font-semibold text-ink-subtle">· {history.length === 1 ? '1 lectura' : `${history.length} lecturas`}</small>}
+            {history.length > 0 && <small className="text-xs font-semibold text-ink-subtle">· {history.length === 1 ? '1 lectura' : `${history.length} lecturas`}</small>}
           </span>
           <ChevronDown className={`w-5 h-5 text-ink-muted transition-transform motion-reduce:transition-none ${historyOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
         </button>

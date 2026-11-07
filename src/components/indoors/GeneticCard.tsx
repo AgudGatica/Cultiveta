@@ -37,16 +37,16 @@ export const GeneticCard: React.FC<GeneticCardProps> = ({ entry: e, onOpen, ambi
         <h3 className="text-sm font-extrabold text-ink leading-tight">{e.card.name}</h3>
         <ChevronRight className="w-4 h-4 text-ink-subtle shrink-0" aria-hidden="true" />
       </div>
-      {e.card.seedBank && <p className="text-[11px] text-ink-muted truncate">{e.card.seedBank}</p>}
-      <p className="text-[11px] font-semibold text-ink">
+      {e.card.seedBank && <p className="text-xs text-ink-muted truncate">{e.card.seedBank}</p>}
+      <p className="text-xs font-semibold text-ink">
         {e.plants} planta{e.plants === 1 ? '' : 's'} · {e.stage}
       </p>
-      <p className="genetic-harvest text-[11px] font-black text-brand">
+      <p className="genetic-harvest text-xs font-black text-brand">
         {harvestText(e.daysToHarvest)}
         {e.daysToHarvest > 0 && e.harvestDate ? ` · ${dateText(e.harvestDate)}` : ''}
       </p>
       {ambient && (
-        <p className="genetic-ambient inline-flex items-center gap-1 text-[10px] font-bold text-ink-muted bg-track rounded-full px-2 py-0.5 max-w-full">
+        <p className="genetic-ambient inline-flex items-center gap-1 text-[11px] font-bold text-ink-muted bg-track rounded-full px-2 py-0.5 max-w-full">
           {ambient.exterior ? <Sun className="w-3 h-3 shrink-0" aria-hidden="true" /> : <Home className="w-3 h-3 shrink-0" aria-hidden="true" />}
           <span className="truncate">{ambient.name}</span>
         </p>

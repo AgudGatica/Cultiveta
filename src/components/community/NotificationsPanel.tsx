@@ -26,8 +26,8 @@ export const NotificationsPanel: React.FC<{ onClose: () => void; onOpenGrowlog: 
   }, [initial]);
 
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="notices-title" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs">
-      <div id="notices-panel" className="w-full max-w-md max-h-[80vh] overflow-y-auto bg-white rounded-3xl p-5 shadow-2xl border border-line space-y-3">
+    <div role="dialog" aria-modal="true" aria-labelledby="notices-title" className="cultiveta-modal-overlay animate-in fade-in">
+      <div id="notices-panel" className="cultiveta-modal-container my-auto max-w-md max-h-[80vh] overflow-y-auto p-5 space-y-3">
         <div className="flex items-center justify-between">
           <h2 id="notices-title" className="text-lg font-extrabold text-ink flex items-center gap-2">
             <Bell className="w-5 h-5 text-brand" aria-hidden="true" />

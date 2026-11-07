@@ -121,13 +121,13 @@ export const PhotoDiagnosisModal: React.FC<PhotoDiagnosisModalProps> = ({
               <Sparkles className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-lg sm:text-xl font-black text-ink">Diagnóstico Botánico con Cultiveta IA</h2>
+              <h2 className="text-lg sm:text-xl font-black text-ink">Diagnóstico botánico con Cultiveta IA</h2>
               <p className="text-xs text-ink-muted">
                 {cultivation.name} · Evidencia de {photo.category} (Día {photo.dayOfCultivation})
               </p>
             </div>
           </div>
-          <button
+          <button aria-label="Cerrar"
             type="button"
             onClick={onClose}
             className="p-2 text-ink-subtle hover:text-ink rounded-full hover:bg-track transition-colors cursor-pointer"
@@ -158,7 +158,7 @@ export const PhotoDiagnosisModal: React.FC<PhotoDiagnosisModalProps> = ({
             <div>
               <h4 className="font-bold text-ink text-sm">No se pudo analizar</h4>
               <p className="text-xs text-error max-w-md mx-auto mt-1 font-semibold">{error}</p>
-              <p className="text-[11px] text-ink-muted mt-2">
+              <p className="text-xs text-ink-muted mt-2">
                 Tu fotografía original está respaldada y se conserva en el historial. Podés reintentar el análisis en cualquier momento.
               </p>
             </div>
@@ -195,8 +195,8 @@ export const PhotoDiagnosisModal: React.FC<PhotoDiagnosisModalProps> = ({
               <div className="sm:col-span-2 p-5 rounded-2xl bg-surface border border-line flex flex-col justify-between space-y-3">
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[10px] uppercase font-bold text-ink-subtle tracking-wider">
-                      Diagnóstico Botánico
+                    <span className="text-[11px] uppercase font-bold text-ink-subtle tracking-wider">
+                      Diagnóstico botánico
                     </span>
                     <span
                       className={`px-3 py-0.5 rounded-full text-xs font-extrabold ${
@@ -235,7 +235,7 @@ export const PhotoDiagnosisModal: React.FC<PhotoDiagnosisModalProps> = ({
             <div className="p-5 rounded-3xl bg-brand/10 border border-brand/25 space-y-3">
               <h4 className="font-bold text-xs uppercase tracking-wider text-brand flex items-center gap-1.5">
                 <CheckCircle2 className="w-4 h-4 text-brand" />
-                Plan de Acción Agronómico Recomendado
+                Plan de acción agronómico recomendado
               </h4>
 
               <div className="space-y-2">
@@ -244,7 +244,7 @@ export const PhotoDiagnosisModal: React.FC<PhotoDiagnosisModalProps> = ({
                     key={idx}
                     className="flex items-start gap-2.5 text-xs text-ink bg-white p-3 rounded-2xl border border-line shadow-2xs"
                   >
-                    <span className="w-5 h-5 rounded-full bg-brand/20 text-brand font-bold flex items-center justify-center shrink-0 text-[11px]">
+                    <span className="w-5 h-5 rounded-full bg-brand/20 text-brand font-bold flex items-center justify-center shrink-0 text-xs">
                       {idx + 1}
                     </span>
                     <p className="leading-relaxed pt-0.5">{step}</p>
@@ -268,7 +268,7 @@ export const PhotoDiagnosisModal: React.FC<PhotoDiagnosisModalProps> = ({
                 {noteSaved ? (
                   <>
                     <CheckCircle2 className="w-4 h-4 text-ok-ink" />
-                    <span>Guardado en el Diario de Cultivo</span>
+                    <span>Guardado en el diario de cultivo</span>
                   </>
                 ) : (
                   <>

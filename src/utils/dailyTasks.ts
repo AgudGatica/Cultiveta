@@ -149,7 +149,7 @@ export function buildDailyTasks(
     } else if (!latestWatering || nextWateringDate <= today || wateringAnalysis.isDueToday) {
       wateringUrgency = 'today';
       wateringPriority = 'critical';
-      wateringTitle = `Riego Programado para Hoy`;
+      wateringTitle = 'Regar hoy';
       wateringDesc = `Revisá la maceta de ${crop.name} y regá si hace falta${phHint || litersHint ? ` (${[phHint, litersHint.replace(/^, /, '')].filter(Boolean).join(', ')})` : ''}.`;
     } else {
       const tomorrow = new Date(today);
@@ -158,12 +158,12 @@ export function buildDailyTasks(
       if (nextWateringStr === tomorrowStr) {
         wateringUrgency = 'tomorrow';
         wateringPriority = 'high';
-        wateringTitle = `Riego Próximo (Mañana)`;
+        wateringTitle = 'Regar mañana';
         wateringDesc = living ? `Dejá reposar el agua para mañana.` : `Dejar reposar agua para desclorar y preparar nutrientes para mañana.`;
       } else {
         wateringUrgency = 'upcoming';
         wateringPriority = 'medium';
-        wateringTitle = `Próximo Riego`;
+        wateringTitle = 'Próximo riego';
         wateringDesc = `Programado para el ${nextWateringStr}. Sustrato en ciclo de secado.`;
       }
     }
@@ -211,7 +211,7 @@ export function buildDailyTasks(
           geneticsName: crop.geneticsName,
           stage: crop.currentStage,
           type: 'flush',
-          title: `Lavado de Raíces (Flush Crítico)`,
+          title: 'Lavado de raíces',
           description: tank
             ? `Día ${flowDays} de flora. Cambiá la solución del tanque por agua sola (con pH) hasta la cosecha.`
             : `Día ${flowDays} de flora. Comenzar riegos con agua desclorada pura sin abonos para metabolizar sales minerales residuales en las flores.`,
@@ -236,7 +236,7 @@ export function buildDailyTasks(
           geneticsName: crop.geneticsName,
           stage: crop.currentStage,
           type: 'defoliation',
-          title: `Poda de Bajos y Defoliación (Semana 3 Floración)`,
+          title: 'Poda de bajos y defoliación',
           description: `Día ${flowDays} de floración. Retirar hojas que bloquean copas florales y brotes bajeros débiles para concentrar energía en los cogollos principales y prevenir hongos.`,
           dueDate: todayStr,
           urgency: 'today',
@@ -265,7 +265,7 @@ export function buildDailyTasks(
           geneticsName: crop.geneticsName,
           stage: crop.currentStage,
           type: 'harvest',
-          title: `Inspección de Tricomas (Cosecha Próxima)`,
+          title: 'Mirar los tricomas',
           description: `Día ${flowDays} de flora (de ${schedule.floweringDaysGenetics} desde el 12/12). Cosecha estimada: ${estimatedHarvest} (${schedule.daysUntilHarvest === 0 ? 'hoy' : `en ${schedule.daysUntilHarvest} día(s)`}). Observar glándulas de resina con lupa 60x: buscar 70-80% lechosos y 10-20% ámbar.`,
           dueDate: estimatedHarvest,
           urgency: 'today',
@@ -293,7 +293,7 @@ export function buildDailyTasks(
         geneticsName: crop.geneticsName,
         stage: crop.currentStage,
         type: 'stage_change',
-        title: `Revisión para Cambio a 12/12 (Floración)`,
+        title: 'Revisar el paso a 12/12',
         description: `Lleva ${totalDays} días en vegetativo. Evaluar cobertura de canopia y cambiar temporizador de luz a 12h luz / 12h oscuridad cuando la carpa esté al 75% llena.`,
         dueDate: todayStr,
         urgency: 'today',
@@ -322,7 +322,7 @@ export function buildDailyTasks(
           geneticsName: crop.geneticsName,
           stage: crop.currentStage,
           type: 'env_alert',
-          title: `Alerta Crítica: Humedad Peligrosa (${cropEnv.humidityPct}%)`,
+          title: `Humedad peligrosa (${cropEnv.humidityPct} %)`,
           description: `Humedad muy elevada en floración. Aumentar ventilación y activar deshumidificador de inmediato para prevenir botrytis y oídio.`,
           dueDate: todayStr,
           urgency: 'today',
@@ -345,7 +345,7 @@ export function buildDailyTasks(
           geneticsName: crop.geneticsName,
           stage: crop.currentStage,
           type: 'env_alert',
-          title: `Alerta Crítica: Temperatura Alta (${cropEnv.temperatureC}°C)`,
+          title: `Temperatura alta (${cropEnv.temperatureC} °C)`,
           description: `Temperaturas sobre ${TEMP_HIGH_ALERT_C} °C evaporan terpenos y causan estrés por calor. Subí la luminaria o aumentá la extracción de aire.`,
           dueDate: todayStr,
           urgency: 'today',

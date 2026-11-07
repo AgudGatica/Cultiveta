@@ -993,7 +993,7 @@ export default function App() {
                 diaryEntries={diaryEntries}
                 backLabel={
                   detailBackTarget === 'cultivations'
-                    ? 'Volver a Cultivos'
+                    ? 'Volver a Cosechas'
                     : selectedCultivation.indoorId && indoors.some((i) => i.id === selectedCultivation.indoorId)
                       ? `Volver a ${indoors.find((i) => i.id === selectedCultivation.indoorId)!.name}`
                       : 'Volver al Jardín'

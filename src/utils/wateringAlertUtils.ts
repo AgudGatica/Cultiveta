@@ -350,7 +350,7 @@ export function analyzeWateringUrgency(
       pulse: false,
       label: `Primer riego pendiente de registrar (iniciado hace ${daysSinceStart} d)`,
       alertTitle: `Primer riego pendiente (${cultivation.name})`,
-      alertMessage: `Registra el primer riego para ${cultivation.name}. Ciclo recomendado: cada ${recommendedInterval} días.`,
+      alertMessage: `Registrá el primer riego para ${cultivation.name}. Ciclo recomendado: cada ${recommendedInterval} días.`,
       notificationMessage: `Pendiente de primer riego en "${cultivation.name}".`,
     };
   }
@@ -409,7 +409,7 @@ export function analyzeWateringUrgency(
       textClass: 'text-amber-400',
       pulse: false,
       label: `Riego programado para hoy: último riego hace ${daysSinceWatering} días (ciclo de ${recommendedInterval} días en ${stage}).`,
-      alertTitle: `Riego Programado para Hoy (${cultivation.name})`,
+      alertTitle: `Regar hoy (${cultivation.name})`,
       alertMessage: `Hoy se cumple el ciclo recomendado de ${recommendedInterval} días en etapa de ${stage}.`,
       notificationMessage: `💧 Toca regar hoy "${cultivation.name}" (${stage}).`,
     };

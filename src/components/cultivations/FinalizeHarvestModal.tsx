@@ -119,7 +119,7 @@ export const FinalizeHarvestModal: React.FC<FinalizeHarvestModalProps> = ({
       onClose();
     } catch (err: any) {
       console.error('Error finalizando cultivo en Firestore:', err);
-      setError(err?.message || 'No se pudo guardar la finalización del cultivo en Firestore.');
+      setError(err?.message || 'No se pudo guardar. Probá de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -134,25 +134,25 @@ export const FinalizeHarvestModal: React.FC<FinalizeHarvestModalProps> = ({
     <div
       role="dialog"
       aria-modal="true"
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in overflow-y-auto"
+      className="cultiveta-modal-overlay animate-in fade-in"
     >
       <div
         id="finalize-harvest-modal"
         data-testid="finalize-harvest-modal"
-        className="w-full max-w-lg bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-stone-200 my-auto"
+        className="cultiveta-modal-container my-auto max-w-lg p-6 sm:p-7"
       >
         {/* Encabezado */}
-        <div className="flex items-center justify-between pb-4 border-b border-stone-100 mb-5">
+        <div className="flex items-center justify-between pb-4 border-b border-line mb-5">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-amber-100 text-amber-800">
+            <div className="p-2.5 rounded-2xl bg-warn-bg text-warn-ink">
               <Award className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-lg sm:text-xl font-extrabold text-stone-900">
-                Finalizar Cultivo
+              <h2 className="text-lg sm:text-xl font-extrabold text-ink">
+                Finalizar cultivo
               </h2>
-              <p className="text-xs text-stone-500">
-                Marcar como <strong className="text-purple-700">cosechado</strong> y registrar resultados en Firestore
+              <p className="text-xs text-ink-muted">
+                Marcar como <strong className="text-brand">cosechado</strong> y anotar los resultados
               </p>
             </div>
           </div>
@@ -160,33 +160,33 @@ export const FinalizeHarvestModal: React.FC<FinalizeHarvestModalProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Cerrar modal"
-            className="p-2 text-stone-400 hover:text-stone-700 rounded-full hover:bg-stone-100 transition-colors cursor-pointer"
+            className="p-2 text-ink-subtle hover:text-ink rounded-full hover:bg-track transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {error && (
-          <div className="mb-4 p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium">
+          <div className="mb-4 p-3 rounded-2xl bg-error/10 border border-error/30 text-error text-xs font-medium">
             {error}
           </div>
         )}
 
         {/* Resumen del Cultivo */}
-        <div className="mb-5 p-3.5 rounded-2xl bg-stone-50 border border-stone-200/80 text-xs grid grid-cols-3 gap-2 text-center">
+        <div className="mb-5 p-3.5 rounded-2xl bg-surface border border-line text-xs grid grid-cols-3 gap-2 text-center">
           <div>
-            <div className="text-stone-400 text-[11px]">Cultivo</div>
-            <div className="font-bold text-stone-800 truncate" title={cultivation.name}>
+            <div className="text-ink-subtle text-xs">Cultivo</div>
+            <div className="font-bold text-ink truncate" title={cultivation.name}>
               {cultivation.name}
             </div>
           </div>
           <div>
-            <div className="text-stone-400 text-[11px]">Duración total</div>
-            <div className="font-bold text-stone-800">{totalDays} días</div>
+            <div className="text-ink-subtle text-xs">Duración total</div>
+            <div className="font-bold text-ink">{totalDays} días</div>
           </div>
           <div>
-            <div className="text-stone-400 text-[11px]">Plantas</div>
-            <div className="font-bold text-stone-800">{plantCount} {plantCount === 1 ? 'planta' : 'plantas'}</div>
+            <div className="text-ink-subtle text-xs">Plantas</div>
+            <div className="font-bold text-ink">{plantCount} {plantCount === 1 ? 'planta' : 'plantas'}</div>
           </div>
         </div>
 
@@ -195,10 +195,10 @@ export const FinalizeHarvestModal: React.FC<FinalizeHarvestModalProps> = ({
           <div>
             <label
               htmlFor="harvest-date-input"
-              className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center gap-1.5"
+              className="block text-xs font-bold text-ink mb-1.5 flex items-center gap-1.5"
             >
-              <Calendar className="w-4 h-4 text-emerald-600" />
-              <span>Fecha Final / Fecha de Cosecha *</span>
+              <Calendar className="w-4 h-4 text-ok-ink" />
+              <span>Fecha final / fecha de cosecha *</span>
             </label>
             <input
               id="harvest-date-input"
@@ -207,9 +207,9 @@ export const FinalizeHarvestModal: React.FC<FinalizeHarvestModalProps> = ({
               required
               value={harvestDate}
               onChange={(e) => setHarvestDate(e.target.value)}
-              className="w-full px-4 py-2.5 rounded-2xl bg-stone-50 border border-stone-200 text-stone-900 text-sm font-semibold focus:outline-hidden focus:border-emerald-500 focus:bg-white transition-colors"
+              className="w-full px-4 py-2.5 rounded-2xl bg-surface border border-line text-ink text-sm font-semibold focus:outline-hidden focus:border-ok-line focus:bg-white transition-colors"
             />
-            <span className="text-[11px] text-stone-400 mt-1 block">
+            <span className="text-xs text-ink-subtle mt-1 block">
               Día en que se realiza el corte o finalización del ciclo.
             </span>
           </div>
@@ -218,10 +218,10 @@ export const FinalizeHarvestModal: React.FC<FinalizeHarvestModalProps> = ({
           <div>
             <label
               htmlFor="harvest-weight-input"
-              className="block text-xs font-bold text-stone-800 mb-1.5 flex items-center gap-1.5"
+              className="block text-xs font-bold text-ink mb-1.5 flex items-center gap-1.5"
             >
-              <Scale className="w-4 h-4 text-amber-600" />
-              <span>Peso Estimado de Cosecha (Gramos) *</span>
+              <Scale className="w-4 h-4 text-warn-ink" />
+              <span>Peso estimado de cosecha (gramos) *</span>
             </label>
             <div className="relative">
               <input
@@ -236,13 +236,13 @@ export const FinalizeHarvestModal: React.FC<FinalizeHarvestModalProps> = ({
                 onChange={(e) =>
                   setEstimatedWeight(e.target.value === '' ? '' : parseFloat(e.target.value))
                 }
-                className="w-full px-4 py-2.5 rounded-2xl bg-amber-50/50 border border-amber-300 text-stone-900 text-base font-extrabold focus:outline-hidden focus:border-amber-500 focus:bg-white transition-colors"
+                className="w-full px-4 py-2.5 rounded-2xl bg-warn-bg border border-warn-line text-ink text-base font-extrabold focus:outline-hidden focus:border-warn-line focus:bg-white transition-colors"
               />
-              <span className="absolute right-4 top-2.5 text-xs font-bold text-stone-400">g</span>
+              <span className="absolute right-4 top-2.5 text-xs font-bold text-ink-subtle">g</span>
             </div>
             {avgGramsPerPlant && (
-              <span className="text-[11px] text-emerald-700 font-medium mt-1 block">
-                🌱 Promedio estimado: <strong>{avgGramsPerPlant} g</strong> por planta
+              <span className="text-xs text-ok-ink font-medium mt-1 block">
+                Promedio estimado: <strong>{avgGramsPerPlant} g</strong> por planta
               </span>
             )}
           </div>
@@ -251,9 +251,9 @@ export const FinalizeHarvestModal: React.FC<FinalizeHarvestModalProps> = ({
           <div>
             <label
               htmlFor="harvest-notes-input"
-              className="block text-xs font-semibold text-stone-700 mb-1"
+              className="block text-xs font-semibold text-ink mb-1"
             >
-              Notas de la Cosecha (Opcional)
+              Notas de la cosecha (opcional)
             </label>
             <textarea
               id="harvest-notes-input"
@@ -261,29 +261,29 @@ export const FinalizeHarvestModal: React.FC<FinalizeHarvestModalProps> = ({
               placeholder="Aroma, compactación de cogollos, tricomas lechosos/ámbar..."
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-2xl bg-stone-50 border border-stone-200 text-stone-800 text-xs focus:outline-hidden focus:border-emerald-500 focus:bg-white transition-colors"
+              className="w-full px-3.5 py-2 rounded-2xl bg-surface border border-line text-ink text-xs focus:outline-hidden focus:border-ok-line focus:bg-white transition-colors"
             />
           </div>
 
           {/* Acordeón Opcional: Opciones Avanzadas */}
-          <div className="border border-stone-100 rounded-2xl p-2.5 bg-stone-50/50">
+          <div className="border border-line rounded-2xl p-2.5 bg-surface">
             <button
               type="button"
               onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
-              className="w-full flex items-center justify-between text-xs font-bold text-stone-600 hover:text-stone-900 transition-colors py-1 px-1 cursor-pointer"
+              className="w-full flex items-center justify-between text-xs font-bold text-ink-muted hover:text-ink transition-colors py-1 px-1 cursor-pointer"
             >
               <span>Detalles adicionales (calificación y curado)</span>
               {showAdvancedOptions ? (
-                <ChevronUp className="w-4 h-4 text-stone-400" />
+                <ChevronUp className="w-4 h-4 text-ink-subtle" />
               ) : (
-                <ChevronDown className="w-4 h-4 text-stone-400" />
+                <ChevronDown className="w-4 h-4 text-ink-subtle" />
               )}
             </button>
 
             {showAdvancedOptions && (
-              <div className="pt-3 space-y-3 border-t border-stone-200/60 mt-2 text-xs">
+              <div className="pt-3 space-y-3 border-t border-line mt-2 text-xs">
                 <div>
-                  <label className="block text-stone-600 font-semibold mb-1">
+                  <label className="block text-ink-muted font-semibold mb-1">
                     Peso Húmedo (opcional en g)
                   </label>
                   <input
@@ -295,12 +295,12 @@ export const FinalizeHarvestModal: React.FC<FinalizeHarvestModalProps> = ({
                     onChange={(e) =>
                       setWetWeightGrams(e.target.value === '' ? '' : parseFloat(e.target.value))
                     }
-                    className="w-full px-3 py-1.5 rounded-xl bg-white border border-stone-200 text-xs text-stone-800"
+                    className="w-full px-3 py-1.5 rounded-xl bg-white border border-line text-xs text-ink"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-stone-600 font-semibold mb-1">
+                  <label className="block text-ink-muted font-semibold mb-1">
                     Calificación del cultivo
                   </label>
                   <div className="flex items-center gap-1.5">
@@ -314,25 +314,25 @@ export const FinalizeHarvestModal: React.FC<FinalizeHarvestModalProps> = ({
                         <Star
                           className={`w-5 h-5 ${
                             star <= rating1To5
-                              ? 'text-amber-400 fill-amber-400'
-                              : 'text-stone-300'
+                              ? 'text-warn-ink fill-warn-line'
+                              : 'text-ink-subtle'
                           }`}
                         />
                       </button>
                     ))}
-                    <span className="text-xs text-stone-500 ml-1">{rating1To5} / 5</span>
+                    <span className="text-xs text-ink-muted ml-1">{rating1To5} / 5</span>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-stone-600 font-semibold mb-1">
-                    Condiciones de Secado y Curado
+                  <label className="block text-ink-muted font-semibold mb-1">
+                    Condiciones de secado y curado
                   </label>
                   <input
                     type="text"
                     value={curingNotes}
                     onChange={(e) => setCuringNotes(e.target.value)}
-                    className="w-full px-3 py-1.5 rounded-xl bg-white border border-stone-200 text-xs text-stone-800"
+                    className="w-full px-3 py-1.5 rounded-xl bg-white border border-line text-xs text-ink"
                   />
                 </div>
               </div>
@@ -340,10 +340,10 @@ export const FinalizeHarvestModal: React.FC<FinalizeHarvestModalProps> = ({
           </div>
 
           {/* Aviso de actualización en Firestore */}
-          <div className="p-3 rounded-2xl bg-purple-50 border border-purple-100 text-purple-900 text-[11px] leading-relaxed">
-            ✨ Al confirmar, el cultivo se actualizará en <strong>Firestore</strong> con estado{' '}
-            <strong className="font-mono text-purple-700">'cosechado'</strong>, la etapa se marcará como{' '}
-            <strong className="font-mono text-purple-700">'Cosechado'</strong> y se archivará con su fecha final y peso estimado.
+          <div className="p-3 rounded-2xl bg-icon-bg border border-chip-line text-brand text-xs leading-relaxed">
+            Al confirmar, el cultivo queda con estado{' '}
+            <strong className="text-brand">'cosechado'</strong>, la etapa se marcará como{' '}
+            <strong className="text-brand">'Cosechado'</strong> y se archivará con su fecha final y peso estimado.
           </div>
 
           {/* Botones de acción */}
@@ -351,7 +351,7 @@ export const FinalizeHarvestModal: React.FC<FinalizeHarvestModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-full text-xs sm:text-sm font-semibold text-stone-600 hover:bg-stone-100 transition-colors cursor-pointer"
+              className="px-4 py-2.5 rounded-full text-xs sm:text-sm font-semibold text-ink-muted hover:bg-track transition-colors cursor-pointer"
             >
               Cancelar
             </button>
@@ -360,17 +360,17 @@ export const FinalizeHarvestModal: React.FC<FinalizeHarvestModalProps> = ({
               id="submit-finalize-harvest-btn"
               data-testid="submit-finalize-harvest-btn"
               disabled={loading}
-              className="px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-md shadow-amber-600/20 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer active:scale-95"
+              className="px-6 py-2.5 rounded-full text-xs sm:text-sm font-bold bg-accent hover:bg-warn-line text-ink shadow-md transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer active:scale-95"
             >
               {loading ? (
                 <>
-                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span>Guardando en Firestore...</span>
+                  <span className="w-4 h-4 border-2 border-ink border-t-transparent rounded-full animate-spin" />
+                  <span>Guardando…</span>
                 </>
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>Finalizar y Marcar Cosechado</span>
+                  <span>Finalizar y marcar como cosechado</span>
                 </>
               )}
             </button>

@@ -261,22 +261,22 @@ export const GrowlogView: React.FC<Props> = ({ growlogId, userId, onBack, onOpen
         <div className="cultiveta-card p-2.5">
           <Eye className="w-4 h-4 mx-auto text-brand" aria-hidden="true" />
           <b className="block text-base font-black text-ink leading-tight">{kfmt(g.views)}</b>
-          <small className="block text-[10px] text-ink-muted">vistas</small>
+          <small className="block text-[11px] text-ink-muted">vistas</small>
         </div>
         <button type="button" id="growlog-like" aria-pressed={viewer.liked} onClick={toggleLike} className={`cultiveta-card p-2.5 ${viewer.liked ? 'ring-2 ring-coral' : ''}`}>
           <Heart className={`w-4 h-4 mx-auto ${viewer.liked ? 'text-error fill-coral' : 'text-brand'}`} aria-hidden="true" />
           <b className="block text-base font-black text-ink leading-tight">{kfmt(g.likes)}</b>
-          <small className="block text-[10px] text-ink-muted">me gusta</small>
+          <small className="block text-[11px] text-ink-muted">me gusta</small>
         </button>
         <button type="button" onClick={() => setTab('comentarios')} className="cultiveta-card p-2.5">
           <MessageCircle className="w-4 h-4 mx-auto text-brand" aria-hidden="true" />
           <b className="block text-base font-black text-ink leading-tight">{g.comments}</b>
-          <small className="block text-[10px] text-ink-muted">comentarios</small>
+          <small className="block text-[11px] text-ink-muted">comentarios</small>
         </button>
         <button type="button" onClick={() => setTab('timeline')} className="cultiveta-card p-2.5">
           <Camera className="w-4 h-4 mx-auto text-brand" aria-hidden="true" />
           <b className="block text-base font-black text-ink leading-tight">{g.photos.length}</b>
-          <small className="block text-[10px] text-ink-muted">fotos</small>
+          <small className="block text-[11px] text-ink-muted">fotos</small>
         </button>
       </div>
 
@@ -318,7 +318,7 @@ export const GrowlogView: React.FC<Props> = ({ growlogId, userId, onBack, onOpen
               [Timer, 'Duración', g.finished ? 'Terminado' : weeks ? `${weeks} sem.` : `${Math.max(1, schedule.activeStageElapsedDays)} d de ${g.stage.toLowerCase()}`],
             ].map(([Icon, l, v]: any) => (
               <div key={l} className="cultiveta-card p-3">
-                <small className="text-[10px] font-semibold text-ink-muted flex items-center gap-1">
+                <small className="text-[11px] font-semibold text-ink-muted flex items-center gap-1">
                   <Icon className="w-3 h-3" aria-hidden="true" />
                   {l}
                 </small>
@@ -396,8 +396,8 @@ export const GrowlogView: React.FC<Props> = ({ growlogId, userId, onBack, onOpen
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <b className="text-xs text-ink truncate">{c.authorUid === userId ? 'Vos' : `@${c.authorHandle}`}</b>
-                          <small className="text-[11px] text-ink-subtle">{timeAgo(c.createdAt)}</small>
-                          {c.hidden && <small className="text-[11px] font-bold text-error">oculto</small>}
+                          <small className="text-xs text-ink-subtle">{timeAgo(c.createdAt)}</small>
+                          {c.hidden && <small className="text-xs font-bold text-error">oculto</small>}
                         </div>
                         <p className="text-sm text-ink whitespace-pre-line break-words">{c.text}</p>
                       </div>

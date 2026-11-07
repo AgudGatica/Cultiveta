@@ -57,7 +57,7 @@ export const AmbientHistory: React.FC<AmbientHistoryProps> = ({ points, targets,
               data-range={r}
               aria-pressed={range === r}
               onClick={() => setRange(r)}
-              className={`min-h-8 px-3 rounded-xl text-xs font-bold ${range === r ? 'bg-white text-ink shadow-2xs' : 'text-ink-muted'}`}
+              className={`min-h-11 px-3 rounded-xl text-xs font-bold ${range === r ? 'bg-white text-ink shadow-2xs' : 'text-ink-muted'}`}
             >
               {RANGES[r]}
             </button>
@@ -71,7 +71,7 @@ export const AmbientHistory: React.FC<AmbientHistoryProps> = ({ points, targets,
               data-metric={k}
               aria-pressed={metric === k}
               onClick={() => setMetric(k)}
-              className={`min-h-8 px-3 rounded-full text-xs font-bold border ${metric === k ? 'bg-brand-deep text-white border-brand-deep' : 'bg-white text-ink-muted border-line'}`}
+              className={`min-h-11 px-3 rounded-full text-xs font-bold border ${metric === k ? 'bg-brand-deep text-white border-brand-deep' : 'bg-white text-ink-muted border-line'}`}
             >
               {METRICS[k].label}
             </button>
@@ -110,11 +110,11 @@ export const AmbientHistory: React.FC<AmbientHistoryProps> = ({ points, targets,
             ].map(([l, v]) => (
               <div key={l} className="rounded-2xl bg-surface border border-line p-2">
                 <b className="block text-sm font-black text-ink">{v}</b>
-                <small className="text-[10px] font-semibold text-ink-muted">{l}</small>
+                <small className="text-[11px] font-semibold text-ink-muted">{l}</small>
               </div>
             ))}
           </div>
-          <p className="text-[11px] text-ink-subtle">
+          <p className="text-xs text-ink-subtle">
             {shown.length === 1 ? '1 lectura' : `${shown.length} lecturas`} · en verde, lo óptimo para {targets.label.toLowerCase()} ({num(band[0], m.digits)}–{num(band[1], m.digits)}
             {m.unit})
           </p>

@@ -960,9 +960,9 @@ export function buildCultivationStageSchedule(
 
   let adjustmentReason = 'El cronograma se encuentra alineado con la proyección inicial.';
   if (adjustmentDeltaDays > 0) {
-    adjustmentReason = `Se extendió ${adjustmentDeltaDays} días porque etapas previas duraron más de lo previsto.`;
+    adjustmentReason = `Se extendió ${adjustmentDeltaDays === 1 ? '1 día' : `${adjustmentDeltaDays} días`} porque etapas previas duraron más de lo previsto.`;
   } else if (adjustmentDeltaDays < 0) {
-    adjustmentReason = `Se adelantó ${Math.abs(adjustmentDeltaDays)} días respecto a la estimación inicial.`;
+    adjustmentReason = `Se adelantó ${adjustmentDeltaDays === -1 ? '1 día' : `${Math.abs(adjustmentDeltaDays)} días`} respecto a la estimación inicial.`;
   }
 
   const daysUntilHarvest = Math.max(0, daysBetween(todayStr, estimatedHarvestDate));

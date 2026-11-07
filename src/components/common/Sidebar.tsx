@@ -12,6 +12,7 @@ import {
   Trophy,
   Plug,
   Users,
+  Award,
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -41,14 +42,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
   const navItems = [
     { id: 'dashboard', label: 'Jardín', icon: LayoutDashboard, badge: '' },
-    // Cultivos: historial de terminados y cosechas (los activos están en el Inicio)
-    { id: 'cultivations', label: 'Cultivos', icon: Sprout, badge: cultivationsCount > 0 ? `${cultivationsCount}` : '' },
+    // Cosechas: historial de terminados (los activos están en el Jardín)
+    { id: 'cultivations', label: 'Cosechas', icon: Award, badge: cultivationsCount > 0 ? `${cultivationsCount}` : '' },
     { id: 'community', label: 'Comunidad', icon: Users, badge: '' },
     { id: 'genetics', label: 'Genéticas', icon: Dna, badge: geneticsCount > 0 ? `${geneticsCount}` : '' },
     { id: 'compare_crops', label: 'Comparador', icon: Scale, badge: '' },
     { id: 'calculators', label: 'Calculadoras', icon: Calculator, badge: '' },
     { id: 'devices', label: 'Equipos', icon: Plug, badge: '' },
-    { id: 'ai_assistant', label: 'Cultiveta IA', icon: Sparkles, isAI: true, badge: '✨' },
+    { id: 'ai_assistant', label: 'Cultiveta IA', icon: Sparkles, isAI: true },
     { id: 'profile', label: 'Mi perfil', icon: Trophy, badge: '' },
   ];
 
@@ -64,14 +65,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Collapse toggle row */}
         <div className="flex items-center justify-between px-2 pt-1 pb-2 border-b border-black/10">
           {!isCollapsed && (
-            <span className="text-[10px] uppercase tracking-wider text-ink-subtle font-bold">
+            <span className="text-[11px] uppercase tracking-wider text-ink-subtle font-bold">
               Navegación
             </span>
           )}
           <button
             type="button"
             onClick={toggleCollapse}
-            className="p-1.5 rounded-xl hover:bg-[#EBF7F9] text-ink-muted hover:text-ink transition-colors cursor-pointer ml-auto"
+            className="p-1.5 rounded-xl hover:bg-track text-ink-muted hover:text-ink transition-colors cursor-pointer ml-auto"
             title={isCollapsed ? 'Expandir menú' : 'Colapsar menú'}
           >
             {isCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
@@ -131,7 +132,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                 {!isCollapsed && item.badge && (
                   <span
-                    className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
                       isActive
                         ? 'bg-brand-softer text-brand-deep'
                         : 'bg-track text-ink-muted border border-black/10'
@@ -149,10 +150,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Bottom Footer Info */}
       {!isCollapsed && (
         <div className="p-3 rounded-2xl bg-surface border border-black/10 text-center space-y-1">
-          <span className="text-[11px] font-bold text-ink block">
-            Cultiveta 🌱
+          <span className="text-xs font-bold text-ink block">
+            Cultiveta
           </span>
-          <span className="text-[10px] text-ink-muted block">
+          <span className="text-[11px] text-ink-muted block">
             Diario botánico & IA
           </span>
         </div>

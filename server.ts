@@ -1260,7 +1260,7 @@ Instrucción obligatoria:
 Proporciona una recomendación de emergencia inmediata, técnica y accionable para que el cultivador intervenga de inmediato y proteja las plantas de acuerdo a los umbrales configurados para su cultivo.
 Devuelve ESTRICTAMENTE un objeto JSON válido con este formato:
 {
-  "title": "Título conciso y directo de la alerta (ej: 'Alerta: Calor Crítico (>${tempMaxLimit}°C)' o 'Alerta: Riesgo de Botrytis (>${humidityMaxLimit}% HR)' o 'Alerta: Frío Crítico (<${tempMinLimit}°C)')",
+  "title": "Título corto y directo, en castellano rioplatense y con mayúscula solo al principio (ej: 'Calor: más de ${tempMaxLimit} °C', 'Riesgo de botrytis: humedad de más de ${humidityMaxLimit} %' o 'Frío: menos de ${tempMinLimit} °C')",
   "description": "Recomendación de emergencia clara de 1 a 2 oraciones indicando las acciones prioritarias a tomar."
 }`;
 
@@ -1294,14 +1294,14 @@ Devuelve ESTRICTAMENTE un objeto JSON válido con este formato:
 
             // Valores de respaldo por si el modelo devuelve estructura atípica o no está disponible
             let alertTitle = isCriticalHumidityHigh && isFloweringOrMaturing
-              ? `Alerta: Riesgo Severo de Botrytis (Humedad >${humidityMaxLimit}%)`
+              ? `Riesgo de botrytis: humedad de más de ${humidityMaxLimit} %`
               : isCriticalHumidityHigh
-              ? `Alerta: Humedad Excesiva (>${humidityMaxLimit}%)`
+              ? `Humedad alta: más de ${humidityMaxLimit} %`
               : isCriticalHumidityLow
-              ? `Alerta: Humedad Críticamente Baja (<${humidityMinLimit}%)`
+              ? `Humedad baja: menos de ${humidityMinLimit} %`
               : isHighTemp
-              ? `Alerta: Calor Crítico (>${tempMaxLimit}°C)`
-              : `Alerta: Frío Crítico (<${tempMinLimit}°C)`;
+              ? `Calor: más de ${tempMaxLimit} °C`
+              : `Frío: menos de ${tempMinLimit} °C`;
 
             let alertDescription = isCriticalHumidityHigh && isFloweringOrMaturing
               ? `Humedad de ${humidity}% supera el umbral configurado de ${humidityMaxLimit}% en etapa de ${stage}. Maximiza la circulación de aire inmediatamente para evitar hongos en los cogollos.`

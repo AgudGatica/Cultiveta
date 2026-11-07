@@ -42,7 +42,7 @@ function Group({
     >
       <legend className="sr-only">{title}</legend>
       <div className="flex flex-wrap items-center gap-2" aria-hidden="true">
-        <span className="text-[11px] font-extrabold text-ink">{title}</span>
+        <span className="text-xs font-extrabold text-ink">{title}</span>
         {badge}
       </div>
       {children}
@@ -93,7 +93,7 @@ export const PhotoperiodPresetPicker: React.FC<PhotoperiodPresetPickerProps> = (
         <span>
           {p.light}/{p.dark}
         </span>
-        <span className={`text-[10px] font-semibold ${active ? 'text-brand-soft' : 'text-ink-muted'}`}>
+        <span className={`text-[11px] font-semibold ${active ? 'text-brand-soft' : 'text-ink-muted'}`}>
           {p.name}
           {p.note && <span className="font-normal"> ({p.note})</span>}
         </span>
@@ -131,14 +131,14 @@ export const PhotoperiodPresetPicker: React.FC<PhotoperiodPresetPickerProps> = (
         title="Superciclos floración"
         dashed
         badge={
-          <span className="inline-flex items-center gap-1 rounded-full bg-warn-bg border border-warn-line px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-warn-ink">
+          <span className="inline-flex items-center gap-1 rounded-full bg-warn-bg border border-warn-line px-2 py-0.5 text-[11px] font-black uppercase tracking-wide text-warn-ink">
             <FlaskConical className="w-3 h-3" aria-hidden="true" />
             Experimental
           </span>
         }
       >
         <div className="flex flex-wrap gap-1.5">{SUPERCYCLE_PRESETS.map((p) => chip(p, !supercyclesEnabled))}</div>
-        <p className="text-[11px] text-ink-muted leading-snug">
+        <p className="text-xs text-ink-muted leading-snug">
           {supercyclesEnabled
             ? 'Ciclos de más de 24 horas, manejados por tu enchufe inteligente.'
             : 'Ciclos de más de 24 horas. Solo se pueden usar con un enchufe inteligente Wi-Fi que maneje esta luz (se asigna en Equipos): un temporizador común no puede hacerlos.'}
@@ -146,7 +146,7 @@ export const PhotoperiodPresetPicker: React.FC<PhotoperiodPresetPickerProps> = (
       </Group>
 
       {isCustom && (
-        <p className="text-[11px] font-semibold text-warn-ink">
+        <p className="text-xs font-semibold text-warn-ink">
           Este cultivo tiene {currentLight}/{currentDark}, que no está entre las opciones. Elegí una para cambiarlo.
         </p>
       )}

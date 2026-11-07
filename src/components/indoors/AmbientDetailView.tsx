@@ -130,17 +130,16 @@ export const AmbientDetailView: React.FC<AmbientDetailViewProps> = ({
           <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/10 to-transparent" />
           <div className="absolute left-4 right-4 bottom-3 flex items-end justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-[11px] font-bold text-white cultiveta-on-gradient">
-                {exterior ? 'Exterior' : 'Interior'} · {INDOOR_KINDS[ambient.kind] || 'Ambiente'}
-                {size ? ` · ${size}` : ''}
+              <p className="text-xs font-bold text-white cultiveta-on-gradient">
+                {size ? `${INDOOR_KINDS[ambient.kind] || 'Ambiente'} · ${size}` : `${exterior ? 'Exterior' : 'Interior'} · ${INDOOR_KINDS[ambient.kind] || 'Ambiente'}`}
               </p>
               <h1 className="text-2xl font-black text-white tracking-tight truncate">{ambient.name}</h1>
             </div>
             <div className="flex gap-2 shrink-0">
-              <button type="button" id="ambient-edit" onClick={() => onEdit(ambient)} className="min-h-9 px-3 rounded-full bg-white/90 text-ink text-xs font-bold inline-flex items-center gap-1" aria-label="Editar ambiente">
+              <button type="button" id="ambient-edit" onClick={() => onEdit(ambient)} className="min-h-11 min-w-11 rounded-full bg-white/90 text-ink inline-flex items-center justify-center" aria-label="Editar ambiente">
                 <Pencil className="w-3.5 h-3.5" aria-hidden="true" />
               </button>
-              <button type="button" id="ambient-delete" disabled={busy} onClick={remove} className="min-h-9 px-3 rounded-full bg-white/90 text-error text-xs font-bold inline-flex items-center gap-1" aria-label="Borrar ambiente">
+              <button type="button" id="ambient-delete" disabled={busy} onClick={remove} className="min-h-11 min-w-11 rounded-full bg-white/90 text-error inline-flex items-center justify-center" aria-label="Borrar ambiente">
                 <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
               </button>
             </div>
@@ -154,11 +153,33 @@ export const AmbientDetailView: React.FC<AmbientDetailViewProps> = ({
           ].map(([l, v]) => (
             <div key={l} className="rounded-2xl bg-surface border border-line p-2.5">
               <b className="block text-lg font-black text-ink leading-tight">{v}</b>
-              <small className="text-[10px] font-semibold text-ink-muted">{l}</small>
+              <small className="text-[11px] font-semibold text-ink-muted">{l}</small>
             </div>
           ))}
         </div>
         {error && <p className="text-xs font-bold text-error px-4 pb-3">{error}</p>}
+      </section>
+
+      {/* Primero sus plantas: es a lo que más se entra */}
+      <section id="ambient-genetics" className="space-y-3">
+        <div className="flex items-center justify-between gap-2 px-1">
+          <h2 className="text-lg font-extrabold text-white cultiveta-on-gradient flex items-center gap-2">
+            <Dna className="w-5 h-5" aria-hidden="true" />
+            Genéticas{entries.length ? ` (${entries.length})` : ''}
+          </h2>
+          <button type="button" id="ambient-add-plants" onClick={() => onAddPlants(ambient)} className="cultiveta-btn-secondary text-xs">
+            <Plus className="w-3.5 h-3.5" aria-hidden="true" />
+            Sumar plantas
+          </button>
+        </div>
+        {entries.length === 0 && (
+          <div className={`${CARD} text-sm text-ink-muted`}>Todavía no hay plantas en este ambiente. Sumá la primera con su genética.</div>
+        )}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {entries.map((e) => (
+            <GeneticCard key={`${e.crop.id}_${e.index}`} entry={e} onOpen={onOpenGenetic} />
+          ))}
+        </div>
       </section>
 
       {exterior ? (
@@ -219,26 +240,6 @@ export const AmbientDetailView: React.FC<AmbientDetailViewProps> = ({
         />
       ) : null}
 
-      <section id="ambient-genetics" className="space-y-3">
-        <div className="flex items-center justify-between gap-2 px-1">
-          <h2 className="text-lg font-extrabold text-white cultiveta-on-gradient flex items-center gap-2">
-            <Dna className="w-5 h-5" aria-hidden="true" />
-            Genéticas{entries.length ? ` (${entries.length})` : ''}
-          </h2>
-          <button type="button" id="ambient-add-plants" onClick={() => onAddPlants(ambient)} className="cultiveta-btn-secondary text-xs">
-            <Plus className="w-3.5 h-3.5" aria-hidden="true" />
-            Sumar plantas
-          </button>
-        </div>
-        {entries.length === 0 && (
-          <div className={`${CARD} text-sm text-ink-muted`}>Todavía no hay plantas en este ambiente. Sumá la primera con su genética.</div>
-        )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {entries.map((e) => (
-            <GeneticCard key={`${e.crop.id}_${e.index}`} entry={e} onOpen={onOpenGenetic} />
-          ))}
-        </div>
-      </section>
     </div>
   );
 };

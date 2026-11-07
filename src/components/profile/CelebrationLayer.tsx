@@ -31,7 +31,7 @@ const XpToastItem: React.FC<{ toast: XpToast; onDone: (id: string) => void }> = 
       className="pointer-events-auto inline-flex items-center gap-2 rounded-full bg-brand-deep text-white pl-2 pr-4 py-1.5 shadow-lg shadow-brand-deep/25 text-xs font-bold"
       role="status"
     >
-      <span className="rounded-full bg-primary text-ink px-2 py-0.5 text-[11px] font-black">+{toast.xp} XP</span>
+      <span className="rounded-full bg-primary text-ink px-2 py-0.5 text-xs font-black">+{toast.xp} XP</span>
       {toast.label}
     </motion.div>
   );
@@ -136,7 +136,7 @@ export const CelebrationLayer: React.FC<CelebrationLayerProps> = ({
                   <Icon className="w-10 h-10" />
                 )}
               </motion.div>
-              <p className="text-[11px] font-bold uppercase tracking-wider text-brand flex items-center justify-center gap-1">
+              <p className="text-xs font-bold uppercase tracking-wider text-brand flex items-center justify-center gap-1">
                 <Sparkles className="w-3.5 h-3.5" />
                 {current.kind === 'level' ? 'Subiste de nivel' : 'Logro'}
               </p>

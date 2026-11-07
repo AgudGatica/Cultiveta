@@ -78,6 +78,7 @@ import { LightCycleCard, type LightSchedule } from './LightCycleCard';
 import { CropDevicesCard } from './CropDevicesCard';
 import { useDevicesOverview, lightBindingFor, sensorBindingFor, pumpBindingFor } from '../../services/devicesService';
 import { environmentService } from '../../services/environmentService';
+import { dec } from '../../utils/formatNumber';
 
 interface CultivationDetailViewProps {
   cultivation: Cultivation;
@@ -246,7 +247,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                 type="button"
                 id="crop-indoor-chip"
                 onClick={() => onOpenIndoor?.(indoor.id)}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-brand/10 border border-brand/20 text-brand text-xs font-bold hover:bg-brand/15"
+                className="min-h-11 inline-flex items-center gap-1.5 px-3 rounded-full bg-brand/10 border border-brand/20 text-brand text-xs font-bold hover:bg-brand/15"
               >
                 <Home className="w-3.5 h-3.5" aria-hidden="true" />
                 En {indoor.name}
@@ -267,21 +268,21 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
           {/* Quick Health & Stage Status Badge */}
           <div className="flex items-center gap-4 bg-surface p-4 sm:p-5 rounded-2xl border border-line w-full md:w-auto justify-around md:justify-start shadow-xs">
             <div className="text-center sm:text-left">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-ink-subtle block">Estado</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-ink-subtle block">Estado</span>
               <div className={`text-lg sm:text-xl font-extrabold ${isHealthy ? 'text-ok-ink' : 'text-error'}`}>
-                {isHealthy ? 'Está joya 🌱' : 'Hay algo para mirar ⚠️'}
+                {isHealthy ?'Está joya ' : 'Hay algo para mirar '}
               </div>
             </div>
 
             <div className="h-10 w-px bg-line" />
 
             <div className="text-center sm:text-left">
-              <span className="text-[11px] font-bold uppercase tracking-wider text-ink-subtle block">Tiempo</span>
+              <span className="text-xs font-bold uppercase tracking-wider text-ink-subtle block">Tiempo</span>
               <div className="text-lg sm:text-xl font-black text-ink">
                 Día {totalDays} · <span className="text-brand">{cultivation.currentStage}</span>
               </div>
               {isFlowering && floweringDays && (
-                <span className="text-[11px] text-error font-bold block">
+                <span className="text-xs text-error font-bold block">
                   Día {floweringDays} de floración
                 </span>
               )}
@@ -317,7 +318,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
           <div className="p-4 sm:p-5 rounded-2xl bg-surface border border-line flex flex-col justify-between space-y-3">
             <div>
               <div className="flex items-center justify-between mb-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-ink-subtle">Hoy</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-ink-subtle">Hoy</span>
                 <Clock className="w-4 h-4 text-brand" />
               </div>
               <div className="space-y-1">
@@ -362,7 +363,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
             </div>
 
             <div className="pt-2 border-t border-line">
-              <span className="text-[11px] text-ink-subtle font-semibold">
+              <span className="text-xs text-ink-subtle font-semibold">
                 {tank ? 'pH y EC del tanque todos los días' : `Referencia de la etapa: cada ${wateringAnalysis.recommendedIntervalDays} d`}
               </span>
             </div>
@@ -379,15 +380,15 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
               </div>
               <div>
                 <div className="font-extrabold text-ink flex items-center gap-2">
-                  <span>Cultivo Finalizado y Cosechado 🏁</span>
-                  <span className="px-2 py-0.5 rounded-full bg-brand/20 text-brand text-[10px] font-mono font-bold uppercase">
+                  <span>Cultivo cosechado</span>
+                  <span className="px-2 py-0.5 rounded-full bg-brand/20 text-brand text-[11px] font-bold uppercase">
                     {cultivation.status || 'COSECHADO'}
                   </span>
                 </div>
                 <p className="text-ink-muted text-xs mt-0.5">
                   {cultivation.harvestDate || cultivation.endDate ? `Fecha de cosecha: ${formatFriendlyDate(cultivation.harvestDate || cultivation.endDate || '')}` : 'Cosecha registrada con éxito.'}
                   {(cultivation.estimatedWeight || cultivation.finalWeight) ? ` · Peso estimado: ${cultivation.estimatedWeight || cultivation.finalWeight} g` : ''}
-                  {(cultivation.estimatedWeight || cultivation.finalWeight) && cultivation.plantCount ? ` (~${((cultivation.estimatedWeight || cultivation.finalWeight)! / cultivation.plantCount).toFixed(1)} g / planta)` : ''}
+                  {(cultivation.estimatedWeight || cultivation.finalWeight) && cultivation.plantCount ? ` (~${dec((cultivation.estimatedWeight || cultivation.finalWeight)! / cultivation.plantCount, 1)} g / planta)` : ''}
                 </p>
               </div>
             </div>
@@ -397,7 +398,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
               onClick={() => setIsHarvestModalOpen(true)}
               className="px-3.5 py-1.5 rounded-xl bg-brand hover:bg-brand-deep text-white font-bold text-xs transition-colors shadow-2xs cursor-pointer shrink-0"
             >
-              Modificar Cosecha
+              Modificar cosecha
             </button>
           </div>
         )}
@@ -432,10 +433,10 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                         <span className="text-xs font-extrabold text-ink">
                           Etapa: {cultivation.currentStage}
                         </span>
-                        <span className="px-2 py-0.5 rounded-full bg-ok/15 text-ok-ink text-[10px] font-extrabold border border-ok/30">
+                        <span className="px-2 py-0.5 rounded-full bg-ok/15 text-ok-ink text-[11px] font-extrabold border border-ok/30">
                           Día {timelineMetrics.daysInActiveStage} de {timelineMetrics.activeStage.expectedDurationDays}d
                         </span>
-                        <span className="text-[11px] text-ink-muted hidden sm:inline">
+                        <span className="text-xs text-ink-muted hidden sm:inline">
                           · {timelineMetrics.activeStageProgressPct}% de la etapa
                         </span>
                       </div>
@@ -469,7 +470,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                         title="Finalizar cultivo y marcar como cosechado"
                       >
                         <Award className="w-3.5 h-3.5 text-ink" />
-                        <span>Marcar Cosechado</span>
+                        <span>Marcar como cosechado</span>
                       </button>
                     )}
 
@@ -481,7 +482,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                       title="Definir duración y fotoperíodo de las etapas"
                     >
                       <Settings2 className="w-3.5 h-3.5 text-brand" />
-                      <span>Definir Etapas</span>
+                      <span>Definir etapas</span>
                     </button>
 
                     <button
@@ -490,7 +491,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                       className="px-2.5 py-1.5 rounded-xl bg-brand/10 border border-brand/30 text-brand hover:bg-brand/20 transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
                     >
                       <Clock className="w-3.5 h-3.5 text-brand" />
-                      <span>Ver Línea de Tiempo</span>
+                      <span>Ver línea de tiempo</span>
                       <ChevronRight className="w-3 h-3 text-brand" />
                     </button>
                   </div>
@@ -520,11 +521,11 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                         }`}
                         title={`${st.name}: ${st.expectedDurationDays} días`}
                       >
-                        <div className="flex items-center gap-1 text-[11px] font-bold truncate">
+                        <div className="flex items-center gap-1 text-xs font-bold truncate">
                           <span>{icon}</span>
                           <span className="truncate">{st.name}</span>
                         </div>
-                        <div className={`text-[9px] font-medium mt-0.5 ${isActive ? 'text-white/80' : 'text-ink-subtle'}`}>
+                        <div className={`text-[11px] font-medium mt-0.5 ${isActive ? 'text-white/80' : 'text-ink-subtle'}`}>
                           {st.expectedDurationDays}d
                           {st.photoperiodHoursLight !== undefined && ` · ${st.photoperiodHoursLight}h`}
                         </div>
@@ -555,7 +556,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                 <div className="p-4 rounded-2xl bg-surface border border-line space-y-2">
                   <div className="flex items-center gap-2 text-xs font-bold text-ok-ink">
                     <Layers className="w-3.5 h-3.5" />
-                    <span>{cultivation.geneticsList.length} Variedades en este cultivo:</span>
+                    <span>{cultivation.geneticsList.length} genéticas en este cultivo:</span>
                     <span className="text-ink-muted font-normal">· {cultivation.plantCount} plantas totales</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -566,16 +567,16 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                       >
                         <strong className="text-ink">{g.name || 'Sin nombre'}</strong>
                         {g.plantCount && (
-                          <span className="text-ok-ink font-bold bg-ok/15 px-1.5 py-0.5 rounded text-[10px]">
+                          <span className="text-ok-ink font-bold bg-ok/15 px-1.5 py-0.5 rounded text-[11px]">
                             {g.plantCount} {g.plantCount === 1 ? 'planta' : 'plantas'}
                           </span>
                         )}
-                        {g.seedBank && <span className="text-ink-muted text-[11px]">({g.seedBank})</span>}
+                        {g.seedBank && <span className="text-ink-muted text-xs">({g.seedBank})</span>}
                         {g.photoperiodType && (
-                          <span className="text-ink-subtle text-[10px] font-semibold">· {g.photoperiodType}</span>
+                          <span className="text-ink-subtle text-[11px] font-semibold">· {g.photoperiodType}</span>
                         )}
                         {g.declaredFloweringWeeks && (
-                          <span className="text-ink-subtle text-[10px]">· {g.declaredFloweringWeeks} sem. flora</span>
+                          <span className="text-ink-subtle text-[11px]">· {g.declaredFloweringWeeks} sem. flora</span>
                         )}
                       </div>
                     ))}
@@ -633,7 +634,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded-full bg-error text-white font-mono font-bold text-[10px] tracking-wider uppercase">
+                    <span className="px-2 py-0.5 rounded-full bg-error text-white font-bold text-[11px] tracking-wider uppercase">
                       ATRASADO
                     </span>
                     <h4 className="font-bold text-sm text-ink">
@@ -652,7 +653,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                 className="px-5 py-2.5 rounded-2xl bg-error hover:brightness-95 text-white font-bold text-xs transition-all shadow-md shadow-coral/20 flex items-center justify-center gap-2 cursor-pointer shrink-0"
               >
                 <Droplets className="w-4 h-4" />
-                <span>Regar Ahora</span>
+                <span>Regar ahora</span>
               </button>
             </div>
           )}
@@ -694,28 +695,28 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                 wateringAnalysis.isOverdue ? 'border-coral ring-2 ring-coral/20' : 'border-line'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-ink-subtle block">{tank ? 'Último control' : 'Último Riego'}</span>
+              <div className="flex flex-wrap items-center justify-between gap-1.5">
+                <span className="text-xs font-semibold text-ink-subtle block">{tank ? 'Último control' : 'Último riego'}</span>
                 {wateringAnalysis.isOverdue && (
-                  <span className="px-2 py-0.5 rounded-full bg-coral/15 text-error font-mono font-bold text-[10px] tracking-wider uppercase">
+                  <span className="px-2 py-0.5 rounded-full bg-coral/15 text-error font-bold text-[11px] tracking-wider uppercase">
                     ATRASADO
                   </span>
                 )}
               </div>
               <div className="text-lg font-extrabold text-ink mt-1 flex items-baseline gap-2">
-                <span>{lastWatering ? `${lastWatering.volumeLiters} L` : 'Sin registros'}</span>
+                <span>{lastWatering ? `${dec(lastWatering.volumeLiters)} L` : 'Sin registros'}</span>
                 {wateringAnalysis.isOverdue && (
-                  <span className="text-xs font-mono font-bold text-error">
+                  <span className="text-xs font-bold text-error">
                     Hace {wateringAnalysis.daysSinceWatering}d
                   </span>
                 )}
               </div>
-              <span className="text-[11px] text-ink-subtle font-medium">
-                {lastWatering ? `pH ${lastWatering.phIn || '—'} · EC ${lastWatering.ecIn || '—'}` : 'Agregá un riego'}
+              <span className="text-xs text-ink-subtle font-medium">
+                {lastWatering ? `pH ${dec(lastWatering.phIn)} · EC ${dec(lastWatering.ecIn)}` : 'Agregá un riego'}
                 {lastWatering && wateringAnalysis.daysSinceWatering !== null && !wateringAnalysis.isOverdue && <span className="block">Hace {wateringAnalysis.daysSinceWatering} d</span>}
               </span>
               {soilSensor?.sensors?.soil != null && (
-                <span id="soil-sensor-reading" className="mt-1 block text-[11px] font-bold text-brand">
+                <span id="soil-sensor-reading" className="mt-1 block text-xs font-bold text-brand">
                   Sustrato {soilSensor.sensors.soil}% · {sensorAgo(soilSensor.readAt)}
                 </span>
               )}
@@ -724,7 +725,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                   type="button"
                   id="connect-irrigation-device"
                   onClick={() => onOpenDevices('riego')}
-                  className="mt-2 min-h-9 text-[11px] font-bold text-brand hover:underline flex items-center gap-1 cursor-pointer"
+                  className="mt-2 min-h-11 text-xs font-bold text-brand hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   <Plug className="w-3.5 h-3.5" aria-hidden="true" />
                   Conectar bomba o sonda
@@ -733,12 +734,12 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
             </div>
 
             <div className="bg-white rounded-3xl p-5 border border-line shadow-2xs relative group">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-ink-subtle block">{outdoor ? 'Clima de tu zona' : envSensor ? 'Ambiente ahora' : 'Último Ambiente'}</span>
+              <div className="flex flex-wrap items-center justify-between gap-1.5">
+                <span className="text-xs font-semibold text-ink-subtle block">{outdoor ? 'Clima de tu zona' : envSensor ? 'Ambiente ahora' : 'Último ambiente'}</span>
                 <button
                   type="button"
                   onClick={() => onEditCultivation(cultivation)}
-                  className="text-[10px] font-bold text-error bg-coral/10 hover:bg-coral/20 px-2 py-0.5 rounded-lg border border-coral/30 transition-colors cursor-pointer flex items-center gap-1"
+                  className="min-h-11 text-xs font-bold text-error bg-coral/10 hover:bg-coral/20 px-2 rounded-lg border border-coral/30 transition-colors cursor-pointer flex items-center gap-1"
                   title="Configurar umbrales críticos de temperatura y humedad para alertas IA"
                 >
                   <ShieldAlert className="w-3 h-3 text-error" />
@@ -747,13 +748,13 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
               </div>
               <div className="text-lg font-extrabold text-ink mt-1">
                 {envSensor?.sensors && (envSensor.sensors.temperature != null || envSensor.sensors.humidity != null)
-                  ? `${envSensor.sensors.temperature ?? '–'}°C | ${envSensor.sensors.humidity ?? '–'}%`
+                  ? `${dec(envSensor.sensors.temperature)} °C | ${dec(envSensor.sensors.humidity)} %`
                   : lastEnv
-                    ? `${lastEnv.temperatureC}°C | ${lastEnv.humidityPct}%`
+                    ? `${dec(lastEnv.temperatureC)} °C | ${dec(lastEnv.humidityPct)} %`
                     : 'Sin registros'}
               </div>
               {outdoor && (
-                <span id="env-auto-source" className="block text-[11px] font-bold text-brand">
+                <span id="env-auto-source" className="block text-xs font-bold text-brand">
                   {lastEnv?.isAutoLogged
                     ? `Se mide solo cada hora · ${sensorAgo(Date.parse(lastEnv.createdAt))}`
                     : cultivation.locationCoordinates
@@ -762,20 +763,20 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                 </span>
               )}
               {envSensor && (
-                <span id="env-sensor-source" className="block text-[11px] font-bold text-brand">
+                <span id="env-sensor-source" className="block text-xs font-bold text-brand">
                   {envSensor.online === false ? 'Sensor sin conexión' : `Medido por ${envSensor.deviceName} · ${sensorAgo(envSensor.readAt)}`}
                 </span>
               )}
-              <div className="flex items-center justify-between gap-1 text-[11px] text-ink-subtle font-medium mt-0.5">
+              <div className="flex items-center justify-between gap-1 text-xs text-ink-subtle font-medium mt-0.5">
                 <span>
                   {envSensor?.sensors?.temperature != null && envSensor.sensors.humidity != null
-                    ? `VPD: ${environmentService.calculateVPD(envSensor.sensors.temperature, envSensor.sensors.humidity)} kPa`
+                    ? `VPD: ${dec(environmentService.calculateVPD(envSensor.sensors.temperature, envSensor.sensors.humidity))} kPa`
                     : lastEnv?.vpdKPa
-                      ? `VPD: ${lastEnv.vpdKPa} kPa`
+                      ? `VPD: ${dec(lastEnv.vpdKPa)} kPa`
                       : 'Temp y humedad'}
                 </span>
                 <span
-                  className="text-[10px] font-mono text-ok-ink bg-ok/10 px-1.5 py-0.5 rounded border border-ok/30"
+                  className="text-[11px] text-ok-ink bg-ok/10 px-1.5 py-0.5 rounded border border-ok/30"
                   title="Rango térmico y de humedad seguro configurado para alertas automáticas"
                 >
                   {cultivation.alertThresholds?.enabled
@@ -788,7 +789,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                   type="button"
                   id="connect-env-sensor"
                   onClick={() => onOpenDevices('ambiente')}
-                  className="mt-2 min-h-9 text-[11px] font-bold text-brand hover:underline flex items-center gap-1 cursor-pointer"
+                  className="mt-2 min-h-11 text-xs font-bold text-brand hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   <Plug className="w-3.5 h-3.5" aria-hidden="true" />
                   Conectar mi sensor
@@ -797,17 +798,17 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
             </div>
 
             <div className="bg-white rounded-3xl p-5 border border-line shadow-2xs">
-              <span className="text-xs font-semibold text-ink-subtle block">Sustrato y Macetas</span>
+              <span className="text-xs font-semibold text-ink-subtle block">Sustrato y macetas</span>
               <div className="text-sm font-bold text-ink mt-1 truncate">
                 {cultivation.substrate?.potVolumeLiters}L {cultivation.substrate?.potType}
               </div>
-              <span className="text-[11px] text-ink-subtle font-medium truncate block">
+              <span className="text-xs text-ink-subtle font-medium truncate block">
                 {cultivation.substrate?.type || 'Sustrato orgánico'}
               </span>
             </div>
 
             <div className="bg-white rounded-3xl p-5 border border-line shadow-2xs relative group">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-1.5">
                 <span className="text-xs font-semibold text-ink-subtle block">Iluminación</span>
                 <button
                   type="button"
@@ -815,7 +816,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                     setStageForTransition(null);
                     setIsTransitionModalOpen(true);
                   }}
-                  className="text-[10px] font-bold text-brand bg-brand/10 hover:bg-brand/20 px-2 py-0.5 rounded-lg border border-brand/30 transition-colors cursor-pointer flex items-center gap-1"
+                  className="min-h-11 text-xs font-bold text-brand bg-brand/10 hover:bg-brand/20 px-2 rounded-lg border border-brand/30 transition-colors cursor-pointer flex items-center gap-1"
                   title="Ajustar fotoperíodo (12-12, 13-11, etc.) o etapa"
                 >
                   <Sun className="w-3 h-3 text-warn-line" />
@@ -832,14 +833,14 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                 );
                 return (
                   <div id="detail-photoperiod" className="flex flex-wrap items-center gap-1.5 mt-0.5">
-                    <span className="text-[11px] font-bold text-ink-muted">
+                    <span className="text-xs font-bold text-ink-muted">
                       {pp.light}h luz / {pp.dark}h osc.
                     </span>
                     {pp.name && (
-                      <span className="text-[9px] font-black bg-ok/15 text-ok-ink px-1.5 py-0.5 rounded-md">{pp.name}</span>
+                      <span className="text-[11px] font-black bg-ok/15 text-ok-ink px-1.5 py-0.5 rounded-md">{pp.name}</span>
                     )}
                     {pp.supercycle && (
-                      <span className="text-[9px] font-black bg-warn-bg border border-warn-line text-warn-ink px-1.5 py-0.5 rounded-md uppercase">
+                      <span className="text-[11px] font-black bg-warn-bg border border-warn-line text-warn-ink px-1.5 py-0.5 rounded-md uppercase">
                         Experimental
                       </span>
                     )}
@@ -954,7 +955,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
         <div className="space-y-4">
           <div className="flex items-center justify-between bg-white rounded-3xl p-5 border border-line shadow-xs">
             <div>
-              <h3 className="font-bold text-base text-ink">Diario de Seguimiento</h3>
+              <h3 className="font-bold text-base text-ink">Diario de seguimiento</h3>
               <p className="text-xs text-ink-muted">Historial cronológico de notas, podas y observaciones</p>
             </div>
             <button
@@ -997,7 +998,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
                         {note.tags.map((t) => (
                           <span
                             key={t}
-                            className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-ok/10 text-ok-ink border border-ok/25"
+                            className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-ok/10 text-ok-ink border border-ok/25"
                           >
                             {t}
                           </span>
@@ -1038,7 +1039,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
               className="px-5 py-2.5 rounded-2xl bg-brand hover:bg-brand-deep text-white font-bold text-xs transition-all shadow-md shadow-brand/20 flex items-center gap-2 cursor-pointer"
             >
               <Calendar className="w-4 h-4 stroke-[2.5]" />
-              <span>Gestionar Eventos en Calendar</span>
+              <span>Gestionar eventos en Calendar</span>
             </button>
           </div>
 
@@ -1046,9 +1047,9 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
             <div className="p-4 rounded-2xl bg-surface border border-line space-y-1.5">
               <div className="flex items-center gap-2 text-ok-ink font-bold text-xs">
                 <Droplets className="w-4 h-4" />
-                <span>Riegos y Nutrición</span>
+                <span>Riegos y nutrición</span>
               </div>
-              <p className="text-[11px] text-ink-muted leading-relaxed">
+              <p className="text-xs text-ink-muted leading-relaxed">
                 Recordatorios de riego calculados cada 2-3 días o basados en la fecha del último riego registrado.
               </p>
             </div>
@@ -1056,9 +1057,9 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
             <div className="p-4 rounded-2xl bg-surface border border-line space-y-1.5">
               <div className="flex items-center gap-2 text-brand font-bold text-xs">
                 <Layers className="w-4 h-4" />
-                <span>Transición de Etapas</span>
+                <span>Transición de etapas</span>
               </div>
-              <p className="text-[11px] text-ink-muted leading-relaxed">
+              <p className="text-xs text-ink-muted leading-relaxed">
                 Cambio de fotoperiodo 12/12, inicio de floración y poda de bajos programadas en tu agenda.
               </p>
             </div>
@@ -1066,9 +1067,9 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
             <div className="p-4 rounded-2xl bg-surface border border-line space-y-1.5">
               <div className="flex items-center gap-2 text-error font-bold text-xs">
                 <Award className="w-4 h-4" />
-                <span>Flush y Cosecha</span>
+                <span>Lavado y cosecha</span>
               </div>
-              <p className="text-[11px] text-ink-muted leading-relaxed">
+              <p className="text-xs text-ink-muted leading-relaxed">
                 Alertas anticipadas para el lavado de raíces (10-14 días antes) y la ventana ideal de secado.
               </p>
             </div>
@@ -1116,7 +1117,7 @@ export const CultivationDetailView: React.FC<CultivationDetailViewProps> = ({
               <CheckCircle2 className="w-4 h-4 text-brand" />
               <span>Cosechado</span>
               {(cultivation.estimatedWeight || cultivation.finalWeight) ? (
-                <span className="ml-1 px-1.5 py-0.5 rounded bg-brand/20 text-brand text-[10px] font-mono font-bold">
+                <span className="ml-1 px-1.5 py-0.5 rounded bg-brand/20 text-brand text-[11px] font-bold">
                   {cultivation.estimatedWeight || cultivation.finalWeight}g
                 </span>
               ) : null}
