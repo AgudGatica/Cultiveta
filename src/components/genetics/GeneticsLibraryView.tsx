@@ -335,6 +335,11 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
     return { count, avgGrams, avgRating };
   };
 
+  const favoriteItems = [
+    ...filteredSavedGenetics.map((own) => ({ name: own.name, own, favorite: null as FavoriteGenetic | null })),
+    ...filteredFavorites.map((favorite) => ({ name: favorite.name, own: null as Genetics | null, favorite })),
+  ].sort((x, y) => x.name.localeCompare(y.name, 'es'));
+
   const hasActiveFilters = searchTerm.trim() !== '' || selectedSeedBank !== 'ALL' || filterPhotoperiod !== 'all';
 
   /** Una favorita como genética del catálogo (si salió del catálogo, con todos sus datos). */
@@ -349,7 +354,7 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
       organolepticProfile: fav.organolepticProfile || '',
     } as PredefinedGenetic);
 
-  const renderCatalogItem = (item: PredefinedGenetic) => {
+  const renderCatalogItem = (item: PredefinedGenetic, inFavorites = false) => {
     const photoKey = getGeneticsPhotoKey(item.seedBank, item.name);
     const officialPhoto = catalogPhotos[photoKey]?.photoUrl;
     const key = `${item.seedBank}-${item.name}`;
@@ -405,12 +410,75 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
                 }
                 disabled={Boolean(togglingFavMap[getGeneticsKey(item.name, item.seedBank)])}
                 aria-pressed={isFav}
-                title={isFav ? 'Quitar de favoritos' : 'Agregar a favoritos'}
+                title={isFav ? 'Quitar de favoritas' : 'Agregar a favoritas'}
                 className="bg-brand-deep hover:bg-brand text-white font-bold rounded-full min-h-[52px] text-xs sm:text-sm shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer active:scale-98 disabled:opacity-60"
               >
-                <span>Favoritos</span>
+                <span>{inFavorites ? 'Quitar de favoritas' : 'Favoritos'}</span>
                 <Heart className={`w-4 h-4 shrink-0 transition-transform ${isFav ? 'fill-white text-white scale-110' : 'text-white'}`} aria-hidden="true" />
               </button>
+            </div>
+          </GeneticsShowcaseCard>
+        )}
+      </React.Fragment>
+    );
+  };
+
+  /** Una genética propia: el mismo formato que las del catálogo, con su información y sus acciones. */
+  const renderOwnItem = (genetics: Genetics) => {
+    const photoUrl = genetics.photoUrl || catalogPhotos[getGeneticsPhotoKey(genetics.seedBank, genetics.name)]?.photoUrl;
+    const key = `own-${genetics.id}`;
+    const isOpen = openGenetic === key;
+    const stats = getStatsForGenetics(genetics.name);
+    const floweringDays = genetics.declaredFloweringDays ? String(genetics.declaredFloweringDays) : '';
+    const aroma = genetics.expectedAroma || '';
+    const facts = [
+      genetics.photoperiodType,
+      genetics.thcPercentage ? `THC ${genetics.thcPercentage} %` : '',
+      genetics.cbdPercentage ? `CBD ${genetics.cbdPercentage} %` : '',
+    ].filter(Boolean);
+
+    return (
+      <React.Fragment key={key}>
+        <GeneticsCatalogRow name={genetics.name} seedBank={genetics.seedBank} dominance={genetics.dominance} photoUrl={photoUrl} floweringDays={floweringDays} isFavorite open={isOpen} onToggle={() => setOpenGenetic(isOpen ? null : key)} />
+        {isOpen && (
+          <GeneticsShowcaseCard name={genetics.name} seedBank={genetics.seedBank} dominance={genetics.dominance} photoUrl={photoUrl} floweringDays={floweringDays} organolepticProfile={aroma}>
+            {(facts.length > 0 || (genetics.terpenes?.length ?? 0) > 0 || genetics.notes || stats.count > 0) && (
+              <div className="space-y-2 text-xs text-ink">
+                {facts.length > 0 && <p className="font-semibold">{facts.join(' · ')}</p>}
+                {genetics.terpenes && genetics.terpenes.length > 0 && <p className="text-ink-muted">Terpenos: {genetics.terpenes.join(', ')}</p>}
+                {genetics.notes && <p className="text-ink-muted">{genetics.notes}</p>}
+                {stats.count > 0 && (
+                  <p className="flex items-center gap-1 font-semibold">
+                    <Star className="w-3.5 h-3.5 fill-warn-line text-warn-ink" aria-hidden="true" />
+                    {stats.count} {stats.count === 1 ? 'cosecha' : 'cosechas'}
+                    {stats.avgRating ? ` · ${stats.avgRating} de 5` : ''}
+                    {stats.avgGrams ? ` · ${stats.avgGrams} g por planta` : ''}
+                  </p>
+                )}
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-3">
+              <button type="button" onClick={() => onStartCropWithGenetics(genetics)} className="col-span-2 cultiveta-btn-primary rounded-full min-h-[52px] text-sm" title={`Iniciar cultivo con ${genetics.name}`}>
+                <Sprout className="w-4 h-4 shrink-0" aria-hidden="true" />
+                <span>Iniciar cultivo</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setGeneticsToEdit(genetics);
+                  setIsFormOpen(true);
+                }}
+                className="cultiveta-btn-secondary rounded-full min-h-[52px] text-sm"
+              >
+                <Edit className="w-4 h-4 shrink-0 text-brand" aria-hidden="true" />
+                <span>Editar</span>
+              </button>
+              {onGeneticsDeleted && (
+                <button type="button" onClick={() => onGeneticsDeleted(genetics.id)} className="cultiveta-btn-secondary rounded-full min-h-[52px] text-sm text-error">
+                  <Trash2 className="w-4 h-4 shrink-0" aria-hidden="true" />
+                  <span>Eliminar</span>
+                </button>
+              )}
             </div>
           </GeneticsShowcaseCard>
         )}
@@ -651,27 +719,16 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
             </div>
           ) : (
             <div id="genetics-catalog-list" className="flex flex-col gap-2 w-full max-w-[570px] mx-auto">
-              {filteredPredefined.map(renderCatalogItem)}
+              {filteredPredefined.map((item) => renderCatalogItem(item))}
             </div>
           )}
         </>
       )}
 
-      {/* Favoritas */}
+      {/* Favoritas: las marcadas y las propias, en una sola lista y con el mismo formato */}
       {activeTab === 'favorites' && (
         <>
-          {filteredFavorites.length > 0 && (
-            <div id="genetics-favorites-list" className="flex flex-col gap-2 w-full max-w-[570px] mx-auto">
-              {filteredFavorites.map((fav) => renderCatalogItem(predefinedFromFavorite(fav)))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Las genéticas propias, dentro de Favoritas */}
-      {activeTab === 'favorites' && (
-        <>
-          {filteredSavedGenetics.length === 0 && filteredFavorites.length > 0 ? null : filteredSavedGenetics.length === 0 ? (
+          {favoriteItems.length === 0 ? (
             <div id="genetics-favorites-empty" className="bg-white rounded-3xl p-12 border border-line text-center space-y-3">
               <div className="w-16 h-16 rounded-full bg-ok-bg text-ok-ink flex items-center justify-center mx-auto">
                 <Layers className="w-8 h-8" />
@@ -709,152 +766,8 @@ export const GeneticsLibraryView: React.FC<GeneticsLibraryViewProps> = ({
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filteredSavedGenetics.map((genetics) => {
-                const stats = getStatsForGenetics(genetics.name);
-                const photoKey = getGeneticsPhotoKey(genetics.seedBank, genetics.name);
-                const effectivePhoto = genetics.photoUrl || catalogPhotos[photoKey]?.photoUrl;
-
-                return (
-                  <div
-                    key={genetics.id}
-                    className="bg-white rounded-3xl p-5 border border-line shadow-2xs hover:shadow-md transition-all flex flex-col justify-between space-y-4"
-                  >
-                    <div className="space-y-3">
-                      {/* Fotografía si existe */}
-                      {effectivePhoto && (
-                        <div className="relative w-full h-44 rounded-2xl overflow-hidden bg-track border border-line">
-                          <img
-                            src={effectivePhoto}
-                            alt={`${genetics.name} - ${genetics.seedBank}`}
-                            className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
-                            loading="lazy"
-                          />
-                        </div>
-                      )}
-
-                      {/* Card Title & Bank */}
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h3 className="font-bold text-base text-ink">{genetics.name}</h3>
-                          <p className="text-xs font-semibold text-ok-ink">{genetics.seedBank}</p>
-                        </div>
-
-                        <div className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setGeneticsToEdit(genetics);
-                              setIsFormOpen(true);
-                            }}
-                            className="p-1.5 text-ink-subtle hover:text-ink rounded-lg hover:bg-track cursor-pointer"
-                            title="Editar"
-                          >
-                            <Edit className="w-3.5 h-3.5" />
-                          </button>
-                          {onGeneticsDeleted && (
-                            <button
-                              type="button"
-                              onClick={() => onGeneticsDeleted(genetics.id)}
-                              className="p-1.5 text-ink-subtle hover:text-error rounded-lg hover:bg-track cursor-pointer"
-                              title="Eliminar"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Badges */}
-                      <div className="flex flex-wrap gap-1.5">
-                        <span className="px-2.5 py-0.5 rounded-full bg-ok-bg border border-ok-line text-ok-ink text-xs font-bold">
-                          {genetics.photoperiodType}
-                        </span>
-                        <span className="px-2.5 py-0.5 rounded-full bg-track text-ink text-xs font-semibold">
-                          {genetics.dominance}
-                        </span>
-                        {genetics.declaredFloweringDays && (
-                          <span className="px-2.5 py-0.5 rounded-full bg-warn-bg text-warn-ink border border-warn-line text-xs font-semibold">
-                            ~{genetics.declaredFloweringDays} días flor
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Cannabinoids */}
-                      {(genetics.thcPercentage || genetics.cbdPercentage) && (
-                        <div className="grid grid-cols-2 gap-2 bg-surface p-2.5 rounded-2xl border border-line text-xs">
-                          {genetics.thcPercentage && (
-                            <div>
-                              <span className="text-ink-subtle block text-[11px]">THC</span>
-                              <span className="font-bold text-ink">{genetics.thcPercentage}%</span>
-                            </div>
-                          )}
-                          {genetics.cbdPercentage && (
-                            <div>
-                              <span className="text-ink-subtle block text-[11px]">CBD</span>
-                              <span className="font-bold text-ink">{genetics.cbdPercentage}%</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Terpenes */}
-                      {genetics.terpenes && genetics.terpenes.length > 0 && (
-                        <div className="space-y-1">
-                          <span className="text-[11px] uppercase font-bold text-ink-subtle">Terpenos dominantes</span>
-                          <div className="flex flex-wrap gap-1">
-                            {genetics.terpenes.map((t, idx) => (
-                              <span
-                                key={idx}
-                                className="px-2 py-0.5 rounded-md bg-track text-ink-muted text-[11px] font-medium"
-                              >
-                                {t}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Notes */}
-                      {genetics.notes && (
-                        <p className="text-xs text-ink-muted italic bg-ok-bg p-2.5 rounded-xl border border-ok-line">
-                          "{genetics.notes}"
-                        </p>
-                      )}
-
-                      {/* Harvest stats */}
-                      {stats.count > 0 && (
-                        <div className="p-3 rounded-2xl bg-warn-bg border border-warn-line text-xs space-y-1">
-                          <div className="flex items-center justify-between font-bold text-warn-ink">
-                            <span>{stats.count} cosechas registradas</span>
-                            {stats.avgRating && (
-                              <span className="flex items-center gap-1">
-                                <Star className="w-3.5 h-3.5 fill-warn-line text-warn-ink" />
-                                {stats.avgRating}
-                              </span>
-                            )}
-                          </div>
-                          {stats.avgGrams && (
-                            <div className="text-ink-muted text-xs">
-                              Rendimiento promedio: <span className="font-bold text-ink">{stats.avgGrams} g / planta</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Bottom action */}
-                    <button
-                      type="button"
-                      onClick={() => onStartCropWithGenetics(genetics)}
-                      className="w-full py-2.5 rounded-2xl bg-brand-deep hover:bg-brand-deep text-white font-bold text-xs shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
-                    >
-                      <Sprout className="w-4 h-4" />
-                      <span>Iniciar cultivo</span>
-                    </button>
-                  </div>
-                );
-              })}
+            <div id="genetics-favorites-list" className="flex flex-col gap-2 w-full max-w-[570px] mx-auto">
+              {favoriteItems.map((item) => (item.own ? renderOwnItem(item.own) : renderCatalogItem(predefinedFromFavorite(item.favorite!), true)))}
             </div>
           )}
         </>

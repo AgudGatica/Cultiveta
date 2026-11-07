@@ -378,13 +378,23 @@ async function run() {
       return () => {};
     }) as any;
     try {
-      const m = await mount(React.createElement(GeneticsLibraryView, { userId: 'u1', geneticsList: [], harvests: [], onStartCropWithGenetics: () => {}, onGeneticsUpdated: () => {} } as any));
+      const own = { id: 'g1', userId: 'u1', name: 'Mi Genética', seedBank: 'Propia', photoperiodType: 'Fotoperiódica', dominance: 'Híbrida', declaredFloweringDays: 60, expectedAroma: 'Cítrico', createdAt: iso, updatedAt: iso };
+      const removed: string[] = [];
+      const m = await mount(React.createElement(GeneticsLibraryView, { userId: 'u1', geneticsList: [own], harvests: [], onStartCropWithGenetics: () => {}, onGeneticsUpdated: () => {}, onGeneticsDeleted: (id: string) => removed.push(id) } as any));
       const c = m.container;
       assert(c.querySelectorAll('[data-genetic-row]').length === GENETICS_DATABASE.length && !c.querySelector('article'), 'todas en filas');
       await click(c.querySelector('[data-genetic-row]'));
       assert(c.querySelectorAll('article').length === 1 && c.querySelector('[data-genetic-row]')?.getAttribute('aria-expanded') === 'true', 'se abre una');
       await click(c.querySelector('#tab-favorites-btn'));
-      assert(c.querySelectorAll('#genetics-favorites-list [data-genetic-row]').length === 1, 'Favoritas muestra las favoritas');
+      const rows = [...c.querySelectorAll('#genetics-favorites-list [data-genetic-row]')];
+      assert(rows.length === 2, 'Favoritas junta las marcadas y las propias, con el mismo formato');
+      await click(rows.find((r) => r.getAttribute('data-genetic-row') === 'Mi Genética'));
+      const buttons = [...c.querySelectorAll('article button')].map((b) => b.textContent);
+      assert(buttons.join() === 'Iniciar cultivo,Editar,Eliminar', `acciones propias: ${buttons}`);
+      await click([...c.querySelectorAll('article button')].find((b) => b.textContent === 'Eliminar'));
+      assert(removed.join() === 'g1', 'eliminar llama a la app');
+      await click(rows.find((r) => r.getAttribute('data-genetic-row') === first.name));
+      assert(/Quitar de favoritas/.test(c.querySelector('article')?.textContent || ''), 'quitar una marcada');
       assert(!/fuchsia/.test(c.innerHTML), 'sin fucsia');
       await m.unmount();
     } finally {
