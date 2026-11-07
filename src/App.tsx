@@ -72,6 +72,7 @@ import { devicesService, scheduleSnapshot, sameSchedule, useDevicesOverview } fr
 import { indoorService } from './services/indoorService';
 import { autoAmbientId, cropsWithoutAmbient, withIndoorLighting } from './utils/indoors';
 import { normalizeCultivationStages } from './utils/growthStageUtils';
+import { CLOUD_WRITE_FAILED_EVENT } from './services/cloudWrite';
 const PhotoDiagnosisModal = React.lazy(() =>
   import('./components/ai/PhotoDiagnosisModal').then((m) => ({ default: m.PhotoDiagnosisModal }))
 );
@@ -660,7 +661,21 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    const onFailed = () => showToast('No se pudo guardar en tu cuenta. Revisá la sesión y volvé a cargarlo.');
+    window.addEventListener(CLOUD_WRITE_FAILED_EVENT, onFailed);
+    return () => window.removeEventListener(CLOUD_WRITE_FAILED_EVENT, onFailed);
+  }, []);
+
   const handleLogout = async () => {
+    const pending = currentUser?.uid ? localStore.pendingCount(currentUser.uid) : 0;
+    if (pending > 0 && !window.confirm(`Tenés ${pending === 1 ? '1 registro' : `${pending} registros`} sin subir. Si cerrás sesión ahora, se pueden perder. ¿Cerrar igual?`)) return;
+    try {
+      await authService.signOutUser();
+    } catch {
+      showToast('No se pudo cerrar la sesión. Probá de nuevo.');
+      return;
+    }
     if (currentUser?.uid) {
       localStore.clearUserData(currentUser.uid);
     }
@@ -674,7 +689,6 @@ export default function App() {
     setGeneticsList([]);
     setHarvests([]);
     setDiaryEntries([]);
-    await authService.signOutUser();
     setCurrentView('dashboard');
     setSelectedCultivationId(null);
   };

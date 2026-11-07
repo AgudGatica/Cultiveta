@@ -37,6 +37,15 @@ export interface SubscribeCollectionOptions<T> {
  * 6. Visible error handling on permission or network failures.
  * 7. Clean cancellation on user logout or account switch.
  */
+/**
+ * La lista que se muestra. Firestore manda sobre lo que tiene; lo pendiente sigue visible. Hasta que responde el
+ * servidor la caché puede estar incompleta (por ejemplo, al abrir sin conexión): nada local se saca todavía.
+ */
+export function mergeCloudAndLocal<T extends { id: string; _isPendingLocal?: boolean }>(cloud: T[], local: T[], serverAnswered: boolean): T[] {
+  const ids = new Set(cloud.map((c) => c.id));
+  return [...cloud, ...local.filter((item) => (Boolean(item._isPendingLocal) || !serverAnswered) && !ids.has(item.id))];
+}
+
 export function subscribeCollection<T extends { id: string; userId?: string; _isPendingLocal?: boolean }>(
   options: SubscribeCollectionOptions<T>
 ): Unsubscribe {
@@ -121,18 +130,7 @@ export function subscribeCollection<T extends { id: string; userId?: string; _is
           return;
         }
 
-        const cloudIds = new Set(cloudList.map((c) => c.id));
-
-        const pendingLocalItems = currentLocal.filter(
-          (item) => Boolean(item._isPendingLocal) && !cloudIds.has(item.id)
-        );
-
-        // Firestore is authoritative for all existing and deleted documents
-        const mergedMap = new Map<string, T>();
-        cloudList.forEach((item) => mergedMap.set(item.id, item));
-        pendingLocalItems.forEach((item) => mergedMap.set(item.id, item));
-
-        const finalList = Array.from(mergedMap.values());
+        const finalList = mergeCloudAndLocal(cloudList, currentLocal, hasReceivedServerResponse);
         if (sortFn) {
           finalList.sort(sortFn);
         }
@@ -146,8 +144,8 @@ export function subscribeCollection<T extends { id: string; userId?: string; _is
         });
 
         // ASYNC BACKUP TO LOCAL STORE: Keeps local store in sync with deletions and empty lists
-        // Solo sobrescribir almacén local si proviene del servidor o hay documentos
-        if (!fromCache || cloudList.length > 0 || hasReceivedServerResponse) {
+        // Solo se sobrescribe el almacén local con datos que ya vio el servidor
+        if (!fromCache || hasReceivedServerResponse) {
           try {
             localStore.saveAll(collectionName, userId, finalList);
           } catch (saveErr) {

@@ -21,6 +21,7 @@ import { daysBetween, getLocalTodayDateOnly } from '../utils/growthStageUtils';
 import { authFetch } from './apiClient';
 import { evaluateEnvironmentReading, PH_ALERT_MIN, PH_ALERT_MAX, EC_HIGH_MS } from '../utils/agronomicThresholds';
 import { growMethodOf } from '../utils/growMethod';
+import { cloudWrite } from './cloudWrite';
 
 export const cultivationService = {
   /** meta.fromCache false: la lista ya vino del servidor (no solo de este dispositivo). */
@@ -109,19 +110,20 @@ export const cultivationService = {
     // 2. Cloud Firestore write with pending status update upon confirmation
     try {
       const cleaned = cleanFirestoreData(newCultivation);
-      await setDoc(docRef, cleaned);
-      localStore.saveItem('cultivations', { ...newCultivation, _isPendingLocal: false } as Cultivation);
-      // El servidor verifica el cultivo contra Firestore: se registra recién cuando ya existe allí.
-      if (
-        newCultivation.locationCoordinates &&
-        (newCultivation.type === 'Outdoor' || newCultivation.type === 'Invernadero')
-      ) {
-        authFetch('/api/outdoor/cultivations', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(newCultivation),
-        }).catch(() => {});
-      }
+      cloudWrite(() => setDoc(docRef, cleaned), () => {
+        localStore.saveItem('cultivations', { ...newCultivation, _isPendingLocal: false } as Cultivation);
+        // El servidor verifica el cultivo contra Firestore: se registra recién cuando ya existe allí.
+        if (
+          newCultivation.locationCoordinates &&
+          (newCultivation.type === 'Outdoor' || newCultivation.type === 'Invernadero')
+        ) {
+          authFetch('/api/outdoor/cultivations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newCultivation),
+          }).catch(() => {});
+        }
+      });
     } catch (err: any) {
       console.warn('Cloud Firestore sync pending or unavailable (persisted locally):', err?.message || err);
     }
@@ -159,7 +161,7 @@ export const cultivationService = {
         ...updates,
         updatedAt: new Date().toISOString(),
       });
-      await setDoc(docRef, cleanedUpdates, { merge: true });
+      cloudWrite(() => setDoc(docRef, cleanedUpdates, { merge: true }));
     } catch (err) {
       console.warn('Cloud Firestore update failed (saved locally):', err);
     }
@@ -171,7 +173,7 @@ export const cultivationService = {
 
     try {
       const docRef = doc(db, 'cultivations', id);
-      await deleteDoc(docRef);
+      cloudWrite(() => deleteDoc(docRef));
     } catch (err) {
       console.warn('Cloud Firestore deleteDoc failed (deleted locally):', err);
     }

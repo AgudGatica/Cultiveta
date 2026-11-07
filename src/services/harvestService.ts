@@ -17,6 +17,7 @@ import { cultivationService } from './cultivationService';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
 import { localStore } from './localStore';
 import { subscribeCollection } from './dataSyncHelper';
+import { cloudWrite } from './cloudWrite';
 
 export const harvestService = {
   subscribeHarvests(userId: string, callback: (harvests: Harvest[]) => void): Unsubscribe {
@@ -83,6 +84,13 @@ export const harvestService = {
 
     localStore.saveItem('harvests', newHarvest as Harvest);
 
+    try {
+      const cleaned = cleanFirestoreData(newHarvest);
+      cloudWrite(() => setDoc(docRef, cleaned), () => localStore.saveItem('harvests', { ...newHarvest, _isPendingLocal: false } as Harvest));
+    } catch (err) {
+      console.warn('Serialization error on harvest in Firestore:', err);
+    }
+
     // Update cultivation status to cosechado / finished
     await cultivationService.updateCultivation(data.cultivationId, {
       isFinished: true,
@@ -94,14 +102,6 @@ export const harvestService = {
       estimatedWeight: data.finalDryWeightGrams,
       finalWeight: data.finalDryWeightGrams,
     }, data.userId);
-
-    try {
-      const cleaned = cleanFirestoreData(newHarvest);
-      await setDoc(docRef, cleaned);
-      localStore.saveItem('harvests', { ...newHarvest, _isPendingLocal: false } as Harvest);
-    } catch (err) {
-      console.warn('Serialization error on harvest in Firestore:', err);
-    }
 
     return newHarvest;
   },
@@ -129,7 +129,7 @@ export const harvestService = {
     try {
       const docRef = doc(db, 'harvests', id);
       const cleaned = cleanFirestoreData(updates);
-      await setDoc(docRef, cleaned, { merge: true });
+      cloudWrite(() => setDoc(docRef, cleaned, { merge: true }));
     } catch (err) {
       console.warn('updateDoc error on harvests:', err);
     }
@@ -149,7 +149,7 @@ export const harvestService = {
 
     try {
       const docRef = doc(db, 'harvests', id);
-      await deleteDoc(docRef);
+      cloudWrite(() => deleteDoc(docRef));
     } catch (err) {
       console.warn('deleteDoc error on harvests:', err);
     }

@@ -81,9 +81,8 @@ export const FinalizeHarvestModal: React.FC<FinalizeHarvestModalProps> = ({
         updatedAt: nowIso,
       };
 
-      await cultivationService.updateCultivation(cultivation.id, cultivationUpdates, userId);
 
-      // 2. Registrar ficha completa en la colección 'harvests' de Firestore
+      // 1. La ficha primero: nunca queda un cultivo cosechado sin su cosecha
       const newHarvest = await harvestService.recordHarvest({
         userId,
         cultivationId: cultivation.id,
@@ -103,6 +102,9 @@ export const FinalizeHarvestModal: React.FC<FinalizeHarvestModalProps> = ({
         finalNotes: notes.trim() || undefined,
         isDemo: cultivation.isDemo,
       });
+
+      // 2. Después, el cultivo (con las notas y la etapa finales)
+      await cultivationService.updateCultivation(cultivation.id, cultivationUpdates, userId);
 
       // 3. Notificar a los componentes superiores
       const updatedCultivation: Cultivation = {

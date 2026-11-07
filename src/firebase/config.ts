@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore, initializeFirestore, setLogLevel, Firestore, doc, getDocFromServer } from 'firebase/firestore';
+import { getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager, setLogLevel, Firestore, doc, getDocFromServer } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import firebaseConfigJson from '../../firebase-applet-config.json';
 
@@ -35,6 +35,8 @@ try {
     app,
     {
       experimentalForceLongPolling: true,
+      // Lo anotado sin conexión queda en el celular y se manda solo aunque se cierre la app
+      ...(typeof indexedDB !== 'undefined' ? { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) } : {}),
     },
     firestoreDatabaseId || undefined
   );

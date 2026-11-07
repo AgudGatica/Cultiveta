@@ -16,6 +16,7 @@ import { DiaryEntry } from '../types';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
 import { localStore } from './localStore';
 import { subscribeCollection } from './dataSyncHelper';
+import { cloudWrite } from './cloudWrite';
 
 export const diaryService = {
   subscribeDiary(userId: string, callback: (entries: DiaryEntry[]) => void): Unsubscribe {
@@ -71,8 +72,7 @@ export const diaryService = {
 
     try {
       const cleaned = cleanFirestoreData(newEntry);
-      await setDoc(docRef, cleaned);
-      localStore.saveItem('diaryEntries', { ...newEntry, _isPendingLocal: false } as DiaryEntry);
+      cloudWrite(() => setDoc(docRef, cleaned), () => localStore.saveItem('diaryEntries', { ...newEntry, _isPendingLocal: false } as DiaryEntry));
     } catch (err) {
       console.warn('Serialization error on diaryEntry:', err);
     }
@@ -94,10 +94,10 @@ export const diaryService = {
 
     try {
       const docRef = doc(db, 'diaryEntries', id);
-      await setDoc(docRef, cleanFirestoreData({
+      cloudWrite(() => setDoc(docRef, cleanFirestoreData({
         ...updates,
         updatedAt: new Date().toISOString(),
-      }), { merge: true });
+      }), { merge: true }));
     } catch (err) {
       console.warn('updateDoc error on diaryEntries:', err);
     }
@@ -109,7 +109,7 @@ export const diaryService = {
 
     try {
       const docRef = doc(db, 'diaryEntries', id);
-      await deleteDoc(docRef);
+      cloudWrite(() => deleteDoc(docRef));
     } catch (err) {
       console.warn('deleteDoc error on diaryEntries:', err);
     }

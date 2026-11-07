@@ -9,6 +9,7 @@ import { cultivationService } from './cultivationService';
 import { environmentService } from './environmentService';
 import { ambientEnvironment, ambientForCrop, autoAmbientId, cropTypeForAmbient, environmentForCropType, isExteriorAmbient } from '../utils/indoors';
 import { getLocalTodayDateOnly } from '../utils/growthStageUtils';
+import { cloudWrite } from './cloudWrite';
 
 /**
  * Ambientes de la persona (carpas, salas, armarios o lugares de exterior): colección "indoors" con su
@@ -56,8 +57,7 @@ export const indoorService = {
     const indoor: Indoor & { _isPendingLocal?: boolean } = { ...data, id: ref.id, createdAt: now, updatedAt: now, _isPendingLocal: true };
     localStore.saveItem('indoors', indoor as Indoor);
     try {
-      await setDoc(ref, cleanFirestoreData(indoor));
-      localStore.saveItem('indoors', { ...indoor, _isPendingLocal: false } as Indoor);
+      cloudWrite(() => setDoc(ref, cleanFirestoreData(indoor)), () => localStore.saveItem('indoors', { ...indoor, _isPendingLocal: false } as Indoor));
     } catch (err: any) {
       console.warn('Indoor guardado solo en este dispositivo (Firestore no disponible):', err?.message || err);
     }
@@ -70,7 +70,7 @@ export const indoorService = {
     const updatedAt = new Date().toISOString();
     if (existing) localStore.saveItem('indoors', { ...existing, ...updates, updatedAt });
     try {
-      await setDoc(doc(db, 'indoors', id), cleanFirestoreData({ ...updates, updatedAt }), { merge: true });
+      cloudWrite(() => setDoc(doc(db, 'indoors', id), cleanFirestoreData({ ...updates, updatedAt }), { merge: true }));
     } catch (err) {
       console.warn('No se pudo actualizar el indoor en Firestore (quedó en este dispositivo):', err);
     }
@@ -86,7 +86,7 @@ export const indoorService = {
     }
     localStore.deleteItem('indoors', indoor.id, userId || lastUserId());
     try {
-      await deleteDoc(doc(db, 'indoors', indoor.id));
+      cloudWrite(() => deleteDoc(doc(db, 'indoors', indoor.id)));
     } catch (err) {
       console.warn('No se pudo borrar el indoor en Firestore (se borró en este dispositivo):', err);
     }

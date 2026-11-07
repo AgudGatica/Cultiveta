@@ -142,6 +142,14 @@ function subscribe<T>(collectionName: string, userId: string, callback: (items: 
   };
 }
 
+/** Registros anotados en este celular que todavía no llegaron a la nube. */
+function pendingCount(userId: string): number {
+  return ['cultivations', 'waterings', 'environmentRecords', 'genetics', 'harvests', 'diaryEntries', 'indoors'].reduce(
+    (n, col) => n + getItems<{ _isPendingLocal?: boolean }>(col, userId).filter((i) => i._isPendingLocal).length,
+    0
+  );
+}
+
 function clearUserData(userId: string): void {
   if (typeof window === 'undefined') return;
   const collections = [
@@ -169,6 +177,7 @@ export const localStore = {
   saveItem,
   saveAll,
   deleteItem,
+  pendingCount,
   clearUserData,
   subscribe,
 };

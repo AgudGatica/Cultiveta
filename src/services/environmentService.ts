@@ -17,6 +17,7 @@ import { cleanFirestoreData } from '../utils/firestoreUtils';
 import { localStore } from './localStore';
 import { subscribeCollection } from './dataSyncHelper';
 import { authFetch } from './apiClient';
+import { cloudWrite } from './cloudWrite';
 
 export const environmentService = {
   subscribeEnvironment(userId: string, callback: (records: EnvironmentRecord[]) => void): Unsubscribe {
@@ -109,8 +110,7 @@ export const environmentService = {
 
     try {
       const cleaned = cleanFirestoreData(newRecord);
-      await setDoc(docRef, cleaned);
-      localStore.saveItem('environmentRecords', { ...newRecord, _isPendingLocal: false } as EnvironmentRecord);
+      cloudWrite(() => setDoc(docRef, cleaned), () => localStore.saveItem('environmentRecords', { ...newRecord, _isPendingLocal: false } as EnvironmentRecord));
     } catch (err: any) {
       console.warn('Firestore setDoc environmentRecords pending or unavailable:', err?.message || err);
     }
@@ -124,7 +124,7 @@ export const environmentService = {
 
     try {
       const docRef = doc(db, 'environmentRecords', id);
-      await deleteDoc(docRef);
+      cloudWrite(() => deleteDoc(docRef));
     } catch (err: any) {
       console.warn('deleteDoc error on environmentRecords:', err);
     }

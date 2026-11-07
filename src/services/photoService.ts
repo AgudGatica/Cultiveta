@@ -21,6 +21,7 @@ import {
   mapQueueStatusToSyncStatus,
 } from './photoOfflineQueue';
 import { getPhotoStoragePath, FIRESTORE_COLLECTIONS } from '../firebase/paths';
+import { cloudWrite } from './cloudWrite';
 
 export const photoService = {
   /**
@@ -409,7 +410,7 @@ export const photoService = {
     // 3. Eliminar documento de Cloud Firestore
     try {
       const docRef = doc(db, FIRESTORE_COLLECTIONS.PHOTOS, photoId);
-      await deleteDoc(docRef);
+      cloudWrite(() => deleteDoc(docRef));
     } catch (e) {
       console.warn('[photoService] Error al eliminar documento en Firestore:', e);
     }
@@ -452,7 +453,7 @@ export const photoService = {
 
     try {
       const cleaned = cleanFirestoreData(newPhoto);
-      await setDoc(docRef, cleaned);
+      cloudWrite(() => setDoc(docRef, cleaned));
     } catch (err) {
       console.warn('[photoService] Fallo guardando photoRecord en Firestore:', err);
     }

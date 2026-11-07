@@ -15,6 +15,7 @@ import { Watering } from '../types';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
 import { localStore } from './localStore';
 import { subscribeCollection } from './dataSyncHelper';
+import { cloudWrite } from './cloudWrite';
 
 export const wateringService = {
   subscribeWaterings(userId: string, callback: (waterings: Watering[]) => void): Unsubscribe {
@@ -74,8 +75,7 @@ export const wateringService = {
 
     try {
       const cleaned = cleanFirestoreData(newWatering);
-      await setDoc(docRef, cleaned);
-      localStore.saveItem('waterings', { ...newWatering, _isPendingLocal: false } as Watering);
+      cloudWrite(() => setDoc(docRef, cleaned), () => localStore.saveItem('waterings', { ...newWatering, _isPendingLocal: false } as Watering));
     } catch (err: any) {
       console.warn('Firestore setDoc waterings pending or unavailable:', err?.message || err);
     }
@@ -99,7 +99,7 @@ export const wateringService = {
     try {
       const docRef = doc(db, 'waterings', id);
       const cleaned = cleanFirestoreData(updated);
-      await setDoc(docRef, cleaned, { merge: true });
+      cloudWrite(() => setDoc(docRef, cleaned, { merge: true }));
     } catch (err: any) {
       console.warn('Firestore updateWatering error:', err?.message || err);
     }
@@ -113,7 +113,7 @@ export const wateringService = {
 
     try {
       const docRef = doc(db, 'waterings', id);
-      await deleteDoc(docRef);
+      cloudWrite(() => deleteDoc(docRef));
     } catch (err: any) {
       console.warn('Firestore deleteDoc waterings failed:', err?.message || err);
     }

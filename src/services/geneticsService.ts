@@ -16,6 +16,7 @@ import { Genetics } from '../types';
 import { cleanFirestoreData } from '../utils/firestoreUtils';
 import { localStore } from './localStore';
 import { subscribeCollection } from './dataSyncHelper';
+import { cloudWrite } from './cloudWrite';
 
 export const geneticsService = {
   subscribeGenetics(userId: string, callback: (genetics: Genetics[]) => void): Unsubscribe {
@@ -82,8 +83,7 @@ export const geneticsService = {
 
     try {
       const cleaned = cleanFirestoreData(newGenetics);
-      await setDoc(docRef, cleaned);
-      localStore.saveItem('genetics', { ...newGenetics, _isPendingLocal: false } as Genetics);
+      cloudWrite(() => setDoc(docRef, cleaned), () => localStore.saveItem('genetics', { ...newGenetics, _isPendingLocal: false } as Genetics));
     } catch (err: any) {
       console.warn('Firestore setDoc genetics pending or unavailable:', err?.message || err);
     }
@@ -105,10 +105,10 @@ export const geneticsService = {
 
     try {
       const docRef = doc(db, 'genetics', id);
-      await setDoc(docRef, cleanFirestoreData({
+      cloudWrite(() => setDoc(docRef, cleanFirestoreData({
         ...updates,
         updatedAt: new Date().toISOString(),
-      }), { merge: true });
+      }), { merge: true }));
     } catch (err) {
       console.warn('updateDoc error on genetics:', err);
     }
@@ -120,7 +120,7 @@ export const geneticsService = {
 
     try {
       const docRef = doc(db, 'genetics', id);
-      await deleteDoc(docRef);
+      cloudWrite(() => deleteDoc(docRef));
     } catch (err) {
       console.warn('deleteDoc error on genetics:', err);
     }
