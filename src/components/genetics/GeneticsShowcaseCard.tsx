@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronDown, Clock, Dna, Heart, Image as ImageIcon, Scale, Sparkles } from 'lucide-react';
+import { GeneticPhoto } from './GeneticPhoto';
 
 export interface GeneticsShowcaseCardProps {
   name: string;
@@ -39,7 +40,7 @@ export const GeneticsCatalogRow: React.FC<GeneticsCatalogRowProps> = ({ name, se
     className="cultiveta-card w-full flex items-center gap-3 p-2.5 text-left cursor-pointer"
   >
     <span className="relative w-16 h-16 rounded-2xl overflow-hidden bg-icon-bg shrink-0 flex items-center justify-center text-brand">
-      {photoUrl ? <img src={photoUrl} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover" /> : <Dna className="w-6 h-6 stroke-[1.5]" aria-hidden="true" />}
+      <GeneticPhoto src={photoUrl} fallback={<Dna className="w-6 h-6 stroke-[1.5]" aria-hidden="true" />} />
     </span>
     <span className="min-w-0 flex-1">
       <span className="block text-sm font-extrabold text-ink truncate">{name}</span>
@@ -69,19 +70,17 @@ export const GeneticsShowcaseCard: React.FC<GeneticsShowcaseCardProps> = ({
   <article id={id} className="bg-white rounded-[30px] border border-chip-line shadow-sm overflow-hidden p-4 space-y-4 w-full">
     {/* Foto grande con nombre, banco y dominancia encima */}
     <div className="group relative w-full aspect-[295/176] rounded-[24px] overflow-hidden bg-track border border-line">
-      {photoUrl ? (
-        <img
-          src={photoUrl}
-          alt={`${name} - ${seedBank}`}
-          className="w-full h-full object-cover rounded-[24px] transition-transform duration-500 ease-out group-hover:scale-[1.04]"
-          loading="lazy"
-        />
-      ) : (
-        <div className="w-full h-full flex flex-col items-center justify-center bg-track rounded-[24px]">
-          <ImageIcon className="w-10 h-10 stroke-1 text-ink-subtle" aria-hidden="true" />
-          <span className="text-xs font-medium text-ink-muted mt-1">Sin fotografía</span>
-        </div>
-      )}
+      <GeneticPhoto
+        src={photoUrl}
+        alt={`${name} - ${seedBank}`}
+        className="w-full h-full object-cover rounded-[24px] transition-transform duration-500 ease-out group-hover:scale-[1.04]"
+        fallback={
+          <div className="w-full h-full flex flex-col items-center justify-center bg-track rounded-[24px]">
+            <ImageIcon className="w-10 h-10 stroke-1 text-ink-subtle" aria-hidden="true" />
+            <span className="text-xs font-medium text-ink-muted mt-1">Sin fotografía</span>
+          </div>
+        }
+      />
 
       <div className="absolute left-4 top-4 z-10 flex flex-col items-start gap-1 max-w-[85%] pointer-events-none">
         <h2 className={`text-[18px] sm:text-[20px] font-black uppercase leading-none truncate max-w-full ${photoUrl ? 'text-white drop-shadow-[0_2px_3px_rgba(0,0,0,0.35)]' : 'text-ink'}`}>

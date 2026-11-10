@@ -19,6 +19,7 @@ import { feedTargetFor, livingSoilGuide } from '../../utils/feedTargets';
 import { ShareGrowlogModal } from '../community/ShareGrowlogModal';
 import { communityService, growlogFor, useCommunityMe } from '../../services/communityService';
 import { dec } from '../../utils/formatNumber';
+import { GeneticPhoto } from '../genetics/GeneticPhoto';
 
 interface GeneticDetailViewProps {
   /** Ambiente donde está (para volver y para moverla). */
@@ -128,9 +129,13 @@ export const GeneticDetailView: React.FC<GeneticDetailViewProps> = ({
         ) : latestPhoto ? (
           <PhotoImageView photo={latestPhoto} userId={userId} alt={`Foto de ${card.name}`} className="absolute inset-0 w-full h-full object-cover" />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-white/25">
-            <Dna className="w-24 h-24 stroke-[1.2]" aria-hidden="true" />
-          </div>
+          <GeneticPhoto
+            fallback={
+              <div className="absolute inset-0 flex items-center justify-center text-white/25">
+                <Dna className="w-24 h-24 stroke-[1.2]" aria-hidden="true" />
+              </div>
+            }
+          />
         )}
         {/* el degradé negro de siempre, a mitad de intensidad: la foto se ve con su luz y los textos se leen */}
         <div id="genetic-hero-shade" aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/30 opacity-50" />

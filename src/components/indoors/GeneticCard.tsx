@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronRight, Dna, Home, Sun } from 'lucide-react';
 import { harvestText, type GeneticEntry } from '../../utils/indoors';
+import { GeneticPhoto } from '../genetics/GeneticPhoto';
 
 const dateText = (d: string) => {
   const [y, m, day] = d.split('-').map(Number);
@@ -24,13 +25,14 @@ export const GeneticCard: React.FC<GeneticCardProps> = ({ entry: e, onOpen, ambi
     aria-label={`Abrir ${e.card.name}`}
   >
     <div className="w-28 shrink-0 bg-icon-bg relative">
-      {e.card.photoUrl ? (
-        <img src={e.card.photoUrl} alt="" loading="lazy" referrerPolicy="no-referrer" className="absolute inset-0 w-full h-full object-cover" />
-      ) : (
-        <div className="absolute inset-0 flex items-center justify-center text-brand">
-          <Dna className="w-8 h-8 stroke-[1.5]" aria-hidden="true" />
-        </div>
-      )}
+      <GeneticPhoto
+        src={e.card.photoUrl}
+        fallback={
+          <div className="absolute inset-0 flex items-center justify-center text-brand">
+            <Dna className="w-8 h-8 stroke-[1.5]" aria-hidden="true" />
+          </div>
+        }
+      />
     </div>
     <div className="p-3 min-w-0 flex-1 space-y-1">
       <div className="flex items-start justify-between gap-1">
