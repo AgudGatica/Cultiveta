@@ -109,10 +109,11 @@ export async function runGeneticsCatalogCardRedesignTests(): Promise<{ passed: n
   // Las 100 variedades van en filas compactas: la tarjeta grande se abre al tocar una
   assert(container.querySelectorAll('[data-genetic-row]').length === GENETICS_DATABASE.length && container.querySelectorAll('article').length === 0, 'Catálogo en filas compactas');
   await act(async () => {
-    (container.querySelector('[data-genetic-row]') as HTMLElement).dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
+    (container.querySelector('[data-genetic-row="Skunk #1"][aria-label="Skunk #1, Sensi Seeds"]') as HTMLElement).dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true }));
   });
 
-  // Tomamos la tarjeta abierta (Skunk #1)
+  // Tomamos la tarjeta abierta (Skunk #1), con sus datos del catálogo
+  const skunkData = GENETICS_DATABASE.find((g) => g.seedBank === 'Sensi Seeds' && g.name === 'Skunk #1')!;
   const cardEl = container.querySelector('article') as HTMLElement;
   assert(cardEl !== null, 'Tarjeta mobile de genética montada en DOM');
 
@@ -129,7 +130,7 @@ export async function runGeneticsCatalogCardRedesignTests(): Promise<{ passed: n
 
   // 1d. Dominancia reducida (text-xs)
   const domBadge = Array.from(cardEl.querySelectorAll('span')).find(
-    (s) => s.textContent?.includes('Híbrida')
+    (s) => s.textContent?.trim() === skunkData.dominance
   );
   assert(domBadge !== undefined && domBadge.classList.contains('text-xs'), '1d. Dominancia reducida a text-xs');
 
@@ -155,7 +156,7 @@ export async function runGeneticsCatalogCardRedesignTests(): Promise<{ passed: n
   assert(aromaHeader !== undefined, '7a. Encabezado "AROMA Y GUSTO" presente');
 
   const aromaText = cardEl.querySelector('p.italic');
-  assert(aromaText !== null && aromaText.textContent?.includes('Skunk acre'), '7b. Perfil organoléptico real renderizado');
+  assert(aromaText !== null && aromaText.textContent?.includes(skunkData.organolepticProfile), '7b. Perfil organoléptico real renderizado');
 
   // 8. Únicamente DOS botones inferiores: "Iniciar Cultivo" y "FAVORITOS"
   const allButtons = Array.from(cardEl.querySelectorAll('button'));

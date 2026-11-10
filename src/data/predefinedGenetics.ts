@@ -1,936 +1,11238 @@
 /**
- * Base de datos predefinida de genéticas de cannabis para autocompletados y registro de cultivos.
+ * Catálogo de genéticas de Cultiveta. Lo genera el catálogo definitivo (catalogo-geneticas/Cultiveta-catalogo-definitivo.xlsx,
+ * revisado el 2026-11-08): no editar a mano. Un dato vacío es que la fuente no lo publica; nunca se completa con un supuesto.
  */
 
 export interface PredefinedGenetic {
   seedBank: string;
   name: string;
+  /** "Índica 70% / Sativa 30%", "Predominancia índica", "Híbrida"… o vacío. */
   dominance: string;
   organolepticProfile: string;
+  /** Días de floración ("56 - 63"); en automáticas, el ciclo total. Vacío si no se sabe. */
   floweringDays: string;
+  /** g/m² en interior ("400 - 500"). Vacío si no se sabe. */
   estimatedYield: string;
+  /** "Fotoperiódica feminizada", "Autofloreciente feminizada", "Fotoperiódica regular"… */
+  type?: string;
+  lineage?: string;
+  thc?: string;
 }
 
 export const GENETICS_DATABASE: PredefinedGenetic[] = [
-  // --- Sensi Seeds ---
-  {
-    seedBank: 'Sensi Seeds',
-    name: 'Skunk #1',
-    dominance: 'Híbrida (65% Sátiva)',
-    organolepticProfile: 'Skunk acre (VSC), almizcle terroso, matices cítricos dulces',
-    floweringDays: '45 - 50',
-    estimatedYield: '500 - 600',
-  },
-  {
-    seedBank: 'Sensi Seeds',
-    name: 'Super Skunk',
-    dominance: 'Índica (80%)',
-    organolepticProfile: 'Cítrico dulce, notas terrosas orgánicas, especias afganas',
-    floweringDays: '45 - 50',
-    estimatedYield: '500 - 650',
-  },
-  {
-    seedBank: 'Sensi Seeds',
-    name: 'Jack Herer',
-    dominance: 'Híbrida (50/50)',
-    organolepticProfile: 'Hachís especiado, tonos de madera noble, skunk frutal',
-    floweringDays: '70 - 84',
-    estimatedYield: '500 - 600',
-  },
-  {
-    seedBank: 'Sensi Seeds',
-    name: 'Northern Lights #5',
-    dominance: 'Índica (70%)',
-    organolepticProfile: 'Pino fresco perenne, resina dulce, madera oriental',
-    floweringDays: '45 - 55',
-    estimatedYield: '450 - 550',
-  },
-  {
-    seedBank: 'Sensi Seeds',
-    name: 'Big Bud',
-    dominance: 'Índica (85%)',
-    organolepticProfile: 'Melaza dulce, hachís tradicional, final picante terroso',
-    floweringDays: '50 - 65',
-    estimatedYield: '600 - 700',
-  },
-
-  // --- Serious Seeds ---
-  {
-    seedBank: 'Serious Seeds',
-    name: 'Chronic',
-    dominance: 'Híbrida (50/50)',
-    organolepticProfile: 'Dulce suave, notas florales prominentes, matices agrios',
-    floweringDays: '63 - 70',
-    estimatedYield: '600 - 800',
-  },
-  {
-    seedBank: 'Serious Seeds',
-    name: 'AK-47',
-    dominance: 'Sátiva (65%)',
-    organolepticProfile: 'Dulce floral complejo, madera de sándalo, especias picantes',
-    floweringDays: '53 - 63',
-    estimatedYield: '350 - 500',
-  },
-  {
-    seedBank: 'Serious Seeds',
-    name: 'White Russian',
-    dominance: 'Índica (70%)',
-    organolepticProfile: 'Aromas acres penetrantes, afrutado, resina de pino y almizcle',
-    floweringDays: '56 - 63',
-    estimatedYield: '350 - 500',
-  },
-  {
-    seedBank: 'Serious Seeds',
-    name: 'Bubble Gum',
-    dominance: 'Híbrida (50/50)',
-    organolepticProfile: 'Chicle de fresa inconfundible, dulzor empalagoso, floral',
-    floweringDays: '56 - 63',
-    estimatedYield: '300 - 450',
-  },
-  {
-    seedBank: 'Serious Seeds',
-    name: 'Kali Mist',
-    dominance: 'Sátiva (90%)',
-    organolepticProfile: 'Especias picantes, hierbas frescas forestales, pino sutil',
-    floweringDays: '70 - 90',
-    estimatedYield: '300 - 500',
-  },
-
-  // --- Sweet Seeds ---
-  {
-    seedBank: 'Sweet Seeds',
-    name: 'Cream Caramel',
-    dominance: 'Índica (90%)',
-    organolepticProfile: 'Caramelo intenso tostado, tierra dulce, notas de regaliz',
-    floweringDays: '56 - 63',
-    estimatedYield: '400 - 550',
-  },
-  {
-    seedBank: 'Sweet Seeds',
-    name: 'Green Poison F1',
-    dominance: 'Índica (70%)',
-    organolepticProfile: 'Dulce frutal muy intenso, macedonia tropical, matices skunk',
-    floweringDays: '42 - 49',
-    estimatedYield: '500 - 650',
-  },
-  {
-    seedBank: 'Sweet Seeds',
-    name: 'Gorilla Girl',
-    dominance: 'Sátiva (60%)',
-    organolepticProfile: 'Madera de ciprés intensa, cítricos ácidos, resina de pino',
-    floweringDays: '63',
-    estimatedYield: '400 - 550',
-  },
-  {
-    seedBank: 'Sweet Seeds',
-    name: 'Dark Devil Auto',
-    dominance: 'Híbrida (55% Ind)',
-    organolepticProfile: 'Dulce afrutado profundo, incienso oriental, frutos rojos',
-    floweringDays: '60 (desde germ.)',
-    estimatedYield: '400 - 600',
-  },
-  {
-    seedBank: 'Sweet Seeds',
-    name: 'Sweet Zenzation',
-    dominance: 'Índica (70%)',
-    organolepticProfile: 'Caramelos de frutas artificiales, maderas nobles, limón ácido',
-    floweringDays: '63',
-    estimatedYield: '450 - 650',
-  },
-
-  // --- Barney's Farm ---
-  {
-    seedBank: "Barney's Farm",
-    name: 'Acapulco Gold',
-    dominance: 'Sátiva (70%)',
-    organolepticProfile: 'Cóctel de frutas exóticas tropicales, tierra dulce, pino',
-    floweringDays: '60 - 70',
-    estimatedYield: '500',
-  },
-  {
-    seedBank: "Barney's Farm",
-    name: 'Blue Gelato 41',
-    dominance: 'Índica (60%)',
-    organolepticProfile: 'Dulce abrumador, cítricos frescos, bayas ácidas y tierra',
-    floweringDays: '63 - 70',
-    estimatedYield: '600 - 700',
-  },
-  {
-    seedBank: "Barney's Farm",
-    name: 'Ayahuasca Purple',
-    dominance: 'Índica (100%)',
-    organolepticProfile: 'Avellana tostada exótica, papaya madura, frutas dulces',
-    floweringDays: '55 - 65',
-    estimatedYield: '650',
-  },
-  {
-    seedBank: "Barney's Farm",
-    name: 'Banana Punch',
-    dominance: 'Índica (55%)',
-    organolepticProfile: 'Plátano maduro confitado, bayas tropicales, cítricos sutiles',
-    floweringDays: '60 - 65',
-    estimatedYield: '600 - 650',
-  },
-  {
-    seedBank: "Barney's Farm",
-    name: 'Biscotti Mintz',
-    dominance: 'Índica (80%)',
-    organolepticProfile: 'Chocolate oscuro con menta, especias picantes, galleta rota',
-    floweringDays: '56 - 63',
-    estimatedYield: '600 - 650',
-  },
-
-  // --- Royal Queen Seeds ---
-  {
-    seedBank: 'Royal Queen Seeds',
-    name: 'Special Queen 1',
-    dominance: 'Híbrida (50/50)',
-    organolepticProfile: 'Frutas dulces fermentadas, skunk tradicional, especias',
-    floweringDays: '49 - 56',
-    estimatedYield: '500 - 550',
-  },
-  {
-    seedBank: 'Royal Queen Seeds',
-    name: 'Royal Gorilla',
-    dominance: 'Híbrida (50/50)',
-    organolepticProfile: 'Tierra profunda forestal, pino fresco, limón cítrico',
-    floweringDays: '56 - 70',
-    estimatedYield: '500 - 550',
-  },
-  {
-    seedBank: 'Royal Queen Seeds',
-    name: 'Cookies Gelato',
-    dominance: 'Híbrida (50/50)',
-    organolepticProfile: 'Galleta horneada azucarada, menta fresca, cítricos',
-    floweringDays: '56 - 63',
-    estimatedYield: '550 - 600',
-  },
-  {
-    seedBank: 'Royal Queen Seeds',
-    name: 'Amnesia Haze',
-    dominance: 'Sátiva (70%)',
-    organolepticProfile: 'Cítricos ácidos punzantes, pimienta negra, fondo terroso',
-    floweringDays: '70 - 77',
-    estimatedYield: '600 - 650',
-  },
-  {
-    seedBank: 'Royal Queen Seeds',
-    name: 'Triple G',
-    dominance: 'Índica (85%)',
-    organolepticProfile: 'Caramelo oscuro, chocolate amargo, combustible diésel',
-    floweringDays: '55 - 60',
-    estimatedYield: '525 - 575',
-  },
-
-  // --- Medical Seeds ---
-  {
-    seedBank: 'Medical Seeds',
-    name: '1024',
-    dominance: 'Sátiva (70%)',
-    organolepticProfile: 'Dulzor afrutado, almizcle denso, incienso litúrgico',
-    floweringDays: '70 - 77',
-    estimatedYield: '600',
-  },
-  {
-    seedBank: 'Medical Seeds',
-    name: '2046',
-    dominance: 'Sátiva (100%)',
-    organolepticProfile: 'Haze puro penetrante, incienso de iglesia, maderas nobles',
-    floweringDays: '112 - 119',
-    estimatedYield: '500',
-  },
-  {
-    seedBank: 'Medical Seeds',
-    name: 'Channel +',
-    dominance: 'Híbrida (50/50)',
-    organolepticProfile: 'Tierra húmeda profunda, skunk suave, toques dulces',
-    floweringDays: '42 - 49',
-    estimatedYield: '600',
-  },
-  {
-    seedBank: 'Medical Seeds',
-    name: 'Prozack',
-    dominance: 'Índica (80%)',
-    organolepticProfile: 'Hachís tradicional denso, tierra rústica, pino forestal',
-    floweringDays: '63 - 70',
-    estimatedYield: '450 - 500',
-  },
-  {
-    seedBank: 'Medical Seeds',
-    name: 'Y Griega CBD',
-    dominance: 'Sátiva (60%)',
-    organolepticProfile: 'Limón penetrante y ácido, almizcle sutil, tonos florales',
-    floweringDays: '60 - 70',
-    estimatedYield: '500',
-  },
-
-  // --- ACE Seeds ---
-  {
-    seedBank: 'ACE Seeds',
-    name: 'Panama x Bangi Haze',
-    dominance: 'Sátiva (85%)',
-    organolepticProfile: 'Sinfonías florales, anís dulce penetrante, incienso fuerte',
-    floweringDays: '70 - 77',
-    estimatedYield: '450 - 550',
-  },
-  {
-    seedBank: 'ACE Seeds',
-    name: 'Golden Tiger',
-    dominance: 'Sátiva (100%)',
-    organolepticProfile: 'Limón cítrico ácido, mandarina, madera, resina pino',
-    floweringDays: '77 - 98',
-    estimatedYield: '500 - 600',
-  },
-  {
-    seedBank: 'ACE Seeds',
-    name: 'Malawi',
-    dominance: 'Sátiva (100%)',
-    organolepticProfile: 'Madera aceitosa, corteza de limón, zanahoria dulce orgánica',
-    floweringDays: '70 - 91',
-    estimatedYield: '550 - 650',
-  },
-  {
-    seedBank: 'ACE Seeds',
-    name: 'Purple Haze x Malawi',
-    dominance: 'Sátiva (100%)',
-    organolepticProfile: 'Mermelada de bayas oscuras, cítricos ácidos, incienso',
-    floweringDays: '91 - 105',
-    estimatedYield: '500 - 600',
-  },
-  {
-    seedBank: 'ACE Seeds',
-    name: 'Killer A5 Haze',
-    dominance: 'Sátiva (80%)',
-    organolepticProfile: 'Incienso holandés añejo, maderas podridas, toques cárnicos',
-    floweringDays: '63 - 84',
-    estimatedYield: '550 - 650',
-  },
-
-  // --- Fast Buds 420 ---
-  {
-    seedBank: 'Fast Buds 420',
-    name: 'Gorilla Cookies Auto',
-    dominance: 'Híbrida (45S/55I)',
-    organolepticProfile: 'Galleta dulce horneada, kush terroso, gas y pino',
-    floweringDays: '70 (desde germ.)',
-    estimatedYield: '500 - 600',
-  },
-  {
-    seedBank: 'Fast Buds 420',
-    name: 'Strawberry Gorilla Auto',
-    dominance: 'Híbrida (55S/45I)',
-    organolepticProfile: 'Fresa dulce confitada, frutas rojas, fondo skunk sutil',
-    floweringDays: '70 (desde germ.)',
-    estimatedYield: '450 - 600',
-  },
-  {
-    seedBank: 'Fast Buds 420',
-    name: 'Gelato Auto',
-    dominance: 'Sátiva (55%)',
-    organolepticProfile: 'Cítrico dulce, helado cremoso denso, notas terrosas',
-    floweringDays: '63 (desde germ.)',
-    estimatedYield: '400 - 550',
-  },
-  {
-    seedBank: 'Fast Buds 420',
-    name: 'Six Shooter Auto',
-    dominance: 'Sátiva (70%)',
-    organolepticProfile: 'Perfil floral complejo, madera de pino fresca, cítricos',
-    floweringDays: '70 (desde germ.)',
-    estimatedYield: '500 - 650',
-  },
-  {
-    seedBank: 'Fast Buds 420',
-    name: 'Glue Gelato Auto',
-    dominance: 'Índica (60%)',
-    organolepticProfile: 'Picante, floral orgánico, chocolate negro, tierra oscura',
-    floweringDays: '63 - 70 (desde germ.)',
-    estimatedYield: '500 - 600',
-  },
-
-  // --- Dutch Passion ---
-  {
-    seedBank: 'Dutch Passion',
-    name: 'Auto Skywalker Haze',
-    dominance: 'Sátiva (75%)',
-    organolepticProfile: 'Cítrico penetrante fuerte, neblina (haze), pino resinoso',
-    floweringDays: '84 (desde germ.)',
-    estimatedYield: '450 - 500',
-  },
-  {
-    seedBank: 'Dutch Passion',
-    name: 'Kerosene Krash',
-    dominance: 'Índica (80%)',
-    organolepticProfile: 'Diésel puro abrasivo, gas acre intenso, tierra húmeda',
-    floweringDays: '56',
-    estimatedYield: '400 - 500',
-  },
-  {
-    seedBank: 'Dutch Passion',
-    name: 'Passion #1',
-    dominance: 'Índica (70%)',
-    organolepticProfile: 'Tierra fresca removida, cítricos sutiles, resina de hachís',
-    floweringDays: '42 - 49',
-    estimatedYield: '400',
-  },
-  {
-    seedBank: 'Dutch Passion',
-    name: 'Sugar Bomb Punch',
-    dominance: 'Híbrida (50/50)',
-    organolepticProfile: 'Frutas dulces confitadas, macedonia floral, toque a uva',
-    floweringDays: '63',
-    estimatedYield: '500 - 550',
-  },
-  {
-    seedBank: 'Dutch Passion',
-    name: 'Mokum\'s Tulip',
-    dominance: 'Híbrida (50/50)',
-    organolepticProfile: 'Tulipán floral inusual, masa de galleta, dulce cremoso',
-    floweringDays: '56 - 63',
-    estimatedYield: '400 - 500',
-  },
-
-  // --- Mephisto Genetics ---
-  {
-    seedBank: 'Mephisto Genetics',
-    name: 'Mango Runtz',
-    dominance: 'Híbrida (50/50)',
-    organolepticProfile: 'Mango maduro jugoso, caramelos azucarados, frutas',
-    floweringDays: '70 - 75 (desde germ.)',
-    estimatedYield: '400 - 500',
-  },
-  {
-    seedBank: 'Mephisto Genetics',
-    name: 'MephistOreoz',
-    dominance: 'Índica (70%)',
-    organolepticProfile: 'Chocolate oscuro profundo, vainilla, tierra tostada',
-    floweringDays: '65 - 75 (desde germ.)',
-    estimatedYield: '400 - 500',
-  },
-  {
-    seedBank: 'Mephisto Genetics',
-    name: 'Double Grape',
-    dominance: 'Híbrida (50/50)',
-    organolepticProfile: 'Uva morada intensa, vino dulce fermentado, gas sutil',
-    floweringDays: '65 - 70 (desde germ.)',
-    estimatedYield: '450 - 500',
-  },
-  {
-    seedBank: 'Mephisto Genetics',
-    name: 'Forum Stomper',
-    dominance: 'Híbrida (50/50)',
-    organolepticProfile: 'Masa de galleta cruda, especias fuertes, menta dulce',
-    floweringDays: '65 - 75 (desde germ.)',
-    estimatedYield: '400 - 500',
-  },
-  {
-    seedBank: 'Mephisto Genetics',
-    name: 'Alien Vs Triangle',
-    dominance: 'Sátiva (60%)',
-    organolepticProfile: 'Pino forestal agresivo, cítricos acres, skunk profundo',
-    floweringDays: '70 - 80 (desde germ.)',
-    estimatedYield: '450 - 550',
-  },
-
-  // --- Humboldt Seed Company ---
-  {
-    seedBank: 'Humboldt Seed Company',
-    name: 'Blueberry Muffin',
-    dominance: 'Índica (80%)',
-    organolepticProfile: 'Muffins de arándano caliente, vainilla densa, frutas',
-    floweringDays: '45',
-    estimatedYield: '500',
-  },
-  {
-    seedBank: 'Humboldt Seed Company',
-    name: 'Hella Jelly',
-    dominance: 'Sátiva (70%)',
-    organolepticProfile: 'Cereza artificial, fresa en almíbar, algodón de azúcar',
-    floweringDays: '45',
-    estimatedYield: '500 - 550',
-  },
-  {
-    seedBank: 'Humboldt Seed Company',
-    name: 'Freakshow',
-    dominance: 'Sátiva (90%)',
-    organolepticProfile: 'Pino herbáceo sutil, cítricos ácidos, tierra rústica',
-    floweringDays: '65',
-    estimatedYield: '450',
-  },
-  {
-    seedBank: 'Humboldt Seed Company',
-    name: 'Magic Melon',
-    dominance: 'Híbrida (50/50)',
-    organolepticProfile: 'Melón dulce maduro, frutas tropicales, miel, gasóleo',
-    floweringDays: '50',
-    estimatedYield: '500 - 600',
-  },
-  {
-    seedBank: 'Humboldt Seed Company',
-    name: 'All Gas OG',
-    dominance: 'Índica (80%)',
-    organolepticProfile: 'Pino penetrante oscuro, skunk agresivo, gasóleo puro',
-    floweringDays: '55',
-    estimatedYield: '500 - 600',
-  },
-
-  // --- Genehtik Seeds ---
-  {
-    seedBank: 'Genehtik Seeds',
-    name: 'Kritikal Bilbo',
-    dominance: 'Índica (75%)',
-    organolepticProfile: 'Frutas dulces muy maduras, skunk pungente, almizcle',
-    floweringDays: '45 - 50',
-    estimatedYield: '550 - 600',
-  },
-  {
-    seedBank: 'Genehtik Seeds',
-    name: 'Amnesia Bilbo',
-    dominance: 'Sátiva (70%)',
-    organolepticProfile: 'Haze tradicional intenso, incienso metálico, madera',
-    floweringDays: '65 - 75',
-    estimatedYield: '550 - 600',
-  },
-  {
-    seedBank: 'Genehtik Seeds',
-    name: 'Txees Bilbo',
-    dominance: 'Índica (70%)',
-    organolepticProfile: 'Queso curado pestilente, tierra húmeda, fondo dulzón',
-    floweringDays: '50 - 60',
-    estimatedYield: '450 - 500',
-  },
-  {
-    seedBank: 'Genehtik Seeds',
-    name: 'Super Silver Bilbo',
-    dominance: 'Sátiva (80%)',
-    organolepticProfile: 'Especias picantes, incienso litúrgico, maderas y limón',
-    floweringDays: '65 - 75',
-    estimatedYield: '450 - 500',
-  },
-  {
-    seedBank: 'Genehtik Seeds',
-    name: 'Kroma',
-    dominance: 'Índica (80%)',
-    organolepticProfile: 'Bayas del bosque ácidas, frutas oscuras, tierra húmeda',
-    floweringDays: '55 - 60',
-    estimatedYield: '500 - 550',
-  },
-
-  // --- Seed Junky Genetics ---
-  {
-    seedBank: 'Seed Junky Genetics',
-    name: 'Permanent Marker',
-    dominance: 'Índica (70%)',
-    organolepticProfile: 'Jabón floral persistente, dulces artificiales, gas fuerte',
-    floweringDays: '60 - 65',
-    estimatedYield: '500 - 550',
-  },
-  {
-    seedBank: 'Seed Junky Genetics',
-    name: 'Animal Mints',
-    dominance: 'Híbrida (50/50)',
-    organolepticProfile: 'Menta verde fresca, masa de galleta densa, gasóleo',
-    floweringDays: '63 - 70',
-    estimatedYield: '450 - 500',
-  },
-  {
-    seedBank: 'Seed Junky Genetics',
-    name: 'Wedding Cake',
-    dominance: 'Índica (60%)',
-    organolepticProfile: 'Vainilla dulce, tierra húmeda, masa cruda, pimienta',
-    floweringDays: '63',
-    estimatedYield: '500 - 600',
-  },
-  {
-    seedBank: 'Seed Junky Genetics',
-    name: 'Kush Mints',
-    dominance: 'Híbrida (50/50)',
-    organolepticProfile: 'Menta verde potente, pino bosque, diésel, tierra negra',
-    floweringDays: '60 - 65',
-    estimatedYield: '500 - 550',
-  },
-  {
-    seedBank: 'Seed Junky Genetics',
-    name: 'Jealousy',
-    dominance: 'Híbrida (50/50)',
-    organolepticProfile: 'Helado lácteo azucarado, tierra rica, caramelos densos',
-    floweringDays: '60 - 65',
-    estimatedYield: '500 - 550',
-  },
-
-  // --- Cookies Seed Bank ---
-  {
-    seedBank: 'Cookies Seed Bank',
-    name: 'Gary Payton',
-    dominance: 'Híbrida (50/50)',
-    organolepticProfile: 'Pimienta negra molida, lavanda fresca, gasóleo quemado',
-    floweringDays: '60 - 65',
-    estimatedYield: '450 - 500',
-  },
-  {
-    seedBank: 'Cookies Seed Bank',
-    name: 'Cereal Milk',
-    dominance: 'Híbrida (50/50)',
-    organolepticProfile: 'Leche azucarada sobrante, vainilla, cereales de frutas',
-    floweringDays: '60 - 65',
-    estimatedYield: '450 - 500',
-  },
-  {
-    seedBank: 'Cookies Seed Bank',
-    name: 'London Pound Cake',
-    dominance: 'Índica (70%)',
-    organolepticProfile: 'Limón glaseado ácido, bayas, pastel cremoso y tierra',
-    floweringDays: '60 - 65',
-    estimatedYield: '500 - 550',
-  },
-  {
-    seedBank: 'Cookies Seed Bank',
-    name: 'Blanco',
-    dominance: 'Sátiva (60%)',
-    organolepticProfile: 'Químicos agresivos (Chem), flores blancas, pino resina',
-    floweringDays: '60 - 65',
-    estimatedYield: '450 - 500',
-  },
-  {
-    seedBank: 'Cookies Seed Bank',
-    name: 'Berry Pie',
-    dominance: 'Sátiva (70%)',
-    organolepticProfile: 'Waffle dulce tostado, mermelada de bayas rojas, nata',
-    floweringDays: '60 - 65',
-    estimatedYield: '500 - 550',
-  },
-
-  // --- Perfect Tree ---
-  {
-    seedBank: 'Perfect Tree',
-    name: 'Cherrymosa',
-    dominance: 'Sátiva (60%)',
-    organolepticProfile: 'Cereza madura intensa vibrante, cítricos acres, gas',
-    floweringDays: '56 - 63',
-    estimatedYield: '500 - 550',
-  },
-  {
-    seedBank: 'Perfect Tree',
-    name: 'Peach Ozz',
-    dominance: 'Sátiva (70%)',
-    organolepticProfile: 'Melocotón dulce, mandarina jugosa, azúcar sutil, tierra',
-    floweringDays: '63',
-    estimatedYield: '450 - 500',
-  },
-  {
-    seedBank: 'Perfect Tree',
-    name: 'Mimozz',
-    dominance: 'Híbrida (50/50)',
-    organolepticProfile: 'Naranja ácida penetrante, melocotón en almíbar, frutas',
-    floweringDays: '56 - 63',
-    estimatedYield: '500 - 550',
-  },
-  {
-    seedBank: 'Perfect Tree',
-    name: 'Lemon Curd',
-    dominance: 'Índica (60%)',
-    organolepticProfile: 'Crema de limón pastelera, lácteos suaves, cítricos',
-    floweringDays: '56 - 63',
-    estimatedYield: '450 - 500',
-  },
-  {
-    seedBank: 'Perfect Tree',
-    name: 'Pink Gasoline',
-    dominance: 'Índica (60%)',
-    organolepticProfile: 'Combustible (gas) fuerte, helado dulce, bayas rojas',
-    floweringDays: '56 - 63',
-    estimatedYield: '500 - 550',
-  },
-
-  // --- Ethos Genetics ---
-  {
-    seedBank: 'Ethos Genetics',
-    name: 'Banana Jealousy Auto',
-    dominance: 'Índica (70%)',
-    organolepticProfile: 'Plátano asado dulce, tierra profunda, gas y crema',
-    floweringDays: '70 (desde germ.)',
-    estimatedYield: '450 - 500',
-  },
-  {
-    seedBank: 'Ethos Genetics',
-    name: 'Mandarin Cookies',
-    dominance: 'Híbrida (50/50)',
-    organolepticProfile: 'Naranja penetrante, cítricos ácidos, masa de galleta',
-    floweringDays: '60 - 63',
-    estimatedYield: '500 - 550',
-  },
-  {
-    seedBank: 'Ethos Genetics',
-    name: 'Colin OG',
-    dominance: 'Índica (70%)',
-    organolepticProfile: 'Gasolina pura abrasiva, uvas oscuras, tierra mojada',
-    floweringDays: '60 - 65',
-    estimatedYield: '500 - 550',
-  },
-  {
-    seedBank: 'Ethos Genetics',
-    name: 'Crescendo',
-    dominance: 'Sátiva (60%)',
-    organolepticProfile: 'Tierra dulce arcillosa, gas penetrante, frutas ácidas',
-    floweringDays: '63 - 70',
-    estimatedYield: '500 - 550',
-  },
-  {
-    seedBank: 'Ethos Genetics',
-    name: 'Planet of the Grapes',
-    dominance: 'Índica (70%)',
-    organolepticProfile: 'Uva artificial fuerte, químicos acres, gas y tierra',
-    floweringDays: '60 - 63',
-    estimatedYield: '500 - 550',
-  },
-
-  // --- Silent Seeds ---
-  {
-    seedBank: 'Silent Seeds',
-    name: 'B-45',
-    dominance: 'Híbrida (50/50)',
-    organolepticProfile: 'Cítricos exóticos punzantes, tierra profunda, floral',
-    floweringDays: '58 - 65',
-    estimatedYield: '550 - 600',
-  },
-  {
-    seedBank: 'Silent Seeds',
-    name: 'L.A. Vanilla Cake',
-    dominance: 'Índica (70%)',
-    organolepticProfile: 'Vainilla confitada rica, crema pastelera, frutos secos',
-    floweringDays: '60 - 65',
-    estimatedYield: '550 - 600',
-  },
-  {
-    seedBank: 'Silent Seeds',
-    name: 'Zkittlez 2.0',
-    dominance: 'Índica (70%)',
-    organolepticProfile: 'Frutas tropicales complejas, golosinas ácidas, dulce',
-    floweringDays: '56 - 63',
-    estimatedYield: '450 - 500',
-  },
-  {
-    seedBank: 'Silent Seeds',
-    name: 'Watermelon Zkittlez',
-    dominance: 'Índica (60%)',
-    organolepticProfile: 'Sandía jugosa madura, caramelos de fruta, gas suave',
-    floweringDays: '56 - 63',
-    estimatedYield: '500 - 550',
-  },
-  {
-    seedBank: 'Silent Seeds',
-    name: 'Starfire OG',
-    dominance: 'Índica (70%)',
-    organolepticProfile: 'Pino agresivo oscuro, gasóleo (gas), tierra rústica',
-    floweringDays: '55 - 60',
-    estimatedYield: '550 - 600',
-  },
-
-  // --- Zamnesia Seeds ---
-  {
-    seedBank: 'Zamnesia Seeds',
-    name: 'Green Cure CBD F1',
-    dominance: 'Híbrida (50/50)',
-    organolepticProfile: 'Dulce frutal suave, tierra fresca, toques especiados',
-    floweringDays: '70 (desde germ.)',
-    estimatedYield: '450 - 500',
-  },
-  {
-    seedBank: 'Zamnesia Seeds',
-    name: 'Runtz Auto',
-    dominance: 'Híbrida (50/50)',
-    organolepticProfile: 'Caramelos artificiales, frutas tropicales, dulzor cremoso',
-    floweringDays: '70 (desde germ.)',
-    estimatedYield: '450 - 500',
-  },
-  {
-    seedBank: 'Zamnesia Seeds',
-    name: 'Sticky Beast Auto',
-    dominance: 'Índica (60%)',
-    organolepticProfile: 'Dulce sutil meloso, tierra mojada, tonos florales',
-    floweringDays: '49 - 56 (desde germ.)',
-    estimatedYield: '350 - 400',
-  },
-  {
-    seedBank: 'Zamnesia Seeds',
-    name: 'Blueberry Automatic',
-    dominance: 'Índica (70%)',
-    organolepticProfile: 'Arándano suave silvestre, notas florales leves, tierra',
-    floweringDays: '56 - 63 (desde germ.)',
-    estimatedYield: '400 - 450',
-  },
-  {
-    seedBank: 'Zamnesia Seeds',
-    name: 'Amnesia Haze Auto',
-    dominance: 'Sátiva (60%)',
-    organolepticProfile: 'Cítrico ácido picante, especias calientes, fondo haze',
-    floweringDays: '70 - 77 (desde germ.)',
-    estimatedYield: '350 - 400',
-  },
-
-  // --- DNA Genetics ---
-  {
-    seedBank: 'DNA Genetics',
-    name: 'Holy Grail Kush',
-    dominance: 'Híbrida (50/50)',
-    organolepticProfile: 'Pino intenso amargo, gas penetrante, tierra húmeda',
-    floweringDays: '63',
-    estimatedYield: '500 - 600',
-  },
-  {
-    seedBank: 'DNA Genetics',
-    name: 'Chocolope',
-    dominance: 'Sátiva (95%)',
-    organolepticProfile: 'Cacao tostado oscuro, café amargo, melón suave terroso',
-    floweringDays: '63 - 70',
-    estimatedYield: '500 - 600',
-  },
-  {
-    seedBank: 'DNA Genetics',
-    name: 'LA Confidential',
-    dominance: 'Índica (100%)',
-    organolepticProfile: 'Pino oscuro forestal, tierra profunda, especias afganas',
-    floweringDays: '49 - 56',
-    estimatedYield: '450 - 500',
-  },
-  {
-    seedBank: 'DNA Genetics',
-    name: 'Tangie',
-    dominance: 'Sátiva (70%)',
-    organolepticProfile: 'Mandarina fresca vibrante, cítricos ácidos, skunk leve',
-    floweringDays: '63 - 70',
-    estimatedYield: '450 - 550',
-  },
-  {
-    seedBank: 'DNA Genetics',
-    name: 'Kosher Kush',
-    dominance: 'Índica (80%)',
-    organolepticProfile: 'Tierra rica oscura, frutas maduras, pino y gas penetrante',
-    floweringDays: '63 - 70',
-    estimatedYield: '450 - 550',
-  },
-
-  // --- Soma Seeds ---
-  {
-    seedBank: 'Soma Seeds',
-    name: 'Amnesia Haze',
-    dominance: 'Sátiva (70%)',
-    organolepticProfile: 'Limón fresco ácido, especias picantes, madera oriental',
-    floweringDays: '84 - 90',
-    estimatedYield: '450 - 500',
-  },
-  {
-    seedBank: 'Soma Seeds',
-    name: 'Somango',
-    dominance: 'Índica (75%)',
-    organolepticProfile: 'Mango maduro dulce, ensalada de frutas, notas florales',
-    floweringDays: '63 - 70',
-    estimatedYield: '400 - 450',
-  },
-  {
-    seedBank: 'Soma Seeds',
-    name: 'NYCD (NYC Diesel)',
-    dominance: 'Sátiva (60%)',
-    organolepticProfile: 'Pomelo (toronja) rojo cítrico, diésel agrio y penetrante',
-    floweringDays: '63 - 70',
-    estimatedYield: '400 - 500',
-  },
-  {
-    seedBank: 'Soma Seeds',
-    name: 'Lavender',
-    dominance: 'Índica (80%)',
-    organolepticProfile: 'Flores de lavanda, hachís afgano oscuro, madera de cedro',
-    floweringDays: '56 - 63',
-    estimatedYield: '400 - 450',
-  },
-  {
-    seedBank: 'Soma Seeds',
-    name: 'Buddha\'s Sister',
-    dominance: 'Índica (60%)',
-    organolepticProfile: 'Cereza ácida, pastel rancio horneado, toques acres leves',
-    floweringDays: '63 - 70',
-    estimatedYield: '400 - 500',
-  },
-];
-
-/*
-================================================================================
-EJEMPLO DE USO EN COMPONENTE REACT:
-================================================================================
-
-import React, { useState, useMemo } from 'react';
-import { GENETICS_DATABASE, PredefinedGenetic } from '../data/predefinedGenetics';
-
-export function GeneticsAutocomplete({ onSelect }: { onSelect: (g: PredefinedGenetic) => void }) {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedBank, setSelectedBank] = useState<string>('ALL');
-
-  // Obtener lista única de bancos de semillas disponibles
-  const seedBanks = useMemo(() => {
-    return Array.from(new Set(GENETICS_DATABASE.map(g => g.seedBank))).sort();
-  }, []);
-
-  // Filtrado reactivo por término de búsqueda (nombre o banco) y/o filtro de banco
-  const filteredGenetics = useMemo(() => {
-    const term = searchTerm.toLowerCase().trim();
-
-    return GENETICS_DATABASE.filter(genetic => {
-      // Coincidencia con banco seleccionado en selector
-      const matchesBank = selectedBank === 'ALL' || genetic.seedBank === selectedBank;
-      if (!matchesBank) return false;
-
-      // Si no hay texto de búsqueda, pasa el filtro de banco
-      if (!term) return true;
-
-      // Coincidencia en nombre de la variedad o nombre del banco
-      const matchesName = genetic.name.toLowerCase().includes(term);
-      const matchesBankName = genetic.seedBank.toLowerCase().includes(term);
-
-      return matchesName || matchesBankName;
-    });
-  }, [searchTerm, selectedBank]);
-
-  return (
-    <div className="space-y-2">
-      <div className="flex gap-2">
-        <select 
-          value={selectedBank} 
-          onChange={(e) => setSelectedBank(e.target.value)}
-          className="border p-2 rounded"
-        >
-          <option value="ALL">Todos los bancos</option>
-          {seedBanks.map(bank => (
-            <option key={bank} value={bank}>{bank}</option>
-          ))}
-        </select>
-
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Buscar por variedad o banco..."
-          className="border p-2 rounded flex-1"
-        />
-      </div>
-
-      <ul className="max-h-60 overflow-y-auto border rounded divide-y">
-        {filteredGenetics.map((item) => (
-          <li
-            key={`${item.seedBank}-${item.name}`}
-            onClick={() => onSelect(item)}
-            className="p-2.5 hover:bg-emerald-50 cursor-pointer"
-          >
-            <div className="font-semibold text-emerald-900">{item.name}</div>
-            <div className="text-xs text-gray-500">
-              {item.seedBank} • {item.dominance} • Floración: {item.floweringDays} días
-            </div>
-            <div className="text-xs text-gray-600 italic">
-              Aroma: {item.organolepticProfile}
-            </div>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+{
+  "seedBank": "1439 Criadores",
+  "name": "Choco OG",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Frutal, chocolate y chicle globo.",
+  "floweringDays": "54 - 56",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "(OG Kush x Blueberry) x Skunk #1",
+  "thc": "THC 15,8%; CBD 0,51%"
+},
+{
+  "seedBank": "ACE Seeds",
+  "name": "Golden Tiger",
+  "dominance": "Sativa 100%",
+  "organolepticProfile": "Floral, especiado, limon y fondo organico resinoso",
+  "floweringDays": "70 - 98",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Vieja Malawi asesina, Koh Chang Thai, Hmong Thai y linea Malawi de tercera generacion",
+  "thc": "THC: 25 - 30%; CBD: hasta 0,5%"
+},
+{
+  "seedBank": "ACE Seeds",
+  "name": "Killer A5 Haze",
+  "dominance": "Índica 20% / Sativa 80%",
+  "organolepticProfile": "Haze incensado, carne, fondo organico, resina y madera curada",
+  "floweringDays": "63 - 84",
+  "estimatedYield": "550 - 650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "A5 Haze de Neville (Northern Lights #5 x Haze A) x Malawi Killer",
+  "thc": "THC: 23 - 30%; CBD: nulo segun el banco"
+},
+{
+  "seedBank": "ACE Seeds",
+  "name": "Malawi",
+  "dominance": "Sativa 100%",
+  "organolepticProfile": "Aceite, madera, limon; algunos fenotipos con zanahoria dulce y mandarina",
+  "floweringDays": "70 - 91",
+  "estimatedYield": "550 - 650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Vieja Malawi asesina x Malawis de tercera generacion",
+  "thc": "THC: 24 - 27%; CBD: 0,08%"
+},
+{
+  "seedBank": "ACE Seeds",
+  "name": "Panama x Bangi Haze",
+  "dominance": "Índica 15% / Sativa 85%",
+  "organolepticProfile": "Floral, almizcle, limon, zanahoria dulce, anis e incienso",
+  "floweringDays": "70 - 77",
+  "estimatedYield": "450 - 550",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Panama Goddess de decima generacion x Bangi Haze de octava generacion",
+  "thc": "THC: 18 - 21%; CBD: nulo segun el banco"
+},
+{
+  "seedBank": "ACE Seeds",
+  "name": "Purple Haze x Malawi",
+  "dominance": "Sativa 100%",
+  "organolepticProfile": "Licor de mora, vino tinto, especias, incienso, madera, citricos y fondo aceitoso",
+  "floweringDays": "91 - 105",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Purple Haze #23 x Malawi asesina",
+  "thc": "THC: 18 - 23%; CBD: 0,2%"
+},
+{
+  "seedBank": "Anandamida",
+  "name": "ANANDA001",
+  "dominance": "",
+  "organolepticProfile": "Citricos, flores y tierra",
+  "floweringDays": "60",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Original Haze x linea rica en CBD (no identificada)",
+  "thc": "THC: 17%; CBD: 2%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Acapulco Gold",
+  "dominance": "Índica 30% / Sativa 70%",
+  "organolepticProfile": "Citricos, cafe, crema, pino, madera, dulce y terroso",
+  "floweringDays": "60 - 70",
+  "estimatedYield": "600 - 700",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Centroamericana",
+  "thc": "THC: 26%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Afghan Hash Plant Auto",
+  "dominance": "Índica 90% / Sativa 10%",
+  "organolepticProfile": "sándalo, cítricos, penetrante y especiado; amaderado, terroso, especiado y dulce",
+  "floweringDays": "75 - 80",
+  "estimatedYield": "400 - 450",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Afghan x BF Super Auto #1",
+  "thc": "THC: 22%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "AK",
+  "dominance": "Índica 30% / Sativa 70%",
+  "organolepticProfile": "penetrante, terroso y cítricos; cítricos, especiado y terroso",
+  "floweringDays": "60 - 70",
+  "estimatedYield": "500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Mexican x Colombian x Thai x Afghan",
+  "thc": "THC: 26%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Amnesia Haze",
+  "dominance": "Índica 20% / Sativa 80%",
+  "organolepticProfile": "clásico Haze, penetrante, fresco cítricos y especiado; cítricos, Haze, terroso y especiado",
+  "floweringDays": "70 - 85",
+  "estimatedYield": "650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Jamaican x Thai x South Asia x Cambodia",
+  "thc": "THC: 24%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Amnesia Haze Auto",
+  "dominance": "Índica 20% / Sativa 80%",
+  "organolepticProfile": "terroso, limón y cítricos; limón, cítricos y terroso pino",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "500 - 600",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Amnesia Haze x BF Super Auto #1",
+  "thc": "THC: 23%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Amnesia Lemon",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "exótico, terroso y cítricos; limón, especiado y dulce",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Amnesia Haze x Lemon Skunk",
+  "thc": "THC: 26%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Ayahuasca Purple",
+  "dominance": "Indica 100%",
+  "organolepticProfile": "Lavanda, mango, frutos secos, papaya, tierra, flores y dulzor",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Red River Delta x Master Kush",
+  "thc": "THC: 24%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Banana Punch",
+  "dominance": "Índica 55% / Sativa 45%",
+  "organolepticProfile": "Banana madura, tierra, fruta tropical, bayas dulces y citricos",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "600 - 700",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Banana OG x Purple Punch",
+  "thc": "THC: 26%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Biscotti Mintz",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Kush, galletas, menta cremosa y tierra",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "600 - 700",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Biscotti x Mintz",
+  "thc": "THC: 30%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Black Cherry Gushers",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "damasco, caramelo, cereza y terroso; damasco, bayas, caramelo y cereza",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Acai x Black Cherry Funk",
+  "thc": "THC: 32%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Blue Cheese",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "queso azul, arándano, terroso y penetrante; arándano, queso, cremoso y dulce",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Original Cheese x Blueberry",
+  "thc": "THC: 26%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Blue Dream",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "dulce bayas, terroso, pino y Floral; dulce, frutal, arándano y herbal",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Blueberry x Super Silver Haze",
+  "thc": "THC: 28%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Blue Gelato 41",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Dulce, tierra, citricos, fruta fresca y bayas",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "700 - 800",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Blueberry x Thin Mint Girl Scout Cookies x Sunset Sherbert",
+  "thc": "THC: 28%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Blue Sunset Sherbert",
+  "dominance": "Índica 65% / Sativa 35%",
+  "organolepticProfile": "dulce caramelo, ralladura cítrica y dulce bayas; dulce caramelo, cítricos y bayas",
+  "floweringDays": "59 - 63",
+  "estimatedYield": "550 - 650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Sunset Sherbet x Purple Punch",
+  "thc": "THC: 28%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Bruce Banner",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "frutilla, dulce, Diesel y terroso; cítricos, dulce, Diesel y terroso",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Strawberry Diesel Strain x OG Kush Strain",
+  "thc": "THC: 32%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Bruce Banner Auto",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Tropical, dulce, Diesel y terroso; cítricos, dulce, Diesel y terroso",
+  "floweringDays": "80 - 90",
+  "estimatedYield": "450 - 550",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Bruce Banner x BF Super Auto #1",
+  "thc": "THC: 25%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Bubba Kush",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Hash, dulce y especias; dulce Hashish, moca y intenso terroso",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "600 - 700",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Afghan Kush Landrace x OG Kush",
+  "thc": "THC: 29%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Bubblegum Auto F1",
+  "dominance": "Índica 85% / Sativa 15%",
+  "organolepticProfile": "dulce, frutilla, cereza roja y terroso; caramelo, dulce, frutilla y terroso",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "550 - 650",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Bubblegum x BF Super Auto #1",
+  "thc": "THC: 21%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Bubblegum Gelato",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "terroso, dulce, cereza y bayas; chicle azucarado, cereza dulce, bayas frescas y frutal",
+  "floweringDays": "60 - 70",
+  "estimatedYield": "550",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Gelato 45 x Indiana Bubble Gum",
+  "thc": "THC: 32%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Cherry Cola Auto",
+  "dominance": "Índica 65% / Sativa 35%",
+  "organolepticProfile": "cereza, terroso, penetrante y especiado; azucarado, bayas frescas, cereza y especiado",
+  "floweringDays": "70 - 80",
+  "estimatedYield": "550 - 650",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Cherry Cola x BF Super Auto #1",
+  "thc": "THC: 25%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Cherry Poppers",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "cereza, especiado bayas y cremoso; dulce, cereza, caramelo y cítricos",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Lemon Kush x Cherry Z",
+  "thc": "THC: 31%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Cookie Casket",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "combustible, terroso, pimienta y dulce; Diesel, dulce, especiado y frutal",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "The Hearse Strain x Thin Mint Cookies",
+  "thc": "THC: 30%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Critical Kush",
+  "dominance": "100% índica",
+  "organolepticProfile": "terroso, hierbas, combustible y especias; fresco pino, terroso, tarta de limón y acidulado",
+  "floweringDays": "55 - 60",
+  "estimatedYield": "550 - 650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Critical Mass x OG Kush",
+  "thc": "THC: 26%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Dos Si Dos 33",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "galletas, Sherbet y Lime; menta, Lime y especias",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "650 - 750",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Dos Si Dos x Gelato #33",
+  "thc": "THC: 28%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Dos Si Dos Auto",
+  "dominance": "Índica 65% / Sativa 35%",
+  "organolepticProfile": "tarta de merengue, dulce y cítricos; limón, fruta y dulce",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "550 - 650",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Dos Si Dos x BF Super Auto #1",
+  "thc": "THC: 23%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "El Mero",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "ajo, Gas, Kush y cebolla; Diesel, pimienta, pino y skunk",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "550 - 650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "OG Kush x GMO (Garlic Cookies)",
+  "thc": "THC: 29%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Frosted Zinn x 3 Bears OG Auto",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "pimienta, dulce, terroso y herbal; herbal especias, dulce, terroso y Tropical",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "450 - 500",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Frosted Zinn Auto x 3 Bears Auto",
+  "thc": "THC: 24%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Frosted Zinn x Cookie Dog Auto",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "dulce, terroso, vainilla y pimienta; Diesel, especiado, terroso y vainilla",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "550",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Frosted Zinn Auto x Cookie Dog Auto",
+  "thc": "THC: 25%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Garlic Cookies",
+  "dominance": "Índica 90% / Sativa 10%",
+  "organolepticProfile": "Diesel, café, ajo y cebolla; dulce, terroso especiado, ajo y Diesel",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Girl Scout Cookies x Chemdawg",
+  "thc": "THC: 30%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Gelato",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "cremoso vainilla, dulce fruta, terroso y frutilla; azucarado, cremoso, lavanda fresca y frutos rojos dulces",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "550 - 650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Blue Sunset Sherbert Strain x Thin Mint Girl Scout Cookies Strain",
+  "thc": "THC: 28%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "GG4 Auto",
+  "dominance": "Índica 55% / Sativa 45%",
+  "organolepticProfile": "café, especias y terroso; cremoso, especias y terroso",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "500 - 600",
+  "type": "Autofloreciente feminizada",
+  "lineage": "GG4 x BF Super Auto #1",
+  "thc": "THC: 26%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Girl Scout Cookies",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "postre horneado, penetrante, dulce y menta; chocolate mentolado, skunk, cereza dulce y limón",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "600 - 700",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "OG Kush Strain x Durban Poison Strain",
+  "thc": "THC: 28%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Glookies",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "frutos secos, lima y exótico; agrio Diesel, lima y nuez",
+  "floweringDays": "60 - 70",
+  "estimatedYield": "700 - 800",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Gorilla Glue x Thin Mint Girl Scout Cookies",
+  "thc": "THC: 32%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Glue Gelato Auto",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "frutal, dulce, terroso y cítricos; Chocolate, especiado y dulce bayas",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "450 - 500",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Gorilla Glue x Gelato x BF Super Auto #1",
+  "thc": "THC: 26%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Gorilla Z",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "frutal, bayas y pino; frutal, bayas y pino",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "700 - 800",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Gorilla Glue x Original Z Strain",
+  "thc": "THC: 32%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Gorilla Z Auto",
+  "dominance": "Índica 75% / Sativa 25%",
+  "organolepticProfile": "frutas de verano, dulce y bayas; fruta intensa, dulce y bayas",
+  "floweringDays": "75 - 80",
+  "estimatedYield": "450 - 500",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Gorilla Glue x Original Z Strain x BF Super Auto #1",
+  "thc": "THC: 25%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "GrandDaddy Purple",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "dulce uva, bayas y penetrante; uva, dulce bayas y terroso",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Purple Urkle x Big Bud",
+  "thc": "THC: 25%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Hindu Kush",
+  "dominance": "100% índica",
+  "organolepticProfile": "clásico Kush, penetrante cítricos, terroso y amaderado; dulce sándalo, terroso y cítricos",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "550 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Hindu Kush Mountains landrace",
+  "thc": "THC: 26%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Ice Cream Cake",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "cremoso, queso, terroso y frutos secos; dulce, cremoso, vainilla y terroso",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "600 - 700",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Gelato #33 Strain x Wedding Cake Strain",
+  "thc": "THC: 27%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Insane OG",
+  "dominance": "Índica 75% / Sativa 25%",
+  "organolepticProfile": "Diesel, frutal, clásico y uva; terroso, Gas, pimienta y especias",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "OG Kush x Bubba Kush x Granddaddy Purple",
+  "thc": "THC: 32%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Jelly Cake",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "mermelada, dulce bayas, Kiwi y cremoso vainilla; cremoso, frutal, dulce bayas y Tropical",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "400 - 500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Biscotti x Sunset Sherbet",
+  "thc": "THC: 27%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Laughing Buddha",
+  "dominance": "Índica 20% / Sativa 80%",
+  "organolepticProfile": "fresco, dulce y frutas exóticas; pimienta tostada, ananá, limón y herbal",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Thai x Jamaican",
+  "thc": "THC: 24%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Lemon Cherry Cookies Auto",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "limón cítricos, cereza, terroso y Floral; limón, bayas, cereza y dulce",
+  "floweringDays": "65 - 75",
+  "estimatedYield": "500 - 600",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Lemon Cherry Cookies x BF Super Auto #1",
+  "thc": "THC: 28%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Lemon Cherry Gelato",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "dulce, cítricos y bayas frescas; dulce, limón, cereza y Gas",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Sunset Sherbet Strain x Girl Scout Cookies Strain",
+  "thc": "THC: 33%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Lemon Haze Auto",
+  "dominance": "Índica 30% / Sativa 70%",
+  "organolepticProfile": "Tropical, dulce y cítricos; limón, cítricos y frutal",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "450 - 550",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Lemon Haze Strain x BF Super Auto #1",
+  "thc": "THC: 24%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "LFG",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "ralladura de limón, cremoso, vainilla y pino; cítricos, dulce bayas, cremoso y pino",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "550",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Lemon Cherry Gelato x Gelato 41",
+  "thc": "THC: 32%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "London Pound Cake Auto F1",
+  "dominance": "Índica 30% / Sativa 70%",
+  "organolepticProfile": "bayas, fruta, dulce y cremoso vainilla; cremoso, vainilla, frutos secos y dulce bayas",
+  "floweringDays": "75 - 80",
+  "estimatedYield": "550 - 650",
+  "type": "Autofloreciente feminizada",
+  "lineage": "London Pound Cake x BF Super Auto #1",
+  "thc": "THC: 28%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "LSD",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "almizclado, floral terroso, herbal y skunk; terroso, castaña, limón y agrio",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "550 - 650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Original Skunk #1 x Afghan Indica",
+  "thc": "THC: 28%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "LSD Auto",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "almizclado, floral terroso, herbal y skunk; terroso castaña, Mango, cítricos, dulce y agrio",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "550 - 650",
+  "type": "Autofloreciente feminizada",
+  "lineage": "LSD x Super Magnum Auto",
+  "thc": "THC: 24%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Mimosa EVO",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "ponche de frutas, cítricos y mandarina; Tropical limón, naranja cítricos y bayas",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "700 - 800",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Mimosa x Orange Punch",
+  "thc": "THC: 32%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Mimosa x Orange Punch",
+  "dominance": "Índica 65% / Sativa 35%",
+  "organolepticProfile": "dulce, mandarina y caramelo; cítricos, caramelo y naranja",
+  "floweringDays": "55 - 60",
+  "estimatedYield": "650 - 750",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Mimosa Evo x Orange Punch",
+  "thc": "THC: 30%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Mimosa x Orange Punch Auto",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "mandarina, dulce y cítricos; cítricos, caramelo y naranja",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "550 - 650",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Mimosa Evo x Orange Punch x BF Super Auto #1",
+  "thc": "THC: 24%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Moby Dick",
+  "dominance": "Índica 25% / Sativa 75%",
+  "organolepticProfile": "especias, pino, incienso y vainilla; cítricos Haze, especiado, pino y vainilla",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "650 - 750",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "G13 HAZE x WHITE WIDOW",
+  "thc": "THC: 27%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Moby Dick Auto",
+  "dominance": "Índica 30% / Sativa 70%",
+  "organolepticProfile": "especias, pino incienso y vainilla; terroso, dulce cítricos y pino",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "500 - 600",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Moby Dick x BF Super Auto #1",
+  "thc": "THC: 23%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Northern Lights",
+  "dominance": "100% índica",
+  "organolepticProfile": "clásico, terroso, pino y especias; dulce cítricos, terroso y pino",
+  "floweringDays": "55 - 60",
+  "estimatedYield": "550",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Thai landrace x Afghani",
+  "thc": "THC: 26%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "OG Kush",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "cítricos, skunk, intenso y terroso; cítricos, herbal, skunk y amaderado pino",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "600 - 700",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Chemdawg Strain x Lemon Thai Strain x Hindu Kush",
+  "thc": "THC: 26%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "OG Kush Auto",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "terroso, intenso, limón cítricos y skunk; agrio cítricos, amaderado pino y intenso Kush",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "450 - 550",
+  "type": "Autofloreciente feminizada",
+  "lineage": "OG Kush Strain x BF Super Auto #1",
+  "thc": "THC: 24%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Original Z OG Auto",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "dulce, Tropical, bayas y skunk; dulce, agrio, caramelo, fruta tropical y uva",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "550 - 650",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Original Z Strain x OG Kush x BF Super Auto #1",
+  "thc": "THC: 24%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Papaya Frosting",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Tropical, dulce caramelo, papaya muy madura y arándano; Papaya, Mango, arándano y pimienta",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Papayamosa x Banana Frosting",
+  "thc": "THC: 28%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Pineapple Chunk",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "terroso, queso y ananá; dulce ananá, queso y pino",
+  "floweringDays": "55 - 60",
+  "estimatedYield": "550 - 650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Pineapple x Skunk #1 x Cheese",
+  "thc": "THC: 28%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Pineapple Express",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "ananá recién cortado, fruta tropical y pino; cítricos, ananá, terroso y pino",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "600 - 700",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Hawaiian Landrace Sativa x Trainwreck",
+  "thc": "THC: 28%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Pineapple Express Auto",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "apetitoso, dulce ananá y fruta tropical; intenso, Tropical y intenso ananá",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "500 - 600",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Pineapple Chunk x BF Super Auto #1",
+  "thc": "THC: 24%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Purple Punch",
+  "dominance": "Índica 90% / Sativa 10%",
+  "organolepticProfile": "panadería, tarta de manzana y pastelería; tarta de manzana, clavo de olor y caramelo",
+  "floweringDays": "50 - 60",
+  "estimatedYield": "650 - 750",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Granddaddy Purple x Larry OG",
+  "thc": "THC: 30%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Purple Punch Auto",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "panadería, tarta de manzana y pastelería; tarta de manzana, clavo de olor y caramelo",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "450 - 550",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Purple Punch x BF Auto Critical",
+  "thc": "THC: 22%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Rainbow Sherbet",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "frutal, dulce, Tropical y caramelo; melón, dulce, frutal y cremoso",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Champagne x Blackberry",
+  "thc": "THC: 28%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "RS11 x Banana OG",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "limón, especiado y cereza; pomelo, cítricos, melón y Banana",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "RS11 Strain x Banana OG",
+  "thc": "THC: 32%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Runtz",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "fruta tropical, Diesel y dulce caramelo; dulce caramelo, frutal y skunk Diesel",
+  "floweringDays": "55 - 60",
+  "estimatedYield": "550 - 650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Original Z Strain x Gelato Strain",
+  "thc": "THC: 29%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Runtz Auto",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "dulce, fruta y caramelo; dulce, Tropical y frutal",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "500 - 600",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Runtz x BF Super Auto #1",
+  "thc": "THC: 27%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Runtz x Layer Cake",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "fruta tropical, herbal, dulce y especiado; cítricos, Diesel, terroso y especiado",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "700 - 800",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "RUNTZ x LAYER CAKE",
+  "thc": "THC: 28%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Shiskaberry",
+  "dominance": "100% índica",
+  "organolepticProfile": "penetrante, bayas y terroso; terroso, especiado y bayas",
+  "floweringDays": "50 - 55",
+  "estimatedYield": "600 - 700",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Blueberry x Afghan",
+  "thc": "THC: 28%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Skunk #1",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "penetrante, skunk y terroso; terroso, cítricos y clásico Skunk",
+  "floweringDays": "65 - 75",
+  "estimatedYield": "500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Afghan x Acapulco Gold x Colombian Gold",
+  "thc": "THC: 26%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Skywalker OG Auto",
+  "dominance": "Índica 75% / Sativa 25%",
+  "organolepticProfile": "fruta tropical, cítricos y Diesel; dulce, terroso y pino",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "450 - 500",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Skywalker OG x BF Super Auto #1",
+  "thc": "THC: 24%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Sour Diesel Auto",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "pino, Diesel y limón; pino, cítricos y Diesel",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "500 - 600",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Sour Diesel x BF Super Auto #1",
+  "thc": "THC: 24%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Strawberry Cheesecake Auto",
+  "dominance": "Índica 75% / Sativa 25%",
+  "organolepticProfile": "frutilla Hash, tarta de queso y terroso; terroso, frutilla y tarta de queso",
+  "floweringDays": "75 - 80",
+  "estimatedYield": "550 - 650",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Strawberry Pie x Afghan OG x BF Super Auto #1",
+  "thc": "THC: 23%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Strawberry Lemonade",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "limón, terroso, frutilla y frutal Hash; frutilla, limonada, skunk y dulce",
+  "floweringDays": "60 - 70",
+  "estimatedYield": "700 - 800",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Strawberry x Lemon OG",
+  "thc": "THC: 26%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Super Boof",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "naranja, fruta tropical y dulce; uva, naranja y frutal",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Black Cherry Punch x Tropicana Cookies",
+  "thc": "THC: 32%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Tangerine Dream Auto",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "mandarina, cítricos y dulce; acidulado, cítricos y intenso",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "450 - 500",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Tangerine Dream x Autoflower #1",
+  "thc": "THC: 21%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Thin Mint x Sour Pinot Auto",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "terroso, dulce, mentolado y herbal; Diesel, uva, dulce y terroso",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "450 - 500",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Thin Mint Auto x Sour Pinot Auto",
+  "thc": "THC: 26%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Trainwreck Auto",
+  "dominance": "Índica 20% / Sativa 80%",
+  "organolepticProfile": "pino, cítricos, especiado y terroso; terroso, pino, dulce y cítricos",
+  "floweringDays": "75 - 85",
+  "estimatedYield": "450 - 550",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Trainwreck x BF Super Auto #1",
+  "thc": "THC: 24%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Tropicana Cherry",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "fruta tropical, cítricos vivaces, Mango y cereza dulce; dulce, cítricos, cereza y Tropical",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "550 - 650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Tropicana Cookies x Tropicanna Cherry",
+  "thc": "THC: 28%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Tropicana Cookies Auto F1",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "naranja, Tropical, terroso y Floral; frutal, dulce caramelo, masa de galleta y cítricos",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "400 - 500",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Tropicana Cookies x BF Super Auto #1",
+  "thc": "THC: 27%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Tropicanna Banana",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "terroso, penetrante y Banana; frutal, Banana y Tropical",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "650 - 750",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Tropicanna x Banana Kush",
+  "thc": "THC: 26%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Watermelon Z Auto",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Tropical, frutal y caramelo; frutal Watermelon, dulce bayas y caramelo",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "450 - 550",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Watermelon Z x BF Super Auto #1",
+  "thc": "THC: 26%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Wedding Cake",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "dulce, agrio, terroso, vainilla y skunk; vainilla, pastel y skunk",
+  "floweringDays": "55 - 60",
+  "estimatedYield": "600 - 700",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Cherry Pie x Girl Scout Cookies x OG Kush",
+  "thc": "THC: 27%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Wedding Cake Auto",
+  "dominance": "Índica 65% / Sativa 35%",
+  "organolepticProfile": "fresco, frutal y bayas; bayas de verano, budín de frutas y dulce",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "450 - 550",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Wedding Cake x BF Super Auto #1",
+  "thc": "THC: 26%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "White Widow XXL",
+  "dominance": "Índica 75% / Sativa 25%",
+  "organolepticProfile": "dulce, penetrante, especiado y pino; frutal, especiado y pino",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "600 - 700",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Brazilian x South Indian",
+  "thc": "THC: 28%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "White Widow XXL Auto",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "dulce, penetrante, especiado y pino; skunk, dulce, especiado y pino",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "450 - 550",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Brazilian x South Indian x BF Super Auto #1",
+  "thc": "THC: 23%"
+},
+{
+  "seedBank": "Barney's Farm",
+  "name": "Zillions",
+  "dominance": "Índica 55% / Sativa 45%",
+  "organolepticProfile": "cáscara de cítricos, pino y bayas; frutal, pino y bayas",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Original Zkittlez x Lemon Cherry Gelato",
+  "thc": "THC: 32%"
+},
+{
+  "seedBank": "Billy Seeds",
+  "name": "BSOD74",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "45 - 55",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Autopolinizacion S1 del clon PyK7#4"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Blueberry Fem",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Muy afrutado, con toques a frutos del bosque",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "thc": "THC hasta 22%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Blueberry XXL Auto",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Frutos del bosque",
+  "floweringDays": "70 - 77",
+  "estimatedYield": "450 - 550",
+  "type": "Autofloreciente feminizada",
+  "thc": "THC: 20%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Choco Cream",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Chocolate y combustible diesel",
+  "floweringDays": "65",
+  "estimatedYield": "450 - 550",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Oreoz x Cookies and Cream",
+  "thc": "THC: 27 - 30%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Critical + 2 Fem",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Flores dulces",
+  "floweringDays": "",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Big Bud x Skunk",
+  "thc": "THC: 20%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Critical + 2 XXL Auto",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Dulce, limon y citricos",
+  "floweringDays": "",
+  "estimatedYield": "300 - 450",
+  "type": "Autofloreciente feminizada",
+  "thc": "THC: 20%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Double Cookies Auto",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Menta dulce, lima fresca y pino",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "400 - 500",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Do-Si-Dos x Girl Scout Cookies",
+  "thc": "THC: 22%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Double Cookies Fem",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Dulce, tierra, galleta y menta",
+  "floweringDays": "",
+  "estimatedYield": "380 - 480",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Do-Si-Dos x Cookies Forum Cut",
+  "thc": "THC 25 - 27%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "El Gaucho Faster Flowering",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Dulce y frutal",
+  "floweringDays": "42",
+  "estimatedYield": "600",
+  "type": "Faster Flowering",
+  "lineage": "Sierra Madre x Blue Mountain",
+  "thc": "THC 22%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "G-mint",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Combustible cremoso, ajo y tierra",
+  "floweringDays": "",
+  "estimatedYield": "500 - 550",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "GMO x Kush Mints",
+  "thc": "THC: 22 - 27%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Gorilla Banana",
+  "dominance": "40% sativa",
+  "organolepticProfile": "Banana dulce y tierra",
+  "floweringDays": "56",
+  "estimatedYield": "450 - 550",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Gorilla Glue #4 x Banana Punch",
+  "thc": "THC: 22 - 25%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Gorilla Ghost",
+  "dominance": "60% sativa",
+  "organolepticProfile": "Floral, frutos del bosque, cítrico y terroso",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "500 - 650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Gorilla Glue #4 x Ghost OG",
+  "thc": "THC: 26 - 29%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Gorilla Glue #4",
+  "dominance": "70% sativa",
+  "organolepticProfile": "Dulce, terroso, limón, especias y chocolate",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Chem Sister x Sour Dubb x Chocolate Diesel",
+  "thc": "THC: 27%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Gorilla Glue Auto",
+  "dominance": "40% sativa",
+  "organolepticProfile": "Pino, tierra, dulce y ponche de frutas",
+  "floweringDays": "65",
+  "estimatedYield": "350 - 500",
+  "type": "Autofloreciente",
+  "lineage": "Gorilla Glue #4 x clon élite Auto de 3.ª generación",
+  "thc": "THC: 21%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Gorilla Glue Faster Flowering",
+  "dominance": "Índica 30% / Sativa 70%",
+  "organolepticProfile": "Tierra humeda y chocolate",
+  "floweringDays": "42",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiodica feminizada, version rapida",
+  "thc": "THC: 22%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Gorilla Piña Auto",
+  "dominance": "60% sativa",
+  "organolepticProfile": "Piña dulce y frutas",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "450 - 550",
+  "type": "Autofloreciente",
+  "lineage": "Gorilla Piña Auto de 4.ª generación",
+  "thc": "THC: 24 - 25%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Gorilla Piña Faster",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Anana y frutas exoticas",
+  "floweringDays": "45",
+  "estimatedYield": "450 - 600",
+  "type": "Fotoperiodica feminizada, version rapida",
+  "lineage": "Gorilla Pina x Mimosa Auto",
+  "thc": "THC: 25%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Gorilla Piña Feminized",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Anana, dulce y afrutado",
+  "floweringDays": "55",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "(Gorilla Glue #4 x Pineapple Larry) x Mimosa",
+  "thc": "THC: 28%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Gorilla Rainbows Fem",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Caramelo, afrutado y terroso",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Gorilla Glue #4 x Rainbows",
+  "thc": "THC >24%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Green Tiger Faster Flowering",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Frutal y dulce",
+  "floweringDays": "42",
+  "estimatedYield": "500 - 650",
+  "type": "Fotoperiodica feminizada, version rapida",
+  "lineage": "(Early Skunk x Skunk) x Skunk pre90",
+  "thc": "THC: 22%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "GTA",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Terroso, menta, frutal y agridulce",
+  "floweringDays": "",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Gorilla x True Mints x Apricot",
+  "thc": "THC: 28 - 30%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Herijuana",
+  "dominance": "Índica pura",
+  "organolepticProfile": "Dulce y cremoso",
+  "floweringDays": "58 - 65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Killer New Heaven x Pretrolia Headstash"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Lafanta Light Auto",
+  "dominance": "5% sativa",
+  "organolepticProfile": "Naranja, frutal y cítrico",
+  "floweringDays": "70",
+  "estimatedYield": "400 - 500",
+  "type": "Autofloreciente",
+  "lineage": "Lafanta x macho Auto de 4.ª generación",
+  "thc": "THC: bajo; relación THC/CBD 1:1 o 1:2"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Lafanta Light Fem",
+  "dominance": "70% sativa",
+  "organolepticProfile": "Naranja, frutal y cítrico",
+  "floweringDays": "56",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Cali Orange x Skunk x clon élite CBD",
+  "thc": "THC: bajo; CBD: alto; relación THC/CBD 1:1 o 1:2"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Lebron Haze Fem",
+  "dominance": "85% sativa",
+  "organolepticProfile": "Limón, incienso y cedro",
+  "floweringDays": "49 - 56",
+  "estimatedYield": "500 - 650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "(Haze x Haze) x Lemon Thai",
+  "thc": "THC: 22%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Lebron Haze XXL Auto",
+  "dominance": "70% sativa",
+  "organolepticProfile": "Limón, incienso, madera, especias y matices metálicos",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "450 - 550",
+  "type": "Autofloreciente",
+  "lineage": "Lebron Haze x Jack Herer Auto",
+  "thc": "THC: 19%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Moby-D Fem",
+  "dominance": "80% sativa",
+  "organolepticProfile": "Cítricos, pino, madera y Haze",
+  "floweringDays": "70",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Jack Herer x White Widow",
+  "thc": "THC: 19%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Moby-D XXL Auto",
+  "dominance": "80% sativa",
+  "organolepticProfile": "Cítrico, pino, Haze y madera",
+  "floweringDays": "75 - 80",
+  "estimatedYield": "350 - 500",
+  "type": "Autofloreciente",
+  "lineage": "Moby-D Auto de 3.ª generación x Haze Auto de 3.ª generación",
+  "thc": "THC: 18%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Nerdz",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Gomitas tropicales y dulce",
+  "floweringDays": "",
+  "estimatedYield": "450 - 500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Runtz x Sour Apricot",
+  "thc": "THC: 27 - 30%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Nicole Punch",
+  "dominance": "Índica 75% / Sativa 25%",
+  "organolepticProfile": "Flores frescas, dulzor terroso y bayas",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "450 - 500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Nicole Kush x Purple Punch",
+  "thc": "THC: 25 - 30%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Nitro Haze",
+  "dominance": "60% sativa",
+  "organolepticProfile": "Merengue de limón con matices Haze",
+  "floweringDays": "63",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Lebron Haze x Black Dómina 98",
+  "thc": "THC: 21%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "OBG Kush Fast Version",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Dulce, terroso y picante",
+  "floweringDays": "42",
+  "estimatedYield": "400 - 500",
+  "type": "Fotoperiodica feminizada, version rapida",
+  "thc": "THC: 22%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Orange Blossom",
+  "dominance": "70% sativa",
+  "organolepticProfile": "Mandarina, naranja, frutal y cítrico",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Cali Orange x Skunk pre90",
+  "thc": "THC: 20%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Orange Blossom XXL Auto",
+  "dominance": "70% sativa",
+  "organolepticProfile": "Mandarina, cítrico y frutal",
+  "floweringDays": "75 - 80",
+  "estimatedYield": "400 - 600",
+  "type": "Autofloreciente",
+  "lineage": "Orange Blossom x clon élite Auto de 3.ª generación",
+  "thc": "THC: 18%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Pine Tar Kush",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Pineapple Larry OG Fem",
+  "dominance": "Índica 20% / Sativa 80%",
+  "organolepticProfile": "Anana, limon y dulce",
+  "floweringDays": "",
+  "estimatedYield": "400 - 450",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Cinderella 99 x SLL OG",
+  "thc": "THC: 22%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Pineapple Larry OG XXL Auto",
+  "dominance": "80% sativa",
+  "organolepticProfile": "Dulce, madera, piña madura y limón",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "450 - 500",
+  "type": "Autofloreciente",
+  "lineage": "Pineapple Larry OG x Pineapple Auto de 4.ª generación",
+  "thc": "THC: 22 - 23%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Rainbows",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Coctel de frutas y pomelo dulce",
+  "floweringDays": "56",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Zkittlez x Zkittlez",
+  "thc": "THC: 24%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Rainbows XXL Auto",
+  "dominance": "20% sativa",
+  "organolepticProfile": "Pomelo dulce, azúcar, cóctel de frutas y matices terrosos",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "450 - 500",
+  "type": "Autofloreciente",
+  "lineage": "Zkittlez x Zkittlez Auto de 4.ª generación",
+  "thc": "THC: 22 - 23%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Red Critical Auto",
+  "dominance": "40% sativa",
+  "organolepticProfile": "Flores dulces",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "300 - 450",
+  "type": "Autofloreciente",
+  "lineage": "Critical Auto x macho de 4.ª generación no identificado",
+  "thc": "THC: 19%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "SLH - Super Lemon Haze",
+  "dominance": "Índica 20% / Sativa 80%",
+  "organolepticProfile": "Pomelo, limon, incienso y pimienta negra",
+  "floweringDays": "",
+  "estimatedYield": "450 - 700",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Lemon Skunk x Super Silver Haze",
+  "thc": "THC: 22%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Tangie",
+  "dominance": "Índica 30% / Sativa 70%",
+  "organolepticProfile": "Mandarina, fruta y citricos",
+  "floweringDays": "",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "California Orange x Skunk",
+  "thc": "THC: 20%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "Tangie XXL Auto",
+  "dominance": "Índica 30% / Sativa 70%",
+  "organolepticProfile": "Mandarina, fruta y citricos",
+  "floweringDays": "",
+  "estimatedYield": "400 - 600",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Orange Blossom x clon élite de BSF",
+  "thc": "THC: 18%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "TropiCherry",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Cereza madura, agridulce y terroso",
+  "floweringDays": "60",
+  "estimatedYield": "450 - 500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Tropicanna x Cherry",
+  "thc": "THC: 24 - 28%"
+},
+{
+  "seedBank": "BSF Seeds",
+  "name": "White Gorilla",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Terroso, dulce y citrico",
+  "floweringDays": "56",
+  "estimatedYield": "400 - 500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Gorilla Glue #4 x White Widow",
+  "thc": "THC: 25%"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Auto Gorila",
+  "dominance": "Índica",
+  "organolepticProfile": "Cítrico, pino, tierra, chocolate",
+  "floweringDays": "70",
+  "estimatedYield": "450 - 650",
+  "type": "Autofloreciente feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Buddha AK",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Fruta, cítrico, tierra",
+  "floweringDays": "60 - 63",
+  "estimatedYield": "500 - 550",
+  "type": "Fotoperiódica feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Buddha Amnesia",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Cítrico, madera",
+  "floweringDays": "70",
+  "estimatedYield": "500 - 650",
+  "type": "Fotoperiódica feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Buddha Auto AK",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Fruta, cítrico, tierra",
+  "floweringDays": "70",
+  "estimatedYield": "400 - 550",
+  "type": "Autofloreciente feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Buddha Auto Amnesia",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Cítrico, madera",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "380 - 500",
+  "type": "Autofloreciente feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Buddha Auto Cookie",
+  "dominance": "Índica",
+  "organolepticProfile": "Chocolate y galleta recien horneada",
+  "floweringDays": "70",
+  "estimatedYield": "500 - 650",
+  "type": "Autofloreciente feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Buddha Auto Critical",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Skunk, floral, melón",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "500 - 550",
+  "type": "Autofloreciente feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Buddha Auto Diesel",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Limón, pomelo, tierra",
+  "floweringDays": "75",
+  "estimatedYield": "350 - 500",
+  "type": "Autofloreciente feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Buddha Auto Skunk",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Skunk, cítrico",
+  "floweringDays": "75",
+  "estimatedYield": "450 - 550",
+  "type": "Autofloreciente feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Buddha Auto Tangie",
+  "dominance": "Sativa",
+  "organolepticProfile": "Naranja, mandarina, pomelo",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "400 - 550",
+  "type": "Autofloreciente feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Buddha Auto White Widow",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Especias, pino, madera",
+  "floweringDays": "75",
+  "estimatedYield": "450 - 500",
+  "type": "Autofloreciente feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Buddha Auto Zkitt",
+  "dominance": "Índica",
+  "organolepticProfile": "Bayas, mango, pomelo",
+  "floweringDays": "70",
+  "estimatedYield": "450 - 550",
+  "type": "Autofloreciente feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Buddha Cookie",
+  "dominance": "Índica",
+  "organolepticProfile": "Chocolate y galleta recien horneada",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "400 - 600",
+  "type": "Fotoperiódica feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Buddha Critical",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Skunk, floral, melón",
+  "floweringDays": "50 - 55",
+  "estimatedYield": "500 - 650",
+  "type": "Fotoperiódica feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Buddha Diesel",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Limón, pomelo, tierra",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "400 - 550",
+  "type": "Fotoperiódica feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Buddha DoSi2",
+  "dominance": "Índica",
+  "organolepticProfile": "Golosina, cítrico, hachís",
+  "floweringDays": "60 - 70",
+  "estimatedYield": "500 - 650",
+  "type": "Fotoperiódica feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Buddha Gelato",
+  "dominance": "Índica",
+  "organolepticProfile": "Menta, fruta, avellana",
+  "floweringDays": "56 - 68",
+  "estimatedYield": "400 - 550",
+  "type": "Fotoperiódica feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Buddha Purple Kush",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Frutas del bosque, tierra",
+  "floweringDays": "60",
+  "estimatedYield": "400 - 480",
+  "type": "Fotoperiódica feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Buddha Purple Kush Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Sándalo, hachís",
+  "floweringDays": "70",
+  "estimatedYield": "350 - 400",
+  "type": "Autofloreciente feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Buddha Skunk",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Skunk, cítrico",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "400 - 550",
+  "type": "Fotoperiódica feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Buddha Wedding Cheesecake",
+  "dominance": "Índica",
+  "organolepticProfile": "Queso, fruta",
+  "floweringDays": "52 - 65",
+  "estimatedYield": "450 - 650",
+  "type": "Fotoperiódica feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Buddha White Widow",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Especias, pino, madera",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "500 - 650",
+  "type": "Fotoperiódica feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Calamity Jane Auto",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Dulce, cítrico, limón",
+  "floweringDays": "75",
+  "estimatedYield": "550 - 600",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Cruces con Magnum; resto del linaje no publicado",
+  "thc": "THC: puede superar 20%"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Deimos Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Picante, frutal",
+  "floweringDays": "75",
+  "estimatedYield": "450 - 525",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Descendiente de Northern Lights; segundo parental no publicado"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Gorila",
+  "dominance": "Índica",
+  "organolepticProfile": "Cítrico, pino, tierra, chocolate",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "450 - 700",
+  "type": "Fotoperiódica feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Kraken",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Fresco, mentolado, tierra, dulce, pino, especias",
+  "floweringDays": "58 - 63",
+  "estimatedYield": "500",
+  "type": "Fotoperiódica feminizada",
+  "thc": "THC 15 - 25%"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Magnum Auto",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Fresco, especiado",
+  "floweringDays": "85",
+  "estimatedYield": "550 - 600",
+  "type": "Autofloreciente feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Medikit",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Limón, naranja, mango, tierra, pino",
+  "floweringDays": "75",
+  "estimatedYield": "450 - 480",
+  "type": "Fotoperiódica feminizada",
+  "thc": "THC: alrededor de 1%; CBD: hasta 20%"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Medikit Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Dulce, limón, naranja, mango, tierra, pino",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "400 - 450",
+  "type": "Autofloreciente feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Morpheus",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Cítrico, dulce, tierra",
+  "floweringDays": "65",
+  "estimatedYield": "450 - 480",
+  "type": "Fotoperiódica feminizada",
+  "thc": "THC: alrededor del 10%; CBD: alrededor del 10%"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Panakeia High Terpenes",
+  "dominance": "Índica",
+  "organolepticProfile": "Hierbas aromáticas, fruta",
+  "floweringDays": "60 - 63",
+  "estimatedYield": "400 - 600",
+  "type": "Fotoperiódica feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Pulsar",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Especias, almizcle",
+  "floweringDays": "75",
+  "estimatedYield": "400",
+  "type": "Fotoperiódica feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Quasar",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Fresco, mentolado",
+  "floweringDays": "75",
+  "estimatedYield": "450 - 600",
+  "type": "Fotoperiódica feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Red Dwarf Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Frutos silvestres, dulce, especias, cítrico",
+  "floweringDays": "",
+  "estimatedYield": "400 - 500",
+  "type": "Autofloreciente feminizada",
+  "lineage": "White Dwarf x Skunk seleccionada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Syrup Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Dulce, frutal, caramelo",
+  "floweringDays": "",
+  "estimatedYield": "375 - 450",
+  "type": "Autofloreciente feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "Vesta Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Pomelo, mandarina",
+  "floweringDays": "75",
+  "estimatedYield": "450",
+  "type": "Autofloreciente feminizada"
+},
+{
+  "seedBank": "Buddha Seeds",
+  "name": "White Dwarf Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Madera, saúco",
+  "floweringDays": "",
+  "estimatedYield": "410 - 450",
+  "type": "Autofloreciente feminizada"
+},
+{
+  "seedBank": "Chita",
+  "name": "Bengala XL Auto",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Fresco, citrico y dulce",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "thc": "THC: 20%"
+},
+{
+  "seedBank": "Chita",
+  "name": "Dinamo Auto",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Resina, tierra, madera, cítricos, fruta tropical, especias, menta, avellana",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Gelato × Sherbet",
+  "thc": "THC 18 - 22%; CBD 0.2 - 0.4%"
+},
+{
+  "seedBank": "Chita",
+  "name": "La Estrella Auto",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Especiado, resinoso y almizclado",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Mohan Ram x Sweet Afgani Delicious",
+  "thc": "THC 16 - 18%; CBD 0.1 - 0.4%"
+},
+{
+  "seedBank": "Chita",
+  "name": "La Resinosa XL",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Limón, ciprés, dulce, frutas tropicales, madera, especias",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Ultra Mohan Ram × Gorilla Girl",
+  "thc": "THC: 16 - 20%; CBD: 0,1 - 0,3%"
+},
+{
+  "seedBank": "Chita",
+  "name": "Seda CBD Auto",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Dulce, herbal y terroso",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Purple Kush x Solomatic",
+  "thc": "CBD: 12%"
+},
+{
+  "seedBank": "Clearwater Genetics",
+  "name": "Blue Nerds S1",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "56 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Blue Nerds x Blue Nerds (Blue Sherb x Zkittlez)"
+},
+{
+  "seedBank": "Clearwater Genetics",
+  "name": "Mule Fuel x Dante's Descent",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "56 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Mule Fuel x Dante's Descent"
+},
+{
+  "seedBank": "Clearwater Genetics",
+  "name": "Space Coast Gelato S1",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "56 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Space Coast Gelato S1 (Gushers x Deep Space 52)"
+},
+{
+  "seedBank": "Clon.Ar",
+  "name": "Choco Haze",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Dulce, citricos y chocolate",
+  "floweringDays": "56 - 70",
+  "estimatedYield": "400 - 600",
+  "type": "Fotoperiódica feminizada"
+},
+{
+  "seedBank": "Cookies Seed Bank",
+  "name": "Berry Pie",
+  "dominance": "Sátiva (70%)",
+  "organolepticProfile": "Waffle dulce tostado, mermelada de bayas rojas, nata",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "500 - 550"
+},
+{
+  "seedBank": "Cookies Seed Bank",
+  "name": "Blanco",
+  "dominance": "Sátiva (60%)",
+  "organolepticProfile": "Químicos agresivos (Chem), flores blancas, pino resina",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "450 - 500"
+},
+{
+  "seedBank": "Cookies Seed Bank",
+  "name": "Cereal Milk",
+  "dominance": "Híbrida (50/50)",
+  "organolepticProfile": "Leche azucarada sobrante, vainilla, cereales de frutas",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "450 - 500"
+},
+{
+  "seedBank": "Cookies Seed Bank",
+  "name": "Gary Payton",
+  "dominance": "Híbrida (50/50)",
+  "organolepticProfile": "Pimienta negra molida, lavanda fresca, gasóleo quemado",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "450 - 500"
+},
+{
+  "seedBank": "Cookies Seed Bank",
+  "name": "London Pound Cake",
+  "dominance": "Índica (70%)",
+  "organolepticProfile": "Limón glaseado ácido, bayas, pastel cremoso y tierra",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "500 - 550"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Auto bahn",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Skunk y tierra, con toques de haze y frutos rojos",
+  "floweringDays": "75 - 90",
+  "estimatedYield": "454 - 510",
+  "type": "CBD autofloreciente"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Blue Dream",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Bayas, vainilla, arandanos, mango, hierbas, tierra y especias.",
+  "floweringDays": "56 - 70",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Blueberry x Haze #1",
+  "thc": "THC 17 - 24%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Bruised Bananas",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Banana madura, miel, chocolate, cafe, citricos, tierra y especias.",
+  "floweringDays": "56 - 70",
+  "estimatedYield": "450 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Purple Chocolope x Honey Banana",
+  "thc": "THC 15 - 20%; CBD <1%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Challah Bread",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Tierra, frutas, bayas y pino.",
+  "floweringDays": "63",
+  "estimatedYield": "450 - 550",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Bakers Delight x Kosher Kush",
+  "thc": "THC 15 - 21%; CBD <1%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Challah Cake",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Dulce, terroso y cremoso.",
+  "floweringDays": "63",
+  "estimatedYield": "454 - 567",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "DNA Cake x Challah Bread"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "CheMACal Romance Auto",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Manteca dulce, vainilla, citricos, tierra, especias, diesel y skunk.",
+  "floweringDays": "",
+  "estimatedYield": "43 - 113",
+  "type": "Autofloreciente",
+  "lineage": "Chem x MAC Auto",
+  "thc": "THC 19 - 24%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Chocolate Truffle Shuffle",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Gas, frutas, bayas, chocolate, vainilla y tierra.",
+  "floweringDays": "63",
+  "estimatedYield": "400 - 450",
+  "type": "Feminizada y regular",
+  "lineage": "Chocolope Kush x GPK (Gorilla Glue x Pure Kush)",
+  "thc": "THC 15 - 21%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Chocolope",
+  "dominance": "Sátiva (95%)",
+  "organolepticProfile": "Cacao tostado oscuro, café amargo, melón suave terroso",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "OG Chocolate Thai x Cannalope Haze"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Chocolope 256",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Tierra humeda, cafe, chocolate, vainilla, castana, citricos, frutos secos y gas.",
+  "floweringDays": "63",
+  "estimatedYield": "350 - 400",
+  "type": "Feminizada y regular",
+  "lineage": "Lemon Skunk 256 (Emerald Cup winning cut) x Chocolope",
+  "thc": "THC alrededor de 19%; la fuente menciona fenotipos de 23% y 26%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Chocolope Kush",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Chocolate, pino, cafe, frutos secos, tierra, vainilla, hierbas, citricos y pimienta.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "340 - 397",
+  "type": "Regular",
+  "lineage": "OG Kush x Chocolope",
+  "thc": "THC 17 - 20%; CBD alrededor de 1%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "DNA Cake",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Reposteria, crema, fruta dulce, glaseado, tierra, gas, diesel, especias, madera y pino.",
+  "floweringDays": "63",
+  "estimatedYield": "350 - 400",
+  "type": "Feminizada",
+  "lineage": "Gelato Sorbet x Lava Cake"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "DNA Cake Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Pastel cremoso, frutos secos, fruta dulce, vainilla, diesel y especias.",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "DNA Cake x Ruderalis",
+  "thc": "THC 19%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Double Dipped Strawberries",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Fresa, miel, banana, frutas tropicales, tierra y especias.",
+  "floweringDays": "56",
+  "estimatedYield": "454 - 539",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Strawberry Banana x Honey Banana"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Elons-X",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Fresa, banana, tierra, madera, especias, queso, chorizo y final citrico.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "350 - 400",
+  "type": "Regular",
+  "lineage": "Strawberry Banana x X18 Pure Pakistani",
+  "thc": "THC >30%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Four Prophets",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Uva, tierra, frutas, manzana, arandano, pina y gas.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "450 - 500",
+  "type": "Feminizada y regular",
+  "lineage": "3X Crazy x Kosher Kush",
+  "thc": "THC >20%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Generation X-18",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Banana, frutas y tierra.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "340 - 397",
+  "type": "Regular",
+  "lineage": "Banana Stardawg x X18 Pure Pakistani",
+  "thc": "THC hasta 20%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "GG4",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Diesel, tierra, especias, cafe tostado, pino, citricos y dulzor.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "482 - 595",
+  "type": "Feminizada",
+  "lineage": "Chem Sis x Sour Dubb x Chocolate Diesel",
+  "thc": "THC hasta 27%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Golden Fortunes",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "",
+  "floweringDays": "63",
+  "estimatedYield": "350 - 400",
+  "type": "Regular",
+  "lineage": "Cookies x Kosher Kush"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Green Crack",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Mango, limon, fruta tropical, hierbas, flores, madera y especias.",
+  "floweringDays": "56 - 70",
+  "estimatedYield": "500 - 600",
+  "type": "Feminizada",
+  "lineage": "Skunk #1 x Afghan",
+  "thc": "THC 17 - 25%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "HG23 AKA Michael Jordan",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Fruta, limon, pino, tierra, diesel, madera y notas de mermelada citrica.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "397 - 454",
+  "type": "Feminizada",
+  "lineage": "Holy Grail Kush x Kosher Kush",
+  "thc": "THC >20%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "HG23 AKA Michael Jordan Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Limon, citricos dulces, tierra, pino, madera, diesel y cafe.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "510",
+  "type": "Autofloreciente",
+  "lineage": "HG23 x OG Kush Auto",
+  "thc": "THC >20%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Holy Grail Kush",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Perfil OG Kush intenso",
+  "floweringDays": "63",
+  "estimatedYield": "500 - 650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Kosher Kush x The OG #18"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Honey Banana S1",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Banana, miel, gas, tierra, especias, flores y vainilla.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "450 - 550",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Honey Banana x Honey Banana",
+  "thc": "THC >20%; algunos fenotipos 22 - 28%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Kosher Kush",
+  "dominance": "Índica (80%)",
+  "organolepticProfile": "Tierra rica oscura, frutas maduras, pino y gas penetrante",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "450 - 550",
+  "type": "Fotoperiódica feminizada",
+  "thc": "THC 22%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "LA Confidential",
+  "dominance": "Índica (100%)",
+  "organolepticProfile": "Pino oscuro forestal, tierra profunda, especias afganas",
+  "floweringDays": "49 - 56",
+  "estimatedYield": "450 - 500",
+  "lineage": "OG LA Affie x Afghani"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Mac Melon Auto",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Sandia dulce, frutas azucaradas, naranja y tierra.",
+  "floweringDays": "56 - 84",
+  "estimatedYield": "510",
+  "type": "Autofloreciente",
+  "lineage": "Watermelon x MAC Auto"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "MacNana Auto",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Fresa y banana dulces.",
+  "floweringDays": "",
+  "estimatedYield": "397 - 539",
+  "type": "Autofloreciente",
+  "lineage": "Strawberry Banana x MAC Auto"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Patrick Swayze Auto",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Citricos, tierra, pino, pimienta, flores y hierbas.",
+  "floweringDays": "",
+  "estimatedYield": "312",
+  "type": "Autofloreciente",
+  "lineage": "Ghost OG x MAC Auto",
+  "thc": "THC 19 - 22%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Purple Chocolope",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Tierra, cafe, fruta dulce tropical, chocolate, especias, madera y notas acidas.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "539 - 595",
+  "type": "Feminizada",
+  "lineage": "Chocolate Thai x Cannalope Haze (fenotipo purpura)",
+  "thc": "THC 18 - 23%; CBD <1%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Purple People Eater Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Mermelada, fruta dulce tropical, especias suaves y final de te verde.",
+  "floweringDays": "",
+  "estimatedYield": "397 - 510",
+  "type": "Autofloreciente",
+  "lineage": "Sweet & Sour Purple x OG Kush Auto"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Recon 2.0",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Clavo, tierra humeda, pino, frutas, gas, citricos, melon, menta y diesel.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "450 - 500",
+  "type": "Feminizada",
+  "lineage": "LA Confidential x Cannadential",
+  "thc": "THC alrededor de 23%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Return of the Mac Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Albaricoque, yogur de cereza acida, manzana, manteca, frambuesa, mandarina y tierra.",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "OG Kush Auto x MAC"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Skywalker Kush",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Dulce, especias, tierra, diesel, skunk, madera, pino y limon.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "510 - 595",
+  "type": "Feminizada y regular",
+  "lineage": "Skywalker x OG Kush",
+  "thc": "THC 16 - 24%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Sour Garlic x Honey Banana",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Banana, citricos, fruta madura dulce y acida, especias, tierra y notas metalicas.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Sour Garlic x Honey Banana"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Strawberry Banana",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Dulce y frutado, a frutilla y banana, con final a combustible",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "450 - 550",
+  "type": "Feminizada",
+  "lineage": "Strawberry Banana x Strawberry Banana",
+  "thc": "THC 18 - 27%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Swiss Miss",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Frutas, citricos dulces, hierbas y skunk.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "400 - 450",
+  "type": "Feminizada",
+  "lineage": "Miss DNA x Chocolope Kush",
+  "thc": "THC alrededor de 15%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Tangie",
+  "dominance": "Sátiva (70%)",
+  "organolepticProfile": "Mandarina fresca vibrante, cítricos ácidos, skunk leve",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "450 - 550",
+  "type": "Fotoperiódica regular",
+  "lineage": "Clone Only x Crockett's Selection",
+  "thc": "THC 22 - 24%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Tangielope Kush",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Mandarina, naranja, clavo, romero, gas, tierra, chocolate y crema.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "369 - 482",
+  "type": "Regular",
+  "lineage": "24K Gold x Chocolope Kush"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "The Big Mac Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Especias, tierra, limon, fruta madura, flores, notas tropicales, almizcle y diesel.",
+  "floweringDays": "",
+  "estimatedYield": "28 - 40",
+  "type": "Autofloreciente",
+  "lineage": "MAC x OG Kush Auto"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "Watermelon Man Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Caramelo de uva, melon y hierbas.",
+  "floweringDays": "",
+  "estimatedYield": "510",
+  "type": "Autofloreciente",
+  "lineage": "Watermelon x OG Kush Auto"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "White Chocolope",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Fruta dulce, chocolate, tierra, madera, pino, notas tropicales y te verde.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "350 - 400",
+  "type": "Feminizada",
+  "lineage": "White Widow x Chocolope",
+  "thc": "THC alrededor de 23%"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "White Widow",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Tierra, especias, hierbas, madera, citricos dulces, pino y flores.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "454",
+  "type": "Feminizada",
+  "lineage": "Landrace sativa brasilena x indica del sur de India"
+},
+{
+  "seedBank": "DNA Genetics",
+  "name": "You Whoo",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Tierra, hierbas, frutas, flores, diesel, vainilla, lima, chocolate, limon y especias.",
+  "floweringDays": "63",
+  "estimatedYield": "425 - 482",
+  "type": "Feminizada y regular",
+  "lineage": "Super Silver LA x Chocolope Kush"
+},
+{
+  "seedBank": "Dutch Passion",
+  "name": "Auto Skywalker Haze",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Limon, notas dulces y acidas, fruta y Haze especiado",
+  "floweringDays": "77 - 91",
+  "estimatedYield": "450 - 600",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Skywalker Haze x Auto Amsterdam Amnesia",
+  "thc": "THC: 20 - 25% de promedio publicado"
+},
+{
+  "seedBank": "Dutch Passion",
+  "name": "Kerosene Krash",
+  "dominance": "Índica (80%)",
+  "organolepticProfile": "Diésel puro abrasivo, gas acre intenso, tierra húmeda",
+  "floweringDays": "56",
+  "estimatedYield": "400 - 500"
+},
+{
+  "seedBank": "Dutch Passion",
+  "name": "Mokum's Tulip",
+  "dominance": "Híbrida (50/50)",
+  "organolepticProfile": "Tulipán floral inusual, masa de galleta, dulce cremoso",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "400 - 500"
+},
+{
+  "seedBank": "Dutch Passion",
+  "name": "Passion #1",
+  "dominance": "Índica (70%)",
+  "organolepticProfile": "Tierra fresca removida, cítricos sutiles, resina de hachís",
+  "floweringDays": "42 - 49",
+  "estimatedYield": "400",
+  "thc": "THC hasta 20%"
+},
+{
+  "seedBank": "Dutch Passion",
+  "name": "Sugar Bomb Punch",
+  "dominance": "Híbrida (50/50)",
+  "organolepticProfile": "Frutas dulces confitadas, macedonia floral, toque a uva",
+  "floweringDays": "63",
+  "estimatedYield": "500 - 550"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Alien Otto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "",
+  "floweringDays": "70",
+  "estimatedYield": "",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Elev8 Breeding Auto x Toofless Alien"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Bacio Gelato S1",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Helado de fresa, crema, menta, dulzor frutal y gas.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Bacio Gelato"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Banana Verde",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "(Banana Buttercup x Wedding Cake) x Chili Verde"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Bananza",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Dulce y frutal",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Zoap x Apples and Bananas"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Berry Crusher",
+  "dominance": "Hibrida dominante indica",
+  "organolepticProfile": "Frutal intenso con vainilla suave y un toque de pino gaseoso",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Acai Cake x RS11"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Black Ridge Strawberry",
+  "dominance": "Indica",
+  "organolepticProfile": "Fresa, mandarina, crema y caramelo.",
+  "floweringDays": "56",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Grape Mountain x Strawberry Snow Cone",
+  "thc": "THC 25 - 30%"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Boof Boss",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Licor de naranja, crema, vainilla y notas frutales agridulces.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Bacio Gelato x Super Boof",
+  "thc": "THC 28 - 32%"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Boof Tang",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Licor de naranja dulce y limon acido.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Super Boof x Lemon Tree",
+  "thc": "THC 25 - 30%"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Brazz Monkey",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Melon tropical, bayas maduras, masa de galleta, gas y notas fermentadas.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica regular",
+  "lineage": "Gorilla Berries x Magic Monkey"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Candy Roll",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Caramelo frutal, crema, citricos, frambuesa, combustible, tierra y especias.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Blue Zushi x Super Boof"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Chemical Soul",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Gas, pomelo y pino",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Chem Beltz x GG#4"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Chilato",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Chili Verde x Tropical Gelato"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Double Dunked",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Terroso y dulce, como s'mores con chocolate, vainilla cremosa, especias y diésel",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Gary Payton x (Cookies and Cream x Secret Weapon)"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Elwoods Funk",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Funk intenso y gas",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Cat Piss x GG#4"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Frostbite Gelato",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Helado de fresa y mandarina cremosa.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Bacio Gelato x Grape Mountain"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Frosty Bananas",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Apples and Bananas x Tropical Gelato"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "G-Funk Drizzle",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Jarabe dulce de frutos rojos, masa de torta y combustible funky",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica regular",
+  "lineage": "Gorilla Berries x Gorilla Drip Cake"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Galactic Guava",
+  "dominance": "Hibrida dominante indica",
+  "organolepticProfile": "",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Baby Yoda x Zoap"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "GG#4 S1",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Combustible, notas quimicas y cafe.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "GG#4"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Gorilla Cookies",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Diésel, chocolate, café y masa de galleta de menta, con fondo terroso a pino",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "550 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "GG#4 x Thin Mint Girl Scout Cookies",
+  "thc": "THC hasta 28%"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Gorilla Gohan",
+  "dominance": "Hibrida dominante indica",
+  "organolepticProfile": "Masa de galleta, crema, diesel dulce, frutos del bosque y citricos.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Blue Zushi x Gorilla Cookies"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Granny's Apple Fritter",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Dulce y terroso, con un toque de pastel de manzana",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Apple Fritter x Sundae Driver"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Grape Zenzu",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Caramelo de uva, crema de frutos del bosque, tierra, citricos, combustible y especias.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Blue Zushi x Grape Mountain"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Greenade",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Recuerda a cereal frutal (Fruity Pebbles)",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "C4 x Chili Verde"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "High Wired",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Guayaba cremosa, dulzor de caramelo y tierra.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Guava O's (Cookies and Cream x Secret Weapon) x Nerds Rope"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Hood Lemon Drops",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Limon intenso, frutos del bosque dulces y caramelo.",
+  "floweringDays": "56",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Hood Candyz x Lemon Tree"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Inked Up Cherries",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Cerezas agridulces, tarta de vainilla dulce y diesel.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Caked Up Cherries x Permanent Marker"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Johnny 4 Scoops",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Frutal y gaseoso, dulce como caramelo con final a uva y gas",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "4 Scoops x Bacio Gelato"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Jungleberry Haze",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Frutos rojos con un toque de vainilla",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Acai Cake x Apples and Bananas"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Kaleidozoap",
+  "dominance": "Hibrida dominante indica",
+  "organolepticProfile": "Cítrico y frutal: lima-limón, frutos rojos dulces y pino",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Zoap x RS11"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "King Payton",
+  "dominance": "Hibrida dominante sativa",
+  "organolepticProfile": "Diésel con toques ácidos, pino y nuez moscada",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Gary Payton x GG#4"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Knotty Fruit",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Fruta azucarada con gas cremoso",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Apples and Bananas x Nerds Rope"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Kongzilla",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Nerds Rope x GG#4"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Lady Lemone",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Limón, ácido, dulce y terroso: caramelo de limón con vainilla y gas",
+  "floweringDays": "49 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Bacio Gelato x Lemon Tree"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Lemon Strawberry Bomb",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Limon intenso y fresas.",
+  "floweringDays": "49 - 56",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Strawberry Sugar x Lemon Tree"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Lemon Tree S1",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Limon intenso.",
+  "floweringDays": "49 - 56",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Lemon Tree"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Magnolia Motel",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Torta de mandarina con glaseado de vainilla",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Ice Cream Magnolia x GG#4"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Mane Squeeze",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Frutal, agridulce, con limón",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Unicorn Poop x Lemon Tree"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "McVerde",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "MAC x Chili Verde"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Megasonic",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Gas, goma quemada, diésel y skunk",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Don Mega x Gary Payton"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Melon Maki",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Sandia, frutos del bosque maduros, caramelo, crema, vainilla, citricos y combustible.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Blue Zushi x Watermelon Gelato"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Melon Meltdown",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Caramelo de sandia y mandarina cremosa.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Grape Mountain x Watermelon Gelato"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Modified Payton",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Terroso y frutal: arranca con funk OG y pasa a aromas muy frutales",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Modified Banana x Gary Payton"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Mystery Made 2",
+  "dominance": "Hibrida dominante indica",
+  "organolepticProfile": "Gas, diésel y un dejo de fruta dulce",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Jealousy x RS11"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Nerds Rope S1",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Dulce y gaseoso, con fondo cremoso",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Nerds Rope"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Oregon Apple Trail",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Dulce y terroso, con un toque de pastel de manzana",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Oregon Silver Haze x Apple Fritter"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Permanent Marker S1",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Jabón, gas, floral y caramelo funky",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Permanent Marker"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Permanent Pounder",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Diesel punzante y acido, con notas dulces y saladas.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Donny Burger x Permanent Marker"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Pink Slurpee",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Zoap x Tropical Gelato"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Platinum Capone",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Frutos del bosque dulces, crema, vainilla y tierra.",
+  "floweringDays": "56 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Bacio Gelato x Platinum GSC"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Prime8 Fuel",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Cítrico, frutos rojos y combustible",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Lemon Cherry Runtz x GG#4"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Prism Marker",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Frutas tropicales, durazno, caramelo de limon acido y diesel.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Permanent Marker x RS11"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Purple Cherry Popper",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Purple Cherry Cookies x Runtz"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Rope Burn",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Caramelo dulce, tierra y especias.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Jealousy x Nerds Rope"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Runtztopia",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Intenso a caramelo de frutilla",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "White Runtz x OMFG"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Scat Queen",
+  "dominance": "Hibrida dominante sativa",
+  "organolepticProfile": "Frutos del bosque, citricos acidos, especias terrosas, crema y diesel.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Bacio Gelato x Unicorn Poop"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Shadow OG",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Perfil intenso tipo OG Kush",
+  "floweringDays": "70",
+  "estimatedYield": "",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Elev8 Breeding Auto x Supernatural OG"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Sherbet Cream Cake",
+  "dominance": "Hibrida dominante indica",
+  "organolepticProfile": "Frutal y combustible.",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "E85 x RS11"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Snowberry Zushi",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Fresas maduras, citricos dulces, crema, frambuesa azul, pino y combustible.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Blue Zushi x Strawberry Snow Cone"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Spicy Guava",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Fruta, diésel, propano y especias",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "RS11 x Chili Verde"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Sticky Suits",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Frutos rojos dulces, masa y gas",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Wedding Pie x GG#4"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Strawberry Gambino",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Fresas, helado de vainilla, crema y un toque de gas.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Bacio Gelato x Strawberry Sugar"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Sweet Jealousy",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Frutal intenso y caramelo dulce.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Jealousy x Apples and Bananas"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Sweet Peaks",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Mandarina dulce cremosa y limon intenso.",
+  "floweringDays": "56",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Grape Mountain x Lemon Tree"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Traverse Truffle",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "De postre: gas achocolatado, jarabe de frutos rojos funky y fondo a masa",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica regular",
+  "lineage": "Gorilla Berries x Great Lakes Gorilla"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Tropicalicious",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Frutos rojos tropicales con notas de vainilla y cítricos",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Sherbet Cake x Tropical Gelato"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Warren Trees",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Frutos rojos con diésel, funk OG, haze terroso y ponche de frutas gaseoso",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica regular",
+  "lineage": "Berry Sanders x Gorilla Berries"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Wasabi Lemonade",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Cascara de limon, lima, caramelo acido, frutos del bosque cremosos, tierra, gas y especias.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Blue Zushi x Lemon Tree"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "White Stank",
+  "dominance": "Híbrida",
+  "organolepticProfile": "",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "GMO x White Truffle"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Yodanana",
+  "dominance": "Hibrida dominante indica",
+  "organolepticProfile": "Frutal OG, terroso y combustible intenso.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Baby Yoda x Apples and Bananas"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Zushi Supreme (Blue Zushi S1)",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Helado de arandanos, caramelo acido, citricos, especias terrosas, gas y notas de queso.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Blue Zushi"
+},
+{
+  "seedBank": "Elev8 Seeds",
+  "name": "Zushi Verde",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Caramelo de frutos del bosque, arandanos, manzana verde acida, citricos, pino, menta y gas.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Berry Verde x Blue Zushi"
+},
+{
+  "seedBank": "Ethos Genetics",
+  "name": "Banana Jealousy Auto",
+  "dominance": "Índica (70%)",
+  "organolepticProfile": "Plátano asado dulce, tierra profunda, gas y crema",
+  "floweringDays": "70",
+  "estimatedYield": "450 - 500",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Banana Jealousy x Banana Daddy Auto",
+  "thc": "THC >28%"
+},
+{
+  "seedBank": "Ethos Genetics",
+  "name": "Cherry Pie OG S1",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Whisky de cereza, pino y gasolina.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "750",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Cherry Pie OG x Cherry Pie OG",
+  "thc": "THC hasta 24%"
+},
+{
+  "seedBank": "Ethos Genetics",
+  "name": "Colin OG",
+  "dominance": "Índica (70%)",
+  "organolepticProfile": "Gasolina pura abrasiva, uvas oscuras, tierra mojada",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "500 - 550",
+  "lineage": "Grateful Dawg x The White x (Sour Diesel x Flo)"
+},
+{
+  "seedBank": "Ethos Genetics",
+  "name": "Crescendo",
+  "dominance": "Sátiva (60%)",
+  "organolepticProfile": "Tierra dulce arcillosa, gas penetrante, frutas ácidas",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "500 - 550",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "(Chemdawg x I-95) x Mandarin Cookies #17",
+  "thc": "THC 30%"
+},
+{
+  "seedBank": "Ethos Genetics",
+  "name": "Dip n' Stax RBX1",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Uva azucarada y frambuesas picantes.",
+  "floweringDays": "63",
+  "estimatedYield": "750",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Slurricane (Dip n Stix cut) x Tahoe OG x Slurricane"
+},
+{
+  "seedBank": "Ethos Genetics",
+  "name": "Fanta Sea",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Masa de pastel dulce, naranja intensa, sandalo y gasolina.",
+  "floweringDays": "63",
+  "estimatedYield": "750",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "(Wedding Cake x Triangle Kush) x Mandarin Cookies x Grandpa's Cookies #6"
+},
+{
+  "seedBank": "Ethos Genetics",
+  "name": "Johnny Dang R1",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Pino, flores y gasolina.",
+  "floweringDays": "63",
+  "estimatedYield": "750",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Wrank #5 x Marshmallow OG (Paul Wall pheno)",
+  "thc": "THC >25%"
+},
+{
+  "seedBank": "Ethos Genetics",
+  "name": "Lemon Berry Candy OG R2",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Limones confitados picantes, bayas dulces y gasolina.",
+  "floweringDays": "49 - 63",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Lemon Berry Candy OG #1 x Lemon Berry Candy OG #7"
+},
+{
+  "seedBank": "Ethos Genetics",
+  "name": "Lemon Cherry Pie R1",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Limon intenso, cereza dulce y pino.",
+  "floweringDays": "63",
+  "estimatedYield": "700",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Candy Store #25 x Cherry Pie"
+},
+{
+  "seedBank": "Ethos Genetics",
+  "name": "Mandarin Cookies",
+  "dominance": "Híbrida (50/50)",
+  "organolepticProfile": "Naranja penetrante, cítricos ácidos, masa de galleta",
+  "floweringDays": "60 - 63",
+  "estimatedYield": "500 - 550",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Forum Cookies x Mandarin Sunset",
+  "thc": "THC 25%"
+},
+{
+  "seedBank": "Ethos Genetics",
+  "name": "Mandarin Cookies V2",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Galletas de mandarina y combustible.",
+  "floweringDays": "63",
+  "estimatedYield": "750",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Ethos Cookies #12 x Mandarin Sunset R1"
+},
+{
+  "seedBank": "Ethos Genetics",
+  "name": "Mookie B R1",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Gasolina y bayas.",
+  "floweringDays": "63",
+  "estimatedYield": "750",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Gary Payton x End Game 3"
+},
+{
+  "seedBank": "Ethos Genetics",
+  "name": "Planet of the Grapes",
+  "dominance": "Índica (70%)",
+  "organolepticProfile": "Uva artificial fuerte, químicos acres, gas y tierra",
+  "floweringDays": "60 - 63",
+  "estimatedYield": "500 - 550",
+  "lineage": "Grape Diamonds x Chem D 95"
+},
+{
+  "seedBank": "Ethos Genetics",
+  "name": "Purple Sunset RBX2",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Dulce, bayas y flores.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "(Purple Punch x Mandarin Cookies) x (Purple Punch x Mandarin Sunset) x Mandarin Sunset"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Atomic Sunrise",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Sunset Runtz x Cherry Bang Bang"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Bang Butter",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Donkey Butter x Cherry Bang Bang"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Bangtopia",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Deluxe x Cherry Bang Bang"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Black Out Bobby",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Cítrico, frutal, mentolado, ácido y dulce",
+  "floweringDays": "60",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Gelato x Rainbow Chip",
+  "thc": "THC >28%"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Boom Squad",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Falcon Heavy x Bakers Dozen"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Burstacular",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Flavor Burst x Cherry Bang Bang"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Cherry Cosmo",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "",
+  "floweringDays": "56",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Red Pop x Bakers Dozen"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Deluxe",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Dulce, terroso y floral",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "O x Gary Poppins"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Gemma",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Old Dirty Biker x Cherry Bang Bang"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Guicy G",
+  "dominance": "Híbrida",
+  "organolepticProfile": "",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Regular",
+  "lineage": "The Guice x Triple OG"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Gyat",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Dulce, terroso y penetrante",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Purple Pineapple x Blueberry Bang Bang"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Lazeralus",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Combustible, diésel, cítrico y dulce",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Lazer Fuel x Bakers Dozen",
+  "thc": "THC 21 - 25%; CBD <1%"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Lemon Drip",
+  "dominance": "Híbrida",
+  "organolepticProfile": "",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Regular / feminizada",
+  "lineage": "Lemon Tree x Grease Monkey"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Marshmallow Mountain",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Dulce, terroso y cálido",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Bakers Dozen x Gary Poppins"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Mystic Magic",
+  "dominance": "Híbrida",
+  "organolepticProfile": "",
+  "floweringDays": "50 - 60",
+  "estimatedYield": "",
+  "type": "Regular",
+  "lineage": "Magic Bullet x Strawberries & Cream"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Neon Sunshine",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Zkittlez x Falcon-9"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Next Level",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Kushco OG x Scotty 2 Hotty"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Polar Dusk",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Fruta madura y dulzor azucarado",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Sunset Runtz x Bakers Dozen",
+  "thc": "THC 22 - 26%; CBD <1%"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Poppin' Fresh",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Purple Pineapple",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "",
+  "floweringDays": "56",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Tropical Runtz x Bakers Dozen"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Rainbow Chip F2",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Regular",
+  "lineage": "Rainbow Chip x Rainbow Chip"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Rizz Cannon",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Power x Cherry Bang Bang"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Royalty",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Jealousy x Bakers Dozen"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Runtz Buttonz",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Arándano dulce y frutal, con cereza, cítricos y final cremoso",
+  "floweringDays": "65",
+  "estimatedYield": "",
+  "type": "Regular",
+  "lineage": "Runtz x Rainbow Chip",
+  "thc": "THC 28 - 29%"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Sapphire Desire",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Dulce, frutal y a bayas",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Black Patronus x Blueberry Bang Bang"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Slaphappy",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Terroso con bayas dulces, hierbas especiadas y vainilla",
+  "floweringDays": "58",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Tina x Gary Poppins"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Space Lube",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Grease Monkey x Falcon 9"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Stinky Twinky",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Rainbow Runtz x Bakers Dozen"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Vapor-Iced",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Cítrico, diésel y pino",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Plasma Gas x Bakers Dozen",
+  "thc": "THC 22 - 28%; CBD <1%"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Wicked Fabuloso",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Sherb n' Sour x Bakers Dozen"
+},
+{
+  "seedBank": "Exotic Genetix",
+  "name": "Zomberry",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Halloween Candy x Blueberry Bang Bang"
+},
+{
+  "seedBank": "Fast Buds 420",
+  "name": "Biscotti Gelato",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Masa de galleta, crema y dulzor.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "550 - 650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Biscotti x Gelato",
+  "thc": "THC: hasta 32%"
+},
+{
+  "seedBank": "Fast Buds 420",
+  "name": "Garlic Mint Sherbet",
+  "dominance": "Índica 75% / Sativa 25%",
+  "organolepticProfile": "Menta fresca, ajo, sorbete cremoso dulce y especias.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "550 - 650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Garlic Cookies (GMO) x Sherbanger (Boston Roots Seed Co.)",
+  "thc": "THC: hasta 32%"
+},
+{
+  "seedBank": "Fast Buds 420",
+  "name": "Gary Sherbet",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Crema, masa dulce, notas picantes y combustible.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "550 - 700",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "(Gary Payton x Sunset Sherbet) x Sherbanger",
+  "thc": "THC: hasta 34%"
+},
+{
+  "seedBank": "Fast Buds 420",
+  "name": "Gelato Auto",
+  "dominance": "Sátiva (55%)",
+  "organolepticProfile": "Cítrico dulce, helado cremoso denso, notas terrosas",
+  "floweringDays": "63",
+  "estimatedYield": "400 - 550"
+},
+{
+  "seedBank": "Fast Buds 420",
+  "name": "Glue Gelato Auto",
+  "dominance": "Índica (60%)",
+  "organolepticProfile": "Picante, floral orgánico, chocolate negro, tierra oscura",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "500 - 600"
+},
+{
+  "seedBank": "Fast Buds 420",
+  "name": "Gorilla Cookies Auto",
+  "dominance": "Híbrida (45S/55I)",
+  "organolepticProfile": "Galleta dulce horneada, kush terroso, gas y pino",
+  "floweringDays": "70",
+  "estimatedYield": "500 - 600"
+},
+{
+  "seedBank": "Fast Buds 420",
+  "name": "Gorilla Melon",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Melon, tierra y dulzor.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "GG#4 (Murdock GG Strains) x Melon (keeper)",
+  "thc": "THC: 25 - 30%"
+},
+{
+  "seedBank": "Fast Buds 420",
+  "name": "Lemon Cherry Runtz",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Cereza, crema y dulzor.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "500 - 650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "((Lemon Cherry Gelato x Runtz) x Lemonpaya) x (Lemon Cherry Gelato x Runtz)",
+  "thc": "THC: hasta 33%"
+},
+{
+  "seedBank": "Fast Buds 420",
+  "name": "Lemon Mandarin",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Mandarina, limon y dulzor.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Lemonade x Mandarine (Crocket's Tangie Selection)",
+  "thc": "THC: 25 - 30%"
+},
+{
+  "seedBank": "Fast Buds 420",
+  "name": "Lemonpaya",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Limon, papaya y dulzor.",
+  "floweringDays": "63",
+  "estimatedYield": "500 - 650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Lemonade x Papaya",
+  "thc": "THC: 25 - 30%"
+},
+{
+  "seedBank": "Fast Buds 420",
+  "name": "Papaya Sherbet",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Papaya, crema y dulzor.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "550 - 700",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Papaya (Oni Selection) x Sunset Sherbet",
+  "thc": "THC: 25 - 30%"
+},
+{
+  "seedBank": "Fast Buds 420",
+  "name": "Papayton",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Frutas, helado y dulzor.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "550 - 800",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Gary Payton x Gelato x Lemonpaya",
+  "thc": "THC: hasta 32%"
+},
+{
+  "seedBank": "Fast Buds 420",
+  "name": "Rainbow Melon",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Melon, frutas y dulzor.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Melon (keeper) x Rainbow Chip (Exotic Genetix)",
+  "thc": "THC: 25 - 30%"
+},
+{
+  "seedBank": "Fast Buds 420",
+  "name": "Six Shooter Auto",
+  "dominance": "Sátiva (70%)",
+  "organolepticProfile": "Perfil floral complejo, madera de pino fresca, cítricos",
+  "floweringDays": "70",
+  "estimatedYield": "500 - 650"
+},
+{
+  "seedBank": "Fast Buds 420",
+  "name": "Strawberry Gorilla Auto",
+  "dominance": "Híbrida (55S/45I)",
+  "organolepticProfile": "Fresa dulce confitada, frutas rojas, fondo skunk sutil",
+  "floweringDays": "70",
+  "estimatedYield": "450 - 600"
+},
+{
+  "seedBank": "Fast Buds 420",
+  "name": "Z42",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Caramelo, crema y combustible.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Z3 (Terphogz) x Candy Fumez (Bloom Seed Co.)",
+  "thc": "THC: hasta 31%"
+},
+{
+  "seedBank": "Genehtik Seeds",
+  "name": "Amnesia Bilbo",
+  "dominance": "Sátiva (70%)",
+  "organolepticProfile": "Haze tradicional intenso, incienso metálico, madera",
+  "floweringDays": "65 - 75",
+  "estimatedYield": "550 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Amnesia Haze",
+  "thc": "THC 16 - 23%; CBD 0.18 - 0.30%"
+},
+{
+  "seedBank": "Genehtik Seeds",
+  "name": "Kritikal Bilbo",
+  "dominance": "Índica (75%)",
+  "organolepticProfile": "Frutas dulces muy maduras, skunk pungente, almizcle",
+  "floweringDays": "45 - 50",
+  "estimatedYield": "550 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Afghan x Skunk",
+  "thc": "THC 18 - 25%; CBD 0.18 - 0.40%"
+},
+{
+  "seedBank": "Genehtik Seeds",
+  "name": "Kroma",
+  "dominance": "Índica (80%)",
+  "organolepticProfile": "Bayas del bosque ácidas, frutas oscuras, tierra húmeda",
+  "floweringDays": "55 - 60",
+  "estimatedYield": "500 - 550"
+},
+{
+  "seedBank": "Genehtik Seeds",
+  "name": "Super Silver Bilbo",
+  "dominance": "Sátiva (80%)",
+  "organolepticProfile": "Especias picantes, incienso litúrgico, maderas y limón",
+  "floweringDays": "65 - 75",
+  "estimatedYield": "450 - 500"
+},
+{
+  "seedBank": "Genehtik Seeds",
+  "name": "Txees Bilbo",
+  "dominance": "Índica (70%)",
+  "organolepticProfile": "Queso curado pestilente, tierra húmeda, fondo dulzón",
+  "floweringDays": "50 - 60",
+  "estimatedYield": "450 - 500"
+},
+{
+  "seedBank": "Goyo Finders Genetics",
+  "name": "Banana Butter",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Banana madura, miel, fruta tropical y vainilla, con nota a nuez",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "450 - 550",
+  "type": "Regular",
+  "lineage": "Honey Bananas x (PBB x Wilson)"
+},
+{
+  "seedBank": "Goyo Finders Genetics",
+  "name": "Filmore Butter",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Uva cremosa y tarta de natilla sobre dulzor terroso, con fruta tropical",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Regular",
+  "lineage": "Filmore Slim x (PBB x Wilson)"
+},
+{
+  "seedBank": "Goyo Finders Genetics",
+  "name": "Galleta Cabra",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Regular"
+},
+{
+  "seedBank": "Goyo Finders Genetics",
+  "name": "Grape Butter",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Uva concord madura, caramelo de uva, goma y gas, frutos rojos, base a nuez y notas tropicales",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Regular",
+  "lineage": "Grape Gary x (PBB x Wilson)",
+  "thc": "THC: 25 - 30%"
+},
+{
+  "seedBank": "Goyo Finders Genetics",
+  "name": "Guava Butter",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Regular"
+},
+{
+  "seedBank": "Goyo Finders Genetics",
+  "name": "Hash Blast Butter",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Gas GMO y lima-limón sobre una base cremosa a nuez",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Regular",
+  "lineage": "Hash Blast x (PBB x Wilson)"
+},
+{
+  "seedBank": "Goyo Finders Genetics",
+  "name": "La Manteca de Pablo",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Menta, cookies cremosas y caramelo violeta sobre fondo a nuez y matices tropicales",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Regular",
+  "lineage": "Pablos Revenge x (PBB x Wilson)"
+},
+{
+  "seedBank": "Goyo Finders Genetics",
+  "name": "Melter Butter",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Regular"
+},
+{
+  "seedBank": "Goyo Finders Genetics",
+  "name": "Papaya Butter",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Regular"
+},
+{
+  "seedBank": "Goyo Finders Genetics",
+  "name": "Permanent Butter",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Menta, pimienta, gas, galleta, tierra dulce, cítrico",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Regular",
+  "lineage": "Permanent Marker x (PBB x Wilson)",
+  "thc": "THC: 25 - 35%"
+},
+{
+  "seedBank": "Green House Seeds",
+  "name": "Air Lemon",
+  "dominance": "Índica 65% / Sativa 35%",
+  "organolepticProfile": "Citricos intensos, haze, fruta dulce y acidez.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Super Lemon Haze x RS11",
+  "thc": "THC 28%; CBD 0%"
+},
+{
+  "seedBank": "Green House Seeds",
+  "name": "Banana Krumble",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Banana madura, canela, gas, tierra y acidez.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Banana Punch x OG Kush",
+  "thc": "THC 24,78%; CBD 0,34%"
+},
+{
+  "seedBank": "Green House Seeds",
+  "name": "Exodus Cheese",
+  "dominance": "40% indica",
+  "organolepticProfile": "Skunk penetrante, musgo, madera, acido, dulce y combustible",
+  "floweringDays": "56",
+  "estimatedYield": "800",
+  "type": "Feminizada",
+  "lineage": "Exodus Cheese (seleccion britanica de Skunk)",
+  "thc": "THC: 22,45%; CBD: 0,28%"
+},
+{
+  "seedBank": "Green House Seeds",
+  "name": "Franco's Fullgas!",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Queso intenso, gas dulce, madera y crema.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Exodus Cheese x Sherbert OG",
+  "thc": "THC 28,05%; CBD 0,23%"
+},
+{
+  "seedBank": "Green House Seeds",
+  "name": "Franco's Lemon Cheese",
+  "dominance": "40% indica",
+  "organolepticProfile": "Limon intenso, queso y fondo skunk",
+  "floweringDays": "56",
+  "estimatedYield": "800",
+  "type": "Feminizada",
+  "lineage": "Super Lemon Haze x Exodus Cheese",
+  "thc": "THC: 23,50%; CBD: 0,60%"
+},
+{
+  "seedBank": "Green House Seeds",
+  "name": "Great White Shark",
+  "dominance": "80% indica",
+  "organolepticProfile": "Terroso, dulce, frutal y herbal",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Super Skunk x Brazilian x South Indian",
+  "thc": "THC: 22,94%; CBD: 0,18%"
+},
+{
+  "seedBank": "Green House Seeds",
+  "name": "Himalaya Gold",
+  "dominance": "70% indica",
+  "organolepticProfile": "Especiado, acido y herbal; pimienta, clavo y tomillo",
+  "floweringDays": "49 - 56",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Nepalese x North Indian",
+  "thc": "THC: 19,70%; CBD: 0,25%"
+},
+{
+  "seedBank": "Green House Seeds",
+  "name": "Lemon Orange",
+  "dominance": "Índica 30% / Sativa 70%",
+  "organolepticProfile": "Limon, naranja, mandarina, dulzor y tierra.",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Super Lemon Haze x Clementine",
+  "thc": "THC 29,5%; CBD 0,2%"
+},
+{
+  "seedBank": "Green House Seeds",
+  "name": "Persian Pie",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Limon acido, banana dulce, tierra y gas.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Lemon Tree x Banana Krumble",
+  "thc": "THC 27%; CBD 0,2%"
+},
+{
+  "seedBank": "Green House Seeds",
+  "name": "Pulp Friction",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Banana, melon y crema dulce.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Melonade x Kong's Krush",
+  "thc": "THC 26,5%; CBD 0,2%"
+},
+{
+  "seedBank": "Green House Seeds",
+  "name": "Super Lemon Haze",
+  "dominance": "30% indica",
+  "organolepticProfile": "Cascara de limon intensa, madera y pino fresco",
+  "floweringDays": "70",
+  "estimatedYield": "800",
+  "type": "Feminizada",
+  "lineage": "Lemon Skunk x Super Silver Haze",
+  "thc": "THC: 26,33%; CBD: 0,21%"
+},
+{
+  "seedBank": "Green House Seeds",
+  "name": "Super Silver Haze",
+  "dominance": "30% indica",
+  "organolepticProfile": "Pino, madera, incienso, dulzor skunk y notas metalicas",
+  "floweringDays": "70 - 77",
+  "estimatedYield": "800",
+  "type": "Feminizada",
+  "lineage": "Skunk x Northern Lights x Haze",
+  "thc": "THC: 26,50%; CBD: 0,17%"
+},
+{
+  "seedBank": "Green House Seeds",
+  "name": "White Widow",
+  "dominance": "60% indica",
+  "organolepticProfile": "Especias, madera, dulce, tierra y matiz metalico",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Brazilian x South Indian",
+  "thc": "THC: 25,76%; CBD: 0,10%"
+},
+{
+  "seedBank": "Green House Seeds",
+  "name": "Wonder Pie",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Fruta dulce, crema, tierra y gas.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Wedding Cake x OG Kush",
+  "thc": "THC 26,5%; CBD 0,34%"
+},
+{
+  "seedBank": "Green Lion Seeds",
+  "name": "Biscotti Ice",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Galleta dulce, cereza cítrica, crema pastelera",
+  "floweringDays": "63",
+  "estimatedYield": "550",
+  "type": "Feminizada",
+  "lineage": "Bens & Cherrys (Biscotti × Lemon Cherry Gelato) × Ice Cream Cake (Wedding Cake × Gelato 33)",
+  "thc": "THC: aprox. 27%; CBD: <1%"
+},
+{
+  "seedBank": "Green Lion Seeds",
+  "name": "Blueberry Auto",
+  "dominance": "Híbrida / índica",
+  "organolepticProfile": "Arándano, frutos rojos, dulce",
+  "floweringDays": "75 - 85",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Blueberry Auto × Blueberry Auto"
+},
+{
+  "seedBank": "Green Lion Seeds",
+  "name": "Cherry Crumble",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Cereza ácida, cítricos, crema dulce",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "500",
+  "type": "Feminizada",
+  "lineage": "Cherry Fizz (Frosted Cherry Cookies × Sour Melon) × Ice Cream Cake (Wedding Cake × Gelato 33)",
+  "thc": "THC: 23 - 26%; CBD: <1%"
+},
+{
+  "seedBank": "Green Lion Seeds",
+  "name": "Cookies Gelato Auto",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Galleta, dulce, tierra",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Gelato Ice × GSC Auto"
+},
+{
+  "seedBank": "Green Lion Seeds",
+  "name": "Cremosa",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Dulce, cremoso y suave",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Zkittlez x White Widow"
+},
+{
+  "seedBank": "Green Lion Seeds",
+  "name": "Dark Moon",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Uva negra, gas, crema, tierra",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "500",
+  "type": "Feminizada",
+  "lineage": "Pure Inferno (Dante's Inferno × Pure Michigan) × Ice Cream Cake (Wedding Cake × Gelato 33)",
+  "thc": "THC: aprox. 26%; CBD: <1%"
+},
+{
+  "seedBank": "Green Lion Seeds",
+  "name": "Frozen Oreoz",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Galleta de chocolate, melón ácido, crema",
+  "floweringDays": "63",
+  "estimatedYield": "550 - 650",
+  "type": "Feminizada",
+  "lineage": "Oreoz Sour (Oreoz × Sour Melon) × Ice Cream Cake (Wedding Cake × Gelato 33)",
+  "thc": "THC: 26 - 29%; CBD: <1%"
+},
+{
+  "seedBank": "Green Lion Seeds",
+  "name": "Hydra",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Chocolate amargo, especias, crema, tierra",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "600",
+  "type": "Feminizada",
+  "lineage": "Leviatan Cookies (Molten Lava × Pure Michigan) × Ice Cream Cake (Wedding Cake × Gelato 33)",
+  "thc": "THC: aprox. 27%; CBD: <1%"
+},
+{
+  "seedBank": "Green Lion Seeds",
+  "name": "ICC S1",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Crema, galleta dulce, cereal, mentol",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "500 - 600",
+  "type": "Feminizada",
+  "lineage": "Gelato 33 × Wedding Cake (seleccion Ice Cream Cake)",
+  "thc": "THC: 24 - 27%; CBD: <1%"
+},
+{
+  "seedBank": "Green Lion Seeds",
+  "name": "Lemon Berry",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Limón, mora, ácido",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Lemon Pie Auto × Blueberry Auto"
+},
+{
+  "seedBank": "Green Lion Seeds",
+  "name": "Lemon Champ",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Frutal, ácido, limón",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Champaya × Champaya"
+},
+{
+  "seedBank": "Green Lion Seeds",
+  "name": "Lemon Pie",
+  "dominance": "Híbrida / sativa",
+  "organolepticProfile": "Limón, crema, dulce",
+  "floweringDays": "75 - 80",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Lemon Haze Auto × Tangie Auto"
+},
+{
+  "seedBank": "Green Lion Seeds",
+  "name": "Lime Spritz",
+  "dominance": "Híbrida equilibrada",
+  "organolepticProfile": "Limón, lima, notas efervescentes",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "500 - 550",
+  "type": "Feminizada",
+  "lineage": "Limelight (Gelonade × Zangria) × Ice Cream Cake (Wedding Cake × Gelato 33)",
+  "thc": "THC: 24 - 26%; CBD: <1%"
+},
+{
+  "seedBank": "Green Lion Seeds",
+  "name": "Miami Dank",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Gas, crema dulce, frutas tropicales",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "600",
+  "type": "Feminizada",
+  "lineage": "Gary Patron (Gary Payton × Runtz) × Ice Cream Cake (Wedding Cake × Gelato 33)",
+  "thc": "THC: 26 - 28%; CBD: <1%"
+},
+{
+  "seedBank": "Green Lion Seeds",
+  "name": "Mimosa V2",
+  "dominance": "Híbrida / sativa",
+  "organolepticProfile": "Fruta, dulce, gas",
+  "floweringDays": "80 - 90",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Mimosa Auto × Mimosa Auto"
+},
+{
+  "seedBank": "Green Lion Seeds",
+  "name": "Naranja Mecánica",
+  "dominance": "Híbrida / sativa",
+  "organolepticProfile": "Naranja, cítricos, crema",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Kosher Kush × Golden Lemons"
+},
+{
+  "seedBank": "Green Lion Seeds",
+  "name": "Orange Mintz",
+  "dominance": "Híbrida equilibrada",
+  "organolepticProfile": "Naranja, crema, menta",
+  "floweringDays": "63",
+  "estimatedYield": "500",
+  "type": "Feminizada",
+  "lineage": "Naranja Mecanica × Ice Cream Cake (Wedding Cake × Gelato 33)",
+  "thc": "THC: aprox. 25%; CBD: <1%"
+},
+{
+  "seedBank": "Green Lion Seeds",
+  "name": "Rodeo Drive",
+  "dominance": "Híbrida / sativa",
+  "organolepticProfile": "Gas, gelato",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Rodeo × Yellow Straws"
+},
+{
+  "seedBank": "Green Lion Seeds",
+  "name": "Runtz Mafia",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Crema, gas, tierra",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "ICC × Tamalez #96"
+},
+{
+  "seedBank": "Green Lion Seeds",
+  "name": "Sour Bananaz",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Banana madura, ácido, gas",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Tamalez × Yellow Straws"
+},
+{
+  "seedBank": "Green Lion Seeds",
+  "name": "Sugar Tree",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Dulce, caramelo, gas",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Mac And Sundae × Azulcar"
+},
+{
+  "seedBank": "Green Lion Seeds",
+  "name": "Tamalez R2",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Dulce, especias, caramelo",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Tamalez #35 × Tamalez #96"
+},
+{
+  "seedBank": "Green Lion Seeds",
+  "name": "Watermelon Drip",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Sandía, cítricos dulces, crema pastelera",
+  "floweringDays": "63",
+  "estimatedYield": "550",
+  "type": "Feminizada",
+  "lineage": "Sinful (Watermelon Mimosa × Jealousy) × Ice Cream Cake (Wedding Cake × Gelato 33)",
+  "thc": "THC: 25 - 28%; CBD: <1%"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Acid Guava",
+  "dominance": "",
+  "organolepticProfile": "Fruta ácida, uva verde, crema, dulce",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "(Gelatto 41 x Guava) x Peach Crescendo"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Ananá Fizz",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Piña, durazno, dulce",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Piña Colada x Peach Crescendo"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Apricot Cookies",
+  "dominance": "50% sativa / 45% índica / 5% ruderalis",
+  "organolepticProfile": "Dulce, durazno fresco",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Zkittles x II Skywalker Kush",
+  "thc": "THC: 14,6%; CBD: 1%"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Area 51",
+  "dominance": "",
+  "organolepticProfile": "Frutal, cremoso, terroso",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Alienz x Peach Crescendo"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Banana Snack",
+  "dominance": "",
+  "organolepticProfile": "Banana madura, crema dulce",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Banana Split x Peach Crescendo"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Big Frozen Kush",
+  "dominance": "45% sativa / 50% índica / 5% ruderalis",
+  "organolepticProfile": "Pino, tierra, frutillas",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Gorilla Glue #2 x II Skywalker Kush",
+  "thc": "THC: 16%"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Black Yeti",
+  "dominance": "",
+  "organolepticProfile": "Frutal, dulce, terroso",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Mimosa Bruce Banner x Peach Crescendo"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Cherry Juice",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Cerezas, uvas, frutos rojos, arándanos, tierra, ácido",
+  "floweringDays": "70 - 90",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Purple Cherry #4 x Radical Juice #5",
+  "thc": "THC: 8%; CBD: 8%"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Devil Mint",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Uva, arándano, mandarina, crema",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Fotoperiódica",
+  "lineage": "Super Villain x Hotlanta",
+  "thc": "THC: 22%; CBD: 1%"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Duraznito",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Durazno, fruta tropical, crema",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Peach Crescendo x Peach Crescendo"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Exotic Mints",
+  "dominance": "",
+  "organolepticProfile": "Frutas, crema, ácido, mentol frutal",
+  "floweringDays": "80",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "K Mints #2 x Radical Juice #5"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Fuel on the Heart",
+  "dominance": "50% sativa / 45% índica / 5% ruderalis",
+  "organolepticProfile": "Gas, solventes perfumados",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Sour Diesel x II Skywalker Kush"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Gods Juice",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Dulce, ácido, cremoso, naranja, pomelo, anana",
+  "floweringDays": "85",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Radical Juice #8 x Radical Juice #5"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Hot Jokerz",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Cremoso, gas",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Fotoperiódica",
+  "lineage": "The Scrooge x Hotlanta",
+  "thc": "THC: 23%; CBD: 1%"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Hulk Crescendo",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Frutas cremosas, cítricos, ácido",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Mimosa Bruce Banner x Peach Crescendo"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Jedi Kush",
+  "dominance": "50% sativa / 45% índica / 5% ruderalis",
+  "organolepticProfile": "Frutillas, chicle multifruta, nafta",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "II Skywalker Kush x II Skywalker Kush"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Land Cruiser",
+  "dominance": "",
+  "organolepticProfile": "Gas y frescura de bosque húmedo de pinos",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Fotoperiódica",
+  "lineage": "Hotlanta x Hotlanta",
+  "thc": "THC: 26%; CBD: 1%"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Lighthouse",
+  "dominance": "Tendencia sativa",
+  "organolepticProfile": "Cáscara de limón, naranja, notas ácidas",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Ethos Haze x Peach Crescendo"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Lime Juice Auto",
+  "dominance": "60% sativa / 35% índica / 5% ruderalis",
+  "organolepticProfile": "Citricos, kush, agrio",
+  "floweringDays": "90",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Citric Runtz x II Skywalker Kush"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Mega Cheesecake",
+  "dominance": "",
+  "organolepticProfile": "Frutas, quesos curados, crema, ácido, pastel de queso",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Wedding Cheesecake x Radical Juice #5"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Momo Sampler",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Durazno, tropical, cítrico, crema, gas",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente feminizada",
+  "lineage": "King's Juice x Peach Crescendo"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Mutant Diesel",
+  "dominance": "",
+  "organolepticProfile": "Floral, cítrico, diesel suave",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Lilac Diesel x Peach Crescendo"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Nectar Glue",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Durazno, fruta dulce, tierra, crema, combustible",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Glue x Peach Crescendo"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Nube Voladora",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Dulce, crema, durazno, tropical, cítrico",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente feminizada",
+  "lineage": "High Cloudz x Peach Crescendo"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "OG Mints",
+  "dominance": "70% sativa / 25% índica / 5% ruderalis",
+  "organolepticProfile": "Gas, solventes perfumados",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "OG Kush x II Skywalker Kush"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Pasión Tropical",
+  "dominance": "",
+  "organolepticProfile": "Frutas tropicales, dulce, cremoso",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Bello y Dulce x Peach Crescendo"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Planet Peach",
+  "dominance": "",
+  "organolepticProfile": "Frutas, uva, durazno",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Planet of The Grapes x Peach Crescendo"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Poxi Runtz",
+  "dominance": "Tendencia sativa",
+  "organolepticProfile": "Naranja, pomelo agridulce, ciruela",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Squirt #6 x Radical Juice #5"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Rad Sky",
+  "dominance": "Tendencia sativa",
+  "organolepticProfile": "Frutas ácidas, pomelo, naranja",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Dark Sky #5 x Radical Juice #5",
+  "thc": "THC: medio (sin porcentaje)"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Rainbows",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Dulce, frutal, cítricos, crema",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Orange Apricot Glue XL #6 x Radical Juice #5"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Reserve Fruit",
+  "dominance": "",
+  "organolepticProfile": "Durazno, dulce, crema, tierra, especias, hierbas",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente feminizada"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Skunkie",
+  "dominance": "",
+  "organolepticProfile": "Dulce, ácido, tierra, pino, bosque húmedo",
+  "floweringDays": "70 - 100",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Skunk #1 #2 x Radical Juice #5"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Smooth Sky",
+  "dominance": "45% sativa / 50% índica / 5% ruderalis",
+  "organolepticProfile": "Frutal",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Smoothie x II Skywalker Kush",
+  "thc": "THC: 13,6%; CBD: 1%"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Snow Fruit",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Pino, ácido, cítrico",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Sour Ripper x Peach Crescendo"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Strawberry Gorilla",
+  "dominance": "45% sativa / 50% índica / 5% ruderalis",
+  "organolepticProfile": "Pino, tierra",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Gorilla Glue x II Skywalker Kush",
+  "thc": "THC: 16%; CBD: 1%"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Strawberry Oreo",
+  "dominance": "60% sativa / 35% índica / 5% ruderalis",
+  "organolepticProfile": "Galletita, vainilla",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Oreos x II Skywalker Kush"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Tequila Sunrise",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Crema, tierra, durazno",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Double Sky Walker Kush x Peach Crescendo"
+},
+{
+  "seedBank": "H4Z3 Genetics",
+  "name": "Terpinator",
+  "dominance": "",
+  "organolepticProfile": "Durazno, frutas tropicales, cítricos",
+  "floweringDays": "100",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Deliziosa x Peach Crescendo"
+},
+{
+  "seedBank": "Heaven's Fruit",
+  "name": "Chizito Mandarino",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Naranja agria",
+  "floweringDays": "56 - 70",
+  "estimatedYield": "600 - 700",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Mandarino x Critical Bilbo x Diesel"
+},
+{
+  "seedBank": "Heaven's Fruit",
+  "name": "Cremolate Auto",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Cafe, chocolate y crema",
+  "floweringDays": "",
+  "estimatedYield": "700 - 800",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Cream Caramel x Chocolope"
+},
+{
+  "seedBank": "Heaven's Fruit",
+  "name": "Criminal Auto",
+  "dominance": "Índica 35% / Sativa 65%",
+  "organolepticProfile": "Caramelo dulce, skunk y tierra",
+  "floweringDays": "",
+  "estimatedYield": "500 - 600",
+  "type": "Autofloreciente",
+  "lineage": "Super Critical x Ruderalis"
+},
+{
+  "seedBank": "Heaven's Fruit",
+  "name": "Diamond",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Terroso y dulce",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Sin confirmar"
+},
+{
+  "seedBank": "Heaven's Fruit",
+  "name": "Diamond Auto",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Dulce y terroso",
+  "floweringDays": "",
+  "estimatedYield": "500 - 600",
+  "type": "Autofloreciente",
+  "lineage": "Deimos x Little Dwart"
+},
+{
+  "seedBank": "Heaven's Fruit",
+  "name": "Doble Tangie",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Naranja madura, mandarina dulce y citricos",
+  "floweringDays": "",
+  "estimatedYield": "400 - 500",
+  "type": "Autofloreciente",
+  "lineage": "Mandarine x Cream Mandarine"
+},
+{
+  "seedBank": "Heaven's Fruit",
+  "name": "Frozen Cream",
+  "dominance": "Índica 30% / Sativa 70%",
+  "organolepticProfile": "Dulce y crema",
+  "floweringDays": "65",
+  "estimatedYield": "600 - 700",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Zkittlez x Zkittlez"
+},
+{
+  "seedBank": "Heaven's Fruit",
+  "name": "Frozmelo",
+  "dominance": "Índica 35% / Sativa 65%",
+  "organolepticProfile": "Crema de pomelo congelada",
+  "floweringDays": "70",
+  "estimatedYield": "600 - 800",
+  "type": "Sin confirmar",
+  "lineage": "Pink Pomelo x Frozen Cream"
+},
+{
+  "seedBank": "Heaven's Fruit",
+  "name": "Gaspack Auto",
+  "dominance": "",
+  "organolepticProfile": "Gas y torta",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Gaspack x Ruderalis",
+  "thc": "THC 20%; CBD 0%"
+},
+{
+  "seedBank": "Heaven's Fruit",
+  "name": "Grease",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Dulce, diesel y grasa de taller",
+  "floweringDays": "65",
+  "estimatedYield": "700 - 800",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Full Grease #3 x Full Grease #8"
+},
+{
+  "seedBank": "Heaven's Fruit",
+  "name": "Gullivert Auto",
+  "dominance": "",
+  "organolepticProfile": "Haze, menta y eucalipto",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Cream Haze x Ruderalis",
+  "thc": "THC 20%; CBD 1%"
+},
+{
+  "seedBank": "Heaven's Fruit",
+  "name": "Killow",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Limón dulce con matices de haze",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Sin confirmar",
+  "lineage": "White Widow x White Widow"
+},
+{
+  "seedBank": "Heaven's Fruit",
+  "name": "Krokodile Auto",
+  "dominance": "",
+  "organolepticProfile": "Terroso y vainilla",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Critical Bilbo x Red Dwarf",
+  "thc": "THC 18%; CBD 2%"
+},
+{
+  "seedBank": "Heaven's Fruit",
+  "name": "Little Dwarf",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Bizcochuelo de vainilla",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Sin confirmar",
+  "lineage": "Red Dwarf x Critical"
+},
+{
+  "seedBank": "Heaven's Fruit",
+  "name": "Mandarino",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Mandarina dulce",
+  "floweringDays": "56 - 70",
+  "estimatedYield": "600 - 800",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Heaven's Fruit x Heaven's Fruit"
+},
+{
+  "seedBank": "Heaven's Fruit",
+  "name": "Melonia CBD",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Crema y melon",
+  "floweringDays": "65",
+  "estimatedYield": "600 - 700",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Melongum CBD x Melongum CBD"
+},
+{
+  "seedBank": "Heaven's Fruit",
+  "name": "Mojitos",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Lima y limón refrescante",
+  "floweringDays": "55",
+  "estimatedYield": "500 - 700",
+  "type": "Sin confirmar",
+  "lineage": "Mandarino x Mazar x Amnesia"
+},
+{
+  "seedBank": "Heaven's Fruit",
+  "name": "Poison Grease",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Vainilla, anis y tierra",
+  "floweringDays": "60",
+  "estimatedYield": "600 - 700",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Zkittlez x Mandarino"
+},
+{
+  "seedBank": "Heaven's Fruit",
+  "name": "Throne Stealer",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Frutilla dulce y fermentada, sandalo y tolueno",
+  "floweringDays": "63",
+  "estimatedYield": "700 - 800",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Purple Moby x Girl Scout Cookies"
+},
+{
+  "seedBank": "Heaven's Fruit",
+  "name": "Toxi Watermelon",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Melon, frutilla y dulzor",
+  "floweringDays": "60",
+  "estimatedYield": "900 - 1000",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Melonia x Throne Stealer"
+},
+{
+  "seedBank": "Heaven's Fruit",
+  "name": "Tropical Fruit",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Frutas tropicales",
+  "floweringDays": "65",
+  "estimatedYield": "700 - 800",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Frozen Cream x Oppera Cookie"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "All Gas OG",
+  "dominance": "Indica dominante (mas de 60%)",
+  "organolepticProfile": "Dulce, naranja, diesel, pino y skunk",
+  "floweringDays": "55",
+  "estimatedYield": "350 - 500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Humboldt Venom OG x Humboldt OG",
+  "thc": "THC: mas de 20%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "All Gas OG Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Especias, tierra, madera, diesel y pino.",
+  "floweringDays": "80 - 100",
+  "estimatedYield": "500",
+  "type": "Autofloreciente",
+  "lineage": "All Gas OG x Asphalt OG x Chunkadelic Auto",
+  "thc": "THC hasta 21%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Apple Blossom",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Flores delicadas y manzana dulce.",
+  "floweringDays": "45",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Blueberry Muffin x Dream Queen",
+  "thc": "THC hasta 30%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Apple Blossom Auto",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Manzana dulce y floral",
+  "floweringDays": "70 - 80",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Blueberry Muffin x Dream Queen x Sour Apple Auto",
+  "thc": "THC 26 - 30%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Banana Melt",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Banana madura, citricos y pina.",
+  "floweringDays": "60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Banana Melt Bx3 x Blue Dream x Squirt"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Banana OG",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Caramelo de banana y combustible.",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Clon clasico Banana OG x Banana OG S1 #21 x Banana OG Bx3",
+  "thc": "THC 25%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Banana OG Auto",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Caramelo de banana y gas.",
+  "floweringDays": "80",
+  "estimatedYield": "450 - 550",
+  "type": "Autofloreciente",
+  "lineage": "Banana OG S1 21 x Mint Jelly Auto x Banana OG Auto Bx3",
+  "thc": "THC 25%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Bigfoot Glue",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Tierra intensa y pino fresco.",
+  "floweringDays": "60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Gorilla Glue x Humboldt Headband",
+  "thc": "THC 17 - 22%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Blueberry Honey",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Arandanos maduros, postres dulces y tierra.",
+  "floweringDays": "50",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Blueberry Pancakes x PPD x Dip N' Stix",
+  "thc": "THC 15 - 25%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Blueberry Muffin",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Pastel cremoso de arandanos, frescura y diesel",
+  "floweringDays": "45",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Purple Panty Dropper x Razzle Berry",
+  "thc": "THC: 20 - 28%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Blueberry Pancakes",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Jarabe dulce y arándano con notas cremosas",
+  "floweringDays": "60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Blueberry Pancakes x Slurricane x PPD",
+  "thc": "THC 25 - 31%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Bob Marley One Love Sativa",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Pina dulce, mango maduro, caramelo frutal y tierra.",
+  "floweringDays": "63 - 77",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Westmorland Pineapple x Stoopid Fruits x Mango Sherbert",
+  "thc": "THC 20 - 25%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Bob Marley Redemption Indica",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Pino, citricos, hierbas, tierra y combustible.",
+  "floweringDays": "70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Lamb's Bread (SDO #9) x Don Carlos"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "California Cream",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Caramelo salado y crema con un toque de combustible",
+  "floweringDays": "60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Humboldt Reserve OG x Royal Highness x Old School Cookies",
+  "thc": "THC 25%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "California Cream Auto",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Caramelo cremoso dulce con fondo a combustible",
+  "floweringDays": "70 - 90",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Caramel Cream x Caramel Cream Auto x Sour Apple Auto",
+  "thc": "THC 25%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "California Haze",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Citricos, pino, dulzor azucarado y madera.",
+  "floweringDays": "67",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Original Haze x Arcata Trainwreck",
+  "thc": "THC hasta 27%; CBD 0 - 1%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "California Octane",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Combustible, guayaba y crema",
+  "floweringDays": "60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Dream Queen x I-369 x Papaya",
+  "thc": "THC 26%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "California Octane Triploid",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Gasolina, guayaba tropical, crema y leche.",
+  "floweringDays": "60",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "I-369 x Dream Queen x Papaya",
+  "thc": "THC 28 - 34%; CBD 0 - 1%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "California Sour Diesel",
+  "dominance": "Índica 20% / Sativa 80%",
+  "organolepticProfile": "Limón cítrico con fondo a combustible",
+  "floweringDays": "70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Headband x Sour Diesel x Original Sour Diesel",
+  "thc": "THC 21%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "California Sour Diesel Auto",
+  "dominance": "Índica 20% / Sativa 80%",
+  "organolepticProfile": "Diésel y combustible punzante",
+  "floweringDays": "70 - 90",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "California Sour Diesel x California Sour Diesel Auto x OG Kush Auto",
+  "thc": "THC 21%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Candy Hustle",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Caramelo frutal, combustible y mentol.",
+  "floweringDays": "60",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Don Carlos x Jose x Grape Menthol",
+  "thc": "THC 25 - 30%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Caribbean Queen",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Mango, pina, guayaba, papaya, especias herbales y combustible.",
+  "floweringDays": "60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Landrace caribena; Stoopid Fruits; Humboldt Dream",
+  "thc": "THC 24 - 28%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Chicken n' Wafflez",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Manteca salada, sirope de arce, waffles, hierbas y especias.",
+  "floweringDays": "60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Jelly Donutz #117 x Purple Cartel (Xotic Flavors)",
+  "thc": "THC 32%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Chunkadelic Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Mandarina, skunk y combustible.",
+  "floweringDays": "75 - 85",
+  "estimatedYield": "450 - 550",
+  "type": "Autofloreciente",
+  "lineage": "Dark Devil Headband x Magic Melon Auto",
+  "thc": "THC 18 - 22%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Don Carlos",
+  "dominance": "Índica 65% / Sativa 35%",
+  "organolepticProfile": "Pino, ácido y mora",
+  "floweringDays": "55",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Blackberry OG x Humboldt Sour Diesel",
+  "thc": "THC 20 - 24%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Donutz",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Donuts glaseados, masa dulce, vainilla, canela y combustible.",
+  "floweringDays": "55 - 60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Lemon Cherry Gelato x GSC x OG",
+  "thc": "THC 25 - 30%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Dream Queen",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Pino dulce, naranja, skunk y madera",
+  "floweringDays": "45",
+  "estimatedYield": "550",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Green Crack x Mazar Star x Skunk #1",
+  "thc": "THC 23%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Dream Queen Auto",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Dulce, skunk, naranja y pino.",
+  "floweringDays": "100",
+  "estimatedYield": "450 - 550",
+  "type": "Autofloreciente",
+  "lineage": "Dream Queen x Sour Apple Auto",
+  "thc": "THC hasta 23%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Durban Poison Auto",
+  "dominance": "Índica 10% / Sativa 90%",
+  "organolepticProfile": "Menta, combustible, pino y dulzor.",
+  "floweringDays": "100",
+  "estimatedYield": "450 - 550",
+  "type": "Autofloreciente",
+  "lineage": "Durban Poison x Mint Jelly Auto x Durban Poison Het",
+  "thc": "THC 28 - 32%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Ed Rosenthal's Super High Life",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Madera dulce y combustible.",
+  "floweringDays": "55",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Super Bud x All Gas OG",
+  "thc": "THC 23 - 25%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Emerald Fire OG Auto",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Tierra, citricos y pino.",
+  "floweringDays": "85",
+  "estimatedYield": "500",
+  "type": "Autofloreciente",
+  "lineage": "Emerald Fire OG x Fire OG x OG Kush Auto",
+  "thc": "THC 23 - 28%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Farmer's Daughter",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Limón, lima y diésel",
+  "floweringDays": "70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Vanilla Créme Pie x Humboldt Pound Cake Bx3",
+  "thc": "THC 26 - 30%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Fortune Cookie",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Nuez, toffee y combustible",
+  "floweringDays": "55",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "GSC Forum Cut x California Cream",
+  "thc": "THC 22 - 26%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Freakshow",
+  "dominance": "Sátiva (90%)",
+  "organolepticProfile": "Pino herbáceo sutil, cítricos ácidos, tierra rústica",
+  "floweringDays": "65",
+  "estimatedYield": "450",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "(Big Bud x Skunk #1) x (Big Sur Holy Bud x Banana Kush)",
+  "thc": "THC 18%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "G.S. Cookies",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Masa de galleta, punzante y dulce",
+  "floweringDays": "55",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Matanuskan x G.S. Cookies Forum Cut",
+  "thc": "THC 28%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Garlic Budder",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Ajo, especias, manteca cremosa y avellana.",
+  "floweringDays": "70",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Fortune Cookies x GMO",
+  "thc": "THC hasta 32%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Garlic Budder Auto",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Ajo y manteca",
+  "floweringDays": "75",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Garlic Budder Auto Bx3 x GMO x Emerald Fire Auto",
+  "thc": "THC 32%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Gazzurple",
+  "dominance": "Sativa",
+  "organolepticProfile": "Gas, diesel, bayas, crema y acidez dulce.",
+  "floweringDays": "50",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Gazzurple Bx2 x Poddy Mouth x Macaroon",
+  "thc": "THC 28 - 33%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Golden Sands",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Gas OG, notas funk y flores.",
+  "floweringDays": "55 - 60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "OMG x Kashmir OG x Blackberry Kush",
+  "thc": "THC 30 - 35%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Granny Candy",
+  "dominance": "Índica 20% / Sativa 80%",
+  "organolepticProfile": "Fresas acidas, caramelo de pina, combustible y menta.",
+  "floweringDays": "50 - 55",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Mountaintop Mint x W. Runtz Muffin",
+  "thc": "THC 25 - 30%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Guzzlerz",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Gas, notas quimicas y amoniaco.",
+  "floweringDays": "55 - 60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Gusherz x Skittlez x Triangle Kush",
+  "thc": "THC 30 - 35%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Hella Jelly",
+  "dominance": "Índica 30% / Sativa 70%",
+  "organolepticProfile": "Algodon de azucar, frutilla y uva",
+  "floweringDays": "45",
+  "estimatedYield": "500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Notorious THC x Very Cherry",
+  "thc": "THC: 26 - 30%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Hella Jelly Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Caramelos de gelatina y algodón de azúcar frutal",
+  "floweringDays": "70 - 80",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Hella Jelly x Jelly Donutz Auto"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Hi-Biscus",
+  "dominance": "Sativa",
+  "organolepticProfile": "Ponche de frutas y flor de hibisco.",
+  "floweringDays": "55",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Zkittles x Blueberry Muffin",
+  "thc": "THC 20%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Honey Bear",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Papaya, banana, miel y panal.",
+  "floweringDays": "45 - 50",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Honey Banana UKC S1 x Papaya Tallyman x Honey Bear",
+  "thc": "THC 25%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Humboldt Dream",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Arándano, dulce y pino",
+  "floweringDays": "60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Blue Dream x P.P.D",
+  "thc": "THC 27%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Humboldt Dream Auto",
+  "dominance": "70% indica",
+  "organolepticProfile": "Arandanos, frutos rojos, pino y dulzor.",
+  "floweringDays": "95",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Humboldt Dream x Blue Dream x Emerald Fire OG Auto",
+  "thc": "THC 27%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Humboldt Headband",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Terroso, diésel y punzante",
+  "floweringDays": "60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Humboldt OG x Headband",
+  "thc": "THC 18 - 22%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Humboldt Headband Auto",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Diesel, limon, dulzor, tierra y picante.",
+  "floweringDays": "70 - 90",
+  "estimatedYield": "450 - 550",
+  "type": "Autofloreciente",
+  "lineage": "Humboldt OG x Headband",
+  "thc": "THC 18 - 22%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Jelly Donutz",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Algodon de azucar rosa, caramelo y combustible.",
+  "floweringDays": "55",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Jelly Donutz (#160 x #17) x Hella Jelly x White Runtz",
+  "thc": "THC 30 - 35%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Jelly Donutz Auto",
+  "dominance": "60% sativa",
+  "organolepticProfile": "Caramelo, combustible, algodon de azucar y batido de malta de fresa.",
+  "floweringDays": "70 - 85",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Jelly Donutz (#160 x #17) x Hella Jelly x White Runtz",
+  "thc": "THC cercano al 35%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Lemongrass",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Limon intenso, dulzor y diesel ligeramente acido.",
+  "floweringDays": "50",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Lemon Kush x Humboldt Gelato",
+  "thc": "THC 25 - 30%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Lemongrass Auto",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Caramelo de limón con notas de combustible ácido",
+  "floweringDays": "70 - 90",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Lemon Kush x Family Jewels Auto",
+  "thc": "THC 25 - 30%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Limez",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Lima fresca, limon agrio y soda citrica.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Limez x Key Lime Pie x Long Point Lime",
+  "thc": "THC 32%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Magic Melon",
+  "dominance": "Híbrida (50/50)",
+  "organolepticProfile": "Melón dulce maduro, frutas tropicales, miel, gasóleo",
+  "floweringDays": "50",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Mango Sherbert x Honeydew Melon",
+  "thc": "THC 22%; CBD 1 - 2%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Mango Sherbert",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Sorbete de mango, frutilla y crema",
+  "floweringDays": "50",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Mango Trees x Humboldt Sherbert",
+  "thc": "THC 24 - 28%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Mango Sherbert Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Mango, frutilla y crema",
+  "floweringDays": "100",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Magic Melon Auto x Humboldt Sherbert x Mango Sherbert",
+  "thc": "THC 24 - 28%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Mint Jelly Auto",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Menta, masa de pastel y galletas de vainilla.",
+  "floweringDays": "70 - 80",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Sour Apple Auto x Hella Jelly",
+  "thc": "THC hasta 30%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Moon Fog",
+  "dominance": "Indica",
+  "organolepticProfile": "Tierra, especias y dulzor cremoso.",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Moonfog x P. Face OG x High Octane",
+  "thc": "THC 25%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Mountaintop Mint",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Caramelo de menta con final skunk",
+  "floweringDays": "70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "The Bling x Mac Mints",
+  "thc": "THC 26 - 30%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Notorious THC",
+  "dominance": "Índica 65% / Sativa 35%",
+  "organolepticProfile": "Kush terroso y dulce, diesel y pintura fresca.",
+  "floweringDays": "65",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Ghost of Von Humboldt OG x Caramel Cream x Humboldt Frost",
+  "thc": "THC 25 - 30%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Nutter Budder",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Terroso, manteca de maní y combustible",
+  "floweringDays": "65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "C-435 x Peanut Butter Breath",
+  "thc": "THC 26 - 30%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "OG Kush Auto",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Kush, pino, madera y tierra",
+  "floweringDays": "80 - 100",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "OG Kush x OG Kush x Chunkadelic Auto",
+  "thc": "THC 22 - 26%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "OG Triploid Auto",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Gas, tierra y citricos.",
+  "floweringDays": "80 - 100",
+  "estimatedYield": "450 - 550",
+  "type": "Autofloreciente",
+  "lineage": "(OG Kush Auto x tetraploide) x OG Kush Auto",
+  "thc": "THC 25 - 30%; CBD 0 - 1%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Orange Creampop",
+  "dominance": "Índica 30% / Sativa 70%",
+  "organolepticProfile": "Naranja dulce, helado cremoso de naranja y fondo rancio.",
+  "floweringDays": "50 - 55",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Hella Jelly x Orange Creamsicle Bx3",
+  "thc": "THC 30 - 35%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "P.P.D",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Uvas, dulce y floral",
+  "floweringDays": "50",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Matanuska Mist x Oregon Grape x Purple Haze",
+  "thc": "THC 18 - 25%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Pineapple Muffin",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Ananá, arándano y dulce",
+  "floweringDays": "45",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Blueberry Muffin x Pineapple Trainwreck",
+  "thc": "THC 17 - 21%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Pineapple Muffin Auto",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Ananá, arándano y dulce",
+  "floweringDays": "80 - 90",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Blueberry Muffin x Pineapple Trainwreck x Sour Apple Auto"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Pineapple Upside Down Cake",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Crème brûlée, ananá y helado de crema de vainilla",
+  "floweringDays": "45",
+  "estimatedYield": "400 - 500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Cookie Monster x Pineapple Train Wreck",
+  "thc": "THC 22 - 26%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Pistachio",
+  "dominance": "Índica 65% / Sativa 35%",
+  "organolepticProfile": "Avellana, diesel y helado cremoso de pistacho.",
+  "floweringDays": "65",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Pistachio BX2 x P-61 x Fortune Cookies",
+  "thc": "THC 24 - 28%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Poddy Mouth",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Combustible, terroso y dulce",
+  "floweringDays": "55",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Humboldt Pound Cake x Mountaintop Mint",
+  "thc": "THC 24 - 30%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Pound Town Auto",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Melon dulce, manzana caramelizada, especias y diesel.",
+  "floweringDays": "75 - 85",
+  "estimatedYield": "250 - 450",
+  "type": "Autofloreciente",
+  "lineage": "Magic Melon Auto x Sour Apple Auto",
+  "thc": "THC hasta 24%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Puff Pastry",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Chocolate, churros, canela, citricos, donuts especiados y combustible.",
+  "floweringDays": "50 - 55",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Obama Kush Z S1 x Blueberry Cupcake x OBKZ 57 S1",
+  "thc": "THC 33%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Purpz",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Ajo, cebolla dulce y combustible.",
+  "floweringDays": "60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Garlic Budder x OMG x CF-50",
+  "thc": "THC 33%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Raspberry Parfait",
+  "dominance": "Índica 20% / Sativa 80%",
+  "organolepticProfile": "Frambuesa, yogur de vainilla y frutos rojos",
+  "floweringDays": "60",
+  "estimatedYield": "450",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Shishkaberry x Truffula Tree",
+  "thc": "THC 22%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Slightly Stoopid Collie Man Kush",
+  "dominance": "Índica 90% / Sativa 10%",
+  "organolepticProfile": "Combustible OG, cítrico y terroso",
+  "floweringDays": "60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Humboldt Reserve OG x Asphalt Plant (All Gas OG)",
+  "thc": "THC 22 - 26%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Slightly Stoopid Fruits",
+  "dominance": "Índica 20% / Sativa 80%",
+  "organolepticProfile": "Lima, naranja, pomelo, mango, papaya y pina.",
+  "floweringDays": "65",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Apricot Papaya x Strawberry Dream Queen",
+  "thc": "THC 21%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Sour Apple Auto",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Manzana, gas y combustible",
+  "floweringDays": "75 - 90",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Magic Melon Auto x Humboldt Sour Diesel",
+  "thc": "THC 20 - 24%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Squirt",
+  "dominance": "Índica 20% / Sativa 80%",
+  "organolepticProfile": "Naranja y pastel cremoso de arandanos.",
+  "floweringDays": "50",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "BBM x Tang x Tangie x Blueberry Muffin",
+  "thc": "THC 20%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Squirt Auto",
+  "dominance": "Índica 20% / Sativa 80%",
+  "organolepticProfile": "Pomelo dulce y ácido, ciruela",
+  "floweringDays": "80 - 90",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Blueberry Muffin x Tangie x Blueberry Muffin Auto",
+  "thc": "THC 20%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Strawberry Cheesecake",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Pastel dulce, crema, frambuesa y cheesecake.",
+  "floweringDays": "65",
+  "estimatedYield": "350 - 500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Purple Panty Dropper x Girl Scout Cookies (Forum Cut)",
+  "thc": "THC hasta 30%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Strawberry Cheesecake Auto",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Frutilla y notas de queso",
+  "floweringDays": "70 - 90",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "PPD x Strawberry Cheesecake x Vanilla Latte Auto",
+  "thc": "THC 28%"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "V-Auto Auto",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Gas dulce",
+  "floweringDays": "70 - 80",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Durban Auto x OG Auto"
+},
+{
+  "seedBank": "Humboldt Seed Company",
+  "name": "Vanilla Latte Auto",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Vainilla cremosa, flores y combustible.",
+  "floweringDays": "90",
+  "estimatedYield": "450 - 550",
+  "type": "Autofloreciente",
+  "lineage": "Vanilla Frosting x Sol Mate Auto",
+  "thc": "THC 25 - 30%"
+},
+{
+  "seedBank": "Kame Seeds",
+  "name": "9001",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Galleta, incienso, cacao dulce",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "400 - 550",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Chocolope x AK47",
+  "thc": "THC: 18 - 22%; CBD: 1%"
+},
+{
+  "seedBank": "Kame Seeds",
+  "name": "Mafuba 2.0",
+  "dominance": "Hibrida de dominancia indica",
+  "organolepticProfile": "Citrico, floral e incienso",
+  "floweringDays": "56 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Orange Diesel x Black Jack",
+  "thc": "THC: alto; CBD: bajo"
+},
+{
+  "seedBank": "Kame Seeds",
+  "name": "Power Crush",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Cítrico, madera dulce y sándalo",
+  "floweringDays": "55 - 60",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Orange Diesel x (Afgana x Skunk #1)"
+},
+{
+  "seedBank": "La Maga",
+  "name": "Amazona",
+  "dominance": "Sativa",
+  "organolepticProfile": "Incienso, cítricos, anís, dulce",
+  "floweringDays": "49 - 56",
+  "estimatedYield": "500 - 600",
+  "type": "Esqueje",
+  "lineage": "Santa Maria IBL",
+  "thc": "THC 18.1%; CBD 0.3%"
+},
+{
+  "seedBank": "La Maga",
+  "name": "Magu",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Floral, cítricos, dulce, crema",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Esqueje",
+  "lineage": "Santanesia × Onora",
+  "thc": "THC 22.6%; CBD 0.6%"
+},
+{
+  "seedBank": "La Maga",
+  "name": "Matrona",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Frutos rojos, chocolate cremoso, diesel y tierra",
+  "floweringDays": "49 - 63",
+  "estimatedYield": "400 - 500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "UBC Chemo x Chocolate Rain",
+  "thc": "THC: 18,2%"
+},
+{
+  "seedBank": "La Maga",
+  "name": "Niranjan",
+  "dominance": "",
+  "organolepticProfile": "Agrio, diesel, dulce",
+  "floweringDays": "49",
+  "estimatedYield": "400 - 500",
+  "type": "Feminizada / esqueje",
+  "lineage": "(Santa Maria × Fizz) × Apollo 13",
+  "thc": "THC 21.0%; CBD 0.3%"
+},
+{
+  "seedBank": "La Maga",
+  "name": "Onora",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Chirimoya, naranja, limon, lima, mandarina, diesel, mentol, poleo y notas florales dulces",
+  "floweringDays": "49 - 56",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Seleccion mejorada de Recovery Dame Blanche; parentales desconocidos",
+  "thc": "THC: 19,3%"
+},
+{
+  "seedBank": "La Maga",
+  "name": "Onora Automática",
+  "dominance": "",
+  "organolepticProfile": "Frutal, ácido, tierra, incienso, dulce",
+  "floweringDays": "75 - 85",
+  "estimatedYield": "400 - 500",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Onora",
+  "thc": "THC 19.0%"
+},
+{
+  "seedBank": "La Maga",
+  "name": "Santanesia",
+  "dominance": "Índica 10% / Sativa 90%",
+  "organolepticProfile": "Cítricos frescos, durazno y naranja dulce, con un toque de menta",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "400 - 500",
+  "type": "Feminizada",
+  "lineage": "Santa María x Amnesia Haze",
+  "thc": "THC 25.1%"
+},
+{
+  "seedBank": "Lechugas Genetics",
+  "name": "Del Valle CBD",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Diesel, tierra y flores silvestres",
+  "floweringDays": "56 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Sour Diesel CBD x Sour Diesel CBD (S1)",
+  "thc": "THC 6%; CBD 8%"
+},
+{
+  "seedBank": "Lechugas Genetics",
+  "name": "Destroyer",
+  "dominance": "Sativa",
+  "organolepticProfile": "Mango y citricos",
+  "floweringDays": "75 - 85",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "thc": "THC 18%; CBD 0%"
+},
+{
+  "seedBank": "Lechugas Genetics",
+  "name": "Skunk S1",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Picante y especiado",
+  "floweringDays": "60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "thc": "THC 18%; CBD 0%"
+},
+{
+  "seedBank": "Medical Seeds",
+  "name": "1024",
+  "dominance": "Índica 30% / Sativa 70%",
+  "organolepticProfile": "Dulce, almizcle, especias, fruta; fenotipos acidos e incienso",
+  "floweringDays": "77 - 91",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica feminizada",
+  "thc": "THC: alto"
+},
+{
+  "seedBank": "Medical Seeds",
+  "name": "2046",
+  "dominance": "Sativa 100%",
+  "organolepticProfile": "Haze intenso",
+  "floweringDays": "91 - 105",
+  "estimatedYield": "500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Neville's Haze x Kali Mist",
+  "thc": "THC: muy alto; CBD: muy bajo"
+},
+{
+  "seedBank": "Medical Seeds",
+  "name": "Banana Zkittlez",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Banana madura, pomelo, lima, frutos del bosque",
+  "floweringDays": "63",
+  "estimatedYield": "450",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Banana Punch x Zkittlez"
+},
+{
+  "seedBank": "Medical Seeds",
+  "name": "Channel +",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Tierra húmeda profunda, skunk suave, toques dulces",
+  "floweringDays": "49 - 56",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "BigBud x Skunk",
+  "thc": "THC: alto; CBD: bajo"
+},
+{
+  "seedBank": "Medical Seeds",
+  "name": "Prozack",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Hachis",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Lavander x Kush",
+  "thc": "THC: medio-alto; CBD: bajo"
+},
+{
+  "seedBank": "Medical Seeds",
+  "name": "Y Griega CBD",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Acido, almizcle y limon",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "500",
+  "type": "Fotoperiodica feminizada CBD",
+  "lineage": "Y Griega x Medical #2 CBD",
+  "thc": "Relacion THC:CBD 1:1; niveles publicados 4 - 10%"
+},
+{
+  "seedBank": "Mephisto Genetics",
+  "name": "Alien Vs Triangle",
+  "dominance": "Sátiva (60%)",
+  "organolepticProfile": "Pino forestal agresivo, cítricos acres, skunk profundo",
+  "floweringDays": "70 - 80",
+  "estimatedYield": "450 - 550"
+},
+{
+  "seedBank": "Mephisto Genetics",
+  "name": "Double Grape",
+  "dominance": "Híbrida (50/50)",
+  "organolepticProfile": "Uva morada intensa, vino dulce fermentado, gas sutil",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "450 - 500"
+},
+{
+  "seedBank": "Mephisto Genetics",
+  "name": "Forum Stomper",
+  "dominance": "Híbrida (50/50)",
+  "organolepticProfile": "Masa de galleta cruda, especias fuertes, menta dulce",
+  "floweringDays": "65 - 75",
+  "estimatedYield": "400 - 500"
+},
+{
+  "seedBank": "Mephisto Genetics",
+  "name": "Mango Runtz",
+  "dominance": "Híbrida (50/50)",
+  "organolepticProfile": "Mango maduro jugoso, caramelos azucarados, frutas",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "400 - 500",
+  "type": "Autofloreciente feminizada",
+  "lineage": "(Creme de la Chem x Mango Smile) x White Runtz"
+},
+{
+  "seedBank": "Mephisto Genetics",
+  "name": "MephistOreoz",
+  "dominance": "Índica (70%)",
+  "organolepticProfile": "Chocolate oscuro profundo, vainilla, tierra tostada",
+  "floweringDays": "65 - 75",
+  "estimatedYield": "400 - 500"
+},
+{
+  "seedBank": "Mountain Seeds",
+  "name": "After 8",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Chocolate negro, menta, tierra, cítricos",
+  "floweringDays": "56",
+  "estimatedYield": "450",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "KO × GPF2",
+  "thc": "THC: 24 - 26%; CBD: <1%"
+},
+{
+  "seedBank": "Mountain Seeds",
+  "name": "Cabernet Frank",
+  "dominance": "Sativa: 60%",
+  "organolepticProfile": "Uva, frutos oscuros, crema, caramelo, fruta fermentada",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "850",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Cabernet Sauvignon × Designer Runtz",
+  "thc": "THC: 25%; CBD: 2%"
+},
+{
+  "seedBank": "Mountain Seeds",
+  "name": "Citric Lime Pie",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Tarta cremosa, dulce, naranja",
+  "floweringDays": "65",
+  "estimatedYield": "650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Citric Latte × Gummy Buns",
+  "thc": "THC: 28%; CBD: 1%"
+},
+{
+  "seedBank": "Mountain Seeds",
+  "name": "Flat White Auto",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Tierra, especias, flores",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "500",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Magnum × Girl Scout Cookies",
+  "thc": "THC: 15%"
+},
+{
+  "seedBank": "Mountain Seeds",
+  "name": "Krispy Cream",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Vainilla, crema pastelera, caramelo, dulce",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "550",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Apple Fritter × GPF2",
+  "thc": "THC: 25 - 27%; CBD: <1%"
+},
+{
+  "seedBank": "Mountain Seeds",
+  "name": "Mountain Cake",
+  "dominance": "Híbrida equilibrada",
+  "organolepticProfile": "Crema, tarta, galleta, frutos secos, cítricos",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "500",
+  "type": "Fotoperiódica feminizada",
+  "thc": "THC: 26%; CBD: <1%"
+},
+{
+  "seedBank": "Mountain Seeds",
+  "name": "Mountain Guava",
+  "dominance": "Sativa: 60%",
+  "organolepticProfile": "Guayaba, ananá, maracuyá, crema, tarta",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Popscotty × Exotic Fusion",
+  "thc": "THC: 25%; CBD: 1%"
+},
+{
+  "seedBank": "Mountain Seeds",
+  "name": "Nikkei Truffle",
+  "dominance": "Híbrida equilibrada",
+  "organolepticProfile": "Carne madurada, ajo, trufa negra, manteca",
+  "floweringDays": "53",
+  "estimatedYield": "720",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Wagyu Beef × The Washer",
+  "thc": "THC: 27%; CBD: <1%"
+},
+{
+  "seedBank": "Mountain Seeds",
+  "name": "Repsol",
+  "dominance": "Híbrida equilibrada",
+  "organolepticProfile": "Combustible, tierra, cítricos",
+  "floweringDays": "56",
+  "estimatedYield": "650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "South Beach × GPF2",
+  "thc": "THC: 26,3%; CBD: >1,5%"
+},
+{
+  "seedBank": "Mountain Seeds",
+  "name": "The Washer",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Crema chantilly, granos de cafe y notas florales",
+  "floweringDays": "56",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Flat Whitez IBL x GPF2"
+},
+{
+  "seedBank": "Mountain Seeds",
+  "name": "Therian Auto",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Pastel, chocolate, nueces, limón, kush",
+  "floweringDays": "84",
+  "estimatedYield": "600",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Magnun × Flat White S1",
+  "thc": "THC: 16%"
+},
+{
+  "seedBank": "Mountain Seeds",
+  "name": "Wagyu Beef",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Ajo, carne madura y especias",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Dracula x Georgia Pie"
+},
+{
+  "seedBank": "Pachamama",
+  "name": "Black Jack",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Incienso, terroso y limón",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "thc": "THC 16 - 21%"
+},
+{
+  "seedBank": "Pachamama",
+  "name": "Fizzi Drank x Skunk #1",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Cítrico afrutado",
+  "floweringDays": "50 - 55",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Fizzi Drank x Skunk #1",
+  "thc": "THC 16 - 19%"
+},
+{
+  "seedBank": "Pachamama",
+  "name": "Team Cream",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Crema, dulce",
+  "floweringDays": "60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "thc": "THC: 23%"
+},
+{
+  "seedBank": "Perfect Tree",
+  "name": "Cherrymosa",
+  "dominance": "Sátiva (60%)",
+  "organolepticProfile": "Cereza madura intensa vibrante, cítricos acres, gas",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "500 - 550"
+},
+{
+  "seedBank": "Perfect Tree",
+  "name": "Lemon Curd",
+  "dominance": "Índica (60%)",
+  "organolepticProfile": "Crema de limón pastelera, lácteos suaves, cítricos",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "450 - 500"
+},
+{
+  "seedBank": "Perfect Tree",
+  "name": "Mimozz",
+  "dominance": "Híbrida (50/50)",
+  "organolepticProfile": "Naranja ácida penetrante, melocotón en almíbar, frutas",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "500 - 550"
+},
+{
+  "seedBank": "Perfect Tree",
+  "name": "Peach Ozz",
+  "dominance": "Sátiva (70%)",
+  "organolepticProfile": "Melocotón dulce, mandarina jugosa, azúcar sutil, tierra",
+  "floweringDays": "63",
+  "estimatedYield": "450 - 500"
+},
+{
+  "seedBank": "Perfect Tree",
+  "name": "Pink Gasoline",
+  "dominance": "Índica (60%)",
+  "organolepticProfile": "Combustible (gas) fuerte, helado dulce, bayas rojas",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "500 - 550"
+},
+{
+  "seedBank": "Pot Corn",
+  "name": "24K Gold x Yeti",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Naranja, pomelo, cítrico",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "lineage": "24K Gold x Wedding Cake Yeti",
+  "thc": "THC: aproximadamente 26%; CBD: bajo"
+},
+{
+  "seedBank": "Pot Corn",
+  "name": "Afghani",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Terroso con notas de pimienta dulce",
+  "floweringDays": "56",
+  "estimatedYield": "450 - 500",
+  "type": "Feminizada",
+  "lineage": "Afghani x Pakistani x Indian x Skunk #1 x Roadkill Skunk",
+  "thc": "THC 18%"
+},
+{
+  "seedBank": "Pot Corn",
+  "name": "Ananá Punch",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Ananá dulce, tropical",
+  "floweringDays": "60",
+  "estimatedYield": "",
+  "lineage": "Banana Punch x (NBK x Sunset Sherbet)",
+  "thc": "THC: 23 - 26%; CBD: 0,1%"
+},
+{
+  "seedBank": "Pot Corn",
+  "name": "Fenol",
+  "dominance": "Índica 30% / Sativa 70%",
+  "organolepticProfile": "Diésel y combustible, con notas dulces",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "500",
+  "type": "Feminizada",
+  "lineage": "Motorbreath x Cake Crasher",
+  "thc": "THC 22%"
+},
+{
+  "seedBank": "Pot Corn",
+  "name": "Gassy Cake",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Gas con dulzor cremoso de postre",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Full Gas x Cake Crasher",
+  "thc": "THC 21%"
+},
+{
+  "seedBank": "Pot Corn",
+  "name": "Gelato Açai Berry",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Combustible, anís y frutos rojos maduros",
+  "floweringDays": "56",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Açaí Berry (Gelato #49) x Animal Cookies",
+  "thc": "THC 22%"
+},
+{
+  "seedBank": "Pot Corn",
+  "name": "GNC Auto",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Butano, gasolina y notas terrosas",
+  "floweringDays": "84",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "thc": "THC 23%"
+},
+{
+  "seedBank": "Pot Corn",
+  "name": "Gorilla Cookies Auto",
+  "dominance": "Índica 45% / Sativa 55%",
+  "organolepticProfile": "Frutal, a gas y terroso",
+  "floweringDays": "77 - 84",
+  "estimatedYield": "500 - 550",
+  "type": "Autofloreciente",
+  "lineage": "Gorilla Glue #4 x Cookies Auto",
+  "thc": "THC 28,5%"
+},
+{
+  "seedBank": "Pot Corn",
+  "name": "Gorilla Tangie Auto",
+  "dominance": "",
+  "organolepticProfile": "Intenso, a gas y cítricos",
+  "floweringDays": "84",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Tangie x Gorilla Cookies",
+  "thc": "THC 23%"
+},
+{
+  "seedBank": "Pot Corn",
+  "name": "Palito de la selva",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Dulce, frutal y cremoso, con frutilla y vainilla",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Mimosa x Mimosa",
+  "thc": "THC 18 - 22%; CBD 0,1%"
+},
+{
+  "seedBank": "Pot Corn",
+  "name": "Pico Dulce x RKS",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada"
+},
+{
+  "seedBank": "Pot Corn",
+  "name": "Skunk de Pocho",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Penetrante",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Roadkill Skunk x Massachusetts Skunk",
+  "thc": "THC 23%; CBD 0,2%"
+},
+{
+  "seedBank": "Pot Corn",
+  "name": "Wedding Cake Yeti",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "",
+  "floweringDays": "80 - 90",
+  "estimatedYield": "",
+  "thc": "THC: aproximadamente 23%; CBD: 0,1%"
+},
+{
+  "seedBank": "Pure Instinto",
+  "name": "Aca-Dos Delight",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Bayas dulces, citricos, combustible, fruta tropical y frutos secos.",
+  "floweringDays": "55 - 60",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Acai x Dosidos",
+  "thc": "THC 25 - 30%"
+},
+{
+  "seedBank": "Pure Instinto",
+  "name": "Alien Snack Auto",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Dulce y frutal, a frutilla y banana, con fondo terroso y especiado",
+  "floweringDays": "56 - 70",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Strawnana x MAC",
+  "thc": "THC 18 - 22%; CBD <1%"
+},
+{
+  "seedBank": "Pure Instinto",
+  "name": "Apple OG",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Manzana verde, citricos, especias, gas y tierra.",
+  "floweringDays": "58 - 63",
+  "estimatedYield": "350 - 400",
+  "type": "Feminizada",
+  "lineage": "Kosher Kush x MK-13 (G-13 x OG Kush)",
+  "thc": "THC 19 - 22%"
+},
+{
+  "seedBank": "Pure Instinto",
+  "name": "Bliss CBD",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Dulce y picante, con notas terrosas, amaderadas y herbales",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Carmagnola",
+  "thc": "THC <0.3%; CBD 6 - 10%"
+},
+{
+  "seedBank": "Pure Instinto",
+  "name": "Cherry Cookies",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Cereza, tierra, dulzor y flores.",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "400 - 450",
+  "type": "Feminizada",
+  "lineage": "Cherry Pie x Girl Scout Cookies F2",
+  "thc": "THC 22 - 24%"
+},
+{
+  "seedBank": "Pure Instinto",
+  "name": "Cherry Melt",
+  "dominance": "Hibrida con ligera dominancia indica",
+  "organolepticProfile": "Sirope de cereza, masa de galleta, citricos y cascara de naranja.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "500 - 550",
+  "type": "Feminizada",
+  "lineage": "Cherry Cookies Melt x Yuzuza (Lemon Storm x Mimosa)",
+  "thc": "THC 24 - 27%"
+},
+{
+  "seedBank": "Pure Instinto",
+  "name": "Chimera Crasher",
+  "dominance": "Hibrida equilibrada",
+  "organolepticProfile": "Frutas tropicales dulces, pino, tierra y citricos.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "400 - 500",
+  "type": "Feminizada",
+  "lineage": "Beach Crasher x Chimera",
+  "thc": "THC 22 - 24%; CBD 0,5 - 1%"
+},
+{
+  "seedBank": "Pure Instinto",
+  "name": "Citrus Sunrise CBD",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Dulce y cítrico, a naranja, limón y pomelo",
+  "floweringDays": "56 - 70",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Clementina x CBD",
+  "thc": "THC <0.3%; CBD 7 - 10%"
+},
+{
+  "seedBank": "Pure Instinto",
+  "name": "Clementine Dream Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Cítrico, frutal y picante; mandarina intensa con notas de lima-limón",
+  "floweringDays": "63",
+  "estimatedYield": "400 - 550",
+  "type": "Autofloreciente",
+  "thc": "THC 23 - 25%"
+},
+{
+  "seedBank": "Pure Instinto",
+  "name": "Diamond Dust",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Dulce, tierra, citricos, pino, diesel, fruta y especias.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "450",
+  "type": "Feminizada",
+  "lineage": "Sour Bubble x Double Dream",
+  "thc": "THC 21 - 25%"
+},
+{
+  "seedBank": "Pure Instinto",
+  "name": "Forbidden Fruit Cake",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Bayas, dulzor, kush y almizcle.",
+  "floweringDays": "58 - 63",
+  "estimatedYield": "400 - 500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Forbidden Fruit x Wedding Cake",
+  "thc": "THC 24 - 27%"
+},
+{
+  "seedBank": "Pure Instinto",
+  "name": "Lemon Storm",
+  "dominance": "Hibrida indica/sativa",
+  "organolepticProfile": "Limon, gas, menta y citricos.",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "600 - 650",
+  "type": "Feminizada",
+  "lineage": "Lemon Miracle x Lemon Secret x Mimosa",
+  "thc": "THC 25%"
+},
+{
+  "seedBank": "Pure Instinto",
+  "name": "Mimosa",
+  "dominance": "Índica 30% / Sativa 70%",
+  "organolepticProfile": "Naranja dulce, citricos acidos, fruta tropical, hierbas, pino y madera.",
+  "floweringDays": "68 - 78",
+  "estimatedYield": "500 - 700",
+  "type": "Feminizada",
+  "lineage": "Purple Punch x Clementine",
+  "thc": "THC 19 - 27%"
+},
+{
+  "seedBank": "Pure Instinto",
+  "name": "Minty Grape Kush",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Uva madura, menta, tierra, vainilla cremosa y productos horneados.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "400 - 500",
+  "type": "Feminizada",
+  "lineage": "Gush Mints x Grape Cream Cake",
+  "thc": "THC 22 - 24%; CBD 0.5 - 1%"
+},
+{
+  "seedBank": "Pure Instinto",
+  "name": "Peanut Butter Cookies",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Dulce, terroso y gas kush intenso.",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "400 - 450",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "GSC-OGKB x Face Off OG",
+  "thc": "THC 25 - 30%"
+},
+{
+  "seedBank": "Pure Instinto",
+  "name": "Pure Glitter",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Arandanos maduros, uva, hierbas especiadas, gas, flores y tierra.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "550",
+  "type": "Feminizada",
+  "lineage": "Grape Gas x OG Kush Blueberry Headband",
+  "thc": "THC 30 - 34%"
+},
+{
+  "seedBank": "Pure Instinto",
+  "name": "Pure Ice Cream",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Chocolate, menta, gas y pino.",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "450 - 500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Sunset Sherbet x Thin Mint Cookies",
+  "thc": "THC 20 - 26%"
+},
+{
+  "seedBank": "Pure Instinto",
+  "name": "Spooky OG",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Tierra, pino, gas, citricos y especias.",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "400 - 450",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Kosher Kush x Kosher Kush",
+  "thc": "THC 20 - 25%"
+},
+{
+  "seedBank": "Pure Instinto",
+  "name": "Sticky Gorilla #4",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Terroso, limón, gas, especiado y dulce",
+  "floweringDays": "58 - 65",
+  "estimatedYield": "450 - 500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Chem's Sister x Sour Dubb x Chocolate Diesel",
+  "thc": "THC 25 - 28%"
+},
+{
+  "seedBank": "Pure Instinto",
+  "name": "Strawberry Shortcake Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Caramelo, frutilla y galletas; cremoso y frutal con un toque a nafta",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "500",
+  "type": "Autofloreciente",
+  "lineage": "Strawberry Cookies x Cherry Pie x Ruderalis",
+  "thc": "THC 25%"
+},
+{
+  "seedBank": "Pure Instinto",
+  "name": "Tri-Whip Kush Auto",
+  "dominance": "Hibrida equilibrada",
+  "organolepticProfile": "Tierra, skunk, gas, citricos y flores.",
+  "floweringDays": "56 - 70",
+  "estimatedYield": "450",
+  "type": "Autofloreciente",
+  "lineage": "Triangle Kush x Whippetz Auto",
+  "thc": "THC 20 - 24%"
+},
+{
+  "seedBank": "Pure Instinto",
+  "name": "Whipped Runtz Auto",
+  "dominance": "Hibrida equilibrada",
+  "organolepticProfile": "Dulce, tropical, citricos y tierra.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "400 - 500",
+  "type": "Autofloreciente",
+  "lineage": "Runtz x Whippetz Auto",
+  "thc": "THC 20 - 25%"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "Brain Cake",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Terroso, dulce y picante; matices exoticos.",
+  "floweringDays": "60 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Do-Si-Dos S1 (Face-Off OG x OGKB)"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "Break Pad Breath",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Gas, galleta, fruta, combustible y tierra.",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Gary Payton x Motorbreath"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "CandyGaz",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Gas, combustible, dulce, afrutado, cremoso; limon y cereza.",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Hellcat x Lemon Cherry Gelato",
+  "thc": "THC muy alto (sin porcentaje)"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "ChemPie",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Frutas rojas dulces y acidas, tierra, especias y crema.",
+  "floweringDays": "60 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Cherry Pie x Chemdawg x Do-Si-Dos"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "Criminal+",
+  "dominance": "80% indica",
+  "organolepticProfile": "Dulce y afrutado.",
+  "floweringDays": "50 - 60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Critical Mass x Double Glock"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "DO-G",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Terroso, acido, combustible y cremoso.",
+  "floweringDays": "60 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "White Fire OG (WiFi #43) x Do-Si-Dos"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "EyeBallz",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Quimico y dulce; frutas y caramelo.",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Blue Sherbet, Runtz, Gorilla Glue #4 y Lemon Cherry Gelato (linajes declarados)",
+  "thc": "THC alto (sin porcentaje)"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "Kmintz",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Caramelos de fruta y menta.",
+  "floweringDays": "60 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Zkittlez x Kush Mints"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "Kmintz Auto",
+  "dominance": "Mas del 60% indica",
+  "organolepticProfile": "Caramelos de fruta y menta.",
+  "floweringDays": "60 - 70",
+  "estimatedYield": "",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Version automatica de Zkittlez x Kush Mints; parental auto no publicado",
+  "thc": "THC 15 - 25%"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "Korenji",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Zumo de fruta tropical, citrico, dulce y cremoso.",
+  "floweringDays": "50 - 60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Radical Juice x KmintZ"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "Kroma",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Frutas dulces, jugosas y menta.",
+  "floweringDays": "50 - 60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Zkittlez x KmintZ (BX1)"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "Old School",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Incienso, flores, tierra, skunk y dulce.",
+  "floweringDays": "60 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Original Cheese x Black Domina"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "OMG",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Gasolina cremosa, tierra, almizcle y notas lacteas dulces.",
+  "floweringDays": "60 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "GMO (Chem Cookies) x Kush Mints"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "Radical Juice",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Zumo de frutas y frutas tropicales.",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Tropicana Cookies x Runtz"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "Radical Juice Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Citrico, pina, frutas tropicales y crema.",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Version automatica de Tropicana Cookies x Runtz; parental auto no publicado"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "Ripper Haze",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Haze citrico y madera.",
+  "floweringDays": "60 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Seleccion de Amnesia Haze",
+  "thc": "THC alto (sin porcentaje)"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "Shimo",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Frutas tropicales, dulce, cremoso, mentolado y especiado.",
+  "floweringDays": "50 - 60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "RS11 x K-Mintz"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "Sideral",
+  "dominance": "Mas del 60% sativa",
+  "organolepticProfile": "Afrutado, Haze, madera, tierra y especias.",
+  "floweringDays": "60 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Lavender Kush x Amnesia",
+  "thc": "THC 15 - 25%"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "Sour Ripper",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Acido, citrico, combustible y fruta.",
+  "floweringDays": "60 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Linea Sour Diesel seleccionada y feminizada"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "Sour Ripper Auto",
+  "dominance": "Mas del 60% sativa",
+  "organolepticProfile": "Agrio, combustible, floral y afrutado.",
+  "floweringDays": "65 - 70",
+  "estimatedYield": "",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Version automatica de Sour Ripper; parental auto no publicado",
+  "thc": "THC 15 - 25%"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "Toxic",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Haze citrico, dulce y afrutado.",
+  "floweringDays": "60 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Ripper Haze x Criminal+"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "Washing Machine",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Queso, skunk, tierra humeda, regaliz, bosque y agridulce.",
+  "floweringDays": "60 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "UK Exodus Cheese x Bubba Kush"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "Zake",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Licor cremoso de frutas; floral, cremoso y almibarado.",
+  "floweringDays": "55 - 60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Permanent Marker x KmintZ"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "Zombie Bride",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Tierra humeda, galleta cremosa y musgo; humuleno.",
+  "floweringDays": "60 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Zombie Kush x Wedding Cake"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "Zombie Kush",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Floral, dulce, terroso, citrico y especiado.",
+  "floweringDays": "50 - 60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "(Lavender Kush x Amnesia) x Bubba Kush"
+},
+{
+  "seedBank": "Ripper Seeds",
+  "name": "Zombie Kush Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Floral, dulce, terroso y especiado.",
+  "floweringDays": "50 - 60",
+  "estimatedYield": "",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Version automatica de Zombie Kush; parental auto no publicado"
+},
+{
+  "seedBank": "Riqui Genetics",
+  "name": "1302 A.C.A.B",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente"
+},
+{
+  "seedBank": "Riqui Genetics",
+  "name": "Caravana",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Dulce, chocolate y fruta suave",
+  "floweringDays": "77",
+  "estimatedYield": "500",
+  "type": "Fotoperiódica",
+  "lineage": "Red Mandarine x Ayahuasca Purple",
+  "thc": "THC: hasta 22%"
+},
+{
+  "seedBank": "Riqui Genetics",
+  "name": "Cheta",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Fotoperiódica"
+},
+{
+  "seedBank": "Riqui Genetics",
+  "name": "Clerico",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada"
+},
+{
+  "seedBank": "Riqui Genetics",
+  "name": "Italpark",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Fotoperiódica"
+},
+{
+  "seedBank": "Riqui Genetics",
+  "name": "La Curandera",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Fotoperiódica"
+},
+{
+  "seedBank": "Riqui Genetics",
+  "name": "La Dotora",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente"
+},
+{
+  "seedBank": "Riqui Genetics",
+  "name": "Trompada",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada"
+},
+{
+  "seedBank": "Royal Queen Seeds",
+  "name": "Amnesia Haze",
+  "dominance": "Índica 30% / Sativa 70%",
+  "organolepticProfile": "Citrico, herbal, pimienta y tierra",
+  "floweringDays": "70 - 77",
+  "estimatedYield": "600 - 650",
+  "type": "Fotoperiódica",
+  "lineage": "Original Amnesia Haze",
+  "thc": "THC: 22%"
+},
+{
+  "seedBank": "Royal Queen Seeds",
+  "name": "Cherry Pie",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Fruta, frutos del bosque, galleta, vainilla",
+  "floweringDays": "55 - 60",
+  "estimatedYield": "400 - 450",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Granddaddy Purple x Durban Poison",
+  "thc": "THC: hasta 20%"
+},
+{
+  "seedBank": "Royal Queen Seeds",
+  "name": "Cookies Gelato",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Frutal, citrico, menta y terroso",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "550 - 600",
+  "type": "Fotoperiódica",
+  "lineage": "Girl Scout Cookies x Gelato #33",
+  "thc": "THC: 28%"
+},
+{
+  "seedBank": "Royal Queen Seeds",
+  "name": "Do-Si-Dos",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Hierbas, pino, skunk, tierra",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "400 - 450",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "OGKB x Face Off OG",
+  "thc": "THC: hasta 25%"
+},
+{
+  "seedBank": "Royal Queen Seeds",
+  "name": "Fat Banana",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Cítrico, pimienta, banana, skunk, tierra",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "350 - 400",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Banana x OG Kush",
+  "thc": "THC: hasta 25%"
+},
+{
+  "seedBank": "Royal Queen Seeds",
+  "name": "Gelato 44",
+  "dominance": "Índica 75% / Sativa 25%",
+  "organolepticProfile": "Fruta, cítrico, galleta, menta, tierra",
+  "floweringDays": "55 - 60",
+  "estimatedYield": "400 - 450",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Sunset Sherbet x Thin Mint Girl Scout Cookies",
+  "thc": "THC: hasta 22%"
+},
+{
+  "seedBank": "Royal Queen Seeds",
+  "name": "Green Gelato",
+  "dominance": "Índica 55% / Sativa 45%",
+  "organolepticProfile": "Cítrico, menta, pimienta, tierra, vainilla",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "500 - 700",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Sunset Sherbet x Thin Mint x Girl Scout Cookies",
+  "thc": "THC: hasta 27%"
+},
+{
+  "seedBank": "Royal Queen Seeds",
+  "name": "HulkBerry",
+  "dominance": "Índica 35% / Sativa 65%",
+  "organolepticProfile": "Combustible, cítrico, hierbas, pimienta",
+  "floweringDays": "60 - 70",
+  "estimatedYield": "400 - 450",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "OG Kush x Strawberry Diesel",
+  "thc": "THC: hasta 27%"
+},
+{
+  "seedBank": "Royal Queen Seeds",
+  "name": "Legendary OG Punch",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Fruta, cítrico, pino, tierra",
+  "floweringDays": "55 - 60",
+  "estimatedYield": "350 - 400",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Legend OG x Purple Punch",
+  "thc": "THC: hasta 19%"
+},
+{
+  "seedBank": "Royal Queen Seeds",
+  "name": "Mexican Rush",
+  "dominance": "Índica 20% / Sativa 80%",
+  "organolepticProfile": "Fruta, miel, pino, tierra",
+  "floweringDays": "60 - 70",
+  "estimatedYield": "550 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Mexican Sativa",
+  "thc": "THC: hasta 22%"
+},
+{
+  "seedBank": "Royal Queen Seeds",
+  "name": "Permanent Marker",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Caramelo, combustible, hierbas, pimienta",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "500 - 550",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "(Biscotti x Sherb) x Jealousy",
+  "thc": "THC: hasta 28%"
+},
+{
+  "seedBank": "Royal Queen Seeds",
+  "name": "Purple Punch",
+  "dominance": "Índica 85% / Sativa 15%",
+  "organolepticProfile": "Caramelo, frutos del bosque, tierra, vainilla",
+  "floweringDays": "55 - 60",
+  "estimatedYield": "550 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Larry OG x Granddaddy Purple",
+  "thc": "THC: hasta 21%"
+},
+{
+  "seedBank": "Royal Queen Seeds",
+  "name": "Royal Gorilla",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Frutal, combustible, chocolate, intenso y pino",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "500 - 550",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Sour Dubb x Chem Sis x Chocolate Diesel",
+  "thc": "THC: hasta 27%; CBD: bajo"
+},
+{
+  "seedBank": "Royal Queen Seeds",
+  "name": "Special Queen 1",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Frutal, skunk y terroso",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "500 - 550",
+  "type": "Fotoperiódica",
+  "lineage": "Power Bud x Skunk",
+  "thc": "THC: 18%"
+},
+{
+  "seedBank": "Royal Queen Seeds",
+  "name": "Super Boof",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Fruta, cítrico, vainilla",
+  "floweringDays": "55 - 60",
+  "estimatedYield": "450 - 500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Black Cherry Punch x Tropicana Cookies",
+  "thc": "THC: hasta 28%"
+},
+{
+  "seedBank": "Royal Queen Seeds",
+  "name": "Trainwreck",
+  "dominance": "Índica 10% / Sativa 90%",
+  "organolepticProfile": "Cítrico, hierbas, menta, pino",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "550 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Mexican x Thai x Afghan",
+  "thc": "THC: hasta 19%"
+},
+{
+  "seedBank": "Royal Queen Seeds",
+  "name": "Triple G",
+  "dominance": "Índica 85% / Sativa 15%",
+  "organolepticProfile": "Combustible, chocolate, citrico y tierra",
+  "floweringDays": "55 - 60",
+  "estimatedYield": "525 - 575",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Gorilla Glue 4 x Gelato 33",
+  "thc": "THC: hasta 26%; CBD: bajo"
+},
+{
+  "seedBank": "Royal Queen Seeds",
+  "name": "White Widow",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Pimienta, pino, tierra",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "450 - 500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "White Widow S1",
+  "thc": "THC: hasta 19%"
+},
+{
+  "seedBank": "Satan&Co",
+  "name": "Auto Berry",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente"
+},
+{
+  "seedBank": "Satan&Co",
+  "name": "Auto Cherry",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente"
+},
+{
+  "seedBank": "Satan&Co",
+  "name": "Cheese Auto",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente"
+},
+{
+  "seedBank": "Satan&Co",
+  "name": "Critical Auto OG",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Sin confirmar"
+},
+{
+  "seedBank": "Satan&Co",
+  "name": "Donkey Cream",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada"
+},
+{
+  "seedBank": "Satan&Co",
+  "name": "Master Mint Auto",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente"
+},
+{
+  "seedBank": "Satan&Co",
+  "name": "Painless Fem",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Sin confirmar"
+},
+{
+  "seedBank": "Satan&Co",
+  "name": "Pistacho",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada"
+},
+{
+  "seedBank": "Satan&Co",
+  "name": "Satangie",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Sin confirmar"
+},
+{
+  "seedBank": "Satan&Co",
+  "name": "SF Budín",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada"
+},
+{
+  "seedBank": "Satan&Co",
+  "name": "SF Mooncake",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada"
+},
+{
+  "seedBank": "Satan&Co",
+  "name": "Spicy Banana",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada"
+},
+{
+  "seedBank": "Satan&Co",
+  "name": "Sunset Fire",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada"
+},
+{
+  "seedBank": "Satan&Co",
+  "name": "Zomango Auto",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente"
+},
+{
+  "seedBank": "SE+",
+  "name": "Aceitosa",
+  "dominance": "",
+  "organolepticProfile": "Aceite quemado, combustible, citricos acidos y astringentes",
+  "floweringDays": "52 - 54",
+  "estimatedYield": "",
+  "type": "Fotoperiódica",
+  "lineage": "Red Diesel x Chocolope"
+},
+{
+  "seedBank": "SE+",
+  "name": "Cannoli Cream Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Tostado, picante, especiado y herbal",
+  "floweringDays": "60 - 70",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Cannoli Cream x Ruderalis"
+},
+{
+  "seedBank": "SE+",
+  "name": "Citric Galactic Auto",
+  "dominance": "Sativa",
+  "organolepticProfile": "Dulce, herbal y citrico.",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente"
+},
+{
+  "seedBank": "SE+",
+  "name": "Diesel CBD",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Fotoperiódica"
+},
+{
+  "seedBank": "SE+",
+  "name": "Dosichoc",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Fotoperiódica"
+},
+{
+  "seedBank": "SE+",
+  "name": "Gucci Lemon Auto",
+  "dominance": "Sativa",
+  "organolepticProfile": "Limon, madera y tierra.",
+  "floweringDays": "80 - 90",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Auto AK47 x Auto Haze"
+},
+{
+  "seedBank": "SE+",
+  "name": "Haze CBD",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Pino y flor de montana.",
+  "floweringDays": "75",
+  "estimatedYield": "",
+  "type": "Fotoperiódica",
+  "lineage": "Hawaiian Haze CBD x Sour Diesel CBD"
+},
+{
+  "seedBank": "SE+",
+  "name": "Kililope",
+  "dominance": "Índica 10% / Sativa 90%",
+  "organolepticProfile": "Incienso y chocolate.",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "",
+  "type": "Fotoperiódica",
+  "lineage": "Kilimanjaro x Chocolope"
+},
+{
+  "seedBank": "SE+",
+  "name": "La Choco",
+  "dominance": "",
+  "organolepticProfile": "Menta, lavanda, eucalipto y alcanfor.",
+  "floweringDays": "55 - 60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica",
+  "lineage": "Chocolope x Chocolope"
+},
+{
+  "seedBank": "SE+",
+  "name": "Manza LO-FI",
+  "dominance": "",
+  "organolepticProfile": "Dulce, frutal y floral.",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "",
+  "type": "Fotoperiódica"
+},
+{
+  "seedBank": "SE+",
+  "name": "OG Kush Auto",
+  "dominance": "Indica",
+  "organolepticProfile": "Fruta, citricos, menta y pino.",
+  "floweringDays": "75 - 85",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Auto OG Kush x Auto OG Kush",
+  "thc": "THC 21%"
+},
+{
+  "seedBank": "SE+",
+  "name": "Punto Caramelo",
+  "dominance": "",
+  "organolepticProfile": "Herbal, madera sutil, incienso, sandalo, mirra, enebro y pimienta negra.",
+  "floweringDays": "55 - 60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica"
+},
+{
+  "seedBank": "SE+",
+  "name": "Tutti Purple Auto",
+  "dominance": "Indica",
+  "organolepticProfile": "Frutas variadas y especias.",
+  "floweringDays": "75 - 85",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Auto Tutti Frutti x Auto Purple"
+},
+{
+  "seedBank": "Seed Junky Genetics",
+  "name": "Animal Mints",
+  "dominance": "Híbrida (50/50)",
+  "organolepticProfile": "Menta verde fresca, masa de galleta densa, gasóleo",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "450 - 500"
+},
+{
+  "seedBank": "Seed Junky Genetics",
+  "name": "Jealousy",
+  "dominance": "Híbrida (50/50)",
+  "organolepticProfile": "Helado lácteo azucarado, tierra rica, caramelos densos",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "500 - 550"
+},
+{
+  "seedBank": "Seed Junky Genetics",
+  "name": "Kush Mints",
+  "dominance": "Híbrida (50/50)",
+  "organolepticProfile": "Menta verde potente, pino bosque, diésel, tierra negra",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "500 - 550"
+},
+{
+  "seedBank": "Seed Junky Genetics",
+  "name": "Permanent Marker",
+  "dominance": "Índica (70%)",
+  "organolepticProfile": "Jabón floral persistente, dulces artificiales, gas fuerte",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "500 - 550"
+},
+{
+  "seedBank": "Seed Junky Genetics",
+  "name": "Wedding Cake",
+  "dominance": "Índica (60%)",
+  "organolepticProfile": "Vainilla dulce, tierra húmeda, masa cruda, pimienta",
+  "floweringDays": "63",
+  "estimatedYield": "500 - 600"
+},
+{
+  "seedBank": "Seedstockers",
+  "name": "Amaretto Tarmac Auto",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Cereza, manzana acida, almendra, citricos, tierra, asfalto y pino.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "450",
+  "type": "Autofloreciente",
+  "lineage": "(Amaretto Sour x Apollo Black Cherry) x Apollo Black Cherry Auto",
+  "thc": "THC 20 - 26%"
+},
+{
+  "seedBank": "Seedstockers",
+  "name": "Amnesia Haze Auto",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Haze, acido y especiado.",
+  "floweringDays": "70",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Amnesia Haze x Auto Haze",
+  "thc": "THC 20 - 26%"
+},
+{
+  "seedBank": "Seedstockers",
+  "name": "Apollo Black Cherry Auto",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Cola de cereza, ciruela madura, frutos rojos, skunk, citricos y notas especiadas.",
+  "floweringDays": "77 - 84",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Apollo Black Cherry x Black Domina Auto",
+  "thc": "THC 14 - 22%"
+},
+{
+  "seedBank": "Seedstockers",
+  "name": "Barcelona Puff Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Floral, perfume dulce, crema y gas.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "(Frosty Tooth x Lavender Clementine) x Rucu Cucu OG Auto",
+  "thc": "THC 20 - 26%"
+},
+{
+  "seedBank": "Seedstockers",
+  "name": "Black Rainbow Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Frutos del bosque, citricos, cascara de naranja, skunk, diesel, tierra, especias y madera.",
+  "floweringDays": "77",
+  "estimatedYield": "400 - 450",
+  "type": "Autofloreciente",
+  "lineage": "(Watermelon Zkittlez x Bacio Rainbow) x Apollo Black Cherry Auto",
+  "thc": "THC 20 - 26%"
+},
+{
+  "seedBank": "Seedstockers",
+  "name": "Blackberry Gum Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Frutos del bosque, arandano, caramelo, cafe y citricos.",
+  "floweringDays": "77",
+  "estimatedYield": "500 - 550",
+  "type": "Autofloreciente",
+  "lineage": "(Bubble Gum x Blueberry) x Auto Blueberry",
+  "thc": "THC 20 - 26%"
+},
+{
+  "seedBank": "Seedstockers",
+  "name": "Blue Moby Auto",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Arandano dulce, Kush, tierra, madera y especias.",
+  "floweringDays": "84",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Blue Moby x Moby Dick Auto",
+  "thc": "THC 14 - 22%"
+},
+{
+  "seedBank": "Seedstockers",
+  "name": "Bruce Banner Auto",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Diesel, fresas, frutos del bosque, caramelo, tierra y flores.",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "(OG Kush x Strawberry Diesel) x Sour Diesel Auto",
+  "thc": "THC 20 - 26%"
+},
+{
+  "seedBank": "Seedstockers",
+  "name": "Candy Dawg Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Frutos del bosque, pino, especias, limon agridulce, uva y caramelo.",
+  "floweringDays": "70",
+  "estimatedYield": "350 - 500",
+  "type": "Autofloreciente",
+  "lineage": "(Candy Kush x Chem Dawg) x OG Kush Auto",
+  "thc": "THC 20 - 26%"
+},
+{
+  "seedBank": "Seedstockers",
+  "name": "Drizl Pickl Auto",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Diesel, encurtidos, hierbas, especias y citricos acidos.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "(Whopper With Pickles x Granny's Home) x Mack and Crack Auto",
+  "thc": "THC 20 - 26%"
+},
+{
+  "seedBank": "Seedstockers",
+  "name": "F.U.H Auto",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Terroso y afrutado.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "(Maui Wowie x Fat Bastard) x Panty Punch Auto",
+  "thc": "THC hasta 28%"
+},
+{
+  "seedBank": "Seedstockers",
+  "name": "Fishy Zoap Auto",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Dulce, acido, jabonoso, frutal, citrico y cremoso.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "(Fish Piss x Zoap) x Super Boof Auto",
+  "thc": "THC 20 - 26%"
+},
+{
+  "seedBank": "Seedstockers",
+  "name": "Mack and Crack Auto",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Diesel, crema, frutos del bosque, skunk y tarta dulce.",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Mack and Crack x Green Crack Auto",
+  "thc": "THC hasta 28%"
+},
+{
+  "seedBank": "Seedstockers",
+  "name": "Mandarin Panties Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Mandarina, citricos, hierbas y flores.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Mandarin Cookies x Pink Panties Auto",
+  "thc": "THC 20 - 26%"
+},
+{
+  "seedBank": "Seedstockers",
+  "name": "Panty Punch Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Frutos del bosque, citricos, uva, pino, hierbas, especias y dulce.",
+  "floweringDays": "77",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Panty Punch x Purple Punch Auto",
+  "thc": "THC hasta 28%"
+},
+{
+  "seedBank": "Seedstockers",
+  "name": "Rucu Cucu OG Auto",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Mandarina, gas, dulce y cremoso.",
+  "floweringDays": "70 - 77",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Tangie x OG Kush Auto",
+  "thc": "THC 20 - 26%"
+},
+{
+  "seedBank": "Seedstockers",
+  "name": "Santa Marta Haze Auto",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Fresco, fruta, pino, Haze y especias.",
+  "floweringDays": "77",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Santa Marta Haze x Amnesia Haze Auto",
+  "thc": "THC 20 - 26%"
+},
+{
+  "seedBank": "Seedstockers",
+  "name": "Stardawg Auto",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Tierra, diesel, pino y matices Chem.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "(Chemdog #4 x Tres Dawg) x GG4 Auto",
+  "thc": "THC 20 - 26%"
+},
+{
+  "seedBank": "Seedstockers",
+  "name": "Sticky Fingers Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Galleta dulce, menta, pino y fruta.",
+  "floweringDays": "77",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Sticky Fingers x OG Candy Dawg Auto",
+  "thc": "THC 20 - 26%"
+},
+{
+  "seedBank": "Seedstockers",
+  "name": "Terp & Tonic Auto",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Limon, naranja, pino, gas, frutos del bosque, menta anisada, tierra y crema.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "400 - 500",
+  "type": "Autofloreciente",
+  "lineage": "(Freakum Zkittlez x Ghost Tonic) x Panty Punch Auto",
+  "thc": "THC 20 - 26%"
+},
+{
+  "seedBank": "Seedstockers",
+  "name": "Thunder Banana Auto",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Banana, pina, citricos, dulce tropical, hierbas, especias y combustible.",
+  "floweringDays": "77",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Thunder Banana x Sour Diesel Auto",
+  "thc": "THC 20 - 26%"
+},
+{
+  "seedBank": "Seedstockers",
+  "name": "Triton Biscotto Lime Auto",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Galleta, chocolate, nueces, cafe cremoso, tierra, especias, incienso, lima y pomelo.",
+  "floweringDays": "70 - 77",
+  "estimatedYield": "400 - 500",
+  "type": "Autofloreciente",
+  "lineage": "Biscotti Auto x Panty Punch Auto",
+  "thc": "THC 14 - 22%"
+},
+{
+  "seedBank": "Seedstockers",
+  "name": "Tropical Zmoothie Auto",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Fruta tropical, citricos, pomelo, dulce, floral, especias y tierra.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "500",
+  "type": "Autofloreciente",
+  "lineage": "(Tropicana Shoes x Zmoothiez Zignature) x Mandarin Panties Auto",
+  "thc": "THC 20 - 26%"
+},
+{
+  "seedBank": "Sensi Seeds",
+  "name": "Big Bud",
+  "dominance": "Índica 85% / Sativa 15%",
+  "organolepticProfile": "Dulce, afrutado, especiado y melaza",
+  "floweringDays": "60",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Skunk #1 x Northern Lights"
+},
+{
+  "seedBank": "Sensi Seeds",
+  "name": "Jack Herer",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Hachis intenso, tonos afganos y skunk afrutado",
+  "floweringDays": "70 - 84",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Haze x Northern Lights #5 x Shiva Skunk",
+  "thc": "THC: alto"
+},
+{
+  "seedBank": "Sensi Seeds",
+  "name": "Northern Lights #5",
+  "dominance": "Índica (70%)",
+  "organolepticProfile": "Pino fresco perenne, resina dulce, madera oriental",
+  "floweringDays": "45 - 55",
+  "estimatedYield": "450 - 550"
+},
+{
+  "seedBank": "Sensi Seeds",
+  "name": "Sensi Skunk",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Cítrico, dulce",
+  "floweringDays": "45 - 50",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Skunk #1 x madre dulce no revelada"
+},
+{
+  "seedBank": "Sensi Seeds",
+  "name": "Skunk #1",
+  "dominance": "Índica 65% / Sativa 35%",
+  "organolepticProfile": "Skunk clasico, tierra y dulzor",
+  "floweringDays": "45 - 50",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada"
+},
+{
+  "seedBank": "Sensi Seeds",
+  "name": "Super Skunk",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Frutal, citricos dulces, tierra y especias",
+  "floweringDays": "50",
+  "estimatedYield": "500 - 650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Skunk #1 x Afghan Hash Plant",
+  "thc": "THC: alto"
+},
+{
+  "seedBank": "Serious Seeds",
+  "name": "AK-47",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Especias y citricos dulces",
+  "floweringDays": "53 - 63",
+  "estimatedYield": "350 - 600",
+  "type": "Fotoperiodica; feminizada y regular",
+  "lineage": "Colombiana x Mexicana x Tailandesa x Afgana",
+  "thc": "THC: 20%; CBD: 1%"
+},
+{
+  "seedBank": "Serious Seeds",
+  "name": "Auto AK-47",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Dulce, frutal, limón, especias",
+  "floweringDays": "70 - 80",
+  "estimatedYield": "",
+  "type": "Autofloreciente feminizada"
+},
+{
+  "seedBank": "Serious Seeds",
+  "name": "Auto White Russian",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Olor y sabor agradables, como White Russian",
+  "floweringDays": "70 - 80",
+  "estimatedYield": "",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Lowryder #2 x White Russian",
+  "thc": "THC 17%"
+},
+{
+  "seedBank": "Serious Seeds",
+  "name": "Biddy Early",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Tierra, golosina dulce",
+  "floweringDays": "49 - 60",
+  "estimatedYield": "300 - 400",
+  "type": "Fotoperiódica"
+},
+{
+  "seedBank": "Serious Seeds",
+  "name": "Bubble Gum",
+  "dominance": "Hibrida indica/sativa",
+  "organolepticProfile": "Chicle dulce",
+  "floweringDays": "53 - 63",
+  "estimatedYield": "300 - 450",
+  "type": "Fotoperiodica; feminizada y regular",
+  "lineage": "Linea IBL de Bubble Gum originaria de Indiana; cruce parental no revelado",
+  "thc": "THC: muy alto; CBD: bajo"
+},
+{
+  "seedBank": "Serious Seeds",
+  "name": "CBD-Chronic",
+  "dominance": "Híbrida",
+  "organolepticProfile": "",
+  "floweringDays": "63",
+  "estimatedYield": "350 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Chronic x Remedy",
+  "thc": "THC: 5,4%; CBD: 5,8% (promedios del ensayo)"
+},
+{
+  "seedBank": "Serious Seeds",
+  "name": "CBD-Warlock",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Dulce, frutal",
+  "floweringDays": "63",
+  "estimatedYield": "350 - 500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Warlock x Cannatonic",
+  "thc": "THC: aprox. 8%; CBD: aprox. 4% (promedios del ensayo)"
+},
+{
+  "seedBank": "Serious Seeds",
+  "name": "Chronic",
+  "dominance": "Híbrida (50/50)",
+  "organolepticProfile": "Dulce suave, notas florales prominentes, matices agrios",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "600 - 800",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Northern Lights/Skunk x Northern Lights/AK-47"
+},
+{
+  "seedBank": "Serious Seeds",
+  "name": "Double Dutch",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Frutal, flores silvestres",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "350 - 650",
+  "type": "Fotoperiódica (feminizada y regular)",
+  "lineage": "Chronic (hembra, anterior a 2000) x Warlock (macho)"
+},
+{
+  "seedBank": "Serious Seeds",
+  "name": "Fruity Durban",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Frutal, limón, mandarina",
+  "floweringDays": "42",
+  "estimatedYield": "350 - 500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Durban Poison x Mimosa",
+  "thc": "THC: 18 - 20%"
+},
+{
+  "seedBank": "Serious Seeds",
+  "name": "Kali Bubba",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Chicle, especias",
+  "floweringDays": "63",
+  "estimatedYield": "300 - 500",
+  "type": "Fotoperiódica regular",
+  "lineage": "Kali Mist x Bubble Gum"
+},
+{
+  "seedBank": "Serious Seeds",
+  "name": "Kali Mist",
+  "dominance": "Sativa 90%",
+  "organolepticProfile": "Especiado, suave",
+  "floweringDays": "70 - 77",
+  "estimatedYield": "300 - 500",
+  "type": "Fotoperiodica; feminizada y regular",
+  "thc": "THC: alto; CBD: bajo"
+},
+{
+  "seedBank": "Serious Seeds",
+  "name": "Motavation",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Dulce, pintura fresca",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "300 - 500",
+  "type": "Fotoperiódica (feminizada y regular)",
+  "lineage": "Sensi Star x Warlock"
+},
+{
+  "seedBank": "Serious Seeds",
+  "name": "Seriosa",
+  "dominance": "Aprox. 50% índica / 50% sativa",
+  "organolepticProfile": "Frutal, dulce, especiado",
+  "floweringDays": "49 - 60",
+  "estimatedYield": "350 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "AK-47 x Serious Mimosa"
+},
+{
+  "seedBank": "Serious Seeds",
+  "name": "Seriotica",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "",
+  "floweringDays": "39 - 53",
+  "estimatedYield": "350 - 500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Serious' Mimosa x Cookies",
+  "thc": "THC: alrededor de 25 - 28%"
+},
+{
+  "seedBank": "Serious Seeds",
+  "name": "Serious 6",
+  "dominance": "Casi totalmente sativa",
+  "organolepticProfile": "Limón, anís, fresco, especias",
+  "floweringDays": "56",
+  "estimatedYield": "350 - 500",
+  "type": "Fotoperiódica (feminizada y regular)",
+  "lineage": "Genéticas canadienses x sativas locales africanas"
+},
+{
+  "seedBank": "Serious Seeds",
+  "name": "Serious 7",
+  "dominance": "Casi totalmente sativa",
+  "organolepticProfile": "Limón, anís, especias",
+  "floweringDays": "56",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Selección del fenotipo blanco de Serious 6"
+},
+{
+  "seedBank": "Serious Seeds",
+  "name": "Serious Happiness",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Dulce, frutal, especias",
+  "floweringDays": "63",
+  "estimatedYield": "400 - 600",
+  "type": "Fotoperiódica (feminizada y regular)",
+  "lineage": "AK-47 (madre) x Warlock (padre)"
+},
+{
+  "seedBank": "Serious Seeds",
+  "name": "Serious Kush",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Kush intenso",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "350 - 500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "White Russian x OG Kush"
+},
+{
+  "seedBank": "Serious Seeds",
+  "name": "Strawberry AK",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "Frutilla",
+  "floweringDays": "63",
+  "estimatedYield": "350 - 550",
+  "type": "Fotoperiódica (feminizada y regular)",
+  "lineage": "AK-47 (madre) x Bubble Gum (padre)",
+  "thc": "THC: 20%; CBD: 1%"
+},
+{
+  "seedBank": "Serious Seeds",
+  "name": "Warlock",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Dulce, fruta fresca, ácido",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "400 - 500",
+  "type": "Fotoperiódica (feminizada y regular)",
+  "lineage": "Afghani x Skunk",
+  "thc": "THC: 20%; CBD: 1%"
+},
+{
+  "seedBank": "Serious Seeds",
+  "name": "White Russian",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Frutal dulce, flores, citricos, naranja y especias",
+  "floweringDays": "63",
+  "estimatedYield": "350 - 500",
+  "type": "Fotoperiodica; feminizada y regular",
+  "lineage": "AK-47 x White Widow",
+  "thc": "THC: 22%; CBD: 1%"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Animalosa",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Dulce, tierra, diesel",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "",
+  "type": "Regular / feminizada",
+  "lineage": "Animal Mint × Jealousy"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Banana God Waifu",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Bananá, caramelo, frutas",
+  "floweringDays": "63 - 65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica regular",
+  "lineage": "Banana God x Waifu"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Burrata",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Crema, nueces, gas",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "",
+  "type": "Regular",
+  "lineage": "Pan Dulce × Waifu",
+  "thc": "THC: 28 - 30%"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Celosa",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Dulce, frutos rojos, anís",
+  "floweringDays": "60 - 70",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Gelato 41 × Sunset Sherbet BX1",
+  "thc": "THC: 26%"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Cromo",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Gas, diesel, dulce",
+  "floweringDays": "65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Purple Octane x Randylosa (Gas Pheno)"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Dorayaki",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Chocolate, frutas tropicales, diesel, vainilla",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Neskuik x Randylosa",
+  "thc": "THC: 24%"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Dulce o Truco",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Especias, frutas, diesel, manteca",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Gas Face x Randy Marsh"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Forbidden Moves",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Cereza, lima, caramelo, frutos rojos, ananá, mango",
+  "floweringDays": "63 - 65",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Lemonchello Grape Gelato × Cherry Randylosa"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Grape Waifu",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Uva, melón, especias, cremoso, diesel",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica regular",
+  "lineage": "Grapes x Waifu"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Grasa de Mono",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Vainilla, diesel, dulce",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Grease Monkey × Cake Crasher R.M. Cut"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Gucci",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Vainilla, diesel, dulce",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Designer Runtz × Crepes"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Gucci Bang",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Agrio, gas, químico, limón",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Headbanger x Gucci"
+},
+{
+  "seedBank": "Shuga",
+  "name": "H3ntai",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Frutos del bosque, cítricos, crema, melón",
+  "floweringDays": "60 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada y regular",
+  "lineage": "Slurricane x Waifu"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Heladosa",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Cítricos, crema, diesel",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "",
+  "type": "Regular / feminizada",
+  "lineage": "Zelatti × Jealousy BX"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Idol",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Papaya, caramelo, dulce, gas",
+  "floweringDays": "65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Papaya Runtz x Randylosa"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Kaifu",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Menta, mango, melón",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "",
+  "type": "Regular",
+  "lineage": "Chimera × Waifu",
+  "thc": "THC: 30 - 32%"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Kawaii",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Melon, ananá, crema",
+  "floweringDays": "53 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica regular",
+  "lineage": "Starfighter BX x Waifu"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Larry Cream",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Dulce, vainilla, galleta",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "",
+  "type": "Regular / feminizada",
+  "lineage": "Zuchi × (Ice Cream Cake × Sunset BX1)",
+  "thc": "THC: 18 - 22%"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Leche lunar",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Frutal, a bayas, terroso y diésel",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "(Cereal Milk x Fish Scale) x Old Moon 90s"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Lemon Cherry Zeelosa",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Uva, frutos del bosque, limón, caramelo, cereza",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Zkittlez x Lemon Cherry Celosa"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Lithium",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Gas, pegamento, limón, cremoso",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Cobalt Cream x Lemon Cherry Celosa"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Neil Armstrong",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Dulce y frutal, a bayas y diésel",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "(Gary Payton x Fish Scale) x Old Moon 90s"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Neskuik",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Chocolate, kush, vainilla, gas",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Regular",
+  "lineage": "Military Chocolate × Kush Sorbet"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Nieve Navideña",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Limon, crema ácida, especias, frutas",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Miami Yayo x Randy Marsh"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Omakase",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Arándano, limón, ácido, caramelo",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Blueberry F3 x Lemon Cherry Celosa"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Princess Orange",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Naranja, frutilla, mango, melón",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica regular",
+  "lineage": "(Orange Push Pop x Sherb BX1) x Waifu"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Ramune",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Lichi, ciruela, cítricos, gas",
+  "floweringDays": "53 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Ya Hemi x Randylosa"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Randy Marsh",
+  "dominance": "Sativa 60% / Índica 40%",
+  "organolepticProfile": "Melón, especias, dulce",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Randy Marsh × Randy Marsh (S1)"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Randy Marsh Jungle Edition",
+  "dominance": "60% sativa / 40% índica",
+  "organolepticProfile": "Citricos, Haze, incienso",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Kilimanjaro Obama x Cake Crasher R.M. Cut"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Randy Payton",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Gas, diesel, tierra, herbal",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Gary Payton x Randylosa"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Randylosa",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Mango, melón, fruta tropical",
+  "floweringDays": "53 - 63",
+  "estimatedYield": "",
+  "type": "Regular / feminizada",
+  "lineage": "Celosa × Randy Marsh"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Raver Waifu",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Limon, diesel, crema",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Lemon Cherry Celosa x Waifu"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Sailor Moon",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Frutos rojos, tierra, fruta, diesel",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "(Apples and Bananas x Sour Beast) x Old Moon 90s"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Senpai",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Dulce, fruta, diesel, menta",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "(Los Celos × Zwish) × Randylosa",
+  "thc": "THC: 25 - 28%"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Shinigami",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Gas, aceite, menta, fruta",
+  "floweringDays": "60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Zonuts x Randylosa"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Shuga Cap",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Diesel, gas, manteca, menta, cítricos",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica regular",
+  "lineage": "Waifu x MAC"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Tokyo 3",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Agrio, limón, gas",
+  "floweringDays": "62 - 65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Sour Power OG x Lemon Cherry Celosa"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Venice Beach",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Dulce, vainilla, cítricos, gas",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica regular",
+  "lineage": "Biker OG x Wedding Sunset"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Zakura",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Dulce, frutal, ácido",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "",
+  "type": "Regular",
+  "lineage": "Zkittlez × Waifu"
+},
+{
+  "seedBank": "Shuga",
+  "name": "Zeelosa",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Uva, caramelo, frutos del bosque, anís",
+  "floweringDays": "63 - 65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica regular",
+  "lineage": "Zkittlez x Celosa"
+},
+{
+  "seedBank": "Silent Seeds",
+  "name": "B-45",
+  "dominance": "Híbrida (50/50)",
+  "organolepticProfile": "Cítricos exóticos punzantes, tierra profunda, floral",
+  "floweringDays": "58 - 65",
+  "estimatedYield": "550 - 600"
+},
+{
+  "seedBank": "Silent Seeds",
+  "name": "L.A. Vanilla Cake",
+  "dominance": "Índica (70%)",
+  "organolepticProfile": "Vainilla confitada rica, crema pastelera, frutos secos",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "550 - 600"
+},
+{
+  "seedBank": "Silent Seeds",
+  "name": "Starfire OG",
+  "dominance": "Índica (70%)",
+  "organolepticProfile": "Pino agresivo oscuro, gasóleo (gas), tierra rústica",
+  "floweringDays": "55 - 60",
+  "estimatedYield": "550 - 600"
+},
+{
+  "seedBank": "Silent Seeds",
+  "name": "Watermelon Zkittlez",
+  "dominance": "Índica (60%)",
+  "organolepticProfile": "Sandía jugosa madura, caramelos de fruta, gas suave",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "500 - 550"
+},
+{
+  "seedBank": "Silent Seeds",
+  "name": "Zkittlez 2.0",
+  "dominance": "Índica (70%)",
+  "organolepticProfile": "Frutas tropicales complejas, golosinas ácidas, dulce",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "450 - 500"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "4 K",
+  "dominance": "Índica 65% / Sativa 35%",
+  "organolepticProfile": "Pino, cereza, menta, tutti frutti y alcanfor",
+  "floweringDays": "59 - 63",
+  "estimatedYield": "450 - 500",
+  "type": "Fotoperiódica",
+  "lineage": "Sour Flash x Mohan Thai",
+  "thc": "THC 27%; CBD 0,7%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Apple Cookies",
+  "dominance": "Índica 35% / Sativa 65%",
+  "organolepticProfile": "Manzana, pera, galleta horneada y menta",
+  "floweringDays": "63",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica",
+  "lineage": "Cookies Kush x Destroyer",
+  "thc": "THC 20 - 23%; CBD 0,65%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Caipirog",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Caipirina, menta y gasolina",
+  "floweringDays": "63",
+  "estimatedYield": "550 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "OG 324 x Original SLH",
+  "thc": "THC: 26%; CBD: 0,29%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Cherry Banana Auto",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Banana con chocolate y frutos rojos",
+  "floweringDays": "75 - 80",
+  "estimatedYield": "360",
+  "type": "Autofloreciente",
+  "lineage": "Cherry Kush x Strawberry Banana",
+  "thc": "THC: 14,2%; CBD: 0,2%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Cherry OG",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Cereza, cafe, gasolina, manzana y frutos rojos",
+  "floweringDays": "60",
+  "estimatedYield": "480",
+  "type": "Fotoperiódica",
+  "lineage": "OG Kush 324 x Mohan Thai",
+  "thc": "THC 21 - 25%; CBD 0,7%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Clerikush Auto",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Dulce, terroso y especiado",
+  "floweringDays": "",
+  "estimatedYield": "575",
+  "type": "Autofloreciente",
+  "lineage": "Kush Auto x seleccion indica",
+  "thc": "THC: 20 - 22%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Comanche Auto",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Herbal, citrico y fresco",
+  "floweringDays": "",
+  "estimatedYield": "415",
+  "type": "Autofloreciente",
+  "lineage": "Pakistan Chitral Auto x Red Bubblegum Auto",
+  "thc": "THC: 18 - 20%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Crystal Med CBD Auto",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Dulce y picante",
+  "floweringDays": "75",
+  "estimatedYield": "450",
+  "type": "Autofloreciente",
+  "lineage": "Solomatic CBD x Dinamed Kush CBD",
+  "thc": "THC 1,1 - 3%; CBD 8 - 14%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Cuasi Frutti",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Ensalada de frutas",
+  "floweringDays": "63",
+  "estimatedYield": "550 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Pink Cuasi x Mendo Chem",
+  "thc": "THC: 24%; CBD: 0,3%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Daddy OG Auto",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Tierra, citricos y pino",
+  "floweringDays": "",
+  "estimatedYield": "50 - 100",
+  "type": "Autofloreciente",
+  "lineage": "OG Kush Auto x seleccion indica",
+  "thc": "THC: 22 - 24%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Desflash",
+  "dominance": "",
+  "organolepticProfile": "Cereza, caramelo y manzana",
+  "floweringDays": "63",
+  "estimatedYield": "450",
+  "type": "Fotoperiódica",
+  "lineage": "Destroyer x Flash",
+  "thc": "THC: 17%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Despink",
+  "dominance": "Índica 20% / Sativa 80%",
+  "organolepticProfile": "Cereza, menta, sidra, oregano, mora y pimienta",
+  "floweringDays": "65",
+  "estimatedYield": "400 - 450",
+  "type": "Fotoperiódica",
+  "lineage": "Destroyer x Pink Cuasi",
+  "thc": "THC 16 - 21%; CBD 0,8%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Destro",
+  "dominance": "Sativa 100%",
+  "organolepticProfile": "Caramelo masticable de pera y especias",
+  "floweringDays": "70",
+  "estimatedYield": "600 - 700",
+  "type": "Fotoperiódica",
+  "lineage": "Destroyer (Mexican Oaxaca x Colombian Punto Rojo) x Meao Thai",
+  "thc": "THC: 23%; CBD: 0,3%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Epoxi OG",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Epoxi, combustible, menta, cafe y moras fermentadas",
+  "floweringDays": "56",
+  "estimatedYield": "470 - 530",
+  "type": "Fotoperiódica",
+  "lineage": "OG Kush 324 x Sour Flash",
+  "thc": "THC 25 - 28%; CBD 0,8%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Exodus Lights",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Postre vigilante con salsa citrica",
+  "floweringDays": "64",
+  "estimatedYield": "500",
+  "type": "Fotoperiódica",
+  "lineage": "Exodus Cheese x Silver IV",
+  "thc": "THC: 24%; CBD: 0,4%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Flash",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Cereza, zorrino, frutos del bosque, menta y tierra",
+  "floweringDays": "60",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica",
+  "lineage": "White Widow x Flo",
+  "thc": "THC 20%; CBD 0,9%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Friend Onion Kush",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Cebolla de verdeo y mandarina mentolada",
+  "floweringDays": "59",
+  "estimatedYield": "450 - 500",
+  "type": "Fotoperiódica",
+  "lineage": "(Mohan Ram x Lemon OG) x Sour Flash",
+  "thc": "THC: 22%; CBD: 0,35%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Ghost ROG",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Agridulce, esparragos y quinotos confitados",
+  "floweringDays": "68",
+  "estimatedYield": "550 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "(Tangie Ghost Train x Mimosa Orange) x River OG",
+  "thc": "THC: 25%; CBD: 0,25%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Golosilver",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Golosina dulce, cereza y menta",
+  "floweringDays": "60",
+  "estimatedYield": "500",
+  "type": "Fotoperiódica",
+  "lineage": "Silver IV OG x Sour Flash C",
+  "thc": "THC: 23%; CBD: 0,33%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Gorilash",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Frutos rojos y uvas negras acidas",
+  "floweringDays": "62",
+  "estimatedYield": "560",
+  "type": "Fotoperiódica",
+  "lineage": "Gorila Zkittles x Sour Flash",
+  "thc": "THC: 27%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Han Super",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Cereza acida, limon y anis",
+  "floweringDays": "60",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica",
+  "lineage": "Mohan Flash x Super Lemon Haze",
+  "thc": "THC: 23%; CBD: 0,3%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Jack Lemonade",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Ponche de mandarina, limon y melon",
+  "floweringDays": "65",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Melonade [(OG Kush x Grape Ape) x (Lemon Tree x Sour Diesel)] x Jack Lemon (Jack Herer x Super Lemon Haze)",
+  "thc": "THC: 25%; CBD: 0,28%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Kuchi Diesel",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Budin de almendras y cafe",
+  "floweringDays": "58",
+  "estimatedYield": "450",
+  "type": "Fotoperiódica",
+  "lineage": "Cookies Kush x Sour Power",
+  "thc": "THC: 25%; CBD: 0,45%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Lemon Blue Cheese Auto",
+  "dominance": "Índica 20% / Sativa 80%",
+  "organolepticProfile": "Limon dulce, incienso, queso suave y frutos rojos",
+  "floweringDays": "",
+  "estimatedYield": "300 - 450",
+  "type": "Autofloreciente",
+  "lineage": "Super Lemon Haze x Blue Syrup x Cheese",
+  "thc": "THC 20%; CBD 0,9%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Lemon Ram",
+  "dominance": "Índica 35% / Sativa 65%",
+  "organolepticProfile": "Limon, menta, anis y papaya",
+  "floweringDays": "57 - 60",
+  "estimatedYield": "460 - 530",
+  "type": "Fotoperiódica",
+  "lineage": "Sour Lemon Skunk x Mohan Thai",
+  "thc": "THC 26 - 28%; CBD 0,6%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Lemoñac",
+  "dominance": "Índica 20% / Sativa 80%",
+  "organolepticProfile": "Lemoncello y dulzor alcoholico",
+  "floweringDays": "63",
+  "estimatedYield": "550",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Silver IV OG x Super Lemon Haze",
+  "thc": "THC: 24%; CBD: 0,29%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Magnum Cookies Auto",
+  "dominance": "Índica 65% / Sativa 35%",
+  "organolepticProfile": "Pino alimonado, melon, uva, galleta dulce, lemongrass y jengibre",
+  "floweringDays": "85",
+  "estimatedYield": "400 - 600",
+  "type": "Autofloreciente",
+  "lineage": "Magnum x Girl Scout Cookies",
+  "thc": "THC 20%; CBD 1,4%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Mandaruntz",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Naranja amarga",
+  "floweringDays": "62",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica",
+  "lineage": "Runtz Layer Cake x (Original SLH x Clementine)",
+  "thc": "THC: 26%; CBD: 0,35%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Mendo Chem",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Caramelo de uva y combustible mentolado",
+  "floweringDays": "57",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica",
+  "lineage": "Purple Punch x Star Power",
+  "thc": "THC: 24%; CBD: 0,27%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Mimozart Auto",
+  "dominance": "",
+  "organolepticProfile": "Mandarina, naranja amarga, uva fermentada, quinotos al whisky; citrico y cremoso.",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Mimosa Orange Auto x White Widow x NYC Diesel Auto"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "MKRuntz Auto",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Dulce, cremoso y frutal exotico",
+  "floweringDays": "",
+  "estimatedYield": "400",
+  "type": "Autofloreciente",
+  "lineage": "Runtz Auto x seleccion hibrida",
+  "thc": "THC: 22 - 25%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Mohan Poison Auto",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Cereza, pino, almizcle, golosinas, frutos agridulces y tierra",
+  "floweringDays": "",
+  "estimatedYield": "270 - 400",
+  "type": "Autofloreciente",
+  "lineage": "Mohan Ram x Blue Poison",
+  "thc": "THC 20%; CBD 0,9%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Mohan Thai",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Salamin, cereza, pino acido, manzana verde, citricos y moras",
+  "floweringDays": "62",
+  "estimatedYield": "450 - 550",
+  "type": "Fotoperiódica",
+  "lineage": "Mohan Ram x Destroyer",
+  "thc": "THC 22 - 24%; CBD 0,7%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "OG 324",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Témpera, espárrago cocido y combustible, con toque mentolado",
+  "floweringDays": "60",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "OG 18 x OG 18",
+  "thc": "THC 25%; CBD 0,4%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Original SLH",
+  "dominance": "Índica 10% / Sativa 90%",
+  "organolepticProfile": "Frutos rojos, mora, arandanos, melon, anana y banana",
+  "floweringDays": "63",
+  "estimatedYield": "500",
+  "type": "Fotoperiódica",
+  "lineage": "Super Lemon Haze 2012 x Super Lemon Haze F5 (Lemon Skunk x Haze x Northern Lights)",
+  "thc": "THC: 24%; CBD: 0,4%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Purple Traingie",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Naranja caramelizada y arandanos",
+  "floweringDays": "63",
+  "estimatedYield": "500",
+  "type": "Fotoperiódica",
+  "lineage": "Ghost Train Tangie x Purple Punch",
+  "thc": "THC: 24%; CBD: 0,39%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "River Haze",
+  "dominance": "100% sativa",
+  "organolepticProfile": "Incienso, alcanfor, sandia, citricos, manzana y sambayon",
+  "floweringDays": "70 - 75",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica",
+  "lineage": "(Silver Haze x Destroyer) x 2046",
+  "thc": "THC 21 - 27%; CBD 0,5%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "River OG",
+  "dominance": "Índica 85% / Sativa 15%",
+  "organolepticProfile": "Agridulce y acido",
+  "floweringDays": "56",
+  "estimatedYield": "540",
+  "type": "Fotoperiódica",
+  "lineage": "S.B.S.P (Starbud x Sour Power) x OG 324 (OG18 x OG18KII)",
+  "thc": "THC: 29%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Sour 46",
+  "dominance": "Índica 10% / Sativa 90%",
+  "organolepticProfile": "Alcanfor dulce, limon y sambayon cremoso al oporto",
+  "floweringDays": "70",
+  "estimatedYield": "480",
+  "type": "Fotoperiódica",
+  "lineage": "Star Power x 2046",
+  "thc": "THC: 24%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Sour Compassion",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Cebolla mentolada y citricos",
+  "floweringDays": "60",
+  "estimatedYield": "550",
+  "type": "Fotoperiódica",
+  "lineage": "Sour Medical (Red Medical x Sour Flash) x Compassion CBD",
+  "thc": "THC: 13%; CBD: 4%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Sour Destro",
+  "dominance": "Índica 30% / Sativa 70%",
+  "organolepticProfile": "Manzana, melon y cafe",
+  "floweringDays": "65",
+  "estimatedYield": "450",
+  "type": "Fotoperiódica",
+  "lineage": "Destroyer x SBSP",
+  "thc": "THC: 19%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Sour Flash",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Fruta, combustible, cereza y cebolla",
+  "floweringDays": "58",
+  "estimatedYield": "450",
+  "type": "Fotoperiódica",
+  "lineage": "S.B.S.P (Star Bud x Sour Power) x Flash (Flo x White Widow)",
+  "thc": "THC: 18%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Star Power",
+  "dominance": "Índica 85% / Sativa 15%",
+  "organolepticProfile": "Bergamota, geranio, lavanda, alcaucil, esparragos mentolados y mazapan",
+  "floweringDays": "55",
+  "estimatedYield": "420 - 480",
+  "type": "Fotoperiódica",
+  "lineage": "(Starbud x Sour Power) x Sour Power",
+  "thc": "THC 25%; CBD 0,75%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Starlime",
+  "dominance": "Índica 30% / Sativa 70%",
+  "organolepticProfile": "Mazapan citrico y cafe",
+  "floweringDays": "63",
+  "estimatedYield": "550 - 600",
+  "type": "Fotoperiódica",
+  "lineage": "Star Power x Original SLH",
+  "thc": "THC: 23%; CBD: 0,26%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Ultra Mohan Ram Auto",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Coniferas, rosa mosqueta, cerezas silvestres y trufas",
+  "floweringDays": "",
+  "estimatedYield": "320 - 400",
+  "type": "Autofloreciente",
+  "lineage": "MK Ultra x Mohan Ram",
+  "thc": "THC 22%; CBD 0,8%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Urkle Bubba",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Esparragos mentolados, bencina, ciruela; alcaucil al Malbec",
+  "floweringDays": "56",
+  "estimatedYield": "540",
+  "type": "Fotoperiódica",
+  "lineage": "OG 324 x Purple Punch",
+  "thc": "THC: 24%; CBD: 0,32%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Watermelon Zkittles",
+  "dominance": "Índica 30% / Sativa 70%",
+  "organolepticProfile": "Limón y pino con toques de uva y lavanda",
+  "floweringDays": "58",
+  "estimatedYield": "560",
+  "type": "Fotoperiódica",
+  "lineage": "Gorilash x Blue Gelato 41",
+  "thc": "THC 22 - 26%; CBD 0,28%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "White Kali",
+  "dominance": "Índica 20% / Sativa 80%",
+  "organolepticProfile": "Agridulce y damasco",
+  "floweringDays": "65",
+  "estimatedYield": "490",
+  "type": "Fotoperiódica",
+  "thc": "THC: 26%; CBD: 0,32%"
+},
+{
+  "seedBank": "Silver River Seeds",
+  "name": "Xileno Haze",
+  "dominance": "Índica 10% / Sativa 90%",
+  "organolepticProfile": "Whisky dulce, sambayon y limon",
+  "floweringDays": "72",
+  "estimatedYield": "430",
+  "type": "Fotoperiódica",
+  "lineage": "(2046 x Lemon OG V) x Silver IV",
+  "thc": "THC: 24%; CBD: 0,29%"
+},
+{
+  "seedBank": "Soma Seeds",
+  "name": "Amnesia Haze",
+  "dominance": "Sátiva (70%)",
+  "organolepticProfile": "Limón fresco ácido, especias picantes, madera oriental",
+  "floweringDays": "84 - 90",
+  "estimatedYield": "450 - 500",
+  "lineage": "Thai Sticks x Cambodian x Laotian"
+},
+{
+  "seedBank": "Soma Seeds",
+  "name": "Buddha's Sister",
+  "dominance": "Índica (60%)",
+  "organolepticProfile": "Cereza ácida, pastel rancio horneado, toques acres leves",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "400 - 500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Afghani x Hawaiian Super Skunk x Big Skunk Korean"
+},
+{
+  "seedBank": "Soma Seeds",
+  "name": "Lavender",
+  "dominance": "Índica (80%)",
+  "organolepticProfile": "Flores de lavanda, hachís afgano oscuro, madera de cedro",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "400 - 450",
+  "lineage": "Super Skunk x Big Skunk Korean x Afghani x Hawaiian"
+},
+{
+  "seedBank": "Soma Seeds",
+  "name": "NYCD (NYC Diesel)",
+  "dominance": "Sátiva (60%)",
+  "organolepticProfile": "Pomelo (toronja) rojo cítrico, diésel agrio y penetrante",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "400 - 500",
+  "lineage": "Mexican Sativa x Afghani"
+},
+{
+  "seedBank": "Soma Seeds",
+  "name": "Somango",
+  "dominance": "Índica (75%)",
+  "organolepticProfile": "Mango maduro dulce, ensalada de frutas, notas florales",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "400 - 450",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Jack Herer x Big Skunk Korean"
+},
+{
+  "seedBank": "Sticky Finger Seeds",
+  "name": "Clemenberry",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Sticky Finger Seeds",
+  "name": "Freaky Dreams",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Sticky Finger Seeds",
+  "name": "Haiku Jackfruit",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Sticky Finger Seeds",
+  "name": "Haleakala Dreams",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Sticky Finger Seeds",
+  "name": "Hawaiian Dream",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Sticky Finger Seeds",
+  "name": "Magilla Glue",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Sticky Finger Seeds",
+  "name": "Maui Lights",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Sticky Finger Seeds",
+  "name": "Maui Magilla Glue",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Sticky Finger Seeds",
+  "name": "Maui True Blood",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Sticky Finger Seeds",
+  "name": "Maui Wowie 2.0",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Sticky Finger Seeds",
+  "name": "Muffin Dream",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Sticky Finger Seeds",
+  "name": "Swamp Glue",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Sticky Finger Seeds",
+  "name": "Wonka x Maui Magilla Glue",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Super Sativa Seed Club",
+  "name": "Auto AK Triple Haze",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente feminizada"
+},
+{
+  "seedBank": "Super Sativa Seed Club",
+  "name": "Auto Bruce Lemon Diesel",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente feminizada"
+},
+{
+  "seedBank": "Super Sativa Seed Club",
+  "name": "Auto Northern Dragon Fuel",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente feminizada"
+},
+{
+  "seedBank": "Super Sativa Seed Club",
+  "name": "Auto Purple OG Punch",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente feminizada"
+},
+{
+  "seedBank": "Super Sativa Seed Club",
+  "name": "Auto Sweet Bourbon Kush",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente feminizada"
+},
+{
+  "seedBank": "Super Sativa Seed Club",
+  "name": "Black Lebanon",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada"
+},
+{
+  "seedBank": "Super Sativa Seed Club",
+  "name": "Karel's Haze",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Fotoperiódica regular"
+},
+{
+  "seedBank": "Super Sativa Seed Club",
+  "name": "Kosher Haze",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Fotoperiódica (feminizada y regular)"
+},
+{
+  "seedBank": "Super Sativa Seed Club",
+  "name": "Lemon OG",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada"
+},
+{
+  "seedBank": "Super Sativa Seed Club",
+  "name": "Pineapple Poison",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada"
+},
+{
+  "seedBank": "Super Sativa Seed Club",
+  "name": "Sour Tangie Dawg",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Fotoperiódica regular"
+},
+{
+  "seedBank": "Super Sativa Seed Club",
+  "name": "Super Mad Sky Floater",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Afrutado con notas a uva y gasolina",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "(Hash Plant x Blueberry) x NYCD"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "African Cookies",
+  "dominance": "",
+  "organolepticProfile": "Galleta, OGKB, dulce y terroso.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Dosidos x Afro Jam",
+  "thc": "THC alto (sin porcentaje); CBD bajo (sin porcentaje)"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Bad Cherry Boi",
+  "dominance": "",
+  "organolepticProfile": "Vino tinto, OG y cerezas.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "lineage": "Rudeboi x Purple Punch x Cherry Chesse Cake F2",
+  "thc": "THC 22%; CBD muy bajo (sin porcentaje)"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Candy Banana",
+  "dominance": "",
+  "organolepticProfile": "Dulce tropical, con miel, banana y cítricos",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Troparazy 6 x (Honey and Bananas x Lemon Hash Plant)"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Chem del 8",
+  "dominance": "",
+  "organolepticProfile": "Terroso, Kush, salvaje y diesel.",
+  "floweringDays": "63 - 77",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Chem de la Chem x Afro Jam",
+  "thc": "THC alto (sin porcentaje); CBD alto (sin porcentaje)"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Garlicquinn",
+  "dominance": "",
+  "organolepticProfile": "Ajo y cebolla refrita.",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "lineage": "Black Cherry x Cherry Chesse Cake F2",
+  "thc": "THC 17 - 22%; CBD muy bajo (sin porcentaje)"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Golden Mac",
+  "dominance": "",
+  "organolepticProfile": "Queso parmesano.",
+  "floweringDays": "70",
+  "estimatedYield": "",
+  "lineage": "MAC x Afro Jam",
+  "thc": "THC alto (sin porcentaje); CBD bajo (sin porcentaje)"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Heavy Banana",
+  "dominance": "",
+  "organolepticProfile": "Miel, banana tropical y cítricos",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Highstomper OG x Honey and Bananas x Lemon Hash Plant"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Honey Gasline",
+  "dominance": "",
+  "organolepticProfile": "Gas, skunk y miel",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Old School Skunk bx x KG Sour Diesel bx2 x Honey and Bananas x Lemon Hash Plant"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Jamaican Breath",
+  "dominance": "",
+  "organolepticProfile": "Uvas saladas y Mendobreath salvaje.",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Purple Punch x Mendobreath F2 x Afro Jam",
+  "thc": "THC alto (sin porcentaje); CBD muy bajo (sin porcentaje)"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Jamaican Rainbow",
+  "dominance": "",
+  "organolepticProfile": "Naranja, caramelos Skittles, madera y frutilla.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Stikittlez x Afro Jam",
+  "thc": "THC muy alto (sin porcentaje); CBD bajo (sin porcentaje)"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Keylime Skunk",
+  "dominance": "",
+  "organolepticProfile": "Skunk, lima y mousse acido.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "lineage": "Skunk x 87 Lime Pop x Cherry Chesse Cake",
+  "thc": "THC 18 - 22%; CBD muy bajo (sin porcentaje)"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Lost North",
+  "dominance": "",
+  "organolepticProfile": "Frutos del bosque y cítricos con fondo de gas",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "North Star x (Honey and Bananas x Lemon Hash Plant)"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Mac S1",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Manteca",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "700",
+  "type": "Feminizada",
+  "lineage": "MAC x MAC",
+  "thc": "THC: 18 - 22%; CBD: bajo"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Miracle Breath",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Vino tinto, cerezas, frutos rojos, OG y galletas",
+  "floweringDays": "63",
+  "estimatedYield": "600",
+  "type": "Feminizada",
+  "lineage": "Purple Drank Breath x MAC"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Pastelary",
+  "dominance": "",
+  "organolepticProfile": "Crema, caramelo y malvavisco.",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "lineage": "Juice J x Cherry Chesse Cake F2",
+  "thc": "THC 17 - 22%; CBD muy bajo (sin porcentaje)"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Petroleum",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Fruta, cebolla, ajo, neumatico y OG.",
+  "floweringDays": "56 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Pure Michigan F2 x MAC",
+  "thc": "THC 23 - 25%; CBD bajo (sin porcentaje)"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Pink Honey Certz",
+  "dominance": "",
+  "organolepticProfile": "Uva, frutos rojos y gas con final mentolado",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Pink Certz x Honey and Bananas x Lemon Hash Plant"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Purple Reserve",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Pure Michigan x Purple Drank x Honey and Bananas x Lemon Hash Plant"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Rainbow Cream",
+  "dominance": "",
+  "organolepticProfile": "Cremoso, con durazno y masa de galletita",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Tar (Moonbow x Dosidos) x Honey and Bananas x Lemon Hash Plant"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Seven Mac",
+  "dominance": "Índica 20% / Sativa 80%",
+  "organolepticProfile": "Kush, lima, manteca y galletas",
+  "floweringDays": "70",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "87 Limepop x MAC",
+  "thc": "THC: 20 - 23%; CBD: bajo"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Soogy",
+  "dominance": "",
+  "organolepticProfile": "Cereza y jabon en polvo",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Booty Clapper x Cherry Cheese Cake F2"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Southern Mac",
+  "dominance": "Índica 20% / Sativa 80%",
+  "organolepticProfile": "Caramelos citricos y galletas horneadas",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Zkittles x MAC"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Sticky Tape",
+  "dominance": "",
+  "organolepticProfile": "Cremoso, gas, dulce y terroso",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Duck Tape (GG4 x Dosidos) x Honey and Bananas x Lemon Hash Plant"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Super Lemon Mac",
+  "dominance": "Índica 30% / Sativa 70%",
+  "organolepticProfile": "Mousse de limon, Haze, madera y galleta acida.",
+  "floweringDays": "70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Super Lemon Haze x MAC",
+  "thc": "THC 20 - 22%; CBD bajo (sin porcentaje)"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Tahoe Banana",
+  "dominance": "",
+  "organolepticProfile": "Miel, banana tropical y limonada",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Tahoe OG x Honey and Bananas x Lemon Hash Plant"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "The Cherryest",
+  "dominance": "",
+  "organolepticProfile": "Caramelo de cereza acido.",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "lineage": "Cherry Chesse Cake F3 x Cherry Chesse Cake F2",
+  "thc": "THC 20 - 26%; CBD bajo (sin porcentaje)"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "The Panic",
+  "dominance": "",
+  "organolepticProfile": "Haze, madera y galletas.",
+  "floweringDays": "70",
+  "estimatedYield": "",
+  "lineage": "AC Haze x MAC",
+  "thc": "THC 18 - 23%; CBD bajo (sin porcentaje)"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Tropicana WFC",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Citricos, galletas y tarta de naranja",
+  "floweringDays": "65",
+  "estimatedYield": "600",
+  "type": "Feminizada",
+  "lineage": "Tropi 8 x Face On Fire 7"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Z Cheese",
+  "dominance": "",
+  "organolepticProfile": "Citricos intensos, cereza, naranja y dulzor Skittlez",
+  "floweringDays": "65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Tropcherry x Vitamine Z x Cherry Cheese Cake F2"
+},
+{
+  "seedBank": "Sweed Lab",
+  "name": "Z-Banana",
+  "dominance": "",
+  "organolepticProfile": "Fruta tropical",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Tally Man x Vitamin Z x Honey and Bananas x Lemon Hash Plant"
+},
+{
+  "seedBank": "Sweet Seeds",
+  "name": "Cream Caramel",
+  "dominance": "Índica 90% / Sativa 10%",
+  "organolepticProfile": "Caramelo intenso tostado, tierra dulce, notas de regaliz",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "400 - 550",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Blue Black x Maple Leaf Indica x White Rhino",
+  "thc": "THC: 15 - 20%; CBD: 1,6%"
+},
+{
+  "seedBank": "Sweet Seeds",
+  "name": "Dark Devil Auto",
+  "dominance": "Índica 45% / Sativa 55%",
+  "organolepticProfile": "Incienso, madera, citricos, fruta y dulzor",
+  "floweringDays": "60",
+  "estimatedYield": "400 - 600",
+  "type": "Autofloreciente",
+  "lineage": "Big Devil XL Auto x linea autofloreciente morada de ascendencia Chitral",
+  "thc": "CBD: 0,9%"
+},
+{
+  "seedBank": "Sweet Seeds",
+  "name": "Gorilla Girl",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Cipres, citricos, tierra y madera",
+  "floweringDays": "63",
+  "estimatedYield": "400 - 550",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Gorilla Glue x Girl Scout Cookies (Thin Mint)",
+  "thc": "THC: 20 - 31%; CBD: 0,1%"
+},
+{
+  "seedBank": "Sweet Seeds",
+  "name": "Green Poison F1",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Fruta, especias, skunk y dulzor",
+  "floweringDays": "42",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiodica feminizada Fast Version F1",
+  "lineage": "Green Poison x Green Poison Auto",
+  "thc": "THC: 15 - 20%; CBD: 0,5%"
+},
+{
+  "seedBank": "Sweet Seeds",
+  "name": "Sweet Zenzation",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Caramelos de frutas artificiales, maderas nobles, limón ácido",
+  "floweringDays": "63",
+  "estimatedYield": "450 - 650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Zkittlez x Grape Ape",
+  "thc": "THC: 16 - 23%; CBD: 0,2%"
+},
+{
+  "seedBank": "The Barrio",
+  "name": "SFV x Afghan Landrace",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "San Fernando Valley OG x Afghan Landrace"
+},
+{
+  "seedBank": "The Barrio",
+  "name": "SFV x Banana Sherbet",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Banana, dulce frutal, tierra y especias.",
+  "floweringDays": "56",
+  "estimatedYield": "700",
+  "lineage": "Banana Sherbet x San Fernando Valley Kush"
+},
+{
+  "seedBank": "The Barrio",
+  "name": "SFV x Blue Moonshine",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "San Fernando Valley OG x Blue Moonshine"
+},
+{
+  "seedBank": "The Barrio",
+  "name": "SFV x Runtz",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "The Barrio",
+  "name": "SFV x Tangerine Sunrise",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "San Fernando Valley OG x Tangerine Sunrise"
+},
+{
+  "seedBank": "The Barrio",
+  "name": "SFV x Tropicana Cookies",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "San Fernando Valley OG x Tropicana Cookies"
+},
+{
+  "seedBank": "The Barrio",
+  "name": "SFV x Watermelon Zkittlez",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Sandia dulce, citricos y tierra.",
+  "floweringDays": "56",
+  "estimatedYield": "",
+  "lineage": "Watermelon Skittles x San Fernando Valley Kush"
+},
+{
+  "seedBank": "The Bloom Seed Co.",
+  "name": "Cranberry Limez",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Regular",
+  "lineage": "Cranberry Z x Too Much Lime"
+},
+{
+  "seedBank": "The Bloom Seed Co.",
+  "name": "Death By Guava",
+  "dominance": "",
+  "organolepticProfile": "Guayaba rosada, fresas, pomelo y Kush dulce.",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Bluntz (Runtz x Blue Power) x Strawberry Guava"
+},
+{
+  "seedBank": "The Bloom Seed Co.",
+  "name": "Granddaddy Purple x Pure Guava",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Granddaddy Purple x Pure Guava"
+},
+{
+  "seedBank": "The Bloom Seed Co.",
+  "name": "Guavarita",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Strawberry Push Pop x Pure Guava"
+},
+{
+  "seedBank": "The Bloom Seed Co.",
+  "name": "LimeQuat",
+  "dominance": "",
+  "organolepticProfile": "Limon y lima acidos, perfil Z acre y notas de limpiador de ventanas.",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Regular",
+  "lineage": "Too Much Papaya x Too Much Lime"
+},
+{
+  "seedBank": "The Bloom Seed Co.",
+  "name": "LimeQuat x Peach Limonada",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Regular",
+  "lineage": "LimeQuat x Peach Limonada"
+},
+{
+  "seedBank": "The Bloom Seed Co.",
+  "name": "Peach Limonada",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Regular",
+  "lineage": "Peach OZ x Too Much Lime"
+},
+{
+  "seedBank": "The Bloom Seed Co.",
+  "name": "Peach Pineapple",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Peach OZ x Pomelo Punch #5"
+},
+{
+  "seedBank": "The Bloom Seed Co.",
+  "name": "Pomelo Crunch",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Crunch Berries x Pomelo Punch #5"
+},
+{
+  "seedBank": "The Bloom Seed Co.",
+  "name": "Pomelo Punch BX",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Colada Lime x Pomelo Punch #5"
+},
+{
+  "seedBank": "The Bloom Seed Co.",
+  "name": "Rainbow Gummy",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Rainbow Push Pop #7 x Pomelo Punch #5"
+},
+{
+  "seedBank": "The Bloom Seed Co.",
+  "name": "Rainbow Push Pop",
+  "dominance": "",
+  "organolepticProfile": "Golosina tipo push pop, caramelo y lima",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Regular",
+  "lineage": "Orange Mints x Too Much Zkittlez"
+},
+{
+  "seedBank": "The Bloom Seed Co.",
+  "name": "Rainbow Warz",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Regular",
+  "lineage": "Rainbow Push Pop x World War Z"
+},
+{
+  "seedBank": "The Bloom Seed Co.",
+  "name": "Super Boof x Pomelo Punch #5",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Super Boof x Pomelo Punch #5"
+},
+{
+  "seedBank": "The Bloom Seed Co.",
+  "name": "Tallymon x Pomelo Punch #5",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Tallymon x Pomelo Punch #5"
+},
+{
+  "seedBank": "The Bloom Seed Co.",
+  "name": "Too Much Pie",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Regular",
+  "lineage": "Pie Strain x Too Much Zkittlez"
+},
+{
+  "seedBank": "The Bloom Seed Co.",
+  "name": "Zakuro",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Tropicanna Cookies x Pure Guava"
+},
+{
+  "seedBank": "The Bloom Seed Co.",
+  "name": "Ztar Fruit",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Feminizada",
+  "lineage": "Too Much Zkittlez x Rainbow Guava #5"
+},
+{
+  "seedBank": "The Kush Brothers",
+  "name": "Banana Sherbet",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Banana madura",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "450",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Banana OG x Sherbet",
+  "thc": "THC >25%"
+},
+{
+  "seedBank": "The Kush Brothers",
+  "name": "Cheese Cake Cookies",
+  "dominance": "Índica 60% / Sativa 40%",
+  "organolepticProfile": "Dulce y ácido con fondo terroso",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "450 - 500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Dosidos x UK Cheese"
+},
+{
+  "seedBank": "The Kush Brothers",
+  "name": "Confidencial Medicine",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Confidencial OG x Haze Brothers"
+},
+{
+  "seedBank": "The Kush Brothers",
+  "name": "Confidencial OG",
+  "dominance": "100% indica",
+  "organolepticProfile": "OG Kush clásico, terroso con notas a hachís",
+  "floweringDays": "49 - 56",
+  "estimatedYield": "350",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Afghani x OG Kush"
+},
+{
+  "seedBank": "The Kush Brothers",
+  "name": "Dosidos",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "300 - 350",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "OGKB x GSC x FaceOF"
+},
+{
+  "seedBank": "The Kush Brothers",
+  "name": "Exotic Kush",
+  "dominance": "100% indica",
+  "organolepticProfile": "",
+  "floweringDays": "49 - 56",
+  "estimatedYield": "450 - 500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Confidencial OG x Mango"
+},
+{
+  "seedBank": "The Kush Brothers",
+  "name": "Kush Sherbet",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Dulce, frutal y terroso, con notas de pino y cítricos",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "450",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Sunset Sherbet x OGK.B."
+},
+{
+  "seedBank": "The Kush Brothers",
+  "name": "Langui Kush",
+  "dominance": "Índica 20% / Sativa 80%",
+  "organolepticProfile": "",
+  "floweringDays": "70",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Arlequin x Mango x OG Kush"
+},
+{
+  "seedBank": "The Kush Brothers",
+  "name": "Malibú",
+  "dominance": "Índica 20% / Sativa 80%",
+  "organolepticProfile": "",
+  "floweringDays": "70",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Amnesia x The Dark Side"
+},
+{
+  "seedBank": "The Kush Brothers",
+  "name": "Malibu Speed Version",
+  "dominance": "Índica 20% / Sativa 80%",
+  "organolepticProfile": "Mirceno y limoneno (terpenos publicados).",
+  "floweringDays": "42",
+  "estimatedYield": "500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Malibu x Malibu Auto"
+},
+{
+  "seedBank": "The Kush Brothers",
+  "name": "Mass Kush",
+  "dominance": "Índica 90% / Sativa 10%",
+  "organolepticProfile": "Recuerda a la Critical Mass clásica",
+  "floweringDays": "56",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "OG x Critical Mass"
+},
+{
+  "seedBank": "The Kush Brothers",
+  "name": "Masskush Speed Version",
+  "dominance": "Índica 90% / Sativa 10%",
+  "organolepticProfile": "Dulce y terroso.",
+  "floweringDays": "35 - 42",
+  "estimatedYield": "500",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Masskush x Masskush Auto"
+},
+{
+  "seedBank": "The Kush Brothers",
+  "name": "OG Cheese",
+  "dominance": "Índica 90% / Sativa 10%",
+  "organolepticProfile": "",
+  "floweringDays": "56",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Cheese x Confidencial OG"
+},
+{
+  "seedBank": "The Kush Brothers",
+  "name": "Pandemia Kush Auto",
+  "dominance": "Índica 50% / Sativa 40% / Ruderalis 10%",
+  "organolepticProfile": "Especiado, floral y ácido con toques de mango",
+  "floweringDays": "70",
+  "estimatedYield": "400",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Pandemia Kush x Ruderalis"
+},
+{
+  "seedBank": "The Kush Brothers",
+  "name": "The Dark Side",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Tierra, madera y haze",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "600",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "San Fernando Valley Kush x Haze"
+},
+{
+  "seedBank": "The Kush Brothers",
+  "name": "Yellowstone",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Muy dulce",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "550",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "The Dark Side x Cheese"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "8 Mile Runtz",
+  "dominance": "Índica 55% / Sativa 45%",
+  "organolepticProfile": "Dulce tropical con bayas, cítricos y notas terrosas",
+  "floweringDays": "75",
+  "estimatedYield": "",
+  "lineage": "Detroit Runtz x White Runtz",
+  "thc": "THC 22 - 28%"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Acai Sherbert",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Animal Mint Cake",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "Thin Mint Cookies x Animal Mintz"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Apple Mints",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "Apple Fritter x Kush Mints"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Apples n Bananas BX",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "A&B x (Apples & Bananas x London Jelly)"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Banana Acai Mints",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Terroso con pino fresco y fruta tropical dulce",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "Banana Punch x Acai Mints"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Banana Trop Zkittlez",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Bubblegum Runtz",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Cherry Runtz",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Dante's Inferno",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "",
+  "floweringDays": "63 - 77",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Oreoz x Devil Driver"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Detroit Diesel",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Detroit Runtz",
+  "dominance": "",
+  "organolepticProfile": "Caramelos rojos y azules",
+  "floweringDays": "56 - 63",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Devil Driver",
+  "dominance": "",
+  "organolepticProfile": "Caramelo con melón y bayas",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "Sundae Driver x Melonaid",
+  "thc": "THC 23 - 30%"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Forbidden Runtz",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Caramelo y gasolina en partes iguales",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "Runtz x Tropical Zkittlez"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Forbidden Zkittlez",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Gary Satan",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "454",
+  "lineage": "Gary Payton x Jealousy",
+  "thc": "THC 20 - 26%; CBD <1%"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Gelato 41 BX",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "41 x Jealousy (colaboracion Tiki/Sherbinsky)"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Gelatti Mints",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "Gelatti x Tiki Kush Mints"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Ice Cream Bx",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "Ice Cream Cake x Icee Sherbert"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Ice Cream Runtz",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "Ice Cream Cake x White Runtz"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Ice Gushers",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "Gushers x Melonaid"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Island Fritter",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "Apple Fritter x Candy Rain"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Lemon Cherry Gelato BX",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "LCG x (Lemon Cherry Gelato x Forbidden Runtz)"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Lemon Cherry Icee",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "LCG x ICC Bx"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Lemon Iccee",
+  "dominance": "Híbrida",
+  "organolepticProfile": "",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "lineage": "Lemon Mints x Icee Sherbert"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Moon Blend",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "Space Runtz x Devil Driver"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Moon Runtz",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Dulce y terroso",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "White Runtz x Candy Rain"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Pablo's Revenge",
+  "dominance": "Índica 70% / Sativa 30%",
+  "organolepticProfile": "Floral, gas y fondo de menta dulce.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Animal Mints x Sherb Cake",
+  "thc": "THC 26 - 32%+"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Pirate Milk",
+  "dominance": "Híbrida",
+  "organolepticProfile": "",
+  "floweringDays": "65",
+  "estimatedYield": "",
+  "lineage": "Cereal Milk x Candy Rain"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Rain Mints",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "Candy Rain x Kush Mints 11"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Shaddy Iccee",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "Shaddy Apples x Lemon Iccee"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Sherbert Ripple",
+  "dominance": "Híbrida",
+  "organolepticProfile": "",
+  "floweringDays": "56 - 65",
+  "estimatedYield": "",
+  "lineage": "Fudge Ripple x Sunset Sherbert"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Singapore Sling",
+  "dominance": "Predominancia sativa",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "Tiki Cookies x Creamsicle"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Sour Trop Cherry",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Space Gelato",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "Biscotti x Space Runtz"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Space Runtz",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Frutal y combustible.",
+  "floweringDays": "63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Space Runtz x Space Runtz (Runtz x Candy Rain)"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Tiki Rum Cake",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "Kush Cake x Melonaid F1"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Tokyo Sunset",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "56 - 65",
+  "estimatedYield": "",
+  "lineage": "Gorilla Breath x Sunset Sherbert BX"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Trop Runtz",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Tropical Runtz LCG x Tropical Zkittlez",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Tropical Smoothie",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "Tiki Cookies x Sunset Sherbet"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Tropicana Banana",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "Banana Punch x Tropican Cookies"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Zkittles Bomb",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "Forbidden Zkittles x Sunset Sherbet"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Zkittles Cake",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Zkittlez Ice Cream",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "Ice Cream Cake x Forbidden Zkittlez"
+},
+{
+  "seedBank": "Tiki Madman",
+  "name": "Zoo Runtz",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Trendon Genetics",
+  "name": "Apple and Banana S1",
+  "dominance": "Híbrida",
+  "organolepticProfile": "",
+  "floweringDays": "56 - 70",
+  "estimatedYield": "450",
+  "type": "Feminizada"
+},
+{
+  "seedBank": "Trendon Genetics",
+  "name": "Mac Stomper x Apple and Banana",
+  "dominance": "Híbrida",
+  "organolepticProfile": "",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "500",
+  "type": "Feminizada",
+  "lineage": "Mac Stomper x Apple and Banana"
+},
+{
+  "seedBank": "Trendon Genetics",
+  "name": "Mac Stomper x Apricot",
+  "dominance": "Híbrida",
+  "organolepticProfile": "",
+  "floweringDays": "49 - 63",
+  "estimatedYield": "500",
+  "type": "Feminizada",
+  "lineage": "Mac Stomper x Apricot"
+},
+{
+  "seedBank": "Trendon Genetics",
+  "name": "Mac Stomper x Devil Lime",
+  "dominance": "Híbrida",
+  "organolepticProfile": "",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "400",
+  "type": "Feminizada",
+  "lineage": "Mac Stomper x Devil Lime"
+},
+{
+  "seedBank": "Trendon Genetics",
+  "name": "Mac Stomper x Tropicana",
+  "dominance": "Híbrida",
+  "organolepticProfile": "",
+  "floweringDays": "49 - 56",
+  "estimatedYield": "550",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Mac Stomper x Tropicana",
+  "thc": "THC alto (sin porcentaje)"
+},
+{
+  "seedBank": "Trendon Genetics",
+  "name": "Mac Stomper x Watermelon",
+  "dominance": "Híbrida",
+  "organolepticProfile": "",
+  "floweringDays": "56",
+  "estimatedYield": "550",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Mac Stomper x Watermelon",
+  "thc": "THC alto (sin porcentaje)"
+},
+{
+  "seedBank": "Triploid Seeds",
+  "name": "Banana Velvet Og",
+  "dominance": "Dominante sativa (>60%)",
+  "organolepticProfile": "Banana caramelizada, fruta dulce, crema y diesel.",
+  "floweringDays": "55 - 65",
+  "estimatedYield": "500 - 600",
+  "type": "Fotoperiodica feminizada triploide",
+  "lineage": "Banana OG x Velvet Cream",
+  "thc": "THC 25 - 30%; CBD <1%"
+},
+{
+  "seedBank": "Triploid Seeds",
+  "name": "Bubble Marker Triploid",
+  "dominance": "",
+  "organolepticProfile": "Dulce, afrutado, citricos y gas.",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "Indiana Bubble Gum x Permanent Marker",
+  "thc": "THC hasta 33%"
+},
+{
+  "seedBank": "Triploid Seeds",
+  "name": "Daddy Runtz",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Uva, bayas, fruta madura, caramelo, flores y tierra.",
+  "floweringDays": "56",
+  "estimatedYield": "",
+  "lineage": "Granddaddy Purple x Runtz",
+  "thc": "THC hasta 27%"
+},
+{
+  "seedBank": "Triploid Seeds",
+  "name": "Frosty Apple Triploid",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Manzana dulce-acida, masa cremosa, tierra y combustible.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "650",
+  "type": "Fotoperiodica feminizada triploide",
+  "lineage": "Apple Tartz x Apple Fritter",
+  "thc": "THC 25 - 30%; CBD <1%"
+},
+{
+  "seedBank": "Triploid Seeds",
+  "name": "Fruity Forest Triploid",
+  "dominance": "75% indica",
+  "organolepticProfile": "Dulce y afrutado.",
+  "floweringDays": "49 - 56",
+  "estimatedYield": "",
+  "type": "Fotoperiodica feminizada triploide",
+  "lineage": "TET4MN01 x SS1 x PIP3 x GSC12",
+  "thc": "THC 33%; CBD <1%"
+},
+{
+  "seedBank": "Triploid Seeds",
+  "name": "GMO Glookies",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Ajo, gas, combustible, tierra y especias.",
+  "floweringDays": "56",
+  "estimatedYield": "600",
+  "lineage": "GMO Cookies x Glookies",
+  "thc": "THC hasta 30%"
+},
+{
+  "seedBank": "Triploid Seeds",
+  "name": "Guava Ice Cream Triploid",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Pastel helado dulce, ponche tropical y fondo terroso.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "600 - 750",
+  "lineage": "Ice Cream Cake x Guava Gelato",
+  "thc": "THC 25 - 30%; CBD <1%"
+},
+{
+  "seedBank": "Triploid Seeds",
+  "name": "Midwest CBD Triploid",
+  "dominance": "",
+  "organolepticProfile": "Citricos frescos, dulzor, hierbas y tierra.",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "lineage": "Midwest CBD; cruce detallado no publicado",
+  "thc": "THC no detectable; CBD 21 - 23%"
+},
+{
+  "seedBank": "Triploid Seeds",
+  "name": "Northwest CBD Triploid",
+  "dominance": "",
+  "organolepticProfile": "Naranja dulce, hierbas frescas, tierra y madera.",
+  "floweringDays": "56",
+  "estimatedYield": "",
+  "thc": "THC no detectable; CBD aproximadamente 21%"
+},
+{
+  "seedBank": "Triploid Seeds",
+  "name": "Permanent Gas",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Combustible, gas y citricos.",
+  "floweringDays": "56",
+  "estimatedYield": "650",
+  "lineage": "Jet Fuel x Permanent Marker",
+  "thc": "THC 25 - 30%"
+},
+{
+  "seedBank": "Triploid Seeds",
+  "name": "Silly Hills Triploid",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Tierra y frutos secos.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "650 - 750",
+  "type": "Fotoperiodica feminizada triploide",
+  "lineage": "TET4MN01 x SS1 x PIP3 x GSC12",
+  "thc": "THC 35%; CBD <1%"
+},
+{
+  "seedBank": "Triploid Seeds",
+  "name": "Summer Sweet Triploid",
+  "dominance": "Índica 80% / Sativa 20%",
+  "organolepticProfile": "Frutal, vainilla y crema.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "650 - 750",
+  "type": "Fotoperiodica feminizada triploide",
+  "lineage": "TET4CMM02 x SSH2 x GT4 x AMS2",
+  "thc": "THC 36%; CBD <1%"
+},
+{
+  "seedBank": "Triploid Seeds",
+  "name": "Sunshine Citrus Triploid",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Naranja jugosa, mandarina, notas tropicales dulces y acidas.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Mimosa x Sunset Sherbet",
+  "thc": "THC 25%; CBD <1%"
+},
+{
+  "seedBank": "Triploid Seeds",
+  "name": "Sweetheart Triploid",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Dulce y masa de pastel.",
+  "floweringDays": "77 - 84",
+  "estimatedYield": "850",
+  "type": "Fotoperiodica feminizada triploide",
+  "lineage": "TET4NMM1 x HK12 x GSCK3 x Sativa Landrace",
+  "thc": "THC 32%; CBD <1%"
+},
+{
+  "seedBank": "Triploid Seeds",
+  "name": "Tahitian Tingle",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Citricos, tierra y frescor.",
+  "floweringDays": "63 - 70",
+  "estimatedYield": "700",
+  "type": "Fotoperiodica feminizada triploide",
+  "lineage": "TET4MN02 x OGK5 x LTS1",
+  "thc": "THC hasta 32%; CBD <1%"
+},
+{
+  "seedBank": "Triploid Seeds",
+  "name": "The Rascal",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Tierra, skunk, citricos, madera y pino.",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Fotoperiodica feminizada triploide",
+  "thc": "THC hasta 34%; CBD <1%"
+},
+{
+  "seedBank": "Triploid Seeds",
+  "name": "Tropical Sherbberry Triploid",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Frutas maduras, citricos dulces y bayas.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "650",
+  "type": "Fotoperiodica feminizada triploide",
+  "lineage": "(Sherbet x Gelato 33) x (Zkittlez x RS11)",
+  "thc": "THC 25 - 30%; CBD <1%"
+},
+{
+  "seedBank": "Triploid Seeds",
+  "name": "White Diamond Triploid",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "OG, crema, tierra y gas.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "500 - 600",
+  "lineage": "Legend OG x Gushers",
+  "thc": "THC 25 - 30%; CBD <1%"
+},
+{
+  "seedBank": "Triploid Seeds",
+  "name": "Zkittlez Pouding",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Dulce y tropical.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "600 - 750",
+  "lineage": "Zkittlez x Banana Puding",
+  "thc": "THC 30 - 32%"
+},
+{
+  "seedBank": "Umami Seed Co.",
+  "name": "Color Theory III",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Dulce y frutal: caramelo de frutilla, fruta tropical y notas cremosas, con fondo terroso y final a gas",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Zkittlez x Strawberry Banana Z"
+},
+{
+  "seedBank": "Umami Seed Co.",
+  "name": "Kakashi",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Umami intenso, descrito como langosta con manteca de trufa.",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "(Poison Gushers x Zuchi) x (Cold Heat x Zonuts)"
+},
+{
+  "seedBank": "Umami Seed Co.",
+  "name": "Lemorang",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Naranja, caramelo de limon, crema y notas de pasteleria.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Lemondary x Zeclair"
+},
+{
+  "seedBank": "Umami Seed Co.",
+  "name": "Melt Mode",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Dulce y frutal con toques a gas; notas cremosas y de repostería con frutilla, banana y caramelo",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Zeclair x Strawberry Banana x Zkittlez"
+},
+{
+  "seedBank": "Umami Seed Co.",
+  "name": "Prime Lime",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Ralladura de lima sobre fondo kush terroso y gas",
+  "floweringDays": "56 - 65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Hollywood Pure Kush x Limecai",
+  "thc": "THC 26%"
+},
+{
+  "seedBank": "Umami Seed Co.",
+  "name": "Purple Ink",
+  "dominance": "",
+  "organolepticProfile": "Gaseosa de uva y caramelo de uva efervescente.",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "(Chile Verde x Zuchi) x Limecai"
+},
+{
+  "seedBank": "Umami Seed Co.",
+  "name": "Strawzilla",
+  "dominance": "",
+  "organolepticProfile": "Caramelo de frutilla, fruta tropical, lima y gas",
+  "floweringDays": "60 - 65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Kemo x Strawberry Banana x Zkittlez"
+},
+{
+  "seedBank": "Umami Seed Co.",
+  "name": "Sunset Limes",
+  "dominance": "Híbrida",
+  "organolepticProfile": "Caramelo de tuna, cascara de lima, fruta cremosa y dulzor de helado.",
+  "floweringDays": "60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Sunset Sherbert x Limecai"
+},
+{
+  "seedBank": "Umami Seed Co.",
+  "name": "Zeltzer",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Gaseosa de uva, cereza y gasolina.",
+  "floweringDays": "56 - 65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Cherry Lime Soda x Zoda"
+},
+{
+  "seedBank": "Umami Seed Co.",
+  "name": "Zoda Bx1",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Cereza, gaseosa de uva, vainilla jabonosa, chocolate, almendra y notas quimicas.",
+  "floweringDays": "56 - 70",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "London Jellyz x Zoda",
+  "thc": "THC 20 - 24%"
+},
+{
+  "seedBank": "Umami Seed Co.",
+  "name": "Zodaza",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Dulzor floral, tierra, chocolate amargo y notas sabrosas de carne.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "500 - 650",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Zabuza #24 x Zoda",
+  "thc": "THC 22%"
+},
+{
+  "seedBank": "Umami Seed Co.",
+  "name": "Zodazana",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada"
+},
+{
+  "seedBank": "Yeruti Seeds",
+  "name": "Alien Skunk",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "",
+  "floweringDays": "60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica",
+  "lineage": "MAC (Sweed Lab) x Skunk #1",
+  "thc": "THC 17%; CBD 1%"
+},
+{
+  "seedBank": "Yeruti Seeds",
+  "name": "Black Noir Auto",
+  "dominance": "",
+  "organolepticProfile": "Dulce, tierra y frutos del bosque.",
+  "floweringDays": "85",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Blackberry x Blackberry Auto",
+  "thc": "THC 19 - 24%; CBD 0,1%"
+},
+{
+  "seedBank": "Yeruti Seeds",
+  "name": "Craig",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Manzana verde.",
+  "floweringDays": "65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica",
+  "lineage": "Destroyer x Skunk #1",
+  "thc": "THC 18%"
+},
+{
+  "seedBank": "Yeruti Seeds",
+  "name": "Critical Bilbo S1",
+  "dominance": "70% indica",
+  "organolepticProfile": "Frutal y dulce.",
+  "floweringDays": "55",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "thc": "THC 20 - 24%"
+},
+{
+  "seedBank": "Yeruti Seeds",
+  "name": "Desdemona",
+  "dominance": "",
+  "organolepticProfile": "Manzana y notas frutales tipo Apple Skunk.",
+  "floweringDays": "65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Skunk #1 x Destroyer"
+},
+{
+  "seedBank": "Yeruti Seeds",
+  "name": "Destroyer",
+  "dominance": "Sativa",
+  "organolepticProfile": "Mango con notas citricas.",
+  "floweringDays": "75",
+  "estimatedYield": "",
+  "type": "Fotoperiódica"
+},
+{
+  "seedBank": "Yeruti Seeds",
+  "name": "Gary Pyton",
+  "dominance": "50% sativa",
+  "organolepticProfile": "Hierbas, diesel y frutas.",
+  "floweringDays": "65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "thc": "THC 20 - 25%"
+},
+{
+  "seedBank": "Yeruti Seeds",
+  "name": "Gorilla Glue Auto",
+  "dominance": "40% sativa",
+  "organolepticProfile": "Chocolate, diesel y ponche de frutas.",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "thc": "THC 21%"
+},
+{
+  "seedBank": "Yeruti Seeds",
+  "name": "Gorilla Runtz Auto",
+  "dominance": "",
+  "organolepticProfile": "Caramelo dulce, especias y frutas.",
+  "floweringDays": "70",
+  "estimatedYield": "",
+  "type": "Autofloreciente",
+  "lineage": "Gorilla #4 Auto x Runtz Auto",
+  "thc": "THC 20 - 26%; CBD 1%"
+},
+{
+  "seedBank": "Yeruti Seeds",
+  "name": "Moby Dick",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Yeruti Seeds",
+  "name": "Orange Runtz",
+  "dominance": "60% sativa",
+  "organolepticProfile": "Dulce, citricos y caramelos.",
+  "floweringDays": "60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Tangie x Runtz",
+  "thc": "THC 20 - 25%"
+},
+{
+  "seedBank": "Yeruti Seeds",
+  "name": "Permanent MAC",
+  "dominance": "70% indica",
+  "organolepticProfile": "Dulce, cremoso e intenso.",
+  "floweringDays": "60",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "thc": "THC 20 - 25%"
+},
+{
+  "seedBank": "Yeruti Seeds",
+  "name": "Runtz Auto",
+  "dominance": "",
+  "organolepticProfile": "Dulce y afrutado.",
+  "floweringDays": "65",
+  "estimatedYield": "400 - 500",
+  "type": "Autofloreciente",
+  "lineage": "(Zkittlez x Gelato #33) x Ruderalis",
+  "thc": "THC 20 - 26%; CBD 0,5%"
+},
+{
+  "seedBank": "Yeruti Seeds",
+  "name": "Sativa Haze",
+  "dominance": "Sativa",
+  "organolepticProfile": "Perfil Haze puro.",
+  "floweringDays": "95",
+  "estimatedYield": "",
+  "type": "Fotoperiódica"
+},
+{
+  "seedBank": "Yeruti Seeds",
+  "name": "Skunk #1 Auto",
+  "dominance": "",
+  "organolepticProfile": "Tierra dulce.",
+  "floweringDays": "70",
+  "estimatedYield": "",
+  "type": "Autofloreciente"
+},
+{
+  "seedBank": "Yeruti Seeds",
+  "name": "Skunk Haze",
+  "dominance": "",
+  "organolepticProfile": "Haze y aroma penetrante Skunk.",
+  "floweringDays": "65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Cannalope Haze x Skunk #1"
+},
+{
+  "seedBank": "Yeruti Seeds",
+  "name": "Spiked Mai Tai S1",
+  "dominance": "50% indica",
+  "organolepticProfile": "Pino, limon, flores y diesel.",
+  "floweringDays": "65",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "thc": "THC 20 - 24%"
+},
+{
+  "seedBank": "Zamnesia Seeds",
+  "name": "Amnesia Haze Auto",
+  "dominance": "Sátiva (60%)",
+  "organolepticProfile": "Cítrico ácido picante, especias calientes, fondo haze",
+  "floweringDays": "70 - 77",
+  "estimatedYield": "350 - 400",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Amnesia Haze x Ruderalis",
+  "thc": "THC 18%; CBD 3%"
+},
+{
+  "seedBank": "Zamnesia Seeds",
+  "name": "Blueberry Automatic",
+  "dominance": "Índica (70%)",
+  "organolepticProfile": "Arándano suave silvestre, notas florales leves, tierra",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "400 - 450",
+  "type": "Autofloreciente feminizada",
+  "lineage": "Blueberry x Ruderalis",
+  "thc": "THC 15%; CBD 3%"
+},
+{
+  "seedBank": "Zamnesia Seeds",
+  "name": "Green Cure CBD F1",
+  "dominance": "Híbrida (50/50)",
+  "organolepticProfile": "Dulce frutal suave, tierra fresca, toques especiados",
+  "floweringDays": "70",
+  "estimatedYield": "450 - 500"
+},
+{
+  "seedBank": "Zamnesia Seeds",
+  "name": "Runtz Auto",
+  "dominance": "Híbrida (50/50)",
+  "organolepticProfile": "Caramelos artificiales, frutas tropicales, dulzor cremoso",
+  "floweringDays": "70",
+  "estimatedYield": "450 - 500"
+},
+{
+  "seedBank": "Zamnesia Seeds",
+  "name": "Sticky Beast Auto",
+  "dominance": "Índica (60%)",
+  "organolepticProfile": "Dulce sutil meloso, tierra mojada, tonos florales",
+  "floweringDays": "49 - 56",
+  "estimatedYield": "350 - 400"
+},
+{
+  "seedBank": "Ziplock Seeds",
+  "name": "Cherry Breath",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": "",
+  "type": "Fotoperiódica regular",
+  "lineage": "Breath Works (Mendo Breath x Grateful Breath) x Cherry Chem (Cherry Pie x Chem Dawg BX3)"
+},
+{
+  "seedBank": "Ziplock Seeds",
+  "name": "Cyber Punk",
+  "dominance": "Hibrida indica/sativa (sin porcentajes)",
+  "organolepticProfile": "Tarta acida y pastel de vainilla.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "(Cap Junky x Permanent Marker) x Lazer Wolf"
+},
+{
+  "seedBank": "Ziplock Seeds",
+  "name": "Hawaiian Mist",
+  "dominance": "Hibrida indica/sativa (sin porcentajes)",
+  "organolepticProfile": "Sherbet, gelato y gas.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "(Hawaiian Rain x Permanent Marker) x Lazer Wolf"
+},
+{
+  "seedBank": "Ziplock Seeds",
+  "name": "Lazer Wolf BX",
+  "dominance": "Hibrida indica/sativa (sin porcentajes)",
+  "organolepticProfile": "Naftalina, citricos terrosos, notas funk y gas.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Amaretto Sour x Lazer Wolf"
+},
+{
+  "seedBank": "Ziplock Seeds",
+  "name": "Lazer Wolf F2",
+  "dominance": "Hibrida indica/sativa (sin porcentajes)",
+  "organolepticProfile": "Naftalina, citricos terrosos, notas funk y gas.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Lazer Wolf #25 x Lazer Wolf #19"
+},
+{
+  "seedBank": "Ziplock Seeds",
+  "name": "Valyrian Steel",
+  "dominance": "Hibrida indica/sativa (sin porcentajes)",
+  "organolepticProfile": "Headband, sour diesel y gas.",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "(Sour Diesel x Headband) x Lazer Wolf"
+},
+{
+  "seedBank": "Zorrino Seeds",
+  "name": "Alpine Fruit",
+  "dominance": "Índica 40% / Sativa 60%",
+  "organolepticProfile": "Frutal, limon",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Ztrawberry x Tangie"
+},
+{
+  "seedBank": "Zorrino Seeds",
+  "name": "Chocoberry Kush",
+  "dominance": "Predominancia índica",
+  "organolepticProfile": "Dulce, chocolate y madera",
+  "floweringDays": "56",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Marmalate x Pandemian Kush"
+},
+{
+  "seedBank": "Zorrino Seeds",
+  "name": "Dosicheese",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Vino anejado, queso curado y galletas",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica feminizada",
+  "lineage": "Chesse Cake Cookie x Tangie"
+},
+{
+  "seedBank": "Zorrino Seeds",
+  "name": "Sorbet Mint",
+  "dominance": "",
+  "organolepticProfile": "",
+  "floweringDays": "",
+  "estimatedYield": ""
+},
+{
+  "seedBank": "Zorrino Seeds",
+  "name": "Ztrawberry Punch",
+  "dominance": "Índica 50% / Sativa 50%",
+  "organolepticProfile": "Frutos rojos, frutilla y golosinas",
+  "floweringDays": "56 - 63",
+  "estimatedYield": "",
+  "type": "Fotoperiódica",
+  "lineage": "Trululu x Ztrawberry"
 }
-*/
+];

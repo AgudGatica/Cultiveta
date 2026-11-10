@@ -362,7 +362,7 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
           ...item,
           name: selected.name,
           seedBank: selected.seedBank,
-          photoperiodType: parsePhotoperiod(selected.name, selected.dominance),
+          photoperiodType: parsePhotoperiod(`${selected.name} ${selected.type || ''}`, selected.dominance),
           declaredFloweringWeeks: parseFloweringWeeks(selected.floweringDays),
         };
       })
@@ -1025,12 +1025,12 @@ export const CultivationFormModal: React.FC<CultivationFormModalProps> = ({
                         onChange={(e) => handleSelectPredefinedGenetics(entry.id, e.target.value)}
                         className="w-full px-3 py-2 rounded-xl bg-icon-bg border border-chip-line text-brand text-xs font-medium focus:outline-hidden focus:border-chip-line focus:ring-1 focus:ring-brand cursor-pointer shadow-2xs"
                       >
-                        <option value="">Elegir del catálogo (100)…</option>
+                        <option value="">Elegir del catálogo ({GENETICS_DATABASE.length})…</option>
                         {Object.entries(PREDEFINED_BY_BANK).map(([bank, strains]) => (
                           <optgroup key={bank} label={bank}>
                             {strains.map((g) => (
                               <option key={`${g.seedBank}:::${g.name}`} value={`${g.seedBank}:::${g.name}`}>
-                                {g.name} — {g.dominance} ({g.floweringDays} días)
+                                {[g.name, g.dominance, g.floweringDays ? `${g.floweringDays} días` : ''].filter(Boolean).join(' · ')}
                               </option>
                             ))}
                           </optgroup>

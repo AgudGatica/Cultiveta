@@ -15,6 +15,8 @@ const VENDOR_CHUNKS: Array<[name: string, test: RegExp]> = [
   ['vendor-re2js', /\/node_modules\/re2js\//],
   // Animaciones (festejos, línea de tiempo): solo se bajan cuando se abre algo que las usa
   ['vendor-motion', /\/node_modules\/(motion|framer-motion|motion-dom|motion-utils)\//],
+  // Catálogo de ~1.100 genéticas: en su propio archivo, que el navegador guarda aparte y no cambia con cada versión
+  ['catalogo-geneticas', /\/src\/data\/predefinedGenetics\.ts$/],
 ];
 
 function vendorChunk(id: string): string | undefined {

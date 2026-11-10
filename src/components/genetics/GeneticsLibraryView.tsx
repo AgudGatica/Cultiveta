@@ -63,16 +63,20 @@ export function convertPredefinedToGenetics(
   userId: string,
   photoUrl?: string
 ): Genetics {
+  // Sin dato de floración no se inventa uno: el cultivo usa lo de su etapa hasta que la persona lo cargue
   const numbers = p.floweringDays.match(/\d+/g);
-  const parsedDays = numbers ? parseInt(numbers[numbers.length - 1], 10) : 60;
+  const parsedDays = numbers ? parseInt(numbers[numbers.length - 1], 10) : undefined;
 
-  const isAuto = p.floweringDays.toLowerCase().includes('germ') || p.name.toLowerCase().includes('auto');
-  const isCBD = p.name.toUpperCase().includes('CBD') || p.dominance.toUpperCase().includes('CBD');
+  const typeLower = (p.type || '').toLowerCase();
+  const isAuto = /auto/.test(typeLower) || p.floweringDays.toLowerCase().includes('germ') || p.name.toLowerCase().includes('auto');
+  const isCBD = /cbd/.test(typeLower) || p.name.toUpperCase().includes('CBD') || p.dominance.toUpperCase().includes('CBD');
   const photoperiodType: PhotoperiodType = isAuto ? 'Automática' : isCBD ? 'CBD' : 'Fotoperiódica';
 
   let dominance: DominanceType = 'Híbrida';
   const domLower = p.dominance.toLowerCase();
-  if (domLower.includes('índica') || domLower.includes('indica')) dominance = 'Índica';
+  const pct = domLower.match(/[íi]ndica\s*(\d+)\s*%\s*\/\s*sativa\s*(\d+)/);
+  if (pct) dominance = Number(pct[1]) > Number(pct[2]) ? 'Índica' : Number(pct[2]) > Number(pct[1]) ? 'Sativa' : 'Híbrida';
+  else if (domLower.includes('índica') || domLower.includes('indica')) dominance = 'Índica';
   else if (domLower.includes('sátiva') || domLower.includes('sativa')) dominance = 'Sativa';
 
   const now = new Date().toISOString();
@@ -86,7 +90,15 @@ export function convertPredefinedToGenetics(
     declaredFloweringDays: parsedDays,
     expectedAroma: p.organolepticProfile,
     photoUrl: photoUrl || undefined,
-    notes: `Perfil organoléptico: ${p.organolepticProfile} | Floración estimada: ${p.floweringDays} | Rendimiento: ${p.estimatedYield} g/m²`,
+    notes: [
+      p.organolepticProfile && `Perfil organoléptico: ${p.organolepticProfile}`,
+      p.floweringDays && `Floración estimada: ${p.floweringDays} días`,
+      p.estimatedYield && `Rendimiento: ${p.estimatedYield} g/m²`,
+      p.lineage && `Linaje: ${p.lineage}`,
+      p.thc,
+    ]
+      .filter(Boolean)
+      .join(' | '),
     createdAt: now,
     updatedAt: now,
   };
