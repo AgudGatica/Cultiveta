@@ -9,3 +9,7 @@ coverage/
 
 # Excel y fotos de trabajo del catálogo
 catalogo-geneticas/
+
+# Renders de trabajo de la transición de agua (se regeneran con arte/transicion-riego/agua_transicion.py)
+arte/transicion-riego/render/
+*.blend1

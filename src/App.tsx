@@ -40,6 +40,7 @@ import { calculateIrrigationForecast } from './services/irrigationForecastServic
 import { browserNotificationService } from './services/browserNotificationService';
 import { UserProfile } from './types';
 import { useGrowerProgress } from './hooks/useGrowerProgress';
+import { useWateringTransition } from './hooks/useWateringTransition';
 import { Sprout } from 'lucide-react';
 
 // Pantallas y modales pesados con carga diferida: se descargan recién cuando se abren.
@@ -86,6 +87,7 @@ const GoogleCalendarModal = React.lazy(() =>
 // se usan. Los de uso diario también se bajan solos un rato después de entrar (ver DAILY_MODALS).
 const QuickActionModal = lazyNamed(() => import('./components/common/QuickActionModal'), 'QuickActionModal');
 const WateringModal = lazyNamed(() => import('./components/logs/WateringModal'), 'WateringModal');
+const WateringTransition = lazyNamed(() => import('./components/logs/WateringTransition'), 'WateringTransition');
 const EnvironmentModal = lazyNamed(() => import('./components/logs/EnvironmentModal'), 'EnvironmentModal');
 const PhotoUploadModal = lazyNamed(() => import('./components/logs/PhotoUploadModal'), 'PhotoUploadModal');
 const DiaryNoteModal = lazyNamed(() => import('./components/logs/DiaryNoteModal'), 'DiaryNoteModal');
@@ -102,6 +104,7 @@ const loadDemoData = () => import('./services/demoDataService').then((m) => m.de
 const DAILY_MODALS = [
   QuickActionModal,
   WateringModal,
+  WateringTransition,
   EnvironmentModal,
   PhotoUploadModal,
   DiaryNoteModal,
@@ -322,6 +325,8 @@ export default function App() {
 
   // Notification / Toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  // Al registrar un riego no hay cartel: se ve la transición de agua (y un lector de pantalla lo anuncia)
+  const wateringFx = useWateringTransition();
 
   // Loading and Sync states linked to actual Firestore/cache results
   const [isInitialLoading, setIsInitialLoading] = useState(true);
@@ -341,6 +346,14 @@ export default function App() {
     if (!currentUser?.uid) return undefined;
     return preloadWhenIdle(DAILY_MODALS.map((modal) => modal.preload));
   }, [currentUser?.uid]);
+
+  // Mientras se llena el formulario de riego se deja lista la transición de agua, para que arranque al instante
+  useEffect(() => {
+    if (!isWateringModalOpen) return;
+    WateringTransition.preload()
+      .then((m) => m.preloadWateringTransition())
+      .catch(() => undefined);
+  }, [isWateringModalOpen]);
 
   // ─────────────────────────────────────────────────────────────
   // CULTIVETA DESIGN SYSTEM: ATMÓSFERA VISUAL SEGÚN VIEW ACTIVA
@@ -771,6 +784,18 @@ export default function App() {
           <div className="w-2.5 h-2.5 rounded-full bg-ok animate-ping" />
           <span>{toastMessage}</span>
         </div>
+      )}
+
+      {/* Riego registrado: se confirma con la transición de agua, sin texto a la vista. Esto lo lee el lector de pantalla. */}
+      <p id="watering-live-region" role="status" aria-live="polite" className="sr-only">
+        {wateringFx.announcement}
+      </p>
+      {wateringFx.playKey > 0 && (
+        <LazyBoundary fallback={null}>
+          <React.Suspense fallback={null}>
+            <WateringTransition key={wateringFx.playKey} onDone={() => wateringFx.finish(wateringFx.playKey)} />
+          </React.Suspense>
+        </LazyBoundary>
       )}
 
       {/* Top Header */}
@@ -1305,7 +1330,8 @@ export default function App() {
             onWateringAdded={(w) => {
               setWaterings((prev) => [w, ...prev.filter((x) => x.id !== w.id)]);
               notifiedOverdueRef.current.delete(w.cultivationId);
-              showToast('💧 Riego registrado con éxito. ¡Alerta de riego atrasado resuelta!');
+              // El riego ya quedó anotado en el celular (la subida a la nube sigue aparte): transición de agua, sin cartel
+              wateringFx.play();
               setWateringModalInitialRecipe(null);
             }}
           />
